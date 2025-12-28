@@ -22,7 +22,7 @@ REM Run the Python script with required arguments
 REM --------------------------------------------------
 python generate_mf_plots.py ^
     --excel "..\02_Docs\DSS_Tables.xlsx" ^
-    --sheet "Level1" ^
+    --sheet "Level1_MF" ^
     --outdir "%OUTDIR%"
 
 REM --------------------------------------------------

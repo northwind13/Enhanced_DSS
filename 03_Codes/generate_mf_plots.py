@@ -1,42 +1,44 @@
 """
-generate_mf_plots_v3.py
+generate_mf_plots.py
 
-Plots membership functions using ONLY Excel definitions, but fixes a common real-world issue:
-MF parameters stored normalized in [0,1] while the variable domain is [Typical Min, Typical Max] in real units.
+Fully Excel-driven membership function plotting.
 
-No new Excel columns are required.
+Nothing is hardcoded about:
+- member count
+- member labels
+- member shapes
+- thresholds/parameters
+
+The script uses MF_Params JSON as the single source of truth.
 
 Required Excel columns:
 - Fuzzy Variable
 - Units
 - Typical Min
 - Typical Max
-- MF_Params   (JSON list of member definitions)
+- MF_Params   (JSON list: each element defines one member)
+Optional:
+- MF_Type     (row-level fallback if a member lacks "type")
 
-Optional Excel columns:
-- MF_Type     (fallback if a member lacks "type")
+Supported MF types (must be declared in MF_Params member 'type' OR MF_Type):
+- trapezoid: a,b,c,d
+- triangle:  a,b,c
+- gaussian:  mu,sigma
 
-MF_Params JSON member formats:
-- trapezoid: {"label":"Low","type":"trapezoid","a":...,"b":...,"c":...,"d":...}
-- triangle:  {"label":"Low","type":"triangle","a":...,"b":...,"c":...}
-- gaussian:  {"label":"Med","type":"gaussian","mu":...,"sigma":...}
+If MF_Params is "N/A" or empty, the script SKIPS that row and logs it in audit CSV.
 
-Auto-rescale rule (inferred, not hardcoded thresholds):
-- If ALL members' numeric parameters lie within approximately [-0.01, 1.01]
-  AND (Typical Max - Typical Min) > 1
-  AND Units is not "0-1"
-  THEN rescale parameters from [0,1] -> [Typical Min, Typical Max] for plotting.
-
-This preserves your Excel as the source of truth while preventing "collapsed" plots.
+Outputs:
+- one PNG per row under outdir
+- mf_audit_report.csv: per-row status
 
 Usage:
-  python generate_mf_plots_v3.py --excel "DSS_Tables.xlsx" --sheet "Level1_MF_Table" --outdir "mf_plots"
+  python generate_mf_plots.py --excel "DSS_Tables.xlsx" --sheet "Level1_MF_Table" --outdir "mf_plots"
 """
 
 import argparse
 import json
 from pathlib import Path
-from typing import Dict, Any, Tuple, List
+from typing import Dict, Any, List
 
 import numpy as np
 import pandas as pd
@@ -78,48 +80,7 @@ def sanitize_filename(name: str) -> str:
         if ch.isalnum() or ch in (" ", "_", "-", ".", "+"):
             keep.append(ch)
     out = "".join(keep).strip().replace(" ", "_")
-    return out[:140] if out else "variable"
-
-
-def member_extent(m: Dict[str, Any], mtype: str) -> Tuple[float, float]:
-    if mtype == "trapezoid":
-        vals = [float(m[k]) for k in ("a", "b", "c", "d")]
-        return min(vals), max(vals)
-    if mtype == "triangle":
-        vals = [float(m[k]) for k in ("a", "b", "c")]
-        return min(vals), max(vals)
-    if mtype == "gaussian":
-        mu = float(m["mu"])
-        sigma = float(m["sigma"])
-        return mu - 3*sigma, mu + 3*sigma
-    return float("nan"), float("nan")
-
-
-def rescale_member_01_to_domain(m: Dict[str, Any], mtype: str, vmin: float, vmax: float) -> Dict[str, Any]:
-    mm = dict(m)
-    def map01(v):
-        return vmin + (float(v) - 0.0) * (vmax - vmin)
-
-    if mtype == "trapezoid":
-        for k in ("a", "b", "c", "d"):
-            mm[k] = map01(mm[k])
-    elif mtype == "triangle":
-        for k in ("a", "b", "c"):
-            mm[k] = map01(mm[k])
-    elif mtype == "gaussian":
-        mm["mu"] = map01(mm["mu"])
-        mm["sigma"] = float(mm["sigma"]) * (vmax - vmin)
-    return mm
-
-
-def plot_member(x: np.ndarray, m: Dict[str, Any], mtype: str) -> np.ndarray:
-    if mtype == "trapezoid":
-        return trapmf(x, float(m["a"]), float(m["b"]), float(m["c"]), float(m["d"]))
-    if mtype == "triangle":
-        return trimf(x, float(m["a"]), float(m["b"]), float(m["c"]))
-    if mtype == "gaussian":
-        return gaussmf(x, float(m["mu"]), float(m["sigma"]))
-    raise ValueError(f"Unsupported MF type: {mtype}")
+    return out[:160] if out else "variable"
 
 
 def main():
@@ -128,7 +89,6 @@ def main():
     ap.add_argument("--sheet", default=None)
     ap.add_argument("--outdir", default="mf_plots")
     ap.add_argument("--points", type=int, default=800)
-    ap.add_argument("--audit_csv", default="mf_audit_report.csv", help="Audit report filename inside outdir.")
     args = ap.parse_args()
 
     df = pd.read_excel(args.excel, sheet_name=args.sheet)
@@ -141,8 +101,7 @@ def main():
     outdir = Path(args.outdir)
     outdir.mkdir(parents=True, exist_ok=True)
 
-    audit_rows: List[Dict[str, Any]] = []
-    summary_rows: List[Dict[str, Any]] = []
+    audit: List[Dict[str, Any]] = []
 
     for idx, row in df.iterrows():
         fv = str(row["Fuzzy Variable"]).strip()
@@ -152,15 +111,15 @@ def main():
             vmin = float(row["Typical Min"])
             vmax = float(row["Typical Max"])
         except Exception:
-            audit_rows.append({"row": idx+2, "fuzzy_variable": fv, "status": "SKIP", "reason": "Non-numeric Typical Min/Max"})
+            audit.append({"row": idx+2, "fuzzy_variable": fv, "status": "SKIP", "reason": "Non-numeric Typical Min/Max"})
             continue
         if not np.isfinite(vmin) or not np.isfinite(vmax) or vmax <= vmin:
-            audit_rows.append({"row": idx+2, "fuzzy_variable": fv, "status": "SKIP", "reason": "Invalid Min/Max ordering"})
+            audit.append({"row": idx+2, "fuzzy_variable": fv, "status": "SKIP", "reason": "Invalid Min/Max"})
             continue
 
         raw = row["MF_Params"]
         if not isinstance(raw, str) or raw.strip() in ("", "N/A", "nan"):
-            audit_rows.append({"row": idx+2, "fuzzy_variable": fv, "status": "SKIP", "reason": "Missing MF_Params"})
+            audit.append({"row": idx+2, "fuzzy_variable": fv, "status": "SKIP", "reason": "MF_Params missing"})
             continue
 
         try:
@@ -168,67 +127,35 @@ def main():
             if not isinstance(members, list) or len(members) == 0:
                 raise ValueError("MF_Params must be a non-empty list")
         except Exception as e:
-            audit_rows.append({"row": idx+2, "fuzzy_variable": fv, "status": "SKIP", "reason": f"Invalid MF_Params JSON: {e}"})
+            audit.append({"row": idx+2, "fuzzy_variable": fv, "status": "SKIP", "reason": f"Invalid MF_Params JSON: {e}"})
             continue
 
-        fallback_type = str(row.get("MF_Type", "")).strip().lower()
-
-        ext_los, ext_his = [], []
-        types_ok = True
-
-        for m in members:
-            mtype = str(m.get("type", fallback_type)).strip().lower()
-            if mtype not in ("trapezoid", "triangle", "gaussian"):
-                types_ok = False
-                break
-            lo, hi = member_extent(m, mtype)
-            ext_los.append(lo); ext_his.append(hi)
-
-        if not types_ok or len(ext_los)==0:
-            audit_rows.append({"row": idx+2, "fuzzy_variable": fv, "status": "SKIP", "reason": "Unsupported or missing MF type"})
-            continue
-
-        mf_min = float(np.nanmin(ext_los))
-        mf_max = float(np.nanmax(ext_his))
-
-        # Domain mismatch inference
-        normalized = (mf_min >= -0.01) and (mf_max <= 1.01)
-        wide = (vmax - vmin) > 1.0
-        units_norm = units.strip().lower().replace(" ", "") in ("0-1", "[0,1]", "0..1")
-
-        rescaled = False
-        plot_members = members
-
-        if normalized and wide and not units_norm:
-            plot_members = []
-            for m in members:
-                mtype = str(m.get("type", fallback_type)).strip().lower()
-                mm = rescale_member_01_to_domain(m, mtype, vmin, vmax)
-                mm["type"] = mtype
-                plot_members.append(mm)
-            rescaled = True
-            audit_rows.append({"row": idx+2, "fuzzy_variable": fv, "status": "OK_RESCALED_FOR_PLOT", "reason": "MF params were normalized [0,1]"})
-        else:
-            audit_rows.append({"row": idx+2, "fuzzy_variable": fv, "status": "OK", "reason": ""})
+        fallback_type = str(row.get("MF_Type","")).strip().lower()
 
         x = np.linspace(vmin, vmax, args.points)
         plt.figure()
 
-        for m in plot_members:
-            mlabel = str(m.get("label", "member")).strip()
+        ok = True
+        for m in members:
+            mlabel = str(m.get("label","member"))
             mtype = str(m.get("type", fallback_type)).strip().lower()
-            y = plot_member(x, m, mtype)
+
+            if mtype == "trapezoid":
+                y = trapmf(x, float(m["a"]), float(m["b"]), float(m["c"]), float(m["d"]))
+            elif mtype == "triangle":
+                y = trimf(x, float(m["a"]), float(m["b"]), float(m["c"]))
+            elif mtype == "gaussian":
+                y = gaussmf(x, float(m["mu"]), float(m["sigma"]))
+            else:
+                ok = False
+                audit.append({"row": idx+2, "fuzzy_variable": fv, "status": "SKIP", "reason": f"Unsupported MF type: {mtype}"})
+                break
+
             plt.plot(x, y, label=mlabel)
 
-            summary_rows.append({
-                "row": idx+2,
-                "fuzzy_variable": fv,
-                "units": units,
-                "member_label": mlabel,
-                "member_type": mtype,
-                "rescaled_for_plot": rescaled,
-                **{k: v for k, v in m.items() if k not in ("label", "type")}
-            })
+        if not ok:
+            plt.close()
+            continue
 
         plt.title(fv if fv else f"Row_{idx+2}")
         plt.xlabel(f"Value ({units})")
@@ -242,12 +169,11 @@ def main():
         plt.savefig(outdir / fname, dpi=150)
         plt.close()
 
-    pd.DataFrame(audit_rows).to_csv(outdir / args.audit_csv, index=False)
-    pd.DataFrame(summary_rows).to_csv(outdir / "mf_params_summary.csv", index=False)
+        audit.append({"row": idx+2, "fuzzy_variable": fv, "status": "OK", "reason": ""})
 
+    pd.DataFrame(audit).to_csv(outdir / "mf_audit_report.csv", index=False)
     print(f"Done. Plots: {outdir.resolve()}")
-    print(f"Audit: {(outdir / args.audit_csv).resolve()}")
-    print(f"Summary: {(outdir / 'mf_params_summary.csv').resolve()}")
+    print(f"Audit: {(outdir / 'mf_audit_report.csv').resolve()}")
 
 
 if __name__ == "__main__":
