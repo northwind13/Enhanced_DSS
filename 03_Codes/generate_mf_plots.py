@@ -72,6 +72,20 @@ def trimf(x: np.ndarray, a: float, b: float, c: float) -> np.ndarray:
 def gaussmf(x: np.ndarray, mu: float, sigma: float) -> np.ndarray:
     sigma = max(float(sigma), 1e-12)
     return np.exp(-0.5 * ((x - mu) / sigma) ** 2)
+    
+
+def circular_gaussmf_deg(x_deg: np.ndarray, mu_deg: float, sigma_deg: float) -> np.ndarray:
+    """
+    Circular Gaussian MF for angular variables in degrees.
+    Periodic over 360 degrees.
+    """
+    x = np.deg2rad(x_deg)
+    mu = np.deg2rad(mu_deg)
+    sigma = np.deg2rad(max(float(sigma_deg), 1e-6))
+
+    dtheta = np.arctan2(np.sin(x - mu), np.cos(x - mu))
+    return np.exp(-0.5 * (dtheta / sigma) ** 2)
+
 
 
 def sanitize_filename(name: str) -> str:
@@ -146,6 +160,8 @@ def main():
                 y = trimf(x, float(m["a"]), float(m["b"]), float(m["c"]))
             elif mtype == "gaussian":
                 y = gaussmf(x, float(m["mu"]), float(m["sigma"]))
+            elif mtype in ("circular_gaussian", "circular"):
+                y = circular_gaussmf_deg(x, float(m["mu"]), float(m["sigma"]))
             else:
                 ok = False
                 audit.append({"row": idx+2, "fuzzy_variable": fv, "status": "SKIP", "reason": f"Unsupported MF type: {mtype}"})
@@ -167,6 +183,7 @@ def main():
         fname = sanitize_filename(f"{idx+1}_{fv or 'Row'}_mf.png")
         plt.tight_layout()
         plt.savefig(outdir / fname, dpi=150)
+        print(fname)
         plt.close()
 
         audit.append({"row": idx+2, "fuzzy_variable": fv, "status": "OK", "reason": ""})
