@@ -8,7 +8,7 @@ cd /d "%~dp0"
 REM --------------------------------------------------
 REM Define output directory for membership function plots
 REM --------------------------------------------------
-set OUTDIR=level1_mf_plots
+set OUTDIR=level1_plots
 
 REM --------------------------------------------------
 REM Create output directory if it does not exist
@@ -22,7 +22,7 @@ REM Run the Python script with required arguments
 REM --------------------------------------------------
 python generate_mf_plots.py ^
     --excel "..\02_Docs\DSS_Tables.xlsx" ^
-    --sheet "Level1_MF" ^
+    --sheet "Level1" ^
     --outdir "%OUTDIR%"
 
 REM --------------------------------------------------
