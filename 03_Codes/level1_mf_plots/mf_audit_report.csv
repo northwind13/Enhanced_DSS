@@ -20,7 +20,7 @@ row,fuzzy_variable,status,reason
 20,crown_fire_transition_likelihood_score,OK,
 21,nighttime_fire_activity_persistence_score,OK,
 22,active_front_count,OK,
-23,thermal_radiative_power_mw,SKIP,Invalid MF_Params JSON: Expecting property name enclosed in double quotes: line 1 column 3 (char 2)
+23,thermal_radiative_power_mw,OK,
 24,perimeter_growth_rate_ha_per_h,OK,
 25,live_fuel_moisture_percent,OK,
 26,dead_fuel_moisture_percent,OK,
