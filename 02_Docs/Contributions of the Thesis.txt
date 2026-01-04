@@ -1,0 +1,53 @@
+Contributions of the Thesis 
+
+Concept-Based Fuzzy Layers for Semantic Factor Aggregation
+
+This thesis introduces a concept-based fuzzy layer architecture that aggregates low-level heterogeneous risk variables into semantically coherent fuzzy concepts. The approach is explicitly positioned as a response to monolithic fuzzy-GIS models, which suffer from membership function explosion and limited interpretability. By compressing heterogeneous inputs into concept-level fuzzy layers, the architecture reduces model complexity while preserving decision expressiveness and semantic clarity.
+
+Spatio-Temporal Fuzzy Reasoning as a First-Class Construct
+
+Unlike classical GIS-based fuzzy fire models that are predominantly static, the proposed framework embeds spatio-temporal awareness directly into fuzzy inference. Time and location are treated as intrinsic components of reasoning rather than external parameters, enabling time-evolving and location-specific decisions, which is critical for operational wildfire management.
+
+Distributed Local Fuzzy Decision Makers as Surrogate Experts
+
+The system is reformulated within the framework of fuzzy group decision-making theory. Each geographically distributed local fuzzy agent functions as an autonomous surrogate expert, producing context-aware decisions based on locally observed conditions. These agents operate independently yet coherently, enabling fast, adaptive, and resilient decision-making at the operational level.
+
+Central Decision Maker as a Fuzzy Group Decision Fusion Layer
+
+A higher-level central decision maker is defined and formally aligned with fuzzy multi-attribute group decision-making (MAGDM) principles. Unlike classical MAGDM, which aggregates preferences over predefined alternatives, the proposed central layer operates on decision concepts, synthesizing and reconciling outputs from local agents to support regional or strategic decision-making.
+
+Hierarchical Feedback at Level 2 as Adaptive Weight Regulation
+
+The architecture extends feed-forward fuzzy hierarchies by introducing feedback mechanisms at Level 2, which are formally interpretable as dynamic weight regulation. This mechanism is analogous to entropy-based or consistency-based weight optimization models in fuzzy MAGDM, but is embedded directly within the fuzzy hierarchy, allowing adaptive recalibration without external re-optimization.
+
+Flexible Information Flow within the Fuzzy Hierarchy
+
+In contrast to rigid hierarchical fuzzy systems, the proposed design allows non-strict information flow. Level 2 fuzzy layers may receive inputs not only from Level 1 but also from other Level 2 layers, enabling lateral information exchange and explicit modeling of interdependent wildfire phenomena such as fuel–weather–topography interactions.
+
+Open Decision Space with Emergent Decisions
+
+The thesis introduces an open decision space, representing a fundamental departure from classical MCDM frameworks with closed alternative sets. Decisions are not selected from a predefined list but emerge from configurations in the concept space, allowing the system to generate novel decisions when encountering previously unseen or complex conditions.
+
+Reduction of Cognitive and Computational Load
+
+By combining concept-based fuzzy layers, distributed local agents, hierarchical feedback, and emergent decision generation, the architecture significantly reduces both computational complexity and operator cognitive load. This makes the system suitable for real-time and high-pressure wildfire management environments.
+
+Scalable Multi-Level Decision Architecture
+
+The distributed local-plus-central structure ensures horizontal and vertical scalability. New local decision agents can be added without redesigning the global fuzzy rule base, enabling deployment across large geographic regions and heterogeneous operational contexts.
+
+Explainable and Operator-Oriented Decision Outputs
+
+Decisions are expressed at the level of interpretable concepts rather than raw indices or scores, ensuring transparency and alignment with the reasoning processes of wildfire management professionals. This directly addresses explainability limitations in data-driven DSS.
+
+AI Interpreter as a Meta-Decision Layer
+
+The thesis demonstrates that the proposed architecture naturally supports an upper-level AI interpreter. This interpreter is explicitly distinguished from fuzzy inference and operates as a meta-decision layer, focusing on interpretation, explanation, consistency analysis, and governance rather than optimization.
+
+Separation of Reasoning and Interpretation Layers
+
+By decoupling fuzzy inference from AI-based interpretation, the architecture preserves robustness and explainability while allowing advanced AI methods to analyze decision coherence, detect conflicts, generate explanations, and provide feedback without altering core fuzzy logic structures.
+
+Generalizable Blueprint for Hazard-Oriented DSS
+
+Although developed for wildfire management, the proposed architecture constitutes a generalizable methodological blueprint applicable to other complex hazard domains, including floods, industrial accidents, and critical infrastructure risk management.

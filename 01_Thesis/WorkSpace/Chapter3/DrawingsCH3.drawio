@@ -1,0 +1,47 @@
+<mxfile host="Electron" agent="Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) draw.io/29.2.9 Chrome/140.0.7339.249 Electron/38.7.2 Safari/537.36" version="29.2.9">
+  <diagram name="Fuzzy Inference Architecture" id="DWnDYNkUOf_NrkqjDho5">
+    <mxGraphModel dx="706" dy="414" grid="1" gridSize="10" guides="1" tooltips="1" connect="1" arrows="1" fold="1" page="1" pageScale="1" pageWidth="1169" pageHeight="827" math="0" shadow="0">
+      <root>
+        <mxCell id="0" />
+        <mxCell id="1" parent="0" />
+        <mxCell id="VsfEeDQO3CIim3MlJklk-22" parent="1" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#dae8fc;strokeColor=#6c8ebf;" value="Fuzzification" vertex="1">
+          <mxGeometry height="60" width="90" x="320" y="400" as="geometry" />
+        </mxCell>
+        <mxCell id="VsfEeDQO3CIim3MlJklk-23" parent="1" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#f8cecc;strokeColor=#b85450;" value="Inference Engine" vertex="1">
+          <mxGeometry height="60" width="90" x="430" y="400" as="geometry" />
+        </mxCell>
+        <mxCell id="VsfEeDQO3CIim3MlJklk-24" parent="1" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#e1d5e7;strokeColor=#9673a6;" value="Defuzzification" vertex="1">
+          <mxGeometry height="60" width="90" x="550" y="400" as="geometry" />
+        </mxCell>
+        <mxCell id="VsfEeDQO3CIim3MlJklk-29" edge="1" parent="1" style="endArrow=classic;html=1;labelBackgroundColor=default;" target="VsfEeDQO3CIim3MlJklk-22" value="&#xa;&lt;span style=&quot;color: rgb(0, 0, 0); font-family: Helvetica; font-size: 12px; font-style: normal; font-variant-ligatures: normal; font-variant-caps: normal; font-weight: 400; letter-spacing: normal; orphans: 2; text-align: center; text-indent: 0px; text-transform: none; widows: 2; word-spacing: 0px; -webkit-text-stroke-width: 0px; white-space: normal; text-decoration-thickness: initial; text-decoration-style: initial; text-decoration-color: initial; float: none; display: inline !important;&quot;&gt;Crisp Input&lt;/span&gt;&#xa;&#xa;">
+          <mxGeometry relative="1" as="geometry">
+            <mxPoint x="240" y="430" as="sourcePoint" />
+          </mxGeometry>
+        </mxCell>
+        <mxCell id="VsfEeDQO3CIim3MlJklk-30" edge="1" parent="1" source="VsfEeDQO3CIim3MlJklk-22" style="endArrow=classic;html=1;" target="VsfEeDQO3CIim3MlJklk-23">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="VsfEeDQO3CIim3MlJklk-31" edge="1" parent="1" source="VsfEeDQO3CIim3MlJklk-23" style="endArrow=classic;html=1;" target="VsfEeDQO3CIim3MlJklk-24">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="VsfEeDQO3CIim3MlJklk-32" edge="1" parent="1" source="VsfEeDQO3CIim3MlJklk-24" style="endArrow=classic;html=1;labelBackgroundColor=default;" value="&#xa;&lt;span style=&quot;color: rgb(0, 0, 0); font-family: Helvetica; font-size: 12px; font-style: normal; font-variant-ligatures: normal; font-variant-caps: normal; font-weight: 400; letter-spacing: normal; orphans: 2; text-align: center; text-indent: 0px; text-transform: none; widows: 2; word-spacing: 0px; -webkit-text-stroke-width: 0px; white-space: normal; text-decoration-thickness: initial; text-decoration-style: initial; text-decoration-color: initial; float: none; display: inline !important;&quot;&gt;Crisp Output&lt;/span&gt;&#xa;&#xa;">
+          <mxGeometry relative="1" as="geometry">
+            <mxPoint x="720" y="430" as="targetPoint" />
+          </mxGeometry>
+        </mxCell>
+        <mxCell id="VsfEeDQO3CIim3MlJklk-33" edge="1" parent="1" source="VsfEeDQO3CIim3MlJklk-26" style="endArrow=classic;html=1;" target="VsfEeDQO3CIim3MlJklk-23">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="VsfEeDQO3CIim3MlJklk-26" parent="1" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#f5f5f5;strokeColor=#666666;verticalAlign=top;fontColor=#333333;" value="Knowledge Base" vertex="1">
+          <mxGeometry height="80" width="260" x="345" y="280" as="geometry" />
+        </mxCell>
+        <mxCell id="VsfEeDQO3CIim3MlJklk-27" parent="1" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#ffe6cc;strokeColor=#d79b00;" value="Rule Base" vertex="1">
+          <mxGeometry height="40" width="100" x="490" y="310" as="geometry" />
+        </mxCell>
+        <mxCell id="VsfEeDQO3CIim3MlJklk-28" parent="1" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#fff2cc;strokeColor=#d6b656;" value="Data Base&#xa;(Membership Functions)" vertex="1">
+          <mxGeometry height="40" width="110" x="360" y="310" as="geometry" />
+        </mxCell>
+      </root>
+    </mxGraphModel>
+  </diagram>
+</mxfile>
