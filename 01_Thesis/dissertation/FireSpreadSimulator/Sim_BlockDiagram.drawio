@@ -1,115 +1,111 @@
-<mxfile host="app.diagrams.net">
-  <diagram name="Wildfire Simulation Architecture">
-    <mxGraphModel dx="1422" dy="794" grid="1" gridSize="10" guides="1" tooltips="1" connect="1" arrows="1" fold="1" page="1" pageScale="1" pageWidth="1600" pageHeight="1200">
+<mxfile host="Electron" agent="Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) draw.io/29.2.9 Chrome/140.0.7339.249 Electron/38.7.2 Safari/537.36" version="29.2.9">
+  <diagram name="Wildfire Simulation Architecture" id="0">
+    <mxGraphModel dx="1177" dy="689" grid="1" gridSize="10" guides="1" tooltips="1" connect="1" arrows="1" fold="1" page="1" pageScale="1" pageWidth="1400" pageHeight="1000" math="1" shadow="0">
       <root>
-        <mxCell id="0"/>
-        <mxCell id="1" parent="0"/>
-
-        <!-- External Data -->
-        <mxCell id="external" value="External Data Sources&#10;- Meteorology API&#10;- DEM&#10;- OSM&#10;- Satellite&#10;- IoT Sensors" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#dae8fc;strokeColor=#6c8ebf;" vertex="1" parent="1">
-          <mxGeometry x="600" y="20" width="350" height="120" as="geometry"/>
+        <mxCell id="0" />
+        <mxCell id="1" parent="0" />
+        <mxCell id="3" parent="1" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#d5e8d4;strokeColor=#82b366;" value="Observer Module&#xa;Weather Update&#xa;Sensor Fusion&#xa;Data Assimilation" vertex="1">
+          <mxGeometry height="100" width="250" x="230" y="190" as="geometry" />
         </mxCell>
-
-        <!-- Observer Module -->
-        <mxCell id="observer" value="Observer Module&#10;- Weather Update&#10;- Sensor Fusion&#10;- Data Assimilation" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#d5e8d4;strokeColor=#82b366;" vertex="1" parent="1">
-          <mxGeometry x="650" y="180" width="250" height="100" as="geometry"/>
+        <mxCell id="9" parent="1" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#f8cecc;strokeColor=#b85450;" value="Action Queue&#xa;Command Based" vertex="1">
+          <mxGeometry height="100" width="200" x="100" y="640" as="geometry" />
         </mxCell>
-
-        <!-- Simulation Core -->
-        <mxCell id="core" value="Simulation Core" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#ffe6cc;strokeColor=#d79b00;" vertex="1" parent="1">
-          <mxGeometry x="400" y="320" width="600" height="300" as="geometry"/>
+        <mxCell id="10" parent="1" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#f8cecc;strokeColor=#b85450;" value="Actuator Module&#xa;Responder Control&#xa;Resource Dispatch&#xa;Manual or DSS Commands" vertex="1">
+          <mxGeometry height="110" width="260" x="70" y="490" as="geometry" />
         </mxCell>
-
-        <!-- Grid Manager -->
-        <mxCell id="grid" value="Grid State Manager&#10;- Cell State Matrix&#10;- Fuel&#10;- Moisture&#10;- Fire Status" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#fff2cc;strokeColor=#d6b656;" vertex="1" parent="1">
-          <mxGeometry x="430" y="380" width="220" height="120" as="geometry"/>
+        <mxCell id="11" parent="1" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#e1d5e7;strokeColor=#9673a6;" value="Web UI Dashboard&#xa;Map View&#xa;Manual Action Panel&#xa;Delta_T Control&#xa;Analytics Panel" vertex="1">
+          <mxGeometry height="80" width="270" x="70" y="370" as="geometry" />
         </mxCell>
-
-        <!-- Time Controller -->
-        <mxCell id="time" value="Time Controller (ΔT Engine)" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#fff2cc;strokeColor=#d6b656;" vertex="1" parent="1">
-          <mxGeometry x="690" y="380" width="220" height="80" as="geometry"/>
+        <mxCell id="12" parent="1" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#e1d5e7;strokeColor=#9673a6;" value="Future DSS or AI Module&#xa;Risk Optimization&#xa;Action Generation&#xa;Scenario Analysis" vertex="1">
+          <mxGeometry height="120" width="300" x="50" y="790" as="geometry" />
         </mxCell>
-
-        <!-- Hybrid Fire Model -->
-        <mxCell id="firemodel" value="Hybrid Fire Spread Model&#10;- Deterministic Layer&#10;- Stochastic Layer&#10;- ROS + Spotting" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#fff2cc;strokeColor=#d6b656;" vertex="1" parent="1">
-          <mxGeometry x="690" y="480" width="250" height="120" as="geometry"/>
+        <mxCell id="13" parent="1" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#dae8fc;strokeColor=#6c8ebf;" value="Outputs&#xa;Fire Spread Map&#xa;Burned Area&#xa;Critical Risk Layer&#xa;Logs and Reports" vertex="1">
+          <mxGeometry height="120" width="300" x="520" y="880" as="geometry" />
         </mxCell>
-
-        <!-- Action Executor -->
-        <mxCell id="executor" value="Action Executor&#10;- Fuel Reduction&#10;- Water Drop&#10;- Fireline&#10;- Backburn" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#fff2cc;strokeColor=#d6b656;" vertex="1" parent="1">
-          <mxGeometry x="430" y="520" width="220" height="100" as="geometry"/>
+        <mxCell id="zSY2FgBeuBj4I8RWYV9I-13" edge="1" parent="1" source="b2lN6Jd7mUi6d6vtWBnc-26" style="" target="7">
+          <mxGeometry relative="1" as="geometry" />
         </mxCell>
-
-        <!-- Action Queue -->
-        <mxCell id="queue" value="Action Queue&#10;(Command Based)" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#f8cecc;strokeColor=#b85450;" vertex="1" parent="1">
-          <mxGeometry x="100" y="420" width="220" height="100" as="geometry"/>
+        <mxCell id="zSY2FgBeuBj4I8RWYV9I-15" edge="1" parent="1" source="11" target="10">
+          <mxGeometry relative="1" as="geometry" />
         </mxCell>
-
-        <!-- Actuator Module -->
-        <mxCell id="actuator" value="Actuator Module&#10;- Responder Control&#10;- Resource Dispatch&#10;- Manual / DSS Commands" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#f8cecc;strokeColor=#b85450;" vertex="1" parent="1">
-          <mxGeometry x="80" y="280" width="260" height="110" as="geometry"/>
+        <mxCell id="zSY2FgBeuBj4I8RWYV9I-16" edge="1" parent="1" source="10" target="9">
+          <mxGeometry relative="1" as="geometry" />
         </mxCell>
-
-        <!-- UI -->
-        <mxCell id="ui" value="Web UI Dashboard&#10;- Map View&#10;- Manual Action Panel&#10;- ΔT Control&#10;- Analytics Panel" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#e1d5e7;strokeColor=#9673a6;" vertex="1" parent="1">
-          <mxGeometry x="50" y="80" width="300" height="140" as="geometry"/>
+        <mxCell id="zSY2FgBeuBj4I8RWYV9I-17" edge="1" parent="1" source="9" target="8">
+          <mxGeometry relative="1" as="geometry" />
         </mxCell>
-
-        <!-- DSS Interface -->
-        <mxCell id="dss" value="Future DSS / AI Module&#10;- Risk Optimization&#10;- Action Generation&#10;- Scenario Analysis" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#e1d5e7;strokeColor=#9673a6;" vertex="1" parent="1">
-          <mxGeometry x="1100" y="320" width="300" height="120" as="geometry"/>
+        <mxCell id="zSY2FgBeuBj4I8RWYV9I-22" edge="1" parent="1" target="13">
+          <mxGeometry relative="1" as="geometry">
+            <mxPoint x="679.9999999999998" y="940" as="sourcePoint" />
+          </mxGeometry>
         </mxCell>
-
-        <!-- Output -->
-        <mxCell id="output" value="Outputs&#10;- Fire Spread Map&#10;- Burned Area&#10;- Critical Risk Layer&#10;- Logs & Reports" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#dae8fc;strokeColor=#6c8ebf;" vertex="1" parent="1">
-          <mxGeometry x="1100" y="500" width="300" height="120" as="geometry"/>
+        <mxCell id="zSY2FgBeuBj4I8RWYV9I-23" edge="1" parent="1" source="12" target="9">
+          <mxGeometry relative="1" as="geometry" />
         </mxCell>
-
-        <!-- Connections -->
-        <mxCell edge="1" parent="1" source="external" target="observer">
-          <mxGeometry relative="1" as="geometry"/>
+        <mxCell id="b2lN6Jd7mUi6d6vtWBnc-26" parent="1" style="swimlane;fontStyle=0;childLayout=stackLayout;horizontal=1;startSize=30;horizontalStack=0;resizeParent=1;resizeParentMax=0;resizeLast=0;collapsible=1;marginBottom=0;whiteSpace=wrap;html=1;fillColor=#dae8fc;strokeColor=#6c8ebf;" value="External Data Sources" vertex="1">
+          <mxGeometry height="210" width="190" x="920" y="385" as="geometry">
+            <mxRectangle height="30" width="160" x="970" y="570" as="alternateBounds" />
+          </mxGeometry>
         </mxCell>
-
-        <mxCell edge="1" parent="1" source="observer" target="core">
-          <mxGeometry relative="1" as="geometry"/>
+        <mxCell id="b2lN6Jd7mUi6d6vtWBnc-27" parent="b2lN6Jd7mUi6d6vtWBnc-26" style="text;strokeColor=#666666;fillColor=#f5f5f5;align=left;verticalAlign=middle;spacingLeft=4;spacingRight=4;overflow=hidden;points=[[0,0.5],[1,0.5]];portConstraint=eastwest;rotatable=0;whiteSpace=wrap;html=1;fontStyle=2;fontColor=#333333;" value="Meteorology" vertex="1">
+          <mxGeometry height="30" width="190" y="30" as="geometry" />
         </mxCell>
-
-        <mxCell edge="1" parent="1" source="ui" target="actuator">
-          <mxGeometry relative="1" as="geometry"/>
+        <mxCell id="b2lN6Jd7mUi6d6vtWBnc-33" parent="b2lN6Jd7mUi6d6vtWBnc-26" style="text;html=1;whiteSpace=wrap;strokeColor=#666666;fillColor=#f5f5f5;align=left;verticalAlign=middle;rounded=0;spacingLeft=4;fontStyle=2;fontColor=#333333;" value="Topology" vertex="1">
+          <mxGeometry height="30" width="190" y="60" as="geometry" />
         </mxCell>
-
-        <mxCell edge="1" parent="1" source="actuator" target="queue">
-          <mxGeometry relative="1" as="geometry"/>
+        <mxCell id="b2lN6Jd7mUi6d6vtWBnc-28" parent="b2lN6Jd7mUi6d6vtWBnc-26" style="text;strokeColor=#666666;fillColor=#f5f5f5;align=left;verticalAlign=middle;spacingLeft=4;spacingRight=4;overflow=hidden;points=[[0,0.5],[1,0.5]];portConstraint=eastwest;rotatable=0;whiteSpace=wrap;html=1;fontStyle=2;fontColor=#333333;" value="Fuel Map" vertex="1">
+          <mxGeometry height="30" width="190" y="90" as="geometry" />
         </mxCell>
-
-        <mxCell edge="1" parent="1" source="queue" target="executor">
-          <mxGeometry relative="1" as="geometry"/>
+        <mxCell id="b2lN6Jd7mUi6d6vtWBnc-32" parent="b2lN6Jd7mUi6d6vtWBnc-26" style="text;html=1;whiteSpace=wrap;strokeColor=#666666;fillColor=#f5f5f5;align=left;verticalAlign=middle;rounded=0;spacingLeft=4;fontStyle=2;fontColor=#333333;" value="Spatial Wind Field" vertex="1">
+          <mxGeometry height="30" width="190" y="120" as="geometry" />
         </mxCell>
-
-        <mxCell edge="1" parent="1" source="executor" target="grid">
-          <mxGeometry relative="1" as="geometry"/>
+        <mxCell id="b2lN6Jd7mUi6d6vtWBnc-31" parent="b2lN6Jd7mUi6d6vtWBnc-26" style="text;html=1;whiteSpace=wrap;strokeColor=#666666;fillColor=#f5f5f5;align=left;verticalAlign=middle;rounded=0;spacingLeft=4;fontStyle=2;fontColor=#333333;" value="Values at Risk" vertex="1">
+          <mxGeometry height="30" width="190" y="150" as="geometry" />
         </mxCell>
-
-        <mxCell edge="1" parent="1" source="grid" target="firemodel">
-          <mxGeometry relative="1" as="geometry"/>
+        <mxCell id="b2lN6Jd7mUi6d6vtWBnc-30" parent="b2lN6Jd7mUi6d6vtWBnc-26" style="text;html=1;whiteSpace=wrap;strokeColor=#666666;fillColor=#f5f5f5;align=left;verticalAlign=middle;rounded=0;spacingLeft=4;fontStyle=2;fontColor=#333333;" value="Resource" vertex="1">
+          <mxGeometry height="30" width="190" y="180" as="geometry" />
         </mxCell>
-
-        <mxCell edge="1" parent="1" source="time" target="firemodel">
-          <mxGeometry relative="1" as="geometry"/>
+        <mxCell id="b2lN6Jd7mUi6d6vtWBnc-37" parent="1" style="swimlane;whiteSpace=wrap;html=1;fillColor=light-dark(#dd344c, #36210a);strokeColor=light-dark(#dd344c, #996500);gradientDirection=radial;" value="Simulation Core" vertex="1">
+          <mxGeometry height="260" width="450" x="430" y="350" as="geometry">
+            <mxRectangle height="30" width="130" x="430" y="350" as="alternateBounds" />
+          </mxGeometry>
         </mxCell>
-
-        <mxCell edge="1" parent="1" source="firemodel" target="grid">
-          <mxGeometry relative="1" as="geometry"/>
+        <mxCell id="5" parent="b2lN6Jd7mUi6d6vtWBnc-37" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#f8cecc;strokeColor=#b85450;" value="&lt;b&gt;Grid State Manager&lt;/b&gt;" vertex="1">
+          <mxGeometry height="40" width="170" x="20" y="120" as="geometry" />
         </mxCell>
-
-        <mxCell edge="1" parent="1" source="core" target="output">
-          <mxGeometry relative="1" as="geometry"/>
+        <mxCell id="6" parent="b2lN6Jd7mUi6d6vtWBnc-37" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#f8cecc;strokeColor=#b85450;" value="Time Controller ( \( \Delta_t \) Engine)" vertex="1">
+          <mxGeometry height="45" width="90" x="310" y="40" as="geometry" />
         </mxCell>
-
-        <mxCell edge="1" parent="1" source="dss" target="queue">
-          <mxGeometry relative="1" as="geometry"/>
+        <mxCell id="7" parent="b2lN6Jd7mUi6d6vtWBnc-37" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#f8cecc;strokeColor=#b85450;" value="&lt;b&gt;Hybrid Fire Spread Model&lt;/b&gt;&lt;br&gt;(Deterministic +&amp;nbsp;Stochastic)" vertex="1">
+          <mxGeometry height="40" width="170" x="230" y="120" as="geometry" />
         </mxCell>
-
+        <mxCell id="8" parent="b2lN6Jd7mUi6d6vtWBnc-37" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#f8cecc;strokeColor=#b85450;" value="&lt;b&gt;Action Executor&lt;/b&gt;" vertex="1">
+          <mxGeometry height="40" width="170" x="20" y="210" as="geometry" />
+        </mxCell>
+        <mxCell id="zSY2FgBeuBj4I8RWYV9I-18" edge="1" parent="b2lN6Jd7mUi6d6vtWBnc-37" source="8" target="5">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="zSY2FgBeuBj4I8RWYV9I-19" edge="1" parent="b2lN6Jd7mUi6d6vtWBnc-37" source="5" target="7">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="zSY2FgBeuBj4I8RWYV9I-20" edge="1" parent="b2lN6Jd7mUi6d6vtWBnc-37" source="6" target="7">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="zSY2FgBeuBj4I8RWYV9I-21" edge="1" parent="b2lN6Jd7mUi6d6vtWBnc-37" source="7" target="5">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="b2lN6Jd7mUi6d6vtWBnc-35" parent="b2lN6Jd7mUi6d6vtWBnc-37" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#f8cecc;strokeColor=#b85450;" value="Map&amp;nbsp;" vertex="1">
+          <mxGeometry height="45" width="90" x="215" y="40" as="geometry" />
+        </mxCell>
+        <mxCell id="b2lN6Jd7mUi6d6vtWBnc-36" edge="1" parent="b2lN6Jd7mUi6d6vtWBnc-37" source="b2lN6Jd7mUi6d6vtWBnc-35" style="" target="7">
+          <mxGeometry relative="1" as="geometry">
+            <mxPoint x="334" y="30" as="sourcePoint" />
+            <mxPoint x="280" y="65" as="targetPoint" />
+          </mxGeometry>
+        </mxCell>
+        <mxCell id="b2lN6Jd7mUi6d6vtWBnc-38" parent="b2lN6Jd7mUi6d6vtWBnc-37" style="sketch=0;outlineConnect=0;fontColor=#232F3E;gradientColor=none;fillColor=#DD344C;strokeColor=none;dashed=0;verticalLabelPosition=bottom;verticalAlign=top;align=center;html=1;fontSize=12;fontStyle=0;aspect=fixed;pointerEvents=1;shape=mxgraph.aws4.simulation;" value="" vertex="1">
+          <mxGeometry height="29" width="35.34" y="21" as="geometry" />
+        </mxCell>
       </root>
     </mxGraphModel>
   </diagram>
