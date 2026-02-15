@@ -1,0 +1,116 @@
+<mxfile host="app.diagrams.net">
+  <diagram name="Wildfire Simulation Architecture">
+    <mxGraphModel dx="1422" dy="794" grid="1" gridSize="10" guides="1" tooltips="1" connect="1" arrows="1" fold="1" page="1" pageScale="1" pageWidth="1600" pageHeight="1200">
+      <root>
+        <mxCell id="0"/>
+        <mxCell id="1" parent="0"/>
+
+        <!-- External Data -->
+        <mxCell id="external" value="External Data Sources&#10;- Meteorology API&#10;- DEM&#10;- OSM&#10;- Satellite&#10;- IoT Sensors" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#dae8fc;strokeColor=#6c8ebf;" vertex="1" parent="1">
+          <mxGeometry x="600" y="20" width="350" height="120" as="geometry"/>
+        </mxCell>
+
+        <!-- Observer Module -->
+        <mxCell id="observer" value="Observer Module&#10;- Weather Update&#10;- Sensor Fusion&#10;- Data Assimilation" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#d5e8d4;strokeColor=#82b366;" vertex="1" parent="1">
+          <mxGeometry x="650" y="180" width="250" height="100" as="geometry"/>
+        </mxCell>
+
+        <!-- Simulation Core -->
+        <mxCell id="core" value="Simulation Core" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#ffe6cc;strokeColor=#d79b00;" vertex="1" parent="1">
+          <mxGeometry x="400" y="320" width="600" height="300" as="geometry"/>
+        </mxCell>
+
+        <!-- Grid Manager -->
+        <mxCell id="grid" value="Grid State Manager&#10;- Cell State Matrix&#10;- Fuel&#10;- Moisture&#10;- Fire Status" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#fff2cc;strokeColor=#d6b656;" vertex="1" parent="1">
+          <mxGeometry x="430" y="380" width="220" height="120" as="geometry"/>
+        </mxCell>
+
+        <!-- Time Controller -->
+        <mxCell id="time" value="Time Controller (ΔT Engine)" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#fff2cc;strokeColor=#d6b656;" vertex="1" parent="1">
+          <mxGeometry x="690" y="380" width="220" height="80" as="geometry"/>
+        </mxCell>
+
+        <!-- Hybrid Fire Model -->
+        <mxCell id="firemodel" value="Hybrid Fire Spread Model&#10;- Deterministic Layer&#10;- Stochastic Layer&#10;- ROS + Spotting" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#fff2cc;strokeColor=#d6b656;" vertex="1" parent="1">
+          <mxGeometry x="690" y="480" width="250" height="120" as="geometry"/>
+        </mxCell>
+
+        <!-- Action Executor -->
+        <mxCell id="executor" value="Action Executor&#10;- Fuel Reduction&#10;- Water Drop&#10;- Fireline&#10;- Backburn" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#fff2cc;strokeColor=#d6b656;" vertex="1" parent="1">
+          <mxGeometry x="430" y="520" width="220" height="100" as="geometry"/>
+        </mxCell>
+
+        <!-- Action Queue -->
+        <mxCell id="queue" value="Action Queue&#10;(Command Based)" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#f8cecc;strokeColor=#b85450;" vertex="1" parent="1">
+          <mxGeometry x="100" y="420" width="220" height="100" as="geometry"/>
+        </mxCell>
+
+        <!-- Actuator Module -->
+        <mxCell id="actuator" value="Actuator Module&#10;- Responder Control&#10;- Resource Dispatch&#10;- Manual / DSS Commands" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#f8cecc;strokeColor=#b85450;" vertex="1" parent="1">
+          <mxGeometry x="80" y="280" width="260" height="110" as="geometry"/>
+        </mxCell>
+
+        <!-- UI -->
+        <mxCell id="ui" value="Web UI Dashboard&#10;- Map View&#10;- Manual Action Panel&#10;- ΔT Control&#10;- Analytics Panel" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#e1d5e7;strokeColor=#9673a6;" vertex="1" parent="1">
+          <mxGeometry x="50" y="80" width="300" height="140" as="geometry"/>
+        </mxCell>
+
+        <!-- DSS Interface -->
+        <mxCell id="dss" value="Future DSS / AI Module&#10;- Risk Optimization&#10;- Action Generation&#10;- Scenario Analysis" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#e1d5e7;strokeColor=#9673a6;" vertex="1" parent="1">
+          <mxGeometry x="1100" y="320" width="300" height="120" as="geometry"/>
+        </mxCell>
+
+        <!-- Output -->
+        <mxCell id="output" value="Outputs&#10;- Fire Spread Map&#10;- Burned Area&#10;- Critical Risk Layer&#10;- Logs & Reports" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#dae8fc;strokeColor=#6c8ebf;" vertex="1" parent="1">
+          <mxGeometry x="1100" y="500" width="300" height="120" as="geometry"/>
+        </mxCell>
+
+        <!-- Connections -->
+        <mxCell edge="1" parent="1" source="external" target="observer">
+          <mxGeometry relative="1" as="geometry"/>
+        </mxCell>
+
+        <mxCell edge="1" parent="1" source="observer" target="core">
+          <mxGeometry relative="1" as="geometry"/>
+        </mxCell>
+
+        <mxCell edge="1" parent="1" source="ui" target="actuator">
+          <mxGeometry relative="1" as="geometry"/>
+        </mxCell>
+
+        <mxCell edge="1" parent="1" source="actuator" target="queue">
+          <mxGeometry relative="1" as="geometry"/>
+        </mxCell>
+
+        <mxCell edge="1" parent="1" source="queue" target="executor">
+          <mxGeometry relative="1" as="geometry"/>
+        </mxCell>
+
+        <mxCell edge="1" parent="1" source="executor" target="grid">
+          <mxGeometry relative="1" as="geometry"/>
+        </mxCell>
+
+        <mxCell edge="1" parent="1" source="grid" target="firemodel">
+          <mxGeometry relative="1" as="geometry"/>
+        </mxCell>
+
+        <mxCell edge="1" parent="1" source="time" target="firemodel">
+          <mxGeometry relative="1" as="geometry"/>
+        </mxCell>
+
+        <mxCell edge="1" parent="1" source="firemodel" target="grid">
+          <mxGeometry relative="1" as="geometry"/>
+        </mxCell>
+
+        <mxCell edge="1" parent="1" source="core" target="output">
+          <mxGeometry relative="1" as="geometry"/>
+        </mxCell>
+
+        <mxCell edge="1" parent="1" source="dss" target="queue">
+          <mxGeometry relative="1" as="geometry"/>
+        </mxCell>
+
+      </root>
+    </mxGraphModel>
+  </diagram>
+</mxfile>
