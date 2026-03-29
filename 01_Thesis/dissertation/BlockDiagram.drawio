@@ -1,4 +1,4 @@
-<mxfile host="Electron" agent="Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) draw.io/29.2.9 Chrome/140.0.7339.249 Electron/38.7.2 Safari/537.36" version="29.2.9" pages="5">
+<mxfile host="Electron" agent="Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) draw.io/28.1.2 Chrome/138.0.7204.243 Electron/37.4.0 Safari/537.36" version="28.1.2" pages="5">
   <diagram name="Wildfire Simulation Architecture" id="0">
     <mxGraphModel dx="1283" dy="750" grid="1" gridSize="10" guides="1" tooltips="1" connect="1" arrows="1" fold="1" page="1" pageScale="1" pageWidth="1400" pageHeight="1000" math="1" shadow="0">
       <root>
@@ -403,53 +403,53 @@
     </mxGraphModel>
   </diagram>
   <diagram id="gQub3IGkVWjuOUb6_JHF" name="Conceptual Problem Formulation Architecture">
-    <mxGraphModel dx="827" dy="939" grid="1" gridSize="10" guides="1" tooltips="1" connect="1" arrows="1" fold="1" page="1" pageScale="1" pageWidth="1169" pageHeight="827" math="1" shadow="0">
+    <mxGraphModel dx="1042" dy="756" grid="1" gridSize="10" guides="1" tooltips="1" connect="1" arrows="1" fold="1" page="1" pageScale="1" pageWidth="1169" pageHeight="827" math="1" shadow="0">
       <root>
         <mxCell id="0" />
         <mxCell id="1" parent="0" />
-        <mxCell id="ke8OLGY8hW03l5pGLwQT-2" parent="1" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#dae8fc;strokeColor=#6c8ebf;fontSize=14;fontStyle=1;" value="Spatial Wildfire Environment&#xa;Ω ⊂ R²" vertex="1">
-          <mxGeometry height="70" width="180" x="245" y="140" as="geometry" />
+        <mxCell id="ke8OLGY8hW03l5pGLwQT-2" value="Spatial Wildfire Environment&#xa;Ω ⊂ R²" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#dae8fc;strokeColor=#6c8ebf;fontSize=14;fontStyle=1;" parent="1" vertex="1">
+          <mxGeometry x="210" y="140" width="220" height="70" as="geometry" />
         </mxCell>
-        <mxCell id="ke8OLGY8hW03l5pGLwQT-3" parent="1" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#d5e8d4;strokeColor=#82b366;fontSize=14;fontStyle=1;" value="&lt;font&gt;&lt;span style=&quot;text-align: left;&quot;&gt;Wildfire System State&lt;/span&gt;&lt;br style=&quot;text-align: left;&quot;&gt;&lt;span style=&quot;text-align: left;&quot;&gt;\(S_k (x,y) ,\)&lt;/span&gt;&lt;/font&gt;" vertex="1">
-          <mxGeometry height="70" width="190" x="240" y="250" as="geometry" />
+        <mxCell id="ke8OLGY8hW03l5pGLwQT-3" value="&lt;font&gt;&lt;span style=&quot;text-align: left;&quot;&gt;Wildfire System State&lt;/span&gt;&lt;br style=&quot;text-align: left;&quot;&gt;&lt;span style=&quot;text-align: left;&quot;&gt;\(S_k (x,y) ,\)&lt;/span&gt;&lt;/font&gt;" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#d5e8d4;strokeColor=#82b366;fontSize=14;fontStyle=1;" parent="1" vertex="1">
+          <mxGeometry x="210" y="250" width="220" height="70" as="geometry" />
         </mxCell>
-        <mxCell id="ke8OLGY8hW03l5pGLwQT-4" parent="1" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#fff2cc;strokeColor=#d6b656;fontSize=14;fontStyle=1;" value="Observable Information&lt;br&gt;\(O_k (x,y)= h(S_k(x,y),\epsilon_k) \)&amp;nbsp;" vertex="1">
-          <mxGeometry height="70" width="220" x="520" y="250" as="geometry" />
+        <mxCell id="ke8OLGY8hW03l5pGLwQT-4" value="Observable Information&lt;br&gt;\(O_k (x,y)= h(S_k(x,y),\epsilon_k) \)&amp;nbsp;" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#fff2cc;strokeColor=#d6b656;fontSize=14;fontStyle=1;" parent="1" vertex="1">
+          <mxGeometry x="520" y="250" width="220" height="70" as="geometry" />
         </mxCell>
-        <mxCell id="ke8OLGY8hW03l5pGLwQT-5" parent="1" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#f8cecc;strokeColor=#b85450;fontSize=14;fontStyle=1;" value="Decision-Support Policy&lt;br&gt;\( U_{DSS,k}(x,y)&amp;nbsp;= π_{DSS}(O_k(x,y)) \)&amp;nbsp;" vertex="1">
-          <mxGeometry height="70" width="230" x="859" y="250" as="geometry" />
+        <mxCell id="ke8OLGY8hW03l5pGLwQT-5" value="Decision-Support Policy&lt;br&gt;\( U_{DSS,k}(x,y)&amp;nbsp;= π_{DSS}(O_k(x,y), \mathcal F_{DSS,k}) \)&amp;nbsp;" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#f8cecc;strokeColor=#b85450;fontSize=14;fontStyle=1;" parent="1" vertex="1">
+          <mxGeometry x="840" y="250" width="280" height="70" as="geometry" />
         </mxCell>
-        <mxCell id="ke8OLGY8hW03l5pGLwQT-6" parent="1" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#e1d5e7;strokeColor=#9673a6;fontSize=14;fontStyle=1;" value="Decision-Related Inputs&lt;br&gt;\(U_{DSS,k}(x,y)&amp;nbsp;⊂ \mathcal F_{in,k}\)" vertex="1">
-          <mxGeometry height="70" width="230" x="859" y="390" as="geometry" />
+        <mxCell id="ke8OLGY8hW03l5pGLwQT-6" value="Decision-Related Inputs&lt;br&gt;\(U_{DSS,k}(x,y)&amp;nbsp;⊂ \mathcal F_{in,k}\)" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#e1d5e7;strokeColor=#9673a6;fontSize=14;fontStyle=1;" parent="1" vertex="1">
+          <mxGeometry x="840" y="390" width="280" height="70" as="geometry" />
         </mxCell>
-        <mxCell id="ke8OLGY8hW03l5pGLwQT-7" parent="1" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#dae8fc;strokeColor=#6c8ebf;fontSize=14;fontStyle=1" value="External Inputs&lt;br&gt;\(\mathcal F_{in,k}&amp;nbsp;=&amp;nbsp; \{U_{Meteo,k}, U_{Geo}, U_{Fuel,k}, U_{Ign,k}, U_{DSS,k}\} \)" vertex="1">
-          <mxGeometry height="70" width="330" x="480" y="390" as="geometry" />
+        <mxCell id="ke8OLGY8hW03l5pGLwQT-7" value="External Inputs&lt;br&gt;\(\mathcal F_{in,k}&amp;nbsp;=&amp;nbsp; \{U_{Meteo,k}, U_{Geo}, U_{Fuel,k}, U_{Ign,k}, U_{DSS,k}\} \)" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#dae8fc;strokeColor=#6c8ebf;fontSize=14;fontStyle=1" parent="1" vertex="1">
+          <mxGeometry x="471" y="390" width="330" height="70" as="geometry" />
         </mxCell>
-        <mxCell id="ke8OLGY8hW03l5pGLwQT-8" parent="1" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#d5e8d4;strokeColor=#82b366;fontSize=14;fontStyle=1;" value="State Transition Operator&lt;br&gt;\(S_{k+1}(x,y)&amp;nbsp;= Φ(S_k(x,y), \mathcal F_{in,k})\)" vertex="1">
-          <mxGeometry height="70" width="190" x="240" y="390" as="geometry" />
+        <mxCell id="ke8OLGY8hW03l5pGLwQT-8" value="State Transition Operator&lt;br&gt;\(S_{k+1}(x,y)&amp;nbsp;= Φ(S_k(x,y), \mathcal F_{in,k})\)" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#d5e8d4;strokeColor=#82b366;fontSize=14;fontStyle=1;" parent="1" vertex="1">
+          <mxGeometry x="210" y="390" width="220" height="70" as="geometry" />
         </mxCell>
-        <mxCell id="ke8OLGY8hW03l5pGLwQT-13" edge="1" parent="1" source="ke8OLGY8hW03l5pGLwQT-2" style="endArrow=block;html=1;rounded=0;strokeWidth=2;fontSize=14;" target="ke8OLGY8hW03l5pGLwQT-3" value="">
+        <mxCell id="ke8OLGY8hW03l5pGLwQT-13" value="" style="endArrow=block;html=1;rounded=0;strokeWidth=2;fontSize=14;" parent="1" source="ke8OLGY8hW03l5pGLwQT-2" target="ke8OLGY8hW03l5pGLwQT-3" edge="1">
           <mxGeometry relative="1" as="geometry" />
         </mxCell>
-        <mxCell id="ke8OLGY8hW03l5pGLwQT-14" edge="1" parent="1" source="ke8OLGY8hW03l5pGLwQT-3" style="endArrow=block;html=1;rounded=0;strokeWidth=2;fontSize=14;" target="ke8OLGY8hW03l5pGLwQT-4" value="">
+        <mxCell id="ke8OLGY8hW03l5pGLwQT-14" value="" style="endArrow=block;html=1;rounded=0;strokeWidth=2;fontSize=14;" parent="1" source="ke8OLGY8hW03l5pGLwQT-3" target="ke8OLGY8hW03l5pGLwQT-4" edge="1">
           <mxGeometry relative="1" as="geometry" />
         </mxCell>
-        <mxCell id="ke8OLGY8hW03l5pGLwQT-15" edge="1" parent="1" source="ke8OLGY8hW03l5pGLwQT-4" style="endArrow=block;html=1;rounded=0;strokeWidth=2;fontSize=14;" target="ke8OLGY8hW03l5pGLwQT-5" value="">
+        <mxCell id="ke8OLGY8hW03l5pGLwQT-15" value="" style="endArrow=block;html=1;rounded=0;strokeWidth=2;fontSize=14;" parent="1" source="ke8OLGY8hW03l5pGLwQT-4" target="ke8OLGY8hW03l5pGLwQT-5" edge="1">
           <mxGeometry relative="1" as="geometry" />
         </mxCell>
-        <mxCell id="ke8OLGY8hW03l5pGLwQT-16" edge="1" parent="1" source="ke8OLGY8hW03l5pGLwQT-5" style="endArrow=block;html=1;rounded=0;strokeWidth=2;fontSize=14;" target="ke8OLGY8hW03l5pGLwQT-6" value="">
+        <mxCell id="ke8OLGY8hW03l5pGLwQT-16" value="" style="endArrow=block;html=1;rounded=0;strokeWidth=2;fontSize=14;" parent="1" source="ke8OLGY8hW03l5pGLwQT-5" target="ke8OLGY8hW03l5pGLwQT-6" edge="1">
           <mxGeometry relative="1" as="geometry" />
         </mxCell>
-        <mxCell id="ke8OLGY8hW03l5pGLwQT-17" edge="1" parent="1" source="ke8OLGY8hW03l5pGLwQT-6" style="endArrow=block;html=1;rounded=0;strokeWidth=2;fontSize=14;" target="ke8OLGY8hW03l5pGLwQT-7" value="">
+        <mxCell id="ke8OLGY8hW03l5pGLwQT-17" value="" style="endArrow=block;html=1;rounded=0;strokeWidth=2;fontSize=14;" parent="1" source="ke8OLGY8hW03l5pGLwQT-6" target="ke8OLGY8hW03l5pGLwQT-7" edge="1">
           <mxGeometry relative="1" as="geometry" />
         </mxCell>
-        <mxCell id="ke8OLGY8hW03l5pGLwQT-18" edge="1" parent="1" source="ke8OLGY8hW03l5pGLwQT-7" style="endArrow=block;html=1;rounded=0;strokeWidth=2;fontSize=14;" target="ke8OLGY8hW03l5pGLwQT-8" value="">
+        <mxCell id="ke8OLGY8hW03l5pGLwQT-18" value="" style="endArrow=block;html=1;rounded=0;strokeWidth=2;fontSize=14;" parent="1" source="ke8OLGY8hW03l5pGLwQT-7" target="ke8OLGY8hW03l5pGLwQT-8" edge="1">
           <mxGeometry relative="1" as="geometry" />
         </mxCell>
-        <mxCell id="ke8OLGY8hW03l5pGLwQT-20" edge="1" parent="1" source="ke8OLGY8hW03l5pGLwQT-8" style="endArrow=block;html=1;rounded=1;strokeWidth=2;dashed=1;labelBackgroundColor=#ffffff;exitX=0;exitY=0.5;exitDx=0;exitDy=0;edgeStyle=elbowEdgeStyle;fontSize=14;" target="ke8OLGY8hW03l5pGLwQT-3" value="">
+        <mxCell id="ke8OLGY8hW03l5pGLwQT-20" value="" style="endArrow=block;html=1;rounded=1;strokeWidth=2;dashed=1;labelBackgroundColor=#ffffff;exitX=0;exitY=0.5;exitDx=0;exitDy=0;edgeStyle=elbowEdgeStyle;fontSize=14;" parent="1" source="ke8OLGY8hW03l5pGLwQT-8" target="ke8OLGY8hW03l5pGLwQT-3" edge="1">
           <mxGeometry relative="1" as="geometry">
             <Array as="points">
-              <mxPoint x="200" y="350" />
+              <mxPoint x="180" y="350" />
             </Array>
             <mxPoint x="110" y="310" as="sourcePoint" />
           </mxGeometry>
