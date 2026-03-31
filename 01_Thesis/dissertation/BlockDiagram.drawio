@@ -474,7 +474,7 @@
     </mxGraphModel>
   </diagram>
   <diagram id="DavYkpr2M7FsyYJBwxhA" name="DSS">
-    <mxGraphModel dx="496" dy="564" grid="1" gridSize="10" guides="1" tooltips="1" connect="1" arrows="1" fold="1" page="1" pageScale="1" pageWidth="827" pageHeight="1169" math="1" shadow="0">
+    <mxGraphModel dx="617" dy="711" grid="1" gridSize="10" guides="1" tooltips="1" connect="1" arrows="1" fold="1" page="1" pageScale="1" pageWidth="827" pageHeight="1169" math="1" shadow="0">
       <root>
         <mxCell id="0" />
         <mxCell id="1" parent="0" />
@@ -482,27 +482,27 @@
           <mxGeometry height="30" width="60" x="430" y="280" as="geometry" />
         </mxCell>
         <mxCell id="SNsatqiXY2KXzrrrTxgc-21" parent="1" style="swimlane;horizontal=0;whiteSpace=wrap;html=1;fillColor=#d5e8d4;gradientColor=#97d077;strokeColor=#82b366;" value="Local DSS Core \( (Agent_ i) \)" vertex="1">
-          <mxGeometry height="560" width="410" x="210" y="320" as="geometry" />
+          <mxGeometry height="600" width="451.62" x="210" y="320" as="geometry" />
         </mxCell>
         <mxCell id="QW5MhtzJg3USrbtbZXLL-17" edge="1" parent="SNsatqiXY2KXzrrrTxgc-21" source="SNsatqiXY2KXzrrrTxgc-23" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;exitX=0.5;exitY=1;exitDx=0;exitDy=0;entryX=0.5;entryY=0;entryDx=0;entryDy=0;" target="QW5MhtzJg3USrbtbZXLL-16">
           <mxGeometry relative="1" as="geometry" />
         </mxCell>
-        <mxCell id="SNsatqiXY2KXzrrrTxgc-23" parent="SNsatqiXY2KXzrrrTxgc-21" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#dae8fc;strokeColor=#6c8ebf;fontStyle=1;gradientColor=#7ea6e0;" value="Observation Layer&lt;div&gt;&lt;span style=&quot;font-weight: 400; text-align: left;&quot;&gt;\( \mathcal O^i_k (x,y) = h (S_k(x,y),\epsilon_k)\)&lt;/span&gt;&lt;/div&gt;" vertex="1">
+        <mxCell id="SNsatqiXY2KXzrrrTxgc-23" parent="SNsatqiXY2KXzrrrTxgc-21" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#dae8fc;strokeColor=#6c8ebf;fontStyle=1;gradientColor=#7ea6e0;" value="Observation Layer&lt;div&gt;&lt;span style=&quot;font-weight: 400; text-align: left;&quot;&gt;\( \mathcal O^i_k (x,y) = h^i (S_k(x,y),\epsilon_k)\)&lt;/span&gt;&lt;/div&gt;" vertex="1">
           <mxGeometry height="40" width="170" x="138.38" y="10" as="geometry" />
         </mxCell>
         <mxCell id="QW5MhtzJg3USrbtbZXLL-15" parent="SNsatqiXY2KXzrrrTxgc-21" style="swimlane;horizontal=0;whiteSpace=wrap;html=1;fillColor=#ffcd28;strokeColor=#d79b00;gradientColor=#ffa500;" value="Concept Mapping and Abstraction Layer" vertex="1">
           <mxGeometry height="360" width="350" x="40" y="100" as="geometry" />
         </mxCell>
-        <mxCell id="QW5MhtzJg3USrbtbZXLL-16" parent="QW5MhtzJg3USrbtbZXLL-15" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#fff2cc;strokeColor=#d6b656;fontStyle=1;gradientColor=#ffd966;" value="&lt;span style=&quot;text-align: left;&quot;&gt;Feature Extraction&lt;/span&gt;&lt;br style=&quot;font-weight: 400; text-align: left;&quot;&gt;&lt;span style=&quot;font-weight: 400; text-align: left;&quot;&gt;\( \mathcal Z^i_k (x,y)= \mathcal f_{feat} (\mathcal O^i_k (x,y) ) \)&lt;/span&gt;&lt;br style=&quot;font-weight: 400; text-align: left;&quot;&gt;&lt;span style=&quot;font-weight: 400; text-align: left;&quot;&gt;\( \mathcal Z^i_k (x,y) = \{\mathcal z ^i_{k,l} (x,y)\}^n_{l=1} \)&lt;/span&gt;&lt;br style=&quot;font-weight: 400; text-align: left;&quot;&gt;&lt;span style=&quot;font-weight: 400; text-align: left;&quot;&gt;\( l =1,...,n\)&lt;/span&gt;" vertex="1">
+        <mxCell id="QW5MhtzJg3USrbtbZXLL-16" parent="QW5MhtzJg3USrbtbZXLL-15" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#fff2cc;strokeColor=#d6b656;fontStyle=1;gradientColor=#ffd966;" value="&lt;span style=&quot;text-align: left;&quot;&gt;Feature Extraction&lt;/span&gt;&lt;br style=&quot;font-weight: 400; text-align: left;&quot;&gt;&lt;span style=&quot;font-weight: 400; text-align: left;&quot;&gt;\( \mathcal Z^i_k (x,y)= \mathcal f_{feat} (\mathcal O^i_k (x,y) ) \)&lt;/span&gt;&lt;br style=&quot;font-weight: 400; text-align: left;&quot;&gt;&lt;span style=&quot;font-weight: 400; text-align: left;&quot;&gt;\( \mathcal Z^i_k (x,y)= \{\mathcal z ^i_{k,l} (x,y)\}^ {\mathcal N_{feat}}_{l=1} \)&lt;/span&gt;&lt;br&gt;&lt;div&gt;&lt;span style=&quot;font-weight: 400; text-align: left;&quot;&gt;\( l =1,...,\mathcal N_{feat}\)&lt;/span&gt;&lt;/div&gt;" vertex="1">
           <mxGeometry height="80" width="273.25" x="46.75" y="20" as="geometry" />
         </mxCell>
-        <mxCell id="QW5MhtzJg3USrbtbZXLL-23" parent="QW5MhtzJg3USrbtbZXLL-15" style="text;whiteSpace=wrap;html=1;" value="\( \mathcal Z^i_k \)" vertex="1">
-          <mxGeometry height="40" width="20" x="143" y="100" as="geometry" />
+        <mxCell id="QW5MhtzJg3USrbtbZXLL-23" parent="QW5MhtzJg3USrbtbZXLL-15" style="text;whiteSpace=wrap;html=1;" value="\( \mathcal Z^i_k (x,y)&amp;nbsp;\)" vertex="1">
+          <mxGeometry height="40" width="20" x="200" y="100" as="geometry" />
         </mxCell>
-        <mxCell id="QW5MhtzJg3USrbtbZXLL-26" parent="QW5MhtzJg3USrbtbZXLL-15" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#fff2cc;strokeColor=#d6b656;fontStyle=1;gradientColor=#ffd966;" value="Concept Construction&lt;div&gt;&lt;span style=&quot;font-weight: 400; text-align: left;&quot;&gt;\( c^i_{k,h} (x,y)= \mathcal f_{concept}(\mu^i_{k,1}(x,y), ... , \mu^i_{k,n}(x,y)) \)&lt;/span&gt;&lt;br style=&quot;font-weight: 400; text-align: left;&quot;&gt;&lt;span style=&quot;font-weight: 400; text-align: left;&quot;&gt;\( \mathcal C^i_k (x,y)=\{c^i_{k,h}(x,y)\}^M_{h=1}\)&lt;/span&gt;&lt;br style=&quot;font-weight: 400; text-align: left;&quot;&gt;&lt;span style=&quot;font-weight: 400; text-align: left;&quot;&gt;\( h =1,...,M\)&lt;/span&gt;&lt;/div&gt;" vertex="1">
+        <mxCell id="QW5MhtzJg3USrbtbZXLL-26" parent="QW5MhtzJg3USrbtbZXLL-15" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#fff2cc;strokeColor=#d6b656;fontStyle=1;gradientColor=#ffd966;" value="Concept Construction&lt;div&gt;&lt;span style=&quot;font-weight: 400; text-align: left;&quot;&gt;\( c^i_{k,h} (x,y)= \mathcal f_{concept}(\mu^i_{k,1}(x,y), ... , \mu^i_{k,\mathcal N_\mu}(x,y)) \)&lt;/span&gt;&lt;br style=&quot;font-weight: 400; text-align: left;&quot;&gt;&lt;span style=&quot;font-weight: 400; text-align: left;&quot;&gt;\( \mathcal C^i_k (x,y)=\{c^i_{k,h}(x,y)\}^{\mathcal N_{concept}}_{h=1}\)&lt;/span&gt;&lt;br style=&quot;font-weight: 400; text-align: left;&quot;&gt;&lt;span style=&quot;font-weight: 400; text-align: left;&quot;&gt;\( h =1,...,\mathcal N_{concept}\)&lt;/span&gt;&lt;/div&gt;" vertex="1">
           <mxGeometry height="85" width="273.25" x="46.75" y="260" as="geometry" />
         </mxCell>
-        <mxCell id="QW5MhtzJg3USrbtbZXLL-18" parent="QW5MhtzJg3USrbtbZXLL-15" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#fff2cc;strokeColor=#d6b656;fontStyle=1;gradientColor=#ffd966;" value="Fuzzification&lt;div&gt;&lt;span style=&quot;font-weight: 400; text-align: left;&quot;&gt;\( \mu^i_k (x,y)= \mathcal f_{fuzzy}( \mathcal Z^i_k (x,y)) \)&lt;/span&gt;&lt;br style=&quot;font-weight: 400; text-align: left;&quot;&gt;&lt;span style=&quot;font-weight: 400; text-align: left;&quot;&gt;\( \mu ^i_k (x,y) = \{\mu ^i_{k,l} (x,y) \}^n_{l=1} \)&lt;/span&gt;&lt;/div&gt;&lt;div&gt;&lt;span style=&quot;font-weight: 400; text-align: left;&quot;&gt;\( l =1,...,n\)&lt;/span&gt;&lt;/div&gt;" vertex="1">
+        <mxCell id="QW5MhtzJg3USrbtbZXLL-18" parent="QW5MhtzJg3USrbtbZXLL-15" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#fff2cc;strokeColor=#d6b656;fontStyle=1;gradientColor=#ffd966;" value="Fuzzification&lt;div&gt;&lt;span style=&quot;font-weight: 400; text-align: left;&quot;&gt;\( \mu^i_{k,n} (x,y)= \mu_{A_n}( \mathcal z^i_{k,n} (x,y)) \)&lt;/span&gt;&lt;br style=&quot;font-weight: 400; text-align: left;&quot;&gt;&lt;span style=&quot;font-weight: 400; text-align: left;&quot;&gt;\( \mu ^i_k (x,y) = \{\mu ^i_{k,n} (x,y) \}^{\mathcal N_{\mu}} _{n=1} \)&lt;/span&gt;&lt;br style=&quot;font-weight: 400; text-align: left;&quot;&gt;&lt;span style=&quot;font-weight: 400; text-align: left;&quot;&gt;\( n =1,...,\mathcal N_\mu\)&lt;/span&gt;&lt;/div&gt;" vertex="1">
           <mxGeometry height="80" width="273.25" x="46.75" y="140" as="geometry" />
         </mxCell>
         <mxCell id="QW5MhtzJg3USrbtbZXLL-57" edge="1" parent="QW5MhtzJg3USrbtbZXLL-15" source="QW5MhtzJg3USrbtbZXLL-16" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;exitX=0.5;exitY=1;exitDx=0;exitDy=0;entryX=0.5;entryY=0;entryDx=0;entryDy=0;" target="QW5MhtzJg3USrbtbZXLL-18">
@@ -511,38 +511,41 @@
         <mxCell id="QW5MhtzJg3USrbtbZXLL-27" edge="1" parent="QW5MhtzJg3USrbtbZXLL-15" source="QW5MhtzJg3USrbtbZXLL-18" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;exitX=0.5;exitY=1;exitDx=0;exitDy=0;entryX=0.5;entryY=0;entryDx=0;entryDy=0;" target="QW5MhtzJg3USrbtbZXLL-26">
           <mxGeometry relative="1" as="geometry" />
         </mxCell>
-        <mxCell id="QW5MhtzJg3USrbtbZXLL-62" parent="QW5MhtzJg3USrbtbZXLL-15" style="text;html=1;whiteSpace=wrap;strokeColor=none;fillColor=none;align=center;verticalAlign=middle;rounded=0;" value="&lt;span style=&quot;text-align: left;&quot;&gt;\( \mu ^i_k \)&lt;/span&gt;" vertex="1">
-          <mxGeometry height="30" width="60" x="123" y="220" as="geometry" />
+        <mxCell id="LdcC8u4aLwyS9T52n77k-8" parent="QW5MhtzJg3USrbtbZXLL-15" style="text;whiteSpace=wrap;html=1;" value="\( \mu ^i_k (x,y) \)" vertex="1">
+          <mxGeometry height="40" width="50" x="200" y="220" as="geometry" />
         </mxCell>
         <mxCell id="QW5MhtzJg3USrbtbZXLL-10" parent="SNsatqiXY2KXzrrrTxgc-21" style="text;whiteSpace=wrap;html=1;" value="\( \mathcal O^i_k (x,y) \)" vertex="1">
-          <mxGeometry height="30" width="60" x="180" y="60" as="geometry" />
+          <mxGeometry height="30" width="60" x="230" y="60" as="geometry" />
         </mxCell>
-        <mxCell id="SNsatqiXY2KXzrrrTxgc-26" parent="SNsatqiXY2KXzrrrTxgc-21" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#f8cecc;strokeColor=#b85450;fontStyle=1" value="Local DSS Model (\(i\))&lt;br&gt;&lt;span style=&quot;font-weight: 400; text-align: left;&quot;&gt;&amp;nbsp;\(&amp;nbsp; &amp;nbsp;U^i_{DSS,k} (x,y)=\pi_i(\mathcal C^i_k(x,y),\mathcal F_{DSS,k}))\)&lt;/span&gt;" vertex="1">
-          <mxGeometry height="40" width="230" x="108.38" y="505" as="geometry" />
+        <mxCell id="SNsatqiXY2KXzrrrTxgc-26" parent="SNsatqiXY2KXzrrrTxgc-21" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#f8cecc;strokeColor=#b85450;fontStyle=1;align=left;" value="Local DSS Model (\(i\))&lt;br&gt;&lt;span style=&quot;font-weight: 400;&quot;&gt;&amp;nbsp;\(&amp;nbsp; &amp;nbsp;U^i_{DSS,k} (x,y)=\pi_i(\mathcal C^i_k(x,y),\mathcal F_{DSS,k}))\)&lt;/span&gt;&lt;div&gt;&lt;span style=&quot;font-weight: 400;&quot;&gt;&amp;nbsp;\(\quad\quad\quad\quad\quad=\{u^{i,m}_k(x,y)\}^\mathcal M_{m=1}\)&lt;/span&gt;&lt;span style=&quot;font-weight: 400;&quot;&gt;&lt;/span&gt;&lt;/div&gt;" vertex="1">
+          <mxGeometry height="75" width="230" x="108.38" y="505" as="geometry" />
         </mxCell>
         <mxCell id="QW5MhtzJg3USrbtbZXLL-63" edge="1" parent="SNsatqiXY2KXzrrrTxgc-21" source="QW5MhtzJg3USrbtbZXLL-26" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;exitX=0.5;exitY=1;exitDx=0;exitDy=0;" target="SNsatqiXY2KXzrrrTxgc-26">
           <mxGeometry relative="1" as="geometry" />
         </mxCell>
-        <mxCell id="QW5MhtzJg3USrbtbZXLL-64" parent="SNsatqiXY2KXzrrrTxgc-21" style="text;whiteSpace=wrap;html=1;" value="\( \mathcal C^i_k (x,y) = \pi_{concept} ( \mathcal O^i_k (x,y) ) \)" vertex="1">
+        <mxCell id="QW5MhtzJg3USrbtbZXLL-64" parent="SNsatqiXY2KXzrrrTxgc-21" style="text;whiteSpace=wrap;html=1;" value="\( \mathcal C^i_k (x,y) \)" vertex="1">
           <mxGeometry height="40" width="180" x="230" y="470" as="geometry" />
+        </mxCell>
+        <mxCell id="LdcC8u4aLwyS9T52n77k-5" parent="SNsatqiXY2KXzrrrTxgc-21" style="text;html=1;whiteSpace=wrap;strokeColor=none;fillColor=none;align=center;verticalAlign=middle;rounded=0;" value="\( (x,y)\in\Omega_i\)&lt;div&gt;&lt;span style=&quot;text-align: left; background-color: transparent; color: light-dark(rgb(0, 0, 0), rgb(255, 255, 255));&quot;&gt;&lt;br&gt;&lt;/span&gt;&lt;/div&gt;&lt;div&gt;&lt;span style=&quot;text-align: left; background-color: transparent; color: light-dark(rgb(0, 0, 0), rgb(255, 255, 255));&quot;&gt;\( \Omega=\bigcup_{i=1}^{N}(\Omega_i) \)&lt;/span&gt;&lt;div&gt;&lt;span style=&quot;text-align: left;&quot;&gt;&lt;br&gt;&lt;/span&gt;&lt;/div&gt;&lt;div&gt;&lt;span style=&quot;background-color: transparent; color: light-dark(rgb(0, 0, 0), rgb(255, 255, 255));&quot;&gt;\(\Omega_i\cap\Omega_j=\emptyset\ (i\neq j) \)&lt;/span&gt;&lt;/div&gt;&lt;/div&gt;" vertex="1">
+          <mxGeometry height="85.04" width="121.62" x="330" as="geometry" />
         </mxCell>
         <mxCell id="LWTdEePmiydnWeL3nPZZ-9" edge="1" parent="1" source="SNsatqiXY2KXzrrrTxgc-32" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;exitX=0;exitY=0.5;exitDx=0;exitDy=0;entryX=1;entryY=0.5;entryDx=0;entryDy=0;" target="SNsatqiXY2KXzrrrTxgc-26">
           <mxGeometry relative="1" as="geometry" />
         </mxCell>
         <mxCell id="SNsatqiXY2KXzrrrTxgc-32" parent="1" style="text;html=1;whiteSpace=wrap;strokeColor=none;fillColor=none;align=center;verticalAlign=middle;rounded=0;" value="&lt;span lang=&quot;EN-US&quot; style=&quot;line-height: 150%;&quot;&gt;&lt;font&gt;\( \mathcal F_{DSS,k}\)&lt;/font&gt;&lt;/span&gt;" vertex="1">
-          <mxGeometry height="30" width="70" x="650" y="830" as="geometry" />
+          <mxGeometry height="30" width="70" x="680" y="847.5" as="geometry" />
         </mxCell>
         <mxCell id="LWTdEePmiydnWeL3nPZZ-8" edge="1" parent="1" source="SNsatqiXY2KXzrrrTxgc-36" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;exitX=0;exitY=0.5;exitDx=0;exitDy=0;entryX=0;entryY=0.5;entryDx=0;entryDy=0;" target="SNsatqiXY2KXzrrrTxgc-39">
           <mxGeometry relative="1" as="geometry" />
         </mxCell>
-        <mxCell id="SNsatqiXY2KXzrrrTxgc-36" parent="1" style="text;whiteSpace=wrap;align=left;" value=" \(   U^i_{DSS,k} (x,y)=\pi_{DSS}(\mathcal O^i _k(x,y),\mathcal F_{DSS,k}))\)&#xa;" vertex="1">
-          <mxGeometry height="40" width="244" x="311.38" y="910" as="geometry" />
+        <mxCell id="SNsatqiXY2KXzrrrTxgc-36" parent="1" style="text;whiteSpace=wrap;align=left;" value=" \(   U^i_{DSS,k} (x,y)=\pi_{DSS}(\mathcal O^i _k(x,y),\mathcal F_{DSS,k}))\)&#xa;\( U^i_{DSS,k} (x,y) = \pi_i(\mathcal f_{concept}(\mu_{A_n}(\mathcal f_{feat}(O^i _k(x,y)))), \mathcal F_{DSS,k})\)&#xa;" vertex="1">
+          <mxGeometry height="40" width="350" x="258.38" y="940" as="geometry" />
         </mxCell>
         <mxCell id="QW5MhtzJg3USrbtbZXLL-73" edge="1" parent="1" source="SNsatqiXY2KXzrrrTxgc-39" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;exitX=1;exitY=0.5;exitDx=0;exitDy=0;entryX=0;entryY=0.5;entryDx=0;entryDy=0;" target="1U8FR2Fogaaut4GOVmd6-1">
           <mxGeometry relative="1" as="geometry" />
         </mxCell>
-        <mxCell id="SNsatqiXY2KXzrrrTxgc-39" parent="1" style="rounded=1;whiteSpace=wrap;html=1;strokeWidth=2;fillColor=#e1d5e7;strokeColor=#9673a6;rotation=-90;" value="&lt;font&gt;&lt;b style=&quot;&quot;&gt;Global DSS&lt;/b&gt;&lt;/font&gt;&lt;div&gt;&lt;font&gt;&lt;span style=&quot;text-align: left;&quot;&gt;\( U_{DSS,k} (x,y)= \mathcal A_{DSS} (\{U_{DSS,k}^i (x,y)\}_{i=1}^N) \)&lt;/span&gt;&lt;b style=&quot;&quot;&gt;&lt;/b&gt;&lt;/font&gt;&lt;/div&gt;" vertex="1">
-          <mxGeometry height="60" width="344" x="-40" y="525" as="geometry" />
+        <mxCell id="SNsatqiXY2KXzrrrTxgc-39" parent="1" style="rounded=1;whiteSpace=wrap;html=1;strokeWidth=2;fillColor=#e1d5e7;strokeColor=#9673a6;rotation=-90;" value="&lt;font&gt;&lt;b style=&quot;&quot;&gt;Global DSS&lt;/b&gt;&lt;/font&gt;&lt;div&gt;&lt;font&gt;&lt;span style=&quot;text-align: left;&quot;&gt;\( U_{DSS,k} (x,y)= \mathcal A_{DSS} (\{U_{DSS,k}^i (x,y)\}_{i=1}^N) \)&lt;/span&gt;&lt;b style=&quot;&quot;&gt;&lt;/b&gt;&lt;/font&gt;&lt;/div&gt;&lt;div&gt;&lt;font&gt;&lt;div&gt;&lt;span style=&quot;text-align: left;&quot;&gt;\( u^m_{DSS,k} (x,y)= \mathcal A_{DSS} (\{u_{k}^{i,m} (x,y)\}) \)&lt;/span&gt;&lt;/div&gt;&lt;/font&gt;&lt;/div&gt;" vertex="1">
+          <mxGeometry height="68.34" width="306.37" x="-25.35" y="551.39" as="geometry" />
         </mxCell>
         <mxCell id="QW5MhtzJg3USrbtbZXLL-8" edge="1" parent="1" source="1U8FR2Fogaaut4GOVmd6-1" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;exitX=0.5;exitY=1;exitDx=0;exitDy=0;entryX=0.5;entryY=0;entryDx=0;entryDy=0;" target="SNsatqiXY2KXzrrrTxgc-23">
           <mxGeometry relative="1" as="geometry" />
@@ -551,16 +554,13 @@
           <mxGeometry height="40" width="230" x="318.38" y="224.96" as="geometry" />
         </mxCell>
         <mxCell id="o7l-YyAOHHf8719nhcfW-46" parent="1" style="text;html=1;whiteSpace=wrap;strokeColor=none;fillColor=none;align=left;verticalAlign=middle;rounded=0;" value="&lt;span lang=&quot;EN-US&quot; style=&quot;line-height: 150%;&quot;&gt;&lt;font&gt;\( \mathcal F_{DSS,k}=\{U_{Val,k},U_{Res,k}\} \)&lt;/font&gt;&lt;/span&gt;" vertex="1">
-          <mxGeometry height="30" width="165" x="122.25" y="930" as="geometry" />
+          <mxGeometry height="30" width="165" x="140" y="1000" as="geometry" />
         </mxCell>
         <mxCell id="QW5MhtzJg3USrbtbZXLL-1" parent="1" style="text;html=1;whiteSpace=wrap;strokeColor=none;fillColor=none;align=left;verticalAlign=middle;rounded=0;" value="&lt;span lang=&quot;EN-US&quot; style=&quot;line-height: 150%;&quot;&gt;&lt;font&gt;\( \mathcal F_{in,k}=\{U_{Meteo,k},U_{Geo},U_{Fuel,k},U_{Ign,k}, U_{DSS,k}\} \)&lt;/font&gt;&lt;/span&gt;" vertex="1">
-          <mxGeometry height="30" width="280" x="120" y="950" as="geometry" />
+          <mxGeometry height="30" width="280" x="140" y="1030" as="geometry" />
         </mxCell>
         <mxCell id="QW5MhtzJg3USrbtbZXLL-74" parent="1" style="text;html=1;whiteSpace=wrap;strokeColor=none;fillColor=none;align=center;verticalAlign=middle;rounded=0;" value="&lt;span style=&quot;text-align: left;&quot;&gt;\( U_{DSS,k} (x,y) \)&lt;/span&gt;" vertex="1">
           <mxGeometry height="30" width="60" x="150" y="250" as="geometry" />
-        </mxCell>
-        <mxCell id="LWTdEePmiydnWeL3nPZZ-6" parent="1" style="text;html=1;whiteSpace=wrap;strokeColor=none;fillColor=none;align=left;verticalAlign=middle;rounded=0;" value="&lt;span style=&quot;&quot;&gt;\( \pi_{DSS} = \pi_i \circ \mathcal f_{concept} \circ \mathcal f_{fuzzy}&amp;nbsp;\circ \mathcal f_{feat}\)&lt;/span&gt;" vertex="1">
-          <mxGeometry height="30" width="240" x="120" y="970" as="geometry" />
         </mxCell>
         <mxCell id="LWTdEePmiydnWeL3nPZZ-7" edge="1" parent="1" source="SNsatqiXY2KXzrrrTxgc-26" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;exitX=0.5;exitY=1;exitDx=0;exitDy=0;" target="SNsatqiXY2KXzrrrTxgc-36">
           <mxGeometry relative="1" as="geometry" />
