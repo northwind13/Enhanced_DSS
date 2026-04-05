@@ -410,10 +410,10 @@
         <mxCell id="9eFhgOQioUkMjKXSdJW8-2" parent="1" style="text;whiteSpace=wrap;html=1;" value="&lt;div style=&quot;forced-color-adjust: none; color: rgb(61, 61, 58); font-family: Helvetica; font-size: 11px; font-style: normal; font-variant-ligatures: normal; font-variant-caps: normal; font-weight: 400; letter-spacing: normal; orphans: 2; text-align: left; text-indent: 0px; text-transform: none; widows: 2; word-spacing: 0px; -webkit-text-stroke-width: 0px; white-space: nowrap; background-color: rgb(236, 236, 236); text-decoration-thickness: initial; text-decoration-style: initial; text-decoration-color: initial;&quot;&gt;&lt;br&gt;&lt;/div&gt;" vertex="1">
           <mxGeometry height="30" width="190" x="440" y="550" as="geometry" />
         </mxCell>
-        <mxCell id="9eFhgOQioUkMjKXSdJW8-3" parent="1" style="text;whiteSpace=wrap;html=1;" value="AUT: automation feasibility&#xa;SCP: Spatial Coverage Pattern" vertex="1">
+        <mxCell id="9eFhgOQioUkMjKXSdJW8-3" parent="1" style="text;whiteSpace=wrap;html=1;" value="AUT: automation feasibility &#xa;SCP: Spatial Coverage Pattern" vertex="1">
           <mxGeometry height="20" width="200" x="400" y="488" as="geometry" />
         </mxCell>
-        <mxCell id="9eFhgOQioUkMjKXSdJW8-4" parent="1" style="text;whiteSpace=wrap;html=1;" value="THR: temporal horizon&#xa;EPI: epistemic uncertainty" vertex="1">
+        <mxCell id="9eFhgOQioUkMjKXSdJW8-4" parent="1" style="text;whiteSpace=wrap;html=1;" value="THR: temporal horizon &#xa;EPI: epistemic uncertainty" vertex="1">
           <mxGeometry height="50" width="170" x="230" y="488" as="geometry" />
         </mxCell>
       </root>
@@ -730,7 +730,7 @@
     </mxGraphModel>
   </diagram>
   <diagram name="CH4_Wildfire Simulation Architecture" id="0">
-    <mxGraphModel dx="1177" dy="689" grid="1" gridSize="10" guides="1" tooltips="1" connect="1" arrows="1" fold="1" page="1" pageScale="1" pageWidth="1400" pageHeight="1000" math="1" shadow="0">
+    <mxGraphModel dx="1412" dy="827" grid="1" gridSize="10" guides="1" tooltips="1" connect="1" arrows="1" fold="1" page="1" pageScale="1" pageWidth="1400" pageHeight="1000" math="1" shadow="0">
       <root>
         <mxCell id="0" />
         <mxCell id="1" parent="0" />
@@ -768,7 +768,7 @@
         <mxCell id="JWUHhB5qffuTdt26Jw1H-51" parent="JWUHhB5qffuTdt26Jw1H-42" style="html=1;dashed=0;whiteSpace=wrap;shape=mxgraph.dfd.start;fillColor=#f5f5f5;strokeColor=#666666;fontColor=#333333;" value="Map View" vertex="1">
           <mxGeometry height="30" width="200" x="10" y="25" as="geometry" />
         </mxCell>
-        <mxCell id="JWUHhB5qffuTdt26Jw1H-53" parent="JWUHhB5qffuTdt26Jw1H-42" style="html=1;dashed=0;whiteSpace=wrap;shape=mxgraph.dfd.start;fillColor=#f5f5f5;strokeColor=#666666;fontColor=#333333;" value="Map/ Data Editor" vertex="1">
+        <mxCell id="JWUHhB5qffuTdt26Jw1H-53" parent="JWUHhB5qffuTdt26Jw1H-42" style="html=1;dashed=0;whiteSpace=wrap;shape=mxgraph.dfd.start;fillColor=#f5f5f5;strokeColor=#666666;fontColor=#333333;" value="Map &amp;amp; Data Editor" vertex="1">
           <mxGeometry height="30" width="200" x="10" y="55" as="geometry" />
         </mxCell>
         <mxCell id="JWUHhB5qffuTdt26Jw1H-94" parent="JWUHhB5qffuTdt26Jw1H-42" style="html=1;dashed=0;whiteSpace=wrap;shape=mxgraph.dfd.start;fillColor=#f5f5f5;strokeColor=#666666;fontColor=#333333;" value="Scenario Manager" vertex="1">
@@ -1379,7 +1379,7 @@
     </mxGraphModel>
   </diagram>
   <diagram id="D92QW784wAEbk7r71Nfh" name="CH6_GLOBAL DSS">
-    <mxGraphModel dx="974" dy="570" grid="1" gridSize="10" guides="1" tooltips="1" connect="1" arrows="1" fold="1" page="1" pageScale="1" pageWidth="1169" pageHeight="827" math="1" shadow="0">
+    <mxGraphModel dx="1412" dy="827" grid="1" gridSize="10" guides="1" tooltips="1" connect="1" arrows="1" fold="1" page="1" pageScale="1" pageWidth="1169" pageHeight="827" math="1" shadow="0">
       <root>
         <mxCell id="0" />
         <mxCell id="1" parent="0" />
@@ -1398,7 +1398,7 @@
         <mxCell id="rEGRsZMFsTI22kQffFlx-5" parent="1" style="rounded=1;arcSize=10;fillColor=#EEEDFE;strokeColor=#534AB7;strokeWidth=1;fontColor=#3C3489;fontSize=12;align=center;verticalAlign=middle;html=1;whiteSpace=wrap;" value="&lt;b style=&quot;font-size:13px;color:#3C3489;&quot;&gt;Agent N&lt;/b&gt;&lt;br&gt;&lt;span style=&quot;font-size:11px;color:#534AB7;&quot;&gt;\(Ω_N \)&lt;/span&gt;" vertex="1">
           <mxGeometry height="56" width="140" x="258" y="400" as="geometry" />
         </mxCell>
-        <mxCell id="rEGRsZMFsTI22kQffFlx-6" parent="1" style="rounded=1;arcSize=8;fillColor=#FAEEDA;strokeColor=#854F0B;strokeWidth=1;fontColor=#633806;fontSize=12;align=center;verticalAlign=middle;html=1;whiteSpace=wrap;" value="&lt;b style=&quot;font-size:13px;color:#633806;&quot;&gt;Global DSS&lt;/b&gt;&lt;br&gt;&lt;span style=&quot;font-size:11px;color:#854F0B;&quot;&gt;coordination layer&lt;br&gt;\(A_{DSS}\)&lt;/span&gt;" vertex="1">
+        <mxCell id="rEGRsZMFsTI22kQffFlx-6" parent="1" style="rounded=1;arcSize=8;fillColor=#FAEEDA;strokeColor=#854F0B;strokeWidth=1;fontColor=#633806;fontSize=12;align=center;verticalAlign=middle;html=1;whiteSpace=wrap;" value="&lt;b style=&quot;font-size:13px;color:#633806;&quot;&gt;Global DSS&lt;/b&gt;&lt;br&gt;&lt;span style=&quot;font-size:11px;color:#854F0B;&quot;&gt;coordination layer&lt;br&gt;\(\mathcal{A}_{DSS}\)&lt;/span&gt;" vertex="1">
           <mxGeometry height="78" width="165" x="488" y="289" as="geometry" />
         </mxCell>
         <mxCell id="rEGRsZMFsTI22kQffFlx-7" edge="1" parent="1" source="rEGRsZMFsTI22kQffFlx-1" style="edgeStyle=orthogonalEdgeStyle;exitX=1;exitY=0.5;exitDx=0;exitDy=0;entryX=0;entryY=0.2;entryDx=0;entryDy=0;endArrow=open;endFill=0;endSize=6;strokeColor=#3D3D3A;strokeWidth=1.5;curved=1;" target="rEGRsZMFsTI22kQffFlx-6">
