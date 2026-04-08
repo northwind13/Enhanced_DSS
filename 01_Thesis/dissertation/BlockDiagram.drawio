@@ -533,7 +533,7 @@
     </mxGraphModel>
   </diagram>
   <diagram id="YCMo9gCaztM8RODb02M3" name="CH3_7">
-    <mxGraphModel dx="974" dy="570" grid="1" gridSize="10" guides="1" tooltips="1" connect="1" arrows="1" fold="1" page="1" pageScale="1" pageWidth="1169" pageHeight="827" math="1" shadow="0">
+    <mxGraphModel dx="1412" dy="827" grid="1" gridSize="10" guides="1" tooltips="1" connect="1" arrows="1" fold="1" page="1" pageScale="1" pageWidth="1169" pageHeight="827" math="1" shadow="0">
       <root>
         <mxCell id="0" />
         <mxCell id="1" parent="0" />
@@ -663,7 +663,7 @@
             <mxPoint x="658" y="222" as="targetPoint" />
           </mxGeometry>
         </mxCell>
-        <mxCell id="6T968cy3nZVQmD6sPW5s-46" parent="1" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#FAECEA;strokeColor=#993C1D;strokeWidth=0.5;fontSize=13;verticalAlign=middle;" value="&lt;b style=&quot;color:#712B13;&quot;&gt;\(k = t_1\) —  Active spread \(S_{t₁}\)&lt;/b&gt;&lt;br&gt;&lt;span style=&quot;color:#993C1D;font-size:11px;&quot;&gt;Fire front expanding · DSS observes O_k(x,y)&lt;/span&gt;" vertex="1">
+        <mxCell id="6T968cy3nZVQmD6sPW5s-46" parent="1" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#FAECEA;strokeColor=#993C1D;strokeWidth=0.5;fontSize=13;verticalAlign=middle;" value="&lt;b style=&quot;color:#712B13;&quot;&gt;\(k = t_1\) —  Active spread \(S_{t₁}\)&lt;/b&gt;&lt;br&gt;&lt;span style=&quot;color:#993C1D;font-size:11px;&quot;&gt;Fire front expanding · DSS observes \(O_k(x,y) \)&amp;nbsp;&lt;/span&gt;" vertex="1">
           <mxGeometry height="56" width="380" x="468" y="224" as="geometry" />
         </mxCell>
         <mxCell id="6T968cy3nZVQmD6sPW5s-47" edge="1" parent="1" style="endArrow=open;endFill=0;strokeColor=#737270;strokeWidth=1.5;" value="">
@@ -1124,7 +1124,7 @@
     </mxGraphModel>
   </diagram>
   <diagram id="DavYkpr2M7FsyYJBwxhA" name="CH6_DSS">
-    <mxGraphModel dx="1412" dy="827" grid="1" gridSize="10" guides="1" tooltips="1" connect="1" arrows="1" fold="1" page="1" pageScale="1" pageWidth="827" pageHeight="1169" math="1" shadow="0">
+    <mxGraphModel dx="1177" dy="689" grid="1" gridSize="10" guides="1" tooltips="1" connect="1" arrows="1" fold="1" page="1" pageScale="1" pageWidth="827" pageHeight="1169" math="1" shadow="0">
       <root>
         <mxCell id="0" />
         <mxCell id="1" parent="0" />
@@ -1167,7 +1167,7 @@
         <mxCell id="QW5MhtzJg3USrbtbZXLL-10" parent="SNsatqiXY2KXzrrrTxgc-21" style="text;whiteSpace=wrap;html=1;" value="\( \mathcal O^i_k (x,y) \)" vertex="1">
           <mxGeometry height="30" width="60" x="260" y="70" as="geometry" />
         </mxCell>
-        <mxCell id="SNsatqiXY2KXzrrrTxgc-26" parent="SNsatqiXY2KXzrrrTxgc-21" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#f8cecc;strokeColor=#b85450;fontStyle=1;align=left;" value="&lt;div style=&quot;&quot;&gt;&lt;div style=&quot;text-align: center;&quot;&gt;&lt;span style=&quot;background-color: transparent; color: light-dark(rgb(0, 0, 0), rgb(255, 255, 255));&quot;&gt;Local DSS Model (\(i\))&lt;/span&gt;&lt;/div&gt;&lt;span style=&quot;font-weight: 400;&quot;&gt;Candidate Decisions:&amp;nbsp;&lt;/span&gt;&lt;span style=&quot;font-weight: 400;&quot;&gt;\(\tilde{u}^i_{k,m} (x,y)=\pi_{i,m}( \textbf{c}^i_k(x,y),\mathcal F_{DSS,k})\)&lt;/span&gt;&lt;br style=&quot;font-weight: 400;&quot;&gt;&lt;span style=&quot;font-weight: 400;&quot;&gt;Structured Decisions: \(\tilde{\mathbf{u}}^i_{DSS,k} (x,y)=\{u^{i,m}_k(x,y)\}^\mathcal M_{m=1}\)&lt;/span&gt;&lt;br style=&quot;font-weight: 400;&quot;&gt;&lt;span style=&quot;font-weight: 400;&quot;&gt;Final Intervention:&lt;/span&gt;&lt;span style=&quot;font-weight: 400;&quot;&gt;\(U^i_{DSS,k} (x,y)= \mathcal j_{DSS} (\tilde{\mathbf{u}}^i_{DSS,k} (x,y)) \)&lt;/span&gt;&lt;span style=&quot;font-weight: 400;&quot;&gt;&lt;br&gt;&lt;br&gt;&lt;/span&gt;&lt;span style=&quot;font-style: italic; font-weight: 400;&quot;&gt;\(\mathcal j_{DSS}\): maps multi-action set to a single executable intervention&lt;/span&gt;&lt;span style=&quot;font-weight: 400;&quot;&gt;&lt;/span&gt;&lt;/div&gt;" vertex="1">
+        <mxCell id="SNsatqiXY2KXzrrrTxgc-26" parent="SNsatqiXY2KXzrrrTxgc-21" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#f8cecc;strokeColor=#b85450;fontStyle=1;align=left;" value="&lt;div style=&quot;&quot;&gt;&lt;div style=&quot;text-align: center;&quot;&gt;&lt;span style=&quot;background-color: transparent; color: light-dark(rgb(0, 0, 0), rgb(255, 255, 255));&quot;&gt;Local DSS Model (\(i\))&lt;/span&gt;&lt;/div&gt;&lt;span style=&quot;font-weight: 400;&quot;&gt;Candidate Decisions:&amp;nbsp;&lt;/span&gt;&lt;span style=&quot;font-weight: 400;&quot;&gt;\(\tilde{u}^i_{k,m} (x,y)=\pi_{i,m}( \textbf{c}^i_k(x,y),\mathcal F_{DSS,k})\)&lt;/span&gt;&lt;br style=&quot;font-weight: 400;&quot;&gt;&lt;span style=&quot;font-weight: 400;&quot;&gt;Structured Decisions: \(\tilde{\mathbf{u}}^i_{DSS,k} (x,y)=\{u^{i,m}_k(x,y)\}^\mathcal M_{m=1}\)&lt;/span&gt;&lt;br style=&quot;font-weight: 400;&quot;&gt;&lt;span style=&quot;font-weight: 400;&quot;&gt;Final Intervention:&lt;/span&gt;&lt;span style=&quot;font-weight: 400;&quot;&gt;\(U^i_{DSS,k} (x,y)= \mathcal f_{agg} (\tilde{\mathbf{u}}^i_{DSS,k} (x,y)) \)&lt;/span&gt;&lt;span style=&quot;font-weight: 400;&quot;&gt;&lt;br&gt;&lt;br&gt;&lt;/span&gt;&lt;span style=&quot;font-style: italic; font-weight: 400;&quot;&gt;\(\mathcal f_{agg}\): maps multi-action set to executable interventions&lt;/span&gt;&lt;span style=&quot;font-weight: 400;&quot;&gt;&lt;/span&gt;&lt;/div&gt;" vertex="1">
           <mxGeometry height="130" width="380" x="69" y="560" as="geometry" />
         </mxCell>
         <mxCell id="QW5MhtzJg3USrbtbZXLL-64" parent="SNsatqiXY2KXzrrrTxgc-21" style="text;whiteSpace=wrap;html=1;" value="\( \textbf{c}^i_k (x,y) \)" vertex="1">
@@ -1307,7 +1307,7 @@
     </mxGraphModel>
   </diagram>
   <diagram id="m4W7oiKs6rh0-uGDKItG" name="CH6_LocalDSS">
-    <mxGraphModel dx="974" dy="570" grid="1" gridSize="10" guides="1" tooltips="1" connect="1" arrows="1" fold="1" page="1" pageScale="1" pageWidth="1169" pageHeight="827" math="1" shadow="0">
+    <mxGraphModel dx="1412" dy="827" grid="1" gridSize="10" guides="1" tooltips="1" connect="1" arrows="1" fold="1" page="1" pageScale="1" pageWidth="1169" pageHeight="827" math="1" shadow="0">
       <root>
         <mxCell id="0" />
         <mxCell id="1" parent="0" />
@@ -1341,7 +1341,7 @@
         <mxCell id="Quco8ItRtHGXQVcFPQgd-10" parent="1" style="text;html=1;align=left;verticalAlign=middle;resizable=0;strokeColor=none;fillColor=none;fontSize=11;fontColor=#3D3D3A;" value="ũ₃" vertex="1">
           <mxGeometry height="20" width="24" x="529" y="404" as="geometry" />
         </mxCell>
-        <mxCell id="Quco8ItRtHGXQVcFPQgd-11" parent="1" style="rounded=1;arcSize=10;fillColor=#FAEEDA;strokeColor=#854F0B;strokeWidth=1;fontColor=#633806;fontSize=12;align=center;verticalAlign=middle;html=1;whiteSpace=wrap;" value="&lt;b style=&quot;font-size:13px;color:#633806;&quot;&gt;Aggregation&lt;/b&gt;&lt;br&gt;&lt;span style=&quot;font-size:11px;color:#854F0B;&quot;&gt;\(j_{DSS}\)&amp;nbsp;&lt;/span&gt;" vertex="1">
+        <mxCell id="Quco8ItRtHGXQVcFPQgd-11" parent="1" style="rounded=1;arcSize=10;fillColor=#FAEEDA;strokeColor=#854F0B;strokeWidth=1;fontColor=#633806;fontSize=12;align=center;verticalAlign=middle;html=1;whiteSpace=wrap;" value="&lt;b style=&quot;font-size:13px;color:#633806;&quot;&gt;Aggregation&lt;/b&gt;&lt;br&gt;&lt;span style=&quot;font-size:11px;color:#854F0B;&quot;&gt;\(f_{agg}\)&amp;nbsp;&lt;/span&gt;" vertex="1">
           <mxGeometry height="76" width="130" x="560" y="282" as="geometry" />
         </mxCell>
         <mxCell id="Quco8ItRtHGXQVcFPQgd-12" edge="1" parent="1" source="Quco8ItRtHGXQVcFPQgd-2" style="edgeStyle=orthogonalEdgeStyle;exitX=1;exitY=0.5;exitDx=0;exitDy=0;entryX=0;entryY=0.2;entryDx=0;entryDy=0;endArrow=open;endFill=0;endSize=6;strokeColor=#3D3D3A;strokeWidth=1.5;" target="Quco8ItRtHGXQVcFPQgd-11">

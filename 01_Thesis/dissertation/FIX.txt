@@ -19,3 +19,17 @@ If any of these are only described conceptually, then I can still code them, but
 dashboard / interface description
 Chapter 7 evaluation structure
 any function whose exact rule, weighting, or aggregation form is referenced but not numerically fixed in the final text
+
+
+Eksik olan denklemleri düzelteceğiz.
+
+adım adım ilerleyelim.
+
+\pi_DSS implementasyonu nedir?
+
+doktora seviyesi ve yenilikçi olmalı
+yerleştirileceği chapter içi tutuarlı olmalı
+diğer denklemler ile tutarlı olmalı
+semboloji tutarlı olmalı tez ile
+
+nereye nasıl ekleneceğini net anlat
