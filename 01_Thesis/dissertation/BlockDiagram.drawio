@@ -1,4 +1,4 @@
-<mxfile host="Electron" agent="Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) draw.io/29.2.9 Chrome/140.0.7339.249 Electron/38.7.2 Safari/537.36" version="29.2.9" pages="18">
+<mxfile host="Electron" agent="Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) draw.io/29.2.9 Chrome/140.0.7339.249 Electron/38.7.2 Safari/537.36" version="29.2.9" pages="19">
   <diagram id="6d-dpPGDkxoopzlrcRlT" name="CH1_HYPO_QUEST">
     <mxGraphModel dx="1412" dy="827" grid="1" gridSize="10" guides="1" tooltips="1" connect="1" arrows="1" fold="1" page="1" pageScale="1" pageWidth="1169" pageHeight="827" math="1" shadow="0">
       <root>
@@ -287,8 +287,8 @@
         <mxCell id="WgMpq8ys_XbnOUjDarCE-27" parent="1" style="text;html=1;strokeColor=none;fillColor=#ffffff;align=center;verticalAlign=middle;fontSize=11;fontStyle=1;" value="High" vertex="1">
           <mxGeometry height="20" width="60" x="970" y="490" as="geometry" />
         </mxCell>
-        <mxCell id="WgMpq8ys_XbnOUjDarCE-31" parent="1" style="text;whiteSpace=wrap;html=1;align=center;" value="operational ↔ per-cell concept vector (Section 6.2)&#xa;tactical ↔ local DSS agents (Section 6.3)&#xa;strategic ↔ global coordination (Section 6.4)&#xa;DisasterAware supports all three levels through a unified architecture operating on the bounded concept space \([0,1]^{4}\)." vertex="1">
-          <mxGeometry height="70" width="695" x="305" y="580" as="geometry" />
+        <mxCell id="WgMpq8ys_XbnOUjDarCE-31" parent="1" style="text;whiteSpace=wrap;html=1;align=center;fontSize=14;" value="operational ↔ per-cell concept vector (Section 6.2)&#xa;tactical ↔ local DSS agents (Section 6.3)&#xa;strategic ↔ global coordination (Section 6.4)&#xa;DisasterAware supports all three levels through a unified architecture operating on the bounded concept space \([0,1]^{4}\)." vertex="1">
+          <mxGeometry height="70" width="770" x="280" y="580" as="geometry" />
         </mxCell>
       </root>
     </mxGraphModel>
@@ -2170,6 +2170,106 @@
         </mxCell>
         <mxCell id="J7JNwbcTlPQnGHuabK18-36" parent="1" style="text;whiteSpace=wrap;html=1;" value="`k \leftarrow k+1`" vertex="1">
           <mxGeometry height="40" width="70" x="800" y="360" as="geometry" />
+        </mxCell>
+      </root>
+    </mxGraphModel>
+  </diagram>
+  <diagram id="bfI9pjGrCeqJfirFCyAn" name="DSS_Sim">
+    <mxGraphModel dx="1661" dy="973" grid="1" gridSize="10" guides="1" tooltips="1" connect="1" arrows="1" fold="1" page="1" pageScale="1" pageWidth="1169" pageHeight="827" math="1" shadow="0">
+      <root>
+        <mxCell id="0" />
+        <mxCell id="1" parent="0" />
+        <mxCell id="BTorxVMLyVCxX_XMpz2y-2" parent="1" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#d5e8d4;strokeColor=#82b366;strokeWidth=2;fontSize=13;align=center;verticalAlign=middle;" value="&lt;b&gt;UI Dashboard&lt;/b&gt;  (Section 4.4)&lt;br&gt;&lt;span style=&quot;font-size:11px;color:#444444&quot;&gt;operator interaction: ignition injection, resource reconfiguration, what-if meteorology&lt;/span&gt;" vertex="1">
+          <mxGeometry height="50" width="550" x="320" y="145" as="geometry" />
+        </mxCell>
+        <mxCell id="BTorxVMLyVCxX_XMpz2y-3" edge="1" parent="1" source="BTorxVMLyVCxX_XMpz2y-18" style="endArrow=classic;html=1;rounded=0;strokeColor=#666666;strokeWidth=2.5;exitX=1;exitY=0.7;exitDx=0;exitDy=0;entryX=0;entryY=0.5;entryDx=0;entryDy=0;fontSize=12;labelBackgroundColor=#ffffff;" target="BTorxVMLyVCxX_XMpz2y-15" value="\(S_k(x,y)\)">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="BTorxVMLyVCxX_XMpz2y-4" edge="1" parent="1" source="BTorxVMLyVCxX_XMpz2y-15" style="endArrow=classic;html=1;rounded=0;strokeColor=#6c8ebf;strokeWidth=2.5;exitX=1;exitY=0.5;exitDx=0;exitDy=0;entryX=0;entryY=0.75;entryDx=0;entryDy=0;fontSize=12;labelBackgroundColor=#ffffff;" target="BTorxVMLyVCxX_XMpz2y-11" value="\(O^{i}_{k}(x,y)\)">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="BTorxVMLyVCxX_XMpz2y-5" edge="1" parent="1" source="BTorxVMLyVCxX_XMpz2y-11" style="endArrow=classic;html=1;rounded=0;strokeColor=#d79b00;strokeWidth=2.5;exitX=0;exitY=0.25;exitDx=0;exitDy=0;entryX=1;entryY=0.7;entryDx=0;entryDy=0;fontSize=11;labelBackgroundColor=#ffffff;" target="BTorxVMLyVCxX_XMpz2y-23" value="\(U^{i}_{\mathrm{DSS},k}(x,y)\)&lt;br/&gt;&lt;span style=&quot;font-size:9px&quot;&gt;aggregated via \(\mathcal{A}_{\mathrm{DSS}}\)&lt;/span&gt;">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="BTorxVMLyVCxX_XMpz2y-6" edge="1" parent="1" source="BTorxVMLyVCxX_XMpz2y-23" style="endArrow=classic;html=1;rounded=0;strokeColor=#b85450;strokeWidth=3;exitX=0;exitY=0.7;exitDx=0;exitDy=0;entryX=1;entryY=0.3;entryDx=0;entryDy=0;fontSize=12;labelBackgroundColor=#ffffff;fontStyle=1;" target="BTorxVMLyVCxX_XMpz2y-18" value="\(F^{*}_{\mathrm{in},k}\)">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="BTorxVMLyVCxX_XMpz2y-7" edge="1" parent="1" source="BTorxVMLyVCxX_XMpz2y-2" style="endArrow=classic;html=1;rounded=0;strokeColor=#82b366;strokeWidth=2;exitX=0.5;exitY=1;exitDx=0;exitDy=0;entryX=0.5;entryY=0;entryDx=0;entryDy=0;fontSize=10;labelBackgroundColor=#ffffff;dashed=1;" target="BTorxVMLyVCxX_XMpz2y-23" value="modify admissible&lt;br/&gt;components">
+          <mxGeometry relative="1" as="geometry">
+            <mxPoint x="580" y="195" as="sourcePoint" />
+          </mxGeometry>
+        </mxCell>
+        <mxCell id="BTorxVMLyVCxX_XMpz2y-8" edge="1" parent="1" source="BTorxVMLyVCxX_XMpz2y-9" style="endArrow=classic;html=1;rounded=0;strokeColor=#999999;strokeWidth=2;fontSize=11;labelBackgroundColor=#ffffff;dashed=1;entryX=0.5;entryY=0;entryDx=0;entryDy=0;exitX=0.5;exitY=1;exitDx=0;exitDy=0;" target="BTorxVMLyVCxX_XMpz2y-11" value="\(F^{i}_{\mathrm{DSS},k}\)">
+          <mxGeometry relative="1" as="geometry">
+            <mxPoint x="1080" y="210" as="sourcePoint" />
+            <mxPoint x="930" y="280" as="targetPoint" />
+          </mxGeometry>
+        </mxCell>
+        <mxCell id="BTorxVMLyVCxX_XMpz2y-9" parent="1" style="text;html=1;strokeColor=none;fillColor=none;fontSize=10;align=center;verticalAlign=middle;fontStyle=2;fontColor=#666666;" value="context&lt;br/&gt;\(U_{\mathrm{Val},k},\, U_{\mathrm{Res},k}\)" vertex="1">
+          <mxGeometry height="40" width="130" x="945" y="270" as="geometry" />
+        </mxCell>
+        <mxCell id="BTorxVMLyVCxX_XMpz2y-14" connectable="0" parent="1" style="group" value="" vertex="1">
+          <mxGeometry height="110" width="390" x="370" y="505" as="geometry" />
+        </mxCell>
+        <mxCell id="BTorxVMLyVCxX_XMpz2y-15" parent="BTorxVMLyVCxX_XMpz2y-14" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#dae8fc;strokeColor=#6c8ebf;strokeWidth=2;fontSize=11;align=center;verticalAlign=middle;" value="&lt;b&gt;Observation Layer&lt;/b&gt;&lt;div&gt;&lt;b&gt;&lt;br&gt;&lt;/b&gt;\(h^{i}(\cdot):\; S_k \to O^{i}_{k}\)&lt;br&gt;&lt;br&gt;\(O^{i}_{k}(x,y)=h^{i}(S_k(x,y),\, \epsilon^{i}_{k}(x,y))\)&lt;/div&gt;" vertex="1">
+          <mxGeometry height="110" width="390" as="geometry" />
+        </mxCell>
+        <mxCell id="BTorxVMLyVCxX_XMpz2y-16" parent="BTorxVMLyVCxX_XMpz2y-14" style="text;html=1;strokeColor=none;fillColor=none;fontColor=#b85450;align=center;verticalAlign=middle;fontSize=10;" value="&lt;i&gt;epistemic uncertainty \(\epsilon^{i}_{k}(x,y)\) injected here&lt;/i&gt;" vertex="1">
+          <mxGeometry height="20" width="390" y="90" as="geometry" />
+        </mxCell>
+        <mxCell id="BTorxVMLyVCxX_XMpz2y-17" connectable="0" parent="1" style="group" value="" vertex="1">
+          <mxGeometry height="250" width="300" x="10" y="345" as="geometry" />
+        </mxCell>
+        <mxCell id="BTorxVMLyVCxX_XMpz2y-18" parent="BTorxVMLyVCxX_XMpz2y-17" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#f5f5f5;strokeColor=#666666;strokeWidth=2;fontSize=13;align=center;verticalAlign=top;spacingTop=10;" value="&lt;b&gt;Simulation Core&lt;/b&gt;  (Section&amp;nbsp;4.2)" vertex="1">
+          <mxGeometry height="250" width="300" as="geometry" />
+        </mxCell>
+        <mxCell id="BTorxVMLyVCxX_XMpz2y-19" parent="BTorxVMLyVCxX_XMpz2y-17" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#ffffff;strokeColor=#999999;fontSize=11;align=center;verticalAlign=middle;" value="&lt;b&gt;state vector&lt;/b&gt;&lt;br/&gt;&lt;br/&gt;\(S_k(x,y)=(B_k,\, F_{\mathrm{load},k},\, I_k,\, \tau_k)\)" vertex="1">
+          <mxGeometry height="65" width="270" x="15" y="40" as="geometry" />
+        </mxCell>
+        <mxCell id="BTorxVMLyVCxX_XMpz2y-20" parent="BTorxVMLyVCxX_XMpz2y-17" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#ffffff;strokeColor=#999999;fontSize=11;align=center;verticalAlign=middle;" value="&lt;b&gt;state transition&lt;/b&gt;&lt;br/&gt;&lt;br/&gt;\(S_{k+1}(x,y)=\Phi(S_k(x,y),\, F^{*}_{\mathrm{in},k})\)" vertex="1">
+          <mxGeometry height="65" width="270" x="15" y="115" as="geometry" />
+        </mxCell>
+        <mxCell id="BTorxVMLyVCxX_XMpz2y-21" parent="BTorxVMLyVCxX_XMpz2y-17" style="text;html=1;strokeColor=none;fillColor=none;fontColor=#777777;align=center;verticalAlign=middle;fontSize=10;whiteSpace=wrap;" value="&lt;i&gt;authoritative state representation; never written by DSS or UI directly&lt;/i&gt;" vertex="1">
+          <mxGeometry height="50" width="225" x="35" y="195" as="geometry" />
+        </mxCell>
+        <mxCell id="BTorxVMLyVCxX_XMpz2y-22" connectable="0" parent="1" style="group" value="" vertex="1">
+          <mxGeometry height="200" width="390" x="370" y="255" as="geometry" />
+        </mxCell>
+        <mxCell id="BTorxVMLyVCxX_XMpz2y-23" parent="BTorxVMLyVCxX_XMpz2y-22" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#f8cecc;strokeColor=#b85450;strokeWidth=2;fontSize=13;align=center;verticalAlign=top;spacingTop=8;" value="&lt;b&gt;External Input Layer&lt;/b&gt;  \(F_{\mathrm{in},k}\)" vertex="1">
+          <mxGeometry height="200" width="390" as="geometry" />
+        </mxCell>
+        <mxCell id="BTorxVMLyVCxX_XMpz2y-24" parent="BTorxVMLyVCxX_XMpz2y-22" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#ffffff;strokeColor=#b85450;fontSize=10;align=center;verticalAlign=middle;" value="\(U_{\mathrm{Meteo},k}\)&lt;br/&gt;&lt;span style=&quot;font-size:9px&quot;&gt;wind, humidity, temperature&lt;/span&gt;" vertex="1">
+          <mxGeometry height="45" width="112.125" x="14.625" y="40" as="geometry" />
+        </mxCell>
+        <mxCell id="BTorxVMLyVCxX_XMpz2y-25" parent="BTorxVMLyVCxX_XMpz2y-22" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#ffffff;strokeColor=#b85450;fontSize=10;align=center;verticalAlign=middle;" value="\(U_{\mathrm{Geo}}\)&lt;br/&gt;&lt;span style=&quot;font-size:9px&quot;&gt;terrain, topography&lt;/span&gt;" vertex="1">
+          <mxGeometry height="45" width="112.125" x="136.5" y="40" as="geometry" />
+        </mxCell>
+        <mxCell id="BTorxVMLyVCxX_XMpz2y-26" parent="BTorxVMLyVCxX_XMpz2y-22" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#ffffff;strokeColor=#b85450;fontSize=10;align=center;verticalAlign=middle;" value="\(U_{\mathrm{Fuel},k}\)&lt;br/&gt;&lt;span style=&quot;font-size:9px&quot;&gt;fuel load, moisture&lt;/span&gt;" vertex="1">
+          <mxGeometry height="45" width="112.125" x="258.375" y="40" as="geometry" />
+        </mxCell>
+        <mxCell id="BTorxVMLyVCxX_XMpz2y-27" parent="BTorxVMLyVCxX_XMpz2y-22" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#ffffff;strokeColor=#b85450;fontSize=10;align=center;verticalAlign=middle;" value="\(U_{\mathrm{Ign},k}\)&lt;br/&gt;&lt;span style=&quot;font-size:9px&quot;&gt;ignition events&lt;/span&gt;" vertex="1">
+          <mxGeometry height="45" width="112.125" x="14.625" y="95" as="geometry" />
+        </mxCell>
+        <mxCell id="BTorxVMLyVCxX_XMpz2y-28" parent="BTorxVMLyVCxX_XMpz2y-22" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#ffe6cc;strokeColor=#d79b00;strokeWidth=2;fontSize=10;align=center;verticalAlign=middle;" value="&lt;b&gt;\(U_{\mathrm{DSS},k}\)&lt;/b&gt;&lt;br/&gt;&lt;span style=&quot;font-size:9px&quot;&gt;decision-generated intervention&lt;/span&gt;" vertex="1">
+          <mxGeometry height="45" width="234" x="136.5" y="95" as="geometry" />
+        </mxCell>
+        <mxCell id="BTorxVMLyVCxX_XMpz2y-29" parent="BTorxVMLyVCxX_XMpz2y-22" style="text;html=1;strokeColor=none;fillColor=none;fontColor=#666666;fontSize=10;align=center;" value="&lt;i&gt;operator-modified configuration \(F^{*}_{\mathrm{in},k}\)&lt;/i&gt;" vertex="1">
+          <mxGeometry height="40" width="360.75" x="14.625" y="150" as="geometry" />
+        </mxCell>
+        <mxCell id="BTorxVMLyVCxX_XMpz2y-30" parent="1" style="text;whiteSpace=wrap;html=1;" value="Data flow at each time step \(k\): \(S_k\;\to\;(O^{i}_{k},\, F^{i}_{\mathrm{DSS},k})\;\to\;U^{i}_{\mathrm{DSS},k}\;\subset\;F_{\mathrm{in},k}\;\to\;\Phi(\cdot)\;\to\;S_{k+1}\) [Equation (53)].&lt;br/&gt;&lt;br&gt;The DSS Core never writes to \(S_k(x,y)\) directly; all intervention effects propagate through the external input set \(F_{\mathrm{in},k}\), preserving the architectural separation established in Section 4.1." vertex="1">
+          <mxGeometry height="100" width="980" x="130" y="625" as="geometry" />
+        </mxCell>
+        <mxCell id="BTorxVMLyVCxX_XMpz2y-31" connectable="0" parent="1" style="group" value="" vertex="1">
+          <mxGeometry height="250" width="260" x="880" y="355" as="geometry" />
+        </mxCell>
+        <mxCell id="BTorxVMLyVCxX_XMpz2y-11" parent="BTorxVMLyVCxX_XMpz2y-31" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#ffe6cc;strokeColor=#d79b00;strokeWidth=2;fontSize=13;align=center;verticalAlign=top;spacingTop=10;" value="&lt;b&gt;DSS Core&lt;/b&gt;  (Section&amp;nbsp;4.5)&lt;br&gt;&lt;span style=&quot;font-size:10px;color:#666666&quot;&gt;cognitive layer – detailed in Chapter 6&lt;/span&gt;" vertex="1">
+          <mxGeometry height="250" width="260" as="geometry" />
+        </mxCell>
+        <mxCell id="BTorxVMLyVCxX_XMpz2y-12" parent="BTorxVMLyVCxX_XMpz2y-31" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#ffffff;strokeColor=#d79b00;fontSize=11;align=center;verticalAlign=middle;" value="&lt;b&gt;regional mapping&lt;/b&gt;&lt;br/&gt;&lt;br/&gt;\(\pi^{i}_{\mathrm{DSS}}:\,(O^{i}_{k},\, F^{i}_{\mathrm{DSS},k}) \to U^{i}_{\mathrm{DSS},k}\)" vertex="1">
+          <mxGeometry height="70" width="235" x="15" y="65" as="geometry" />
+        </mxCell>
+        <mxCell id="BTorxVMLyVCxX_XMpz2y-13" parent="BTorxVMLyVCxX_XMpz2y-31" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#ffffff;strokeColor=#d79b00;fontSize=11;align=center;verticalAlign=middle;" value="five-stage pipeline:&lt;br/&gt;&lt;span style=&quot;font-size:10px&quot;&gt;feat → fuzzy → concept → rules → agg&lt;/span&gt;" vertex="1">
+          <mxGeometry height="50" width="235" x="15" y="150" as="geometry" />
         </mxCell>
       </root>
     </mxGraphModel>
