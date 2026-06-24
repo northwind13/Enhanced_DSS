@@ -439,33 +439,33 @@
     </mxGraphModel>
   </diagram>
   <diagram id="LM3i1XFOlLFCb52r5Xid" name="Figure 2.4 - Spatial Partition">
-    <mxGraphModel dx="1412" dy="827" grid="1" gridSize="10" guides="1" tooltips="1" connect="1" arrows="1" fold="1" page="1" pageScale="1" pageWidth="1169" pageHeight="827" math="1" shadow="0">
+    <mxGraphModel dx="1651" dy="827" grid="1" gridSize="10" guides="1" tooltips="1" connect="1" arrows="1" fold="1" page="1" pageScale="1" pageWidth="1169" pageHeight="827" math="1" shadow="0">
       <root>
         <mxCell id="0" />
         <mxCell id="1" parent="0" />
         <mxCell id="cazQMOkFUEj92VN-f6rc-1" parent="1" style="text;html=1;strokeColor=none;fillColor=none;align=center;verticalAlign=middle;fontSize=13;fontStyle=1;" value="Spatial partition of \(\Omega\) into \(N\) operational regions with regional observation and local decision mappings" vertex="1">
-          <mxGeometry height="45" width="760" x="220" y="41" as="geometry" />
+          <mxGeometry height="45" width="760" x="205" y="145" as="geometry" />
         </mxCell>
         <mxCell id="cazQMOkFUEj92VN-f6rc-2" parent="1" style="rounded=0;whiteSpace=wrap;html=1;fillColor=#fafafa;strokeColor=#555555;strokeWidth=1.5;verticalAlign=top;dashed=0;" value="" vertex="1">
-          <mxGeometry height="200" width="690" x="250" y="91" as="geometry" />
+          <mxGeometry height="101" width="690" x="250" y="190" as="geometry" />
         </mxCell>
         <mxCell id="cazQMOkFUEj92VN-f6rc-3" parent="1" style="text;html=1;strokeColor=none;fillColor=none;align=center;verticalAlign=middle;fontSize=12;fontStyle=2;fontColor=#444444;" value="System state \(S_k(x,y)\) defined over spatial domain \(\Omega \subset \mathbb{R}^2\)" vertex="1">
-          <mxGeometry height="22" width="670" x="260" y="98" as="geometry" />
+          <mxGeometry height="22" width="670" x="260" y="200" as="geometry" />
         </mxCell>
         <mxCell id="cazQMOkFUEj92VN-f6rc-4" parent="1" style="rounded=0;whiteSpace=wrap;html=1;fillColor=#dae8fc;strokeColor=#6c8ebf;strokeWidth=1.5;fontSize=22;fontStyle=1;verticalAlign=middle;align=center;" value="\(\Omega_1\)" vertex="1">
-          <mxGeometry height="140" width="170" x="270" y="136" as="geometry" />
+          <mxGeometry height="46" width="170" x="270" y="230" as="geometry" />
         </mxCell>
         <mxCell id="cazQMOkFUEj92VN-f6rc-5" parent="1" style="text;html=1;strokeColor=none;fillColor=none;align=center;verticalAlign=middle;fontSize=30;fontStyle=1;fontColor=#555555;" value="\(\cdots\)" vertex="1">
-          <mxGeometry height="35" width="60" x="445" y="186" as="geometry" />
+          <mxGeometry height="35" width="60" x="450" y="235.5" as="geometry" />
         </mxCell>
         <mxCell id="cazQMOkFUEj92VN-f6rc-6" parent="1" style="rounded=0;whiteSpace=wrap;html=1;fillColor=#d5e8d4;strokeColor=#82b366;strokeWidth=1.5;fontSize=22;fontStyle=1;verticalAlign=middle;align=center;" value="\(\Omega_i\)" vertex="1">
-          <mxGeometry height="140" width="170" x="510" y="136" as="geometry" />
+          <mxGeometry height="46" width="170" x="510" y="230" as="geometry" />
         </mxCell>
         <mxCell id="cazQMOkFUEj92VN-f6rc-7" parent="1" style="text;html=1;strokeColor=none;fillColor=none;align=center;verticalAlign=middle;fontSize=30;fontStyle=1;fontColor=#555555;" value="\(\cdots\)" vertex="1">
-          <mxGeometry height="35" width="60" x="685" y="186" as="geometry" />
+          <mxGeometry height="35" width="60" x="680" y="235.5" as="geometry" />
         </mxCell>
         <mxCell id="cazQMOkFUEj92VN-f6rc-8" parent="1" style="rounded=0;whiteSpace=wrap;html=1;fillColor=#ffe6cc;strokeColor=#d79b00;strokeWidth=1.5;fontSize=22;fontStyle=1;verticalAlign=middle;align=center;" value="\(\Omega_N\)" vertex="1">
-          <mxGeometry height="140" width="170" x="750" y="136" as="geometry" />
+          <mxGeometry height="46" width="170" x="750" y="230" as="geometry" />
         </mxCell>
         <mxCell id="cazQMOkFUEj92VN-f6rc-9" parent="1" style="text;html=1;strokeColor=none;fillColor=none;align=center;verticalAlign=middle;fontSize=11;fontStyle=2;fontColor=#666666;" value="Observation&lt;br&gt;Layer" vertex="1">
           <mxGeometry height="40" width="55" x="195" y="361" as="geometry" />
