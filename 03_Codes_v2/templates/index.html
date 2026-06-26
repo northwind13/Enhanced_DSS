@@ -1,0 +1,199 @@
+<!DOCTYPE html><html lang="en"><head>
+<meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1">
+<title>DisasterAware — Wildfire Decision Support</title>
+<link rel="stylesheet" href="{{ url_for('static', filename='style.css') }}"></head>
+<body>
+<header class="topbar">
+  <div class="brand"><span class="logo">&#9650;</span>
+    <div><h1>DisasterAware</h1>
+    <p>Wildfire Decision Support Dashboard &middot; thesis simulation core + concept-based DSS</p></div></div>
+  <div class="topright"><button id="btnHelp" class="btn">? Help &amp; guide</button>
+    <span class="status" id="connStatus">starting&hellip;</span></div>
+</header>
+
+<div class="layout">
+  <aside class="panel">
+    <section>
+      <h2>Scenario presets</h2>
+      <div class="presets">
+        <button class="btn sm" data-preset="lightning">&#9889; Lightning storm</button>
+        <button class="btn sm" data-preset="arson_town">&#128293; Arson near town</button>
+        <button class="btn sm" data-preset="dry_windy">&#127786; Dry &amp; windy</button>
+      </div>
+    </section>
+    <section>
+      <h2>Scenario</h2>
+      <label>Map size <span class="val" id="gridVal">100&times;100</span>
+        <span class="tip" data-tip="Cells per side (40-200). Each cell is 30 m, so 100 cells = 3 km.">?</span>
+        <input type="range" id="grid" min="40" max="200" step="20" value="100"></label>
+      <label>Forest amount <span class="val" id="forestVal">1.2</span>
+        <span class="tip" data-tip="How much of the map is forest.">?</span>
+        <input type="range" id="forest" min="0.6" max="2.2" step="0.1" value="1.2"></label>
+      <label>World seed <span class="tip" data-tip="Procedural map seed. Same seed = same world.">?</span>
+        <input type="number" id="seed" value="7" min="0" max="999"></label>
+      <label>Fuel density <span class="val" id="fuelDensVal">1.00</span>
+        <span class="tip" data-tip="Scales combustible load. Higher = faster, larger fires.">?</span>
+        <input type="range" id="fuelDensity" min="0.4" max="1.4" step="0.05" value="1.0"></label>
+      <button id="btnReset" class="btn">Rebuild world</button>
+    </section>
+
+    <section>
+      <h2>Display</h2>
+      <label>Zoom <span class="val" id="zoomVal">6px</span>
+        <span class="tip" data-tip="Cell size on screen (2 far out .. 24 close). Drag the map to pan; Fit resets.">?</span>
+        <input type="range" id="zoom" min="2" max="24" step="1" value="6"></label>
+      <div class="seg">
+        <label><input type="radio" name="layer" value="landuse" checked> Land use</label>
+        <label><input type="radio" name="layer" value="fuel"> Fuel</label>
+        <label><input type="radio" name="layer" value="value"> Value</label>
+        <label><input type="radio" name="layer" value="slope"> Terrain</label></div>
+      <label>Concept overlay
+        <span class="tip" data-tip="Show a DSS concept field as a heatmap on the right map: how the system 'sees' threat, feasibility, exposure or urgency.">?</span>
+        <select id="conceptLayer"><option value="">none</option><option value="threat">Fire threat</option>
+          <option value="feasibility">Suppression feasibility</option><option value="exposure">Asset exposure</option>
+          <option value="urgency">Intervention urgency</option></select></label>
+      <div class="seg">
+        <label><input type="radio" name="clickmode" value="ignite" checked> Click = ignite</label>
+        <label><input type="radio" name="clickmode" value="inspect"> Click = inspect</label></div>
+      <label class="switch"><input type="checkbox" id="showIcons" checked><span>Icons</span></label>
+      <label class="switch"><input type="checkbox" id="showStations" checked><span>First responders &#128658;</span></label>
+      <label class="switch"><input type="checkbox" id="showRegions"><span>Regions grid</span></label>
+      <label class="switch"><input type="checkbox" id="showActions" checked><span>DSS actions</span></label>
+      <button id="btnFit" class="btn sm">Fit to view</button>
+    </section>
+
+    <section>
+      <h2>Meteorology</h2>
+      <label>Wind speed <span class="val" id="windSpdVal">0.55</span>
+        <span class="tip" data-tip="Wind strength. Drives the Rothermel rate of spread (shown in m/min).">?</span>
+        <input type="range" id="windSpeed" min="0" max="1" step="0.01" value="0.55"></label>
+      <label>Wind direction <span class="val" id="windDirVal">45&deg;</span>
+        <span class="tip" data-tip="The arrow shows the way the fire is pushed; it matches the spread.">?</span>
+        <input type="range" id="windDir" min="0" max="359" step="1" value="45"></label>
+      <div class="compass"><div id="windArrow" class="arrow">&#10148;</div><span id="windHead" class="windhead"></span></div>
+      <label>Humidity <span class="val" id="humVal">0.30</span>
+        <span class="tip" data-tip="Air/fuel moisture. Higher humidity = damper fuel = slower spread and harder ignition.">?</span>
+        <input type="range" id="humidity" min="0.05" max="0.9" step="0.05" value="0.30"></label>
+      <label>Spotting <span class="val" id="spotVal">0.5</span>
+        <span class="tip" data-tip="Ember spotting: burning cells throw embers downwind that can ignite ahead of the front, even across firebreaks.">?</span>
+        <input type="range" id="spotting" min="0" max="1" step="0.1" value="0.5"></label>
+    </section>
+
+    <section>
+      <h2>Decision Support</h2>
+      <label class="switch"><input type="checkbox" id="dssEnabled" checked><span>DSS active (right panel)</span></label>
+      <label>First responders (FR) <span class="val" id="frVal">6</span>
+        <span class="tip" data-tip="Number of 🚒 stations. More FR = more capacity and reach. Cells far from any station are harder to defend (resource accessibility).">?</span>
+        <input type="range" id="responders" min="1" max="12" step="1" value="6"></label>
+      <label>Activation
+        <span class="tip" data-tip="Continuous = the DSS plans every step. Event-triggered = it stays idle until the active fire reaches the chosen size (thesis event-driven activation).">?</span>
+        <select id="eventTrigger"><option value="0" selected>Continuous</option>
+          <option value="3">Trigger at 3 cells</option><option value="10">Trigger at 10 cells</option><option value="25">Trigger at 25 cells</option></select></label>
+      <label>Acceptance threshold &eta; <span class="val" id="etaVal">0.45</span>
+        <span class="tip" data-tip="The DSS scores its plan as quality Q in [0,1]. If Q ≥ η the plan is applied (ACCEPTED); if Q < η a fail-safe scales it down (ATTENUATED). Higher = more cautious.">?</span>
+        <input type="range" id="eta" min="0.2" max="0.85" step="0.01" value="0.45"></label>
+      <label>Observation noise &epsilon; <span class="val" id="epsVal">0.05</span>
+        <span class="tip" data-tip="How blurred the DSS view of the fire is.">?</span>
+        <input type="range" id="eps" min="0" max="0.3" step="0.01" value="0.05"></label>
+      <label>Regions N
+        <span class="tip" data-tip="Domain split into N local DSS agents; coordinator merges them. Toggle 'Regions grid' to see it.">?</span>
+        <select id="regions"><option>1</option><option selected>4</option><option>9</option><option>16</option></select></label>
+      <label>Ignition radius
+        <select id="ignRadius"><option>0</option><option selected>1</option><option>2</option></select></label>
+      <p class="hint">Click a map to ignite (or inspect). Press Play. Keys: Space play/pause, &larr;/&rarr; step.</p>
+    </section>
+
+    <section>
+      <h2>Tools</h2>
+      <div class="presets">
+        <button id="btnCkpt" class="btn sm">&#9873; Set checkpoint</button>
+        <button id="btnRestore" class="btn sm">&#8634; Restore</button>
+      </div>
+      <div class="presets">
+        <button id="btnCsv" class="btn sm">&#11015; CSV</button>
+        <button id="btnSave" class="btn sm">&#11015; Scenario</button>
+        <label class="btn sm filelbl">&#11014; Load<input type="file" id="loadFile" accept=".json" hidden></label>
+        <button id="btnPng" class="btn sm">&#11015; PNG</button>
+      </div>
+    </section>
+  </aside>
+
+  <main class="stage">
+    <div class="toolbar">
+      <button id="btnFirst" class="btn" title="Start">&#9198;</button>
+      <button id="btnRewind" class="btn" title="Rewind">&#9194;</button>
+      <button id="btnBack" class="btn" title="Step back">&#9664;</button>
+      <button id="btnPlay" class="btn primary" title="Play / pause">&#9654; Play</button>
+      <button id="btnStep" class="btn" title="Step">&#9654;</button>
+      <button id="btnFF" class="btn" title="Fast forward">&#9193;</button>
+      <button id="btnLast" class="btn" title="Latest">&#9197;</button>
+      <select id="speed" title="Speed"><option value="640">0.25&times;</option><option value="320">0.5&times;</option>
+        <option value="200" selected>1&times;</option><option value="90">2&times;</option><option value="40">4&times;</option></select>
+      <span class="spacer"></span>
+      <span class="clock" id="clock">0 min</span>
+      <button id="btnClear" class="btn">Clear fire</button>
+    </div>
+
+    <div class="timeline">
+      <input type="range" id="scrub" min="0" max="0" value="0" step="1">
+      <span class="stepbadge">step <b id="stepNum">0</b>/<span id="stepMax">0</span>
+        <span id="liveTag" class="live">LIVE</span> <span id="ckptTag" class="ckpt hidden">&#9873;</span></span>
+    </div>
+
+    <div class="savings" id="savings"></div>
+
+    <div class="maps">
+      <figure class="mapcard">
+        <figcaption>Baseline &middot; <span class="muted">no intervention</span></figcaption>
+        <div class="cvwrap"><canvas id="cvBase"></canvas></div>
+        <div class="metrics">
+          <div class="m"><span>Burned</span><b id="bBurned">0%</b></div>
+          <div class="m"><span>Area</span><b id="bHa">0 ha</b></div>
+          <div class="m"><span>Asset loss</span><b id="bLoss">0</b></div>
+          <div class="m"><span>Active</span><b id="bActive">0</b></div></div>
+        <div class="burncats" id="bCats"></div>
+      </figure>
+      <figure class="mapcard managed">
+        <figcaption>DisasterAware &middot; <span class="muted">DSS active</span></figcaption>
+        <div class="cvwrap"><canvas id="cvDss"></canvas></div>
+        <div class="metrics">
+          <div class="m"><span>Burned</span><b id="dBurned">0%</b></div>
+          <div class="m"><span>Area</span><b id="dHa">0 ha</b></div>
+          <div class="m"><span>Asset loss</span><b id="dLoss">0</b></div>
+          <div class="m"><span>Quality Q</span><b id="dQ">&ndash;</b></div></div>
+        <div class="burncats" id="dCats"></div>
+      </figure>
+    </div>
+
+    <div class="resbar" id="resbar">
+      <span class="rb"><b id="frCount">6</b> first responders &#128658;</span>
+      <span class="rb">capacity <b id="capUsed">0</b>/<b id="capTot">150</b></span>
+      <span class="rb" id="acceptStatus">&mdash;</span>
+    </div>
+
+    <div class="lower">
+      <div class="decision">
+        <h3>DSS decision this step</h3>
+        <div id="typeLegend" class="typelegend"></div>
+        <p id="decisionText" class="decisiontext">Start a fire to see the decision support system act.</p>
+        <div id="qbars" class="qbars"></div>
+      </div>
+      <div class="inspector" id="inspector">
+        <h3>Cell inspector <span class="tip" data-tip="Switch 'Click = inspect' and click a cell to trace its features, concepts, fired rules and the action the DSS chose.">?</span></h3>
+        <div id="inspBody" class="inspbody muted">Set "Click = inspect" and click a cell.</div>
+      </div>
+    </div>
+
+    <div class="charts">
+      <figure><figcaption>Burned area (%) over time</figcaption><canvas id="chBurned" width="640" height="150"></canvas></figure>
+      <figure><figcaption>Cumulative asset loss over time</figcaption><canvas id="chLoss" width="640" height="150"></canvas></figure>
+    </div>
+  </main>
+</div>
+
+<div id="help" class="modal hidden"><div class="modalbox">
+  <button id="helpClose" class="btn close">&times;</button>
+  <h2>DisasterAware — user guide</h2><div id="helpBody"></div></div></div>
+
+<script src="{{ url_for('static', filename='app.js') }}"></script>
+</body></html>

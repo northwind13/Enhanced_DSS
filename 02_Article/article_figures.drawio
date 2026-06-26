@@ -507,22 +507,4 @@
         <mxCell id="e2" edge="1" parent="1" source="ca" style="endArrow=classic;html=1;strokeColor=#333333;" target="tr">
           <mxGeometry relative="1" as="geometry" />
         </mxCell>
-        <mxCell id="e3" edge="1" parent="1" source="cg" style="endArrow=classic;html=1;strokeColor=#333333;" target="q">
-          <mxGeometry relative="1" as="geometry" />
-        </mxCell>
-        <mxCell id="e4" edge="1" parent="1" source="q" style="endArrow=classic;html=1;strokeColor=#333333;" target="dec">
-          <mxGeometry relative="1" as="geometry" />
-        </mxCell>
-        <mxCell id="e5" edge="1" parent="1" source="dec" style="endArrow=classic;html=1;strokeColor=#333333;exitX=0.75;exitY=1;exitDx=0;exitDy=0;" target="acc">
-          <mxGeometry relative="1" as="geometry" />
-        </mxCell>
-        <mxCell id="e6" edge="1" parent="1" source="dec" style="endArrow=classic;html=1;strokeColor=#333333;exitX=0.25;exitY=1;exitDx=0;exitDy=0;" target="fs">
-          <mxGeometry relative="1" as="geometry" />
-        </mxCell>
-        <mxCell id="lbl8" parent="1" style="text;html=1;align=center;fontStyle=2;fontSize=11;" value="Bounded outputs, Lipschitz-continuous mapping, observation-only evaluation (formal guarantees)" vertex="1">
-          <mxGeometry height="24" width="660" x="100" y="210" as="geometry" />
-        </mxCell>
-      </root>
-    </mxGraphModel>
-  </diagram>
-</mxfile>
+        <mxCell id="e3
