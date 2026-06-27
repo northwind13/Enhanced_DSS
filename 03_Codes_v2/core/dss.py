@@ -21,9 +21,19 @@ ALPHA  = dict(m1=1.0, m2=0.7, m3=0.9)            # thesis priority weights (eq. 
 TYPE_LABEL = {'m1':'Direct suppression','m2':'Preventive fuel reduction','m3':'Asset protection'}
 TYPE_COLOR = {'m1':'#22b8cf','m2':'#4a8fd0','m3':'#d65cc8'}
 
+# Five trapezoidal terms over [0,1] forming a partition of unity, designed so
+# that each linguistic term occupies an equal area (0.20). Shoulders at the
+# ends; ramp width 0.10, core width 0.10 (shoulders 0.15).
+_TRAP=[(-1.0,-1.0,0.15,0.25),(0.15,0.25,0.35,0.45),(0.35,0.45,0.55,0.65),
+       (0.55,0.65,0.75,0.85),(0.75,0.85,2.0,2.0)]
 def fuzzify5(x):
-    x=np.clip(x,0,1)[...,None]; d=np.abs(x-CENT)/0.25
-    return np.clip(1.0-d,0,1)
+    x=np.clip(x,0,1)
+    out=[]
+    for (a,b,c,d) in _TRAP:
+        up=np.clip((x-a)/(b-a),0,1) if b>a else np.ones_like(x)
+        dn=np.clip((d-x)/(d-c),0,1) if d>c else np.ones_like(x)
+        out.append(np.minimum(up,dn))
+    return np.stack(out,-1)
 
 def _neigh_burn_frac(B):
     H,W=B.shape; acc=np.zeros((H,W))

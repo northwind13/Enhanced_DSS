@@ -263,7 +263,7 @@
     </mxGraphModel>
   </diagram>
   <diagram id="gQub3IGkVWjuOUb6_JHF" name="Fig5_DisasterAware_Framework">
-    <mxGraphModel dx="974" dy="570" grid="1" gridSize="10" guides="1" tooltips="1" connect="1" arrows="1" fold="1" page="1" pageScale="1" pageWidth="1169" pageHeight="827" math="1" shadow="0">
+    <mxGraphModel dx="807" dy="492" grid="1" gridSize="10" guides="1" tooltips="1" connect="1" arrows="1" fold="1" page="1" pageScale="1" pageWidth="1169" pageHeight="827" math="1" shadow="0">
       <root>
         <mxCell id="0" />
         <mxCell id="1" parent="0" />
