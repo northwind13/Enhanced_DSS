@@ -157,4 +157,11 @@ class Simulator:
                     break
         return self.history
 
-    # -----------------------------------------------------
+
+    # ----------------------------------------------------------------- helpers
+    @property
+    def burned_mask(self) -> np.ndarray:
+        return self.ever_burned
+
+    def is_quiescent(self) -> bool:
+        return bool((self.state.burning > 0.5).sum() == 0)

@@ -26,6 +26,8 @@ from .costs import compute_costs, CostReport
 from .interaction import InteractionOperator
 from . import scenarios
 from . import io_utils
+from . import terrain
+from . import viz
 
 __version__ = "0.1.0"
 
@@ -35,5 +37,5 @@ __all__ = [
     "MeteoLayer", "TopoLayer", "FuelLayer", "ValueLayer", "ResourceLayer",
     "World", "Asset", "IgnitionEvent", "SimulationState",
     "Simulator", "StepDiagnostics", "compute_costs", "CostReport",
-    "InteractionOperator", "scenarios", "io_utils",
+    "InteractionOperator", "scenarios", "io_utils", "terrain", "viz",
 ]
