@@ -24,6 +24,7 @@ from .state import SimulationState
 from .core import Simulator, StepDiagnostics
 from .costs import compute_costs, CostReport
 from .interaction import InteractionOperator
+from .observation import observe, Observation
 from . import scenarios
 from . import io_utils
 from . import terrain
@@ -37,5 +38,6 @@ __all__ = [
     "MeteoLayer", "TopoLayer", "FuelLayer", "ValueLayer", "ResourceLayer",
     "World", "Asset", "IgnitionEvent", "SimulationState",
     "Simulator", "StepDiagnostics", "compute_costs", "CostReport",
-    "InteractionOperator", "scenarios", "io_utils", "terrain", "viz",
+    "InteractionOperator", "observe", "Observation",
+    "scenarios", "io_utils", "terrain", "viz",
 ]

@@ -56,7 +56,7 @@ FUEL_NAME_TO_ID: Dict[str, int] = {m.name: i for i, m in FUEL_MODELS.items()}
 class SpreadParams:
     """Parameters of the Rothermel type rate of spread and propagation rule."""
 
-    w0: float = 5.0                 # reference wind speed in the tanh saturation (Eq. 126)
+    w0: float = 10.0                 # reference wind speed in the tanh saturation (Eq. 126)
     theta_ign: float = 0.08         # ignition threshold on accumulated influence (Eq. 45)
     eps_fuel: float = 1.0e-4        # extinction fuel threshold (Eq. 44)
     diagonal_distance_weighting: bool = True   # divide diagonal influence by sqrt(2)

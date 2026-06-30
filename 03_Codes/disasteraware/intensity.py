@@ -26,5 +26,5 @@ def fire_intensity(burning_next: np.ndarray, fload: np.ndarray, topo, meteo,
     denom = np.tan(params.slope_max_rad) if params.slope_max_rad > 0 else 1.0
     s_norm = np.clip(np.tan(np.clip(topo.slope, -1.4, 1.4)) / denom, 0.0, 1.0)
 
-    arg = params.beta * f_norm + params.gamma_w * w_norm + params.gamma_s * s_norm
+    arg = params.beta * (f_norm + params.gamma_w * w_norm + params.gamma_s * s_norm)
     return burning_next.astype(float) * np.tanh(arg)

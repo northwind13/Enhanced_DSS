@@ -130,3 +130,38 @@ def test_all_builtin_scenarios_run():
         sim = Simulator(builder())
         sim.run(n_steps=40)
         assert sim.ever_burned.sum() > 0, f"{name} produced no fire"
+
+
+def test_observation_does_not_mutate_state():
+    from disasteraware import observe
+    sim = Simulator(_simple_world())
+    sim.run(n_steps=20)
+    before = (sim.state.burning.copy(), sim.state.fload.copy(),
+              sim.state.intensity.copy(), sim.state.tau.copy())
+    o = observe(sim, epsilon=0.0)
+    # faithful read equals state
+    assert np.array_equal(o.burning, before[0])
+    assert np.array_equal(o.fload, before[1])
+    # noisy read must not touch the underlying state
+    o2 = observe(sim, epsilon=0.2, seed=1)
+    assert np.array_equal(sim.state.fload, before[1])
+    assert np.all(o2.fload >= 0.0) and np.all(o2.fload <= 1.0)
+
+
+def test_observation_region_window():
+    from disasteraware import observe
+    sim = Simulator(_simple_world(nx=30, ny=30))
+    sim.run(n_steps=15)
+    o = observe(sim, region=(0, 0, 10, 10))
+    assert o.burning[:, 20:].sum() == 0  # outside the window is masked to zero
+
+
+def test_suppression_capped_at_available_fuel():
+    # F_red must never exceed available fuel (Eq. 135 / REQ-SUP-06)
+    w = _simple_world(nx=25, ny=25)
+    w.config.suppression.alpha_s = 1.0
+    w.set_resource_field(rcap=10.0, ravail=1.0, reff=1.0, rtime=0.0)
+    sim = Simulator(w)
+    for _ in range(30):
+        sim.step()
+        assert np.all(sim.state.fload >= -1e-9)

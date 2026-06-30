@@ -105,8 +105,9 @@ class Simulator:
         # 3. fuel mass update (Eq. 68 to 69, 129)
         f_burn = np.clip(self._b_base * (1.0 - fuel.fmoist), 0.0, 1.0)
         combustion = Fload * B * f_burn
-        f_red = fuel_reduction(resource, topo, I, cfg.suppression)
-        f_red = np.minimum(f_red, np.maximum(Fload - combustion, 0.0))
+        f_red_raw = fuel_reduction(resource, topo, I, cfg.suppression)
+        # Eq. 135: suppression reduction cannot exceed available fuel
+        f_red = np.minimum(f_red_raw, Fload)
         Fload_next = np.maximum(0.0, Fload - combustion - f_red)
 
         # 4. fire intensity update (Eq. 137); uses current fuel per Eq. 51, 136
