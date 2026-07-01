@@ -1,18 +1,16 @@
-"""DisasterAware interactive simulator dashboard.
+"""DisasterAware interactive wildfire simulator dashboard.
 
-Run with:
-    streamlit run app/streamlit_app.py
+Run with:  streamlit run app/streamlit_app.py
 
-The Map Editor is a mouse driven, live workspace (Section 4.4). On a relief
-shaded map that shows the wildfire as it evolves you can:
-
-* brush forests with the selected thesis fuel class (drag to paint)
-* drag rectangles for block fuel or firebreaks
-* click to drop assets and ignition points, before, at the start of and during
-  the simulation
-
-Every action modifies the external input set only; the simulation state is never
-written directly (Section 4.1).
+Tabs:
+  Simulation   operate the fire: place ignitions, step/run, read costs (first)
+  Map editor   build the world: paint fuel, firebreaks, roads, drop assets
+  Data layers  inspect each input field, with its equation, 2D and 3D terrain
+  Parameters   model calibration grouped by behaviour, every control has help
+  Manual       the full model with every symbol defined
+  GIS import   load a real DEM / fuel raster onto the grid
+All operator actions modify the external input set only; the state is never
+written directly.
 """
 
 import os
@@ -32,10 +30,6 @@ from disasteraware import (Simulator, World, SimConfig, Asset, compute_costs,
 
 # --------------------------------------------------- streamlit canvas compat
 def _install_canvas_compat():
-    """streamlit-drawable-canvas calls streamlit.elements.image.image_to_url,
-    which moved to streamlit.elements.lib.image_utils and changed signature in
-    recent Streamlit. Bridge the old call onto the new API so the canvas works
-    across versions."""
     try:
         import streamlit.elements.image as old_img
         if hasattr(old_img, "image_to_url"):
@@ -46,7 +40,6 @@ def _install_canvas_compat():
         def _shim(image, width, clamp, channels, output_format, image_id):
             return IU.image_to_url(image, LayoutConfig(width=int(width)),
                                    clamp, channels, output_format, image_id)
-
         old_img.image_to_url = _shim
     except Exception:
         pass
@@ -64,6 +57,8 @@ st.set_page_config(page_title="DisasterAware Simulator", layout="wide")
 
 FUEL_TYPES = ["grass", "shrub", "pine_litter", "hardwood"]
 ASSET_KINDS = ["building", "critical", "population", "evac_route"]
+ASSET_LABELS = {"building": "Building", "critical": "Critical facility",
+                "population": "Population", "evac_route": "Evacuation route"}
 
 
 # --------------------------------------------------------------------- state
@@ -73,23 +68,58 @@ def _new_simulator(world: World) -> None:
     st.session_state.cost_series = []
     st.session_state.playing = False
     st.session_state.canvas_key = st.session_state.get("canvas_key", 0) + 1
+    st.session_state.sim_canvas_key = st.session_state.get("sim_canvas_key", 0) + 1
     st.session_state.applied_count = 0
+    st.session_state.sim_applied = 0
 
 
 def _ensure_state() -> None:
     if "sim" not in st.session_state:
         _new_simulator(terrain.generate_landscape(
-            SimConfig(nx=120, ny=80, cell_size_m=30.0), seed=42))
+            SimConfig(nx=120, ny=80, cell_size_m=30.0), seed=42,
+            preset="Mountain forest"))
         st.session_state.world.add_ignition(20, 40, step=0, radius=1)
     st.session_state.setdefault("applied_count", 0)
+    st.session_state.setdefault("sim_applied", 0)
+    st.session_state.setdefault("sim_canvas_key", 1)
+    st.session_state.setdefault("zoom", 0)
 
 
 def _record_costs() -> None:
     st.session_state.cost_series.append(compute_costs(st.session_state.sim).to_dict())
 
 
-def _display_scale(nx: int) -> int:
+def _auto_scale(nx: int) -> int:
     return int(max(4, min(14, 900 // max(nx, 1))))
+
+
+def legend_html() -> str:
+    groups = {}
+    for grp, lab, hexc in viz.legend_entries():
+        groups.setdefault(grp, []).append((lab, hexc))
+    html = "<div style='font-size:0.9em'>"
+    for grp, items in groups.items():
+        html += f"<div style='font-weight:600;margin:6px 0 2px'>{grp}</div>"
+        for lab, hexc in items:
+            html += ("<div style='display:flex;align-items:center;gap:6px;"
+                     "margin:1px 0'>"
+                     f"<span style='width:14px;height:14px;background:{hexc};"
+                     "border:1px solid #555;display:inline-block;flex:none'></span>"
+                     f"<span>{lab}</span></div>")
+    html += "</div>"
+    return html
+
+
+def layer_toggles(prefix: str):
+    """Reusable layer on/off panel; returns a dict of render flags."""
+    st.markdown("**Layers**")
+    return dict(
+        show_hillshade=st.checkbox("Relief", value=True, key=f"{prefix}_relief"),
+        show_fire=st.checkbox("Fire", value=True, key=f"{prefix}_fire"),
+        show_value=st.checkbox("Protection value", value=False, key=f"{prefix}_val"),
+        show_roads=st.checkbox("Roads", value=True, key=f"{prefix}_roads"),
+        show_grid=st.checkbox("Grid", value=False, key=f"{prefix}_grid"),
+    )
 
 
 _ensure_state()
@@ -99,12 +129,11 @@ cfg = world.config
 
 
 # ------------------------------------------------------------ canvas parsing
-def _clip_xy(gx, gy):
+def _clip(gx, gy):
     return (int(np.clip(gx, 0, cfg.nx - 1)), int(np.clip(gy, 0, cfg.ny - 1)))
 
 
 def _path_points(obj):
-    """Extract grid coordinate samples from a fabric freedraw path object."""
     pts = []
     for cmd in obj.get("path", []):
         nums = [v for v in cmd[1:] if isinstance(v, (int, float))]
@@ -113,8 +142,7 @@ def _path_points(obj):
     return pts
 
 
-def _apply_canvas_objects(objects, tool, scale, **kw):
-    """Translate fabric.js objects from the canvas into world edits."""
+def _apply_edits(objects, tool, scale, **kw):
     n = 0
     for obj in objects:
         otype = obj.get("type")
@@ -122,60 +150,82 @@ def _apply_canvas_objects(objects, tool, scale, **kw):
             left, top = obj.get("left", 0), obj.get("top", 0)
             w = obj.get("width", 0) * obj.get("scaleX", 1)
             h = obj.get("height", 0) * obj.get("scaleY", 1)
-            x0, y0 = _clip_xy(left / scale, top / scale)
-            x1, y1 = _clip_xy((left + w) / scale, (top + h) / scale)
+            x0, y0 = _clip(left / scale, top / scale)
+            x1, y1 = _clip((left + w) / scale, (top + h) / scale)
             if tool == "Rectangle fuel":
                 world.add_forest_patch(x0, y0, x1, y1, fuel_type=kw["fuel"],
                                        load=kw["load"], moisture=kw["moisture"])
             elif tool == "Firebreak":
                 world.clear_fuel(x0, y0, x1, y1)
+            elif tool == "Road / access":
+                world.add_road_rect(x0, y0, x1, y1)
             n += 1
-        elif otype == "path" and tool == "Brush fuel":
+        elif otype == "path":
             seen = set()
             for px, py in _path_points(obj):
-                gx, gy = _clip_xy(px / scale, py / scale)
+                gx, gy = _clip(px / scale, py / scale)
                 if (gx, gy) in seen:
                     continue
                 seen.add((gx, gy))
-                world.add_forest_disk(gx, gy, kw.get("brush", 2),
-                                      fuel_type=kw["fuel"], load=kw["load"],
-                                      moisture=kw["moisture"])
+                if tool == "Brush fuel":
+                    world.add_forest_disk(gx, gy, kw.get("brush", 2),
+                                          fuel_type=kw["fuel"], load=kw["load"],
+                                          moisture=kw["moisture"])
+                elif tool == "Firebreak":
+                    world.clear_fuel_disk(gx, gy, kw.get("brush", 2))
+                elif tool == "Road / access":
+                    world.add_road_disk(gx, gy, kw.get("brush", 1))
             n += 1
-        elif otype in ("circle", "path"):
+        elif otype == "circle":
             left, top = obj.get("left", 0), obj.get("top", 0)
             rad = obj.get("radius", obj.get("width", 0) / 2)
-            gx, gy = _clip_xy((left + rad) / scale, (top + rad) / scale)
+            gx, gy = _clip((left + rad) / scale, (top + rad) / scale)
             if tool == "Place asset":
-                world.add_asset(Asset(kw["aname"], kw["akind"], gx, gy,
+                name = kw["aname"] or ASSET_LABELS.get(kw["akind"], "Asset")
+                world.add_asset(Asset(name, kw["akind"], gx, gy,
                                       kw["aradius"], kw["avalue"], kw["apop"]))
-            elif tool == "Add ignition":
-                world.add_ignition(gx, gy, step=kw["istep"], radius=kw["iradius"])
+            elif tool == "Firebreak":
+                world.clear_fuel_disk(gx, gy, kw.get("fb_point_r", 1))
+            elif tool == "Road / access":
+                world.add_road_disk(gx, gy, kw.get("brush", 1))
+            n += 1
+    return n
+
+
+def _apply_ignitions(objects, scale, step, radius):
+    n = 0
+    for obj in objects:
+        if obj.get("type") == "circle":
+            left, top = obj.get("left", 0), obj.get("top", 0)
+            rad = obj.get("radius", obj.get("width", 0) / 2)
+            gx, gy = _clip((left + rad) / scale, (top + rad) / scale)
+            world.add_ignition(gx, gy, step=step, radius=radius)
             n += 1
     return n
 
 
 # -------------------------------------------------------------------- sidebar
 st.sidebar.title("DisasterAware")
-st.sidebar.caption("Grid based wildfire simulator (thesis Chapter 4)")
+st.sidebar.caption("Grid based wildfire simulator")
 
 with st.sidebar.expander("New map / scenario", expanded=True):
-    src = st.radio("Source", ["Realistic landscape", "Built in scenario",
+    src = st.radio("Source", ["Landscape type", "Built in scenario",
                               "Blank grid"], index=0)
-    nx = st.number_input("Resolution X (nx)", 20, 400, int(cfg.nx), 10)
-    ny = st.number_input("Resolution Y (ny)", 20, 400, int(cfg.ny), 10)
-    cell = st.number_input("Cell size (m)", 1.0, 1000.0, float(cfg.cell_size_m), 5.0)
-
-    if src == "Realistic landscape":
+    nx = st.number_input("Resolution X (nx)", 20, 400, int(cfg.nx), 10,
+                         help="Number of grid cells across. Higher = finer but slower.")
+    ny = st.number_input("Resolution Y (ny)", 20, 400, int(cfg.ny), 10,
+                         help="Number of grid cells down.")
+    cell = st.number_input("Cell size (m)", 1.0, 1000.0, float(cfg.cell_size_m),
+                           5.0, help="Ground length of one cell.")
+    if src == "Landscape type":
+        ltype = st.selectbox("Type", list(terrain.PRESETS.keys()))
         seed = st.number_input("Seed", 0, 99999, 42)
-        relief = st.slider("Relief (m)", 0.0, 1200.0, 450.0, 50.0)
-        forest = st.slider("Forest density", 0.0, 0.95, 0.45, 0.05)
-        moist = st.slider("Base moisture", 0.02, 0.4, 0.08, 0.01)
-        water = st.slider("Water fraction", 0.0, 0.3, 0.06, 0.02)
+        gen_assets = st.checkbox("Add town, assets and roads", value=True)
         if st.button("Generate map", use_container_width=True, type="primary"):
             new_cfg = SimConfig(nx=int(nx), ny=int(ny), cell_size_m=float(cell))
             _new_simulator(terrain.generate_landscape(
-                new_cfg, seed=int(seed), relief_m=relief, forest_density=forest,
-                base_moisture=moist, water_level=water))
+                new_cfg, seed=int(seed), preset=ltype,
+                with_assets=gen_assets, with_roads=gen_assets))
             st.rerun()
     elif src == "Built in scenario":
         scen = st.selectbox("Scenario", list(scenarios.SCENARIOS.keys()))
@@ -196,15 +246,6 @@ with st.sidebar.expander("New map / scenario", expanded=True):
             fh.write(up.getbuffer())
         _new_simulator(io_utils.load_scenario(tmp))
         st.success(f"Loaded {up.name}")
-        st.rerun()
-
-with st.sidebar.expander("Weather", expanded=True):
-    wind_speed = st.slider("Wind speed (m/s)", 0.0, 30.0,
-                           float(world.meteo.wws.mean()), 0.5)
-    wind_dir_deg = st.slider("Wind direction (deg)", 0, 360,
-                             int(np.degrees(world.meteo.wwd.mean())) % 360, 5)
-    if st.button("Apply wind", use_container_width=True):
-        world.set_uniform_wind(wind_speed, np.radians(wind_dir_deg))
         st.rerun()
 
 with st.sidebar.expander("Run controls", expanded=True):
@@ -232,189 +273,70 @@ if not HAS_CANVAS:
 # ----------------------------------------------------------------------- main
 st.title("DisasterAware Wildfire Simulator")
 
-tab_edit, tab_sim, tab_layers, tab_params, tab_gis, tab_about = st.tabs(
-    ["Map editor", "Simulation", "Data layers", "Parameters",
-     "GIS import", "About"])
-
-
-# ============================================================== MAP EDITOR ===
-with tab_edit:
-    tools_col, view_col = st.columns([1, 3.4])
-
-    with tools_col:
-        st.subheader("Tools")
-        tool = st.radio("Active tool",
-                        ["Brush fuel", "Rectangle fuel", "Firebreak",
-                         "Place asset", "Add ignition", "Inspect"],
-                        help="Brush: drag to paint. Rectangle / Firebreak: drag "
-                             "a box. Asset / Ignition: click a point.")
-
-        kw = {}
-        if tool in ("Brush fuel", "Rectangle fuel"):
-            kw["fuel"] = st.selectbox("Fuel type (thesis classes)", FUEL_TYPES,
-                                      index=2)
-            m = FUEL_MODELS[FUEL_NAME_TO_ID[kw["fuel"]]]
-            st.caption(f"r_base={m.r_base}  m_ext={m.m_ext}  "
-                       f"a_w={m.a_w}  a_s={m.a_s}  b_base={m.b_base}")
-            kw["load"] = st.slider("Fuel load", 0.0, 1.0, 1.0, 0.05)
-            kw["moisture"] = st.slider("Moisture", 0.0, 0.6, 0.08, 0.01)
-            if tool == "Brush fuel":
-                kw["brush"] = st.slider("Brush size (cells)", 1, 12, 3)
-        elif tool == "Place asset":
-            kw["aname"] = st.text_input("Asset name", "Asset")
-            kw["akind"] = st.selectbox("Kind", ASSET_KINDS)
-            kw["aradius"] = st.number_input("Radius (cells)", 0, 40, 3)
-            kw["avalue"] = st.slider("Value / intensity", 0.0, 1.0, 1.0, 0.05)
-            kw["apop"] = st.number_input("Population", 0, 1_000_000, 0)
-        elif tool == "Add ignition":
-            kw["iradius"] = st.number_input("Ignition radius", 0, 20, 1)
-            now = st.checkbox("Ignite at current step (live)", value=True)
-            kw["istep"] = sim.state.step if now else st.number_input(
-                "At step", 0, 5000, 0)
-            st.caption("Tip: works during a running simulation too. The click "
-                       "schedules an ignition that fires on the next step.")
-        else:
-            kw["fuel"] = "pine_litter"; kw["load"] = 1.0; kw["moisture"] = 0.08
-
-        drawing_mode = {"Brush fuel": "freedraw", "Rectangle fuel": "rect",
-                        "Firebreak": "rect", "Place asset": "point",
-                        "Add ignition": "point", "Inspect": "transform"}[tool]
-
-        st.divider()
-        live = st.toggle("Live paint (apply on release)", value=True,
-                         help="On: every stroke is baked into the map "
-                              "immediately. Off: draw several shapes then press "
-                              "Apply edits.")
-        st.markdown("**View**")
-        show_fire = st.checkbox("Live fire", value=True)
-        show_value = st.checkbox("Protection priority", value=False)
-        show_hs = st.checkbox("Relief shading", value=True)
-        show_grid = st.checkbox("Grid", value=False)
-        show_labels = st.checkbox("Asset labels", value=True)
-
-        st.divider()
-        st.markdown("**Precise entry (x, y)**")
-        px = st.number_input("x", 0, cfg.nx - 1, cfg.nx // 2, key="px")
-        py = st.number_input("y", 0, cfg.ny - 1, cfg.ny // 2, key="py")
-        if st.button("Apply at (x, y)", use_container_width=True):
-            if tool == "Add ignition":
-                world.add_ignition(int(px), int(py), step=kw.get("istep", 0),
-                                   radius=int(kw.get("iradius", 1)))
-            elif tool == "Place asset":
-                world.add_asset(Asset(kw.get("aname", "Asset"),
-                                      kw.get("akind", "building"),
-                                      int(px), int(py), int(kw.get("aradius", 3)),
-                                      float(kw.get("avalue", 1.0)),
-                                      float(kw.get("apop", 0))))
-            elif tool in ("Brush fuel", "Rectangle fuel"):
-                world.add_forest_disk(int(px), int(py), kw.get("brush", 5),
-                                      fuel_type=kw["fuel"], load=kw["load"],
-                                      moisture=kw["moisture"])
-            elif tool == "Firebreak":
-                world.clear_fuel(int(px) - 1, 0, int(px) + 1, cfg.ny - 1)
-            st.rerun()
-
-    with view_col:
-        scale = _display_scale(cfg.nx)
-        bg = viz.render_pil(world, sim=sim, scale=scale, show_fire=show_fire,
-                            show_value=show_value, show_hillshade=show_hs,
-                            show_grid=show_grid, show_labels=show_labels)
-        st.caption(f"Grid {cfg.nx} x {cfg.ny} cells, {cfg.cell_size_m:.0f} m each "
-                   f"({cfg.nx * cfg.cell_size_m / 1000:.1f} x "
-                   f"{cfg.ny * cfg.cell_size_m / 1000:.1f} km).  "
-                   f"Step {sim.state.step}, "
-                   f"active fire {int((sim.state.burning > 0.5).sum())} cells.")
-
-        if HAS_CANVAS:
-            stroke = {"Brush fuel": "#1f7a1f", "Rectangle fuel": "#1f7a1f",
-                      "Firebreak": "#3070b0", "Place asset": "#ffd000",
-                      "Add ignition": "#ff5a00", "Inspect": "#888888"}[tool]
-            sw = kw.get("brush", 2) * scale if tool == "Brush fuel" else 2
-            result = st_canvas(
-                fill_color="rgba(255, 160, 0, 0.20)",
-                stroke_width=int(sw), stroke_color=stroke,
-                background_image=bg, update_streamlit=True,
-                height=cfg.ny * scale, width=cfg.nx * scale,
-                drawing_mode=drawing_mode,
-                point_display_radius=max(3, scale // 2),
-                key=f"canvas_{st.session_state.canvas_key}",
-            )
-
-            objs = (result.json_data or {}).get("objects", []) if result else []
-            new_objs = objs[st.session_state.applied_count:]
-
-            if live and new_objs:
-                _apply_canvas_objects(new_objs, tool, scale, **kw)
-                st.session_state.canvas_key += 1
-                st.session_state.applied_count = 0
-                st.rerun()
-
-            b1, b2, b3 = st.columns(3)
-            if not live and b1.button("Apply edits", type="primary",
-                                      use_container_width=True):
-                cnt = _apply_canvas_objects(new_objs, tool, scale, **kw)
-                st.session_state.canvas_key += 1
-                st.session_state.applied_count = 0
-                st.toast(f"Applied {cnt} edit(s)")
-                st.rerun()
-            if b2.button("Clear drawing", use_container_width=True):
-                st.session_state.canvas_key += 1
-                st.session_state.applied_count = 0
-                st.rerun()
-            if b3.button("Step fire", use_container_width=True):
-                sim.step(); _record_costs(); st.rerun()
-        else:
-            st.image(bg, caption="Install streamlit-drawable-canvas to draw "
-                                 "with the mouse. Use the (x, y) entry meanwhile.")
-
-    st.divider()
-    e1, e2, e3, e4 = st.columns(4)
-    if e1.button("Reset fire (keep map)"):
-        sim.reset(); st.session_state.cost_series = []; st.rerun()
-    if e2.button("Clear all assets"):
-        world.assets.clear()
-        from disasteraware.layers import ValueLayer
-        world.value = ValueLayer.empty(cfg.ny, cfg.nx)
-        st.rerun()
-    if e3.button("Clear ignitions"):
-        world.ignitions.clear(); st.rerun()
-    if e4.button("Save scenario"):
-        out = os.path.join(os.path.dirname(__file__), "scenario_export.json")
-        io_utils.save_scenario(world, out)
-        st.success(f"Saved to {out}")
+tab_sim, tab_edit, tab_layers, tab_params, tab_manual, tab_gis = st.tabs(
+    ["Simulation", "Map editor", "Data layers", "Parameters", "Manual",
+     "GIS import"])
 
 
 # ============================================================== SIMULATION ===
 with tab_sim:
-    left, right = st.columns([3, 2])
-    with left:
-        sv1, sv2, sv3 = st.columns(3)
-        sfire = sv1.checkbox("Fire state", value=True, key="sim_fire")
-        sval = sv2.checkbox("Priority overlay", value=False, key="sim_val")
-        sgrid = sv3.checkbox("Grid", value=False, key="sim_grid")
-        scale = _display_scale(cfg.nx)
-        st.image(viz.render_pil(world, sim=sim, scale=scale, show_fire=sfire,
-                                show_value=sval, show_grid=sgrid,
-                                show_labels=True))
-        st.caption(f"Step {sim.state.step}    "
-                   f"active fire cells {int((sim.state.burning > 0.5).sum())}")
+    view_col, side_col = st.columns([3.3, 1.2])
 
-    with right:
-        rep = compute_costs(sim)
-        st.subheader("Cost report")
-        m1, m2 = st.columns(2)
-        m1.metric("Burned area (ha)", f"{rep.burned_area_ha:,.1f}")
-        m2.metric("Burned forest (ha)", f"{rep.burned_forest_ha:,.1f}")
-        m1.metric("Fuel consumed", f"{rep.fuel_consumed_total:,.0f}")
-        m2.metric("Active cells", f"{rep.active_fire_cells:,}")
+    with side_col:
+        flags = layer_toggles("sim")
         st.divider()
-        m3, m4 = st.columns(2)
-        m3.metric("Building loss", f"{rep.building_loss:,.0f}")
-        m4.metric("Critical infra loss", f"{rep.critical_infrastructure_loss:,.0f}")
-        m3.metric("Population exposed", f"{rep.population_exposed:,.0f}")
-        m4.metric("Expected casualties", f"{rep.expected_casualties:,.1f}")
-        m3.metric("Suppression cost", f"{rep.suppression_cost:,.0f}")
-        m4.metric("Total economic cost", f"{rep.total_economic_cost:,.0f}")
+        st.markdown("**Ignition** (click the map)")
+        ig_live = st.checkbox("Ignite at current step", value=True)
+        ig_step = sim.state.step if ig_live else st.number_input(
+            "At step", 0, 5000, 0, key="sim_ig_step")
+        ig_rad = st.number_input("Ignition radius", 0, 20, 1, key="sim_ig_rad")
+        r1, r2 = st.columns(2)
+        if r1.button("Step", use_container_width=True, key="sim_step"):
+            sim.step(); _record_costs(); st.rerun()
+        if r2.button("Run to end", use_container_width=True, key="sim_run"):
+            sim.run(); _record_costs(); st.rerun()
+        if st.button("Reset fire", use_container_width=True, key="sim_reset"):
+            sim.reset(); st.session_state.cost_series = []; st.rerun()
+        st.divider()
+        st.markdown("**Legend**")
+        st.markdown(legend_html(), unsafe_allow_html=True)
+
+    with view_col:
+        scale = st.session_state.get("zoom") or _auto_scale(cfg.nx)
+        bg = viz.render_pil(world, sim=sim, scale=scale, show_labels=True, **flags)
+        st.caption(f"Step {sim.state.step}    active fire "
+                   f"{int((sim.state.burning > 0.5).sum())} cells.    "
+                   "Click the map to drop an ignition point.")
+        if HAS_CANVAS:
+            res = st_canvas(stroke_width=2, stroke_color="#ff5a00",
+                            background_image=bg, update_streamlit=True,
+                            height=cfg.ny * scale, width=cfg.nx * scale,
+                            drawing_mode="point",
+                            point_display_radius=max(3, scale // 2),
+                            key=f"simcanvas_{st.session_state.sim_canvas_key}_{scale}")
+            objs = (res.json_data or {}).get("objects", []) if res else []
+            new = objs[st.session_state.sim_applied:]
+            if new:
+                _apply_ignitions(new, scale, ig_step, int(ig_rad))
+                st.session_state.sim_canvas_key += 1
+                st.session_state.sim_applied = 0
+                st.rerun()
+        else:
+            st.image(bg)
+
+    rep = compute_costs(sim)
+    st.subheader("Cost report")
+    m1, m2, m3, m4 = st.columns(4)
+    m1.metric("Burned area (ha)", f"{rep.burned_area_ha:,.1f}")
+    m2.metric("Burned forest (ha)", f"{rep.burned_forest_ha:,.1f}")
+    m3.metric("Active cells", f"{rep.active_fire_cells:,}")
+    m4.metric("Fuel consumed", f"{rep.fuel_consumed_total:,.0f}")
+    m1.metric("Building loss", f"{rep.building_loss:,.0f}")
+    m2.metric("Critical infra loss", f"{rep.critical_infrastructure_loss:,.0f}")
+    m3.metric("Population exposed", f"{rep.population_exposed:,.0f}")
+    m4.metric("Expected casualties", f"{rep.expected_casualties:,.1f}")
+    m1.metric("Suppression cost", f"{rep.suppression_cost:,.0f}")
+    m2.metric("Total economic cost", f"{rep.total_economic_cost:,.0f}")
 
     series = st.session_state.cost_series
     if len(series) > 1:
@@ -433,13 +355,192 @@ with tab_sim:
             st.pyplot(f2, use_container_width=True); plt.close(f2)
 
 
+# ============================================================== MAP EDITOR ===
+with tab_edit:
+    tools_col, view_col, legend_col = st.columns([1.2, 3.0, 0.9])
+
+    with tools_col:
+        st.subheader("Tools")
+        tool = st.radio("Active tool",
+                        ["Brush fuel", "Rectangle fuel", "Firebreak",
+                         "Road / access", "Place asset", "Inspect"])
+        kw = {}
+        if tool in ("Brush fuel", "Rectangle fuel"):
+            kw["fuel"] = st.selectbox("Fuel type", FUEL_TYPES, index=2)
+            m = FUEL_MODELS[FUEL_NAME_TO_ID[kw["fuel"]]]
+            st.caption(f"r_base={m.r_base}  m_ext={m.m_ext}  "
+                       f"a_w={m.a_w}  a_s={m.a_s}  b_base={m.b_base}")
+            kw["load"] = st.slider("Fuel load", 0.0, 1.0, 1.0, 0.05)
+            kw["moisture"] = st.slider("Moisture", 0.0, 0.6, 0.08, 0.01)
+            if tool == "Brush fuel":
+                kw["brush"] = st.slider("Brush size (cells)", 1, 12, 3)
+            drawing_mode = "freedraw" if tool == "Brush fuel" else "rect"
+        elif tool == "Firebreak":
+            shape = st.selectbox("Firebreak shape", ["Brush", "Rectangle", "Point"])
+            if shape == "Brush":
+                kw["brush"] = st.slider("Brush size (cells)", 1, 12, 2)
+                drawing_mode = "freedraw"
+            elif shape == "Rectangle":
+                drawing_mode = "rect"
+            else:
+                kw["fb_point_r"] = st.slider("Point radius (cells)", 0, 10, 1)
+                drawing_mode = "point"
+            st.caption("Removes fuel so the fire cannot cross.")
+        elif tool == "Road / access":
+            shape = st.selectbox("Road shape", ["Brush", "Rectangle"])
+            kw["brush"] = st.slider("Road width (cells)", 1, 8, 1)
+            drawing_mode = "freedraw" if shape == "Brush" else "rect"
+            st.caption("Sets accessibility to 1 so resources can reach.")
+        elif tool == "Place asset":
+            kw["akind"] = st.selectbox("Asset kind", ASSET_KINDS,
+                                       format_func=lambda k: ASSET_LABELS[k])
+            kw["aname"] = st.text_input("Name (blank = kind)", "")
+            kw["aradius"] = st.number_input("Radius (cells)", 0, 40, 3,
+                                            help="Footprint radius drawn on the map.")
+            kw["avalue"] = st.slider("Value / intensity", 0.0, 1.0, 1.0, 0.05)
+            kw["apop"] = st.number_input("Population", 0, 1_000_000, 0)
+            drawing_mode = "point"
+        else:
+            drawing_mode = "transform"
+
+        st.divider()
+        live = st.toggle("Live paint", value=True)
+        zoom = st.slider("Zoom (px per cell)", 4, 20,
+                         st.session_state.get("zoom") or _auto_scale(cfg.nx),
+                         help="Zoom the map in and out.")
+        st.session_state.zoom = zoom
+
+        with st.expander("Conditions (change often)", expanded=True):
+            wind_speed = st.slider("Wind speed (m/s)", 0.0, 30.0,
+                                   float(world.meteo.wws.mean()), 0.5,
+                                   help="Primary driver of spread. Higher = "
+                                        "faster, more directional fire.")
+            wind_dir_deg = st.slider("Wind direction (deg, blows toward)", 0, 360,
+                                     int(np.degrees(world.meteo.wwd.mean())) % 360, 5,
+                                     help="Direction the wind blows toward.")
+            st.image(viz.render_compass(np.radians(wind_dir_deg), wind_speed,
+                                        size=120))
+            moisture = st.slider("Fuel moisture", 0.0, 0.6,
+                                 float(world.fuel.fmoist.mean()), 0.01,
+                                 help="Wetter fuel burns slower; above the "
+                                      "extinction point it stops spreading.")
+            theta = st.slider("Ignition threshold", 0.01, 0.5,
+                              float(cfg.spread.theta_ign), 0.01,
+                              help="Influence needed to ignite a cell. Lower = "
+                                   "fire spreads more easily.")
+            if st.button("Apply conditions", use_container_width=True):
+                world.set_uniform_wind(wind_speed, np.radians(wind_dir_deg))
+                world.fuel.fmoist[:] = moisture
+                cfg.spread.theta_ign = theta
+                st.rerun()
+
+    with view_col:
+        scale = zoom
+        bg = viz.render_pil(world, sim=sim, scale=scale,
+                            show_fire=st.session_state.get("edit_fire", True),
+                            show_value=st.session_state.get("edit_val", False),
+                            show_roads=st.session_state.get("edit_roads", True),
+                            show_grid=st.session_state.get("edit_grid", False),
+                            show_hillshade=st.session_state.get("edit_relief", True),
+                            show_labels=True)
+        st.caption(f"Grid {cfg.nx} x {cfg.ny}, {cfg.cell_size_m:.0f} m/cell "
+                   f"({cfg.nx * cfg.cell_size_m / 1000:.1f} x "
+                   f"{cfg.ny * cfg.cell_size_m / 1000:.1f} km).")
+        if HAS_CANVAS:
+            stroke = {"Brush fuel": "#1f7a1f", "Rectangle fuel": "#1f7a1f",
+                      "Firebreak": "#3070b0", "Road / access": "#b08020",
+                      "Place asset": "#ffd000", "Inspect": "#888888"}[tool]
+            sw = kw.get("brush", 2) * scale if drawing_mode == "freedraw" else 2
+            result = st_canvas(
+                fill_color="rgba(255, 160, 0, 0.20)",
+                stroke_width=int(sw), stroke_color=stroke,
+                background_image=bg, update_streamlit=True,
+                height=cfg.ny * scale, width=cfg.nx * scale,
+                drawing_mode=drawing_mode,
+                point_display_radius=max(3, scale // 2),
+                key=f"canvas_{st.session_state.canvas_key}_{scale}")
+            objs = (result.json_data or {}).get("objects", []) if result else []
+            new_objs = objs[st.session_state.applied_count:]
+            if live and new_objs:
+                _apply_edits(new_objs, tool, scale, **kw)
+                st.session_state.canvas_key += 1
+                st.session_state.applied_count = 0
+                st.rerun()
+            b1, b2 = st.columns(2)
+            if not live and b1.button("Apply edits", type="primary",
+                                      use_container_width=True):
+                cnt = _apply_edits(new_objs, tool, scale, **kw)
+                st.session_state.canvas_key += 1
+                st.session_state.applied_count = 0
+                st.toast(f"Applied {cnt} edit(s)"); st.rerun()
+            if b2.button("Clear drawing", use_container_width=True):
+                st.session_state.canvas_key += 1
+                st.session_state.applied_count = 0
+                st.rerun()
+        else:
+            st.image(bg)
+
+    with legend_col:
+        eflags = layer_toggles("edit")
+        st.divider()
+        st.markdown("**Legend**")
+        st.markdown(legend_html(), unsafe_allow_html=True)
+
+    st.divider()
+    e1, e2, e3 = st.columns(3)
+    if e1.button("Clear all assets"):
+        world.assets.clear()
+        from disasteraware.layers import ValueLayer
+        world.value = ValueLayer.empty(cfg.ny, cfg.nx)
+        st.rerun()
+    if e2.button("Clear ignitions"):
+        world.ignitions.clear(); st.rerun()
+    if e3.button("Save scenario"):
+        out = os.path.join(os.path.dirname(__file__), "scenario_export.json")
+        io_utils.save_scenario(world, out)
+        st.success(f"Saved to {out}")
+
+
 # ============================================================== DATA LAYERS ==
+LAYER_EQ = {
+    "Fuel type": r"U_{Fuel,k}=[\,F_{type},\,F_{load,0},\,F_{moist,k}\,]^T",
+    "Fuel load": r"F_{load,k+1}=\max(0,\,F_{load,k}-F_{load,k}B_kF_{burn,k}-F_{red,k})",
+    "Fuel moisture": r"g_{moist}=\max\!\left(0,\,1-\frac{F_{moist}}{m_{ext}}\right)",
+    "Elevation": r"U_{Geo}=[\,G_{elev},\,G_{slope},\,G_{aspect},\,G_{access}\,]^T",
+    "Slope": r"g_{slope}=1+a_s\,\tan(G_{slope})",
+    "Aspect": r"g_{aspect}=1+a_{asp}\cos(G_{aspect}-W_{wd})",
+    "Accessibility": r"\eta_{reach}=e^{-\beta_t R_{time}}\,G_{access}",
+    "Wind speed": r"g_{wind}=1+a_w\tanh\!\left(\frac{W_{ws}}{w_0}\right)",
+    "Protection priority":
+        r"V_{prio}=w_{bld}V_{bld}+w_{crit}V_{crit}+w_{pop}\tilde V_{pop}+w_{evac}\tilde V_{evac}",
+    "Population density": r"\text{persons per km}^2",
+    "Building": r"V_{bld}\in\{0,1\}",
+    "Critical": r"V_{crit}\in[0,1]",
+}
 with tab_layers:
-    st.subheader("External data layers")
-    layer = st.selectbox("Layer", ["Fuel type", "Fuel load", "Fuel moisture",
-                                   "Elevation", "Slope", "Aspect", "Accessibility",
-                                   "Wind speed", "Protection priority",
-                                   "Population density", "Building", "Critical"])
+    st.subheader("Terrain")
+    tc1, tc2 = st.columns(2)
+    with tc1:
+        st.markdown("**2D relief**")
+        st.image(viz.terrain_pil(world, scale=max(4, 600 // max(cfg.nx, 1))))
+    with tc2:
+        st.markdown("**3D surface** (drag to rotate)")
+        try:
+            import plotly.graph_objects as go
+            step = max(1, cfg.nx // 120)
+            z = world.topo.elev[::step, ::step]
+            fig3d = go.Figure(data=[go.Surface(z=z, colorscale="earth",
+                                               showscale=False)])
+            fig3d.update_layout(height=360, margin=dict(l=0, r=0, t=0, b=0),
+                                scene=dict(aspectmode="data"))
+            st.plotly_chart(fig3d, use_container_width=True)
+        except Exception as exc:
+            st.info(f"3D view needs plotly. {exc}")
+
+    st.divider()
+    st.subheader("Input field")
+    layer = st.selectbox("Layer", list(LAYER_EQ.keys()))
+    st.latex(LAYER_EQ[layer])
     field = {
         "Fuel type": world.fuel.ftype.astype(float),
         "Fuel load": world.fuel.fload,
@@ -463,89 +564,248 @@ with tab_layers:
 
 # ============================================================== PARAMETERS ===
 with tab_params:
-    st.subheader("All model parameters (thesis Chapter 4 and appendices)")
-    st.caption("Changes take effect on the next step. Press Reset to restart "
-               "the fire under new parameters.")
-    p1, p2, p3 = st.columns(3)
+    st.subheader("Model parameters")
+    st.caption("These shape the fire behaviour model and are usually set once "
+               "per study. Day to day conditions (wind, moisture, ignition "
+               "threshold) live in the Map editor. Hover the ? on any control.")
 
-    with p1:
-        st.markdown("**Spread (Appendix A)**")
-        cfg.spread.theta_ign = st.number_input("theta_ign (Eq. 45)", 0.0, 1.0,
-                                               float(cfg.spread.theta_ign), 0.01)
-        cfg.spread.w0 = st.number_input("w0 wind ref (Eq. 126)", 0.5, 30.0,
-                                        float(cfg.spread.w0), 0.5)
-        cfg.spread.eps_fuel = st.number_input("eps_fuel (Eq. 44)", 1e-6, 0.1,
-                                              float(cfg.spread.eps_fuel),
-                                              format="%.5f")
-        cfg.spread.slope_clip_rad = st.number_input("slope clip (rad)", 0.1, 1.5,
-                                                    float(cfg.spread.slope_clip_rad), 0.05)
-        cfg.spread.diagonal_distance_weighting = st.checkbox(
-            "Diagonal 1/sqrt(2) weighting", value=cfg.spread.diagonal_distance_weighting)
+    with st.expander("Fire spread and propagation", expanded=True):
+        a, b = st.columns(2)
+        cfg.spread.w0 = a.number_input(
+            "Wind reference speed w0 (m/s)", 0.5, 30.0, float(cfg.spread.w0), 0.5,
+            help="Wind speed where wind amplification saturates. Lower = wind "
+                 "boosts spread more at modest speeds.")
+        cfg.spread.eps_fuel = b.number_input(
+            "Extinction fuel threshold", 1e-6, 0.1, float(cfg.spread.eps_fuel),
+            format="%.5f", help="Fuel below which a cell stops burning. Higher = "
+                                "fires burn out and firebreaks form sooner.")
+        cfg.spread.slope_clip_rad = a.number_input(
+            "Slope clip (rad)", 0.1, 1.5, float(cfg.spread.slope_clip_rad), 0.05,
+            help="Caps slope so very steep cells do not blow up spread. Numerical "
+                 "safeguard.")
+        cfg.spread.diagonal_distance_weighting = b.checkbox(
+            "Diagonal distance weighting",
+            value=cfg.spread.diagonal_distance_weighting,
+            help="Down-weights diagonal neighbours for a rounder, more realistic "
+                 "spread shape.")
 
-    with p2:
-        st.markdown("**Suppression (Appendix B)**")
-        cfg.suppression.alpha_s = st.number_input("alpha_s (Eq. 130)", 0.0, 1.0,
-                                                  float(cfg.suppression.alpha_s), 0.05)
-        cfg.suppression.beta_t = st.number_input("beta_t (Eq. 133)", 0.0, 1.0,
-                                                 float(cfg.suppression.beta_t), 0.05)
-        cfg.suppression.gamma_I = st.number_input("gamma_I (Eq. 134)", 0.0, 5.0,
-                                                  float(cfg.suppression.gamma_I), 0.1)
-        cfg.suppression.rcap_max = st.number_input("R_cap_max (Eq. 131)", 0.1, 100.0,
-                                                   float(cfg.suppression.rcap_max), 0.1)
-        st.markdown("**Intensity (Appendix C)**")
-        cfg.intensity.beta = st.number_input("beta (Eq. 137)", 0.1, 3.0,
-                                             float(cfg.intensity.beta), 0.1)
-        cfg.intensity.gamma_w = st.number_input("gamma_w", 0.0, 1.0,
-                                                float(cfg.intensity.gamma_w), 0.05)
-        cfg.intensity.gamma_s = st.number_input("gamma_s", 0.0, 1.0,
-                                                float(cfg.intensity.gamma_s), 0.05)
+    with st.expander("Suppression effectiveness"):
+        a, b = st.columns(2)
+        cfg.suppression.alpha_s = a.number_input(
+            "Global suppression gain", 0.0, 1.0, float(cfg.suppression.alpha_s),
+            0.05, help="Overall strength of suppression. Higher = fires contained "
+                       "faster.")
+        cfg.suppression.beta_t = b.number_input(
+            "Travel-time decay", 0.0, 1.0, float(cfg.suppression.beta_t), 0.05,
+            help="How fast effectiveness drops with travel time. Higher = distant "
+                 "cells get much weaker suppression.")
+        cfg.suppression.gamma_I = a.number_input(
+            "Intensity resistance", 0.0, 5.0, float(cfg.suppression.gamma_I), 0.1,
+            help="How much intensity resists suppression. Higher = intense fire is "
+                 "harder to put out.")
+        cfg.suppression.rcap_max = b.number_input(
+            "Reference capacity", 0.1, 100.0, float(cfg.suppression.rcap_max), 0.1,
+            help="Capacity counted as full strength.")
 
-    with p3:
-        st.markdown("**Value weights (Eq. 55)**")
-        cfg.value_weights.w_bld = st.number_input("w_bld", 0.0, 1.0,
-                                                  float(cfg.value_weights.w_bld), 0.05)
-        cfg.value_weights.w_crit = st.number_input("w_crit", 0.0, 1.0,
-                                                   float(cfg.value_weights.w_crit), 0.05)
-        cfg.value_weights.w_pop = st.number_input("w_pop", 0.0, 1.0,
-                                                  float(cfg.value_weights.w_pop), 0.05)
-        cfg.value_weights.w_evac = st.number_input("w_evac", 0.0, 1.0,
-                                                   float(cfg.value_weights.w_evac), 0.05)
-        st.markdown("**Time**")
-        cfg.dt = st.number_input("dt", 0.1, 10.0, float(cfg.dt), 0.1)
-        cfg.max_steps = int(st.number_input("max steps", 10, 5000,
-                                            int(cfg.max_steps), 10))
+    with st.expander("Fire intensity"):
+        a, b = st.columns(2)
+        cfg.intensity.beta = a.number_input(
+            "Intensity gain", 0.1, 3.0, float(cfg.intensity.beta), 0.1,
+            help="Overall scale of intensity. Higher = hotter modelled fire.")
+        cfg.intensity.gamma_w = b.number_input(
+            "Wind weight", 0.0, 1.0, float(cfg.intensity.gamma_w), 0.05,
+            help="How much wind adds to intensity.")
+        cfg.intensity.gamma_s = a.number_input(
+            "Slope weight", 0.0, 1.0, float(cfg.intensity.gamma_s), 0.05,
+            help="How much slope adds to intensity.")
+        cfg.intensity.wws_max = b.number_input(
+            "Reference max wind (m/s)", 1.0, 60.0, float(cfg.intensity.wws_max),
+            1.0, help="Wind treated as the maximum when normalizing intensity.")
 
-    with st.expander("Cost model unit values"):
+    with st.expander("Protection priority weights (sum to 1)"):
+        a, b = st.columns(2)
+        cfg.value_weights.w_crit = a.number_input(
+            "Critical facility weight", 0.0, 1.0, float(cfg.value_weights.w_crit),
+            0.05, help="Weight of hospitals, power, water. Higher = protect these "
+                       "first.")
+        cfg.value_weights.w_pop = b.number_input(
+            "Population weight", 0.0, 1.0, float(cfg.value_weights.w_pop), 0.05,
+            help="Weight of population exposure.")
+        cfg.value_weights.w_bld = a.number_input(
+            "Building weight", 0.0, 1.0, float(cfg.value_weights.w_bld), 0.05,
+            help="Weight of built structures.")
+        cfg.value_weights.w_evac = b.number_input(
+            "Evacuation weight", 0.0, 1.0, float(cfg.value_weights.w_evac), 0.05,
+            help="Weight of evacuation access.")
+
+    with st.expander("Simulation timing"):
+        a, b = st.columns(2)
+        cfg.dt = a.number_input("Time step", 0.1, 10.0, float(cfg.dt), 0.1,
+                                help="Length of one step.")
+        cfg.max_steps = int(b.number_input("Max steps", 10, 5000,
+                                           int(cfg.max_steps), 10,
+                                           help="Safety cap for Run to end."))
+
+    with st.expander("Economic cost model"):
         c = cfg.cost
-        q1, q2 = st.columns(2)
-        c.cost_per_burned_ha = q1.number_input("Cost / burned ha",
-                                               0.0, 1e7, float(c.cost_per_burned_ha))
-        c.building_unit_value = q2.number_input("Building unit value",
-                                                0.0, 1e9, float(c.building_unit_value))
-        c.critical_unit_value = q1.number_input("Critical unit value",
-                                                0.0, 1e10, float(c.critical_unit_value))
-        c.statistical_life_value = q2.number_input("Statistical life value",
-                                                   0.0, 1e9, float(c.statistical_life_value))
-        c.population_at_risk_fraction = q1.number_input("Pop. at risk fraction",
-                                                        0.0, 1.0,
-                                                        float(c.population_at_risk_fraction), 0.01)
-        c.suppression_unit_cost = q2.number_input("Suppression unit cost",
-                                                  0.0, 1e6, float(c.suppression_unit_cost))
+        a, b = st.columns(2)
+        c.cost_per_burned_ha = a.number_input("Cost per burned ha", 0.0, 1e7,
+                                              float(c.cost_per_burned_ha))
+        c.building_unit_value = b.number_input("Building unit value", 0.0, 1e9,
+                                               float(c.building_unit_value))
+        c.critical_unit_value = a.number_input("Critical facility unit value",
+                                               0.0, 1e10, float(c.critical_unit_value))
+        c.statistical_life_value = b.number_input("Statistical life value", 0.0,
+                                                  1e9, float(c.statistical_life_value))
+        c.population_at_risk_fraction = a.number_input(
+            "Population at risk fraction", 0.0, 1.0,
+            float(c.population_at_risk_fraction), 0.01)
+        c.suppression_unit_cost = b.number_input("Suppression unit cost", 0.0, 1e6,
+                                                 float(c.suppression_unit_cost))
+
+
+# ================================================================== MANUAL ===
+def _eq(latex, defs):
+    st.latex(latex)
+    st.markdown("\n".join(f"- {d}" for d in defs))
+
+
+with tab_manual:
+    st.subheader("DisasterAware simulation model")
+    st.markdown("A grid based, discrete time wildfire model. Each cell carries a "
+                "state vector that is advanced one step at a time by a "
+                "deterministic operator. Below, every equation is followed by a "
+                "definition of the symbols it introduces.")
+
+    st.markdown("#### State and evolution")
+    _eq(r"s_k=[\,B_k,\;F_{load,k},\;I_k,\;\tau_k\,]^T",
+        [r"$s_k$ — state of one cell at step $k$",
+         r"$B_k\in\{0,1\}$ — burning status (1 = on fire)",
+         r"$F_{load,k}\in[0,1]$ — remaining combustible fuel",
+         r"$I_k\in[0,1]$ — fire intensity proxy",
+         r"$\tau_k$ — time since ignition (steps)"])
+    _eq(r"S_{k+1}(x,y)=\Phi\big(S_k(x,y),\,F_{in,k}\big)",
+        [r"$S_k$ — the whole grid of cell states",
+         r"$\Phi$ — transition operator (the four updates below)",
+         r"$F_{in,k}$ — external input set (forcing) at step $k$",
+         r"$(x,y)$ — cell coordinates on the grid"])
+    _eq(r"F_{in,k}=\{\,U_{Meteo,k},\,U_{Geo},\,U_{Fuel,k},\,U_{Ign,k},\,U_{DSS,k}\,\}",
+        [r"$U_{Meteo,k}$ — weather (wind, humidity, temperature, ...)",
+         r"$U_{Geo}$ — terrain (elevation, slope, aspect, access)",
+         r"$U_{Fuel,k}$ — fuel type, load and moisture",
+         r"$U_{Ign,k}$ — ignition injection (0/1)",
+         r"$U_{DSS,k}$ — suppression resources from the decision layer"])
+
+    st.markdown("#### Burning status")
+    _eq(r"B_{k+1}=\max\big(B_{pers},\,B_{prop},\,I_{Ign,k}\big)",
+        [r"$B_{pers}$ — keeps burning if fuel remains",
+         r"$B_{prop}$ — ignited by burning neighbours",
+         r"$I_{Ign,k}$ — external ignition at this cell"])
+    _eq(r"B_{pers}=B_k\,\mathbf{1}[\,F_{load,k}>\varepsilon_{fuel}\,],\qquad "
+        r"B_{prop}=\mathbf{1}[\,\Psi_k>\Theta_{ign}\,]",
+        [r"$\mathbf{1}[\cdot]$ — indicator (1 if true, else 0)",
+         r"$\varepsilon_{fuel}$ — extinction fuel threshold (a cell with less "
+         r"fuel goes out)",
+         r"$\Psi_k$ — accumulated propagation influence (next line)",
+         r"$\Theta_{ign}$ — ignition threshold; smaller spreads more easily"])
+    _eq(r"\Psi_k(x,y)=\frac{1}{8}\sum_{(i,j)\in N_8}"
+        r"B_k(i,j)\,R_{spread,k}(i,j)\,g_{dir}^{(i,j)\to(x,y)}",
+        [r"$N_8$ — the eight neighbouring cells",
+         r"$R_{spread,k}$ — rate of spread of a burning neighbour (below)",
+         r"$g_{dir}$ — wind alignment weight (below)"])
+    _eq(r"g_{dir}=\max\big(0,\;\cos(W_{wd}-\theta_{(i,j)\to(x,y)})\big)",
+        [r"$W_{wd}$ — wind direction (blows toward)",
+         r"$\theta_{(i,j)\to(x,y)}$ — direction from neighbour to target cell",
+         r"so spread is strongest along the wind and zero against it"])
+
+    st.markdown("#### Rate of spread")
+    _eq(r"R_{spread}=r_{base}(F_{type})\,g_{moist}\,g_{wind}\,g_{slope}\,g_{aspect}",
+        [r"$r_{base}(F_{type})$ — base spread of the fuel class (cells/step)",
+         r"$g_{moist},g_{wind},g_{slope},g_{aspect}$ — multipliers below"])
+    _eq(r"g_{moist}=\max\!\Big(0,1-\tfrac{F_{moist}}{m_{ext}}\Big)",
+        [r"$F_{moist}$ — fuel moisture fraction",
+         r"$m_{ext}$ — extinction moisture; at or above it spread stops"])
+    _eq(r"g_{wind}=1+a_w\tanh\!\big(\tfrac{W_{ws}}{w_0}\big)",
+        [r"$W_{ws}$ — wind speed", r"$a_w$ — fuel wind sensitivity",
+         r"$w_0$ — reference wind where the effect saturates"])
+    _eq(r"g_{slope}=1+a_s\tan(G_{slope}),\qquad "
+        r"g_{aspect}=1+a_{asp}\cos(G_{aspect}-W_{wd})",
+        [r"$G_{slope}$ — terrain slope, $a_s$ — slope sensitivity",
+         r"$G_{aspect}$ — slope facing direction, $a_{asp}$ — aspect sensitivity"])
+
+    st.markdown("#### Fuel mass")
+    _eq(r"F_{load,k+1}=\max\big(0,\;F_{load,k}-F_{load,k}B_kF_{burn,k}-F_{red,k}\big)",
+        [r"$F_{burn,k}$ — fraction of fuel consumed when burning (below)",
+         r"$F_{red,k}$ — fuel removed by suppression (below)",
+         r"the $\max$ keeps fuel from going negative"])
+    _eq(r"F_{burn,k}=\mathrm{sat}_{[0,1]}\big(b_{base}(F_{type})(1-F_{moist})\big)",
+        [r"$b_{base}(F_{type})$ — combustion coefficient of the fuel class",
+         r"$\mathrm{sat}_{[0,1]}$ — clamp to the range $[0,1]$"])
+
+    st.markdown("#### Suppression")
+    _eq(r"F_{red}=\alpha_s\,\eta_{cap}\,\eta_{avail}\,\eta_{reach}\,\eta_{eff},"
+        r"\qquad F_{red,k}=\min(F_{load,k},\,F_{red})",
+        [r"$\alpha_s$ — global suppression gain",
+         r"$\eta_{cap}=R_{cap}/R_{cap,max}$ — capacity in use",
+         r"$\eta_{avail}=R_{avail}$ — resource availability (0/1)",
+         r"$\eta_{reach}=e^{-\beta_t R_{time}}G_{access}$ — reachability "
+         r"($R_{time}$ travel time, $\beta_t$ decay, $G_{access}$ access)",
+         r"$\eta_{eff}=R_{eff}/(1+\gamma_I I_k)$ — effectiveness "
+         r"($R_{eff}$ nominal, $\gamma_I$ intensity resistance)"])
+
+    st.markdown("#### Fire intensity")
+    _eq(r"I_{k+1}=B_{k+1}\,\tanh\!\big(\beta(\tilde F+\gamma_W\tilde W+\gamma_S\tilde S)\big)",
+        [r"$\tilde F=F_{load}/F_{load,max}$ — normalized fuel",
+         r"$\tilde W=W_{ws}/W_{ws,max}$ — normalized wind",
+         r"$\tilde S=\tan G_{slope}/\tan G_{slope,max}$ — normalized slope",
+         r"$\beta$ — intensity gain; $\gamma_W,\gamma_S$ — wind and slope weights",
+         r"the $B_{k+1}$ factor forces zero intensity where nothing burns"])
+
+    st.markdown("#### Ignition time")
+    _eq(r"\tau_{k+1}=\begin{cases}0 & B_k=0,\,B_{k+1}=1\\ "
+        r"\tau_k+\Delta t & B_k=1,\,B_{k+1}=1\\ 0 & B_{k+1}=0\end{cases}",
+        [r"$\Delta t$ — time step length",
+         r"a memory of how long a cell has been burning, for the decision layer"])
+
+    st.markdown("#### Protection priority and observation")
+    _eq(r"V_{prio}=w_{bld}V_{bld}+w_{crit}V_{crit}+w_{pop}\tilde V_{pop}+w_{evac}\tilde V_{evac}",
+        [r"$V_{bld},V_{crit}$ — building and critical facility presence",
+         r"$\tilde V_{pop}$ — normalized population, $\tilde V_{evac}$ — "
+         r"normalized evacuation closeness",
+         r"$w_\bullet$ — weights summing to 1"])
+    _eq(r"O_k=h(S_k,\epsilon_k),\qquad U_{DSS,k}=\pi_{DSS}(O_k,F_{DSS,k})\subseteq F_{in,k}",
+        [r"$O_k$ — observation of the state seen by the decision layer",
+         r"$h$ — observation function, $\epsilon_k$ — observation uncertainty",
+         r"$\pi_{DSS}$ — decision policy; its output enters only through inputs"])
+
+    st.markdown("#### Fuel class parameters")
+    st.table({
+        "fuel": [m.name for m in FUEL_MODELS.values()],
+        "r_base": [m.r_base for m in FUEL_MODELS.values()],
+        "m_ext": [m.m_ext for m in FUEL_MODELS.values()],
+        "a_w": [m.a_w for m in FUEL_MODELS.values()],
+        "a_s": [m.a_s for m in FUEL_MODELS.values()],
+        "a_asp": [m.a_asp for m in FUEL_MODELS.values()],
+        "b_base": [m.b_base for m in FUEL_MODELS.values()],
+    })
 
 
 # ============================================================== GIS IMPORT ===
 with tab_gis:
     st.subheader("GIS raster import")
-    st.caption("Import a DEM and an optional fuel class raster (needs rasterio). "
-               "Slope and aspect are derived from the DEM and everything is "
-               "resampled onto the chosen grid.")
-    gnx = st.number_input("grid nx", 10, 400, 120, key="gnx")
-    gny = st.number_input("grid ny", 10, 400, 80, key="gny")
-    gcell = st.number_input("cell size (m)", 1.0, 1000.0, 30.0, key="gcell")
-    dem_file = st.file_uploader("DEM (GeoTIFF)", type=["tif", "tiff"], key="dem")
-    fuel_file = st.file_uploader("Fuel class raster (GeoTIFF)",
-                                 type=["tif", "tiff"], key="fuelr")
-    if st.button("Import rasters"):
+    st.caption("Load a real elevation model and optional fuel raster onto the "
+               "grid. Slope and aspect are derived from the elevation and every "
+               "raster is resampled to the chosen resolution. Needs the optional "
+               "rasterio package.")
+    g1, g2, g3 = st.columns(3)
+    gnx = g1.number_input("grid nx", 10, 400, 120, key="gnx")
+    gny = g2.number_input("grid ny", 10, 400, 80, key="gny")
+    gcell = g3.number_input("cell size (m)", 1.0, 1000.0, 30.0, key="gcell")
+    dem_file = st.file_uploader("Elevation raster (GeoTIFF)", type=["tif", "tiff"],
+                                key="dem")
+    fuel_file = st.file_uploader("Fuel class raster (GeoTIFF)", type=["tif", "tiff"],
+                                 key="fuelr")
+    if st.button("Import rasters", type="primary"):
         try:
             from disasteraware import gis
             paths = {}
@@ -558,40 +818,13 @@ with tab_gis:
             new_cfg = SimConfig(nx=int(gnx), ny=int(gny), cell_size_m=float(gcell))
             _new_simulator(gis.world_from_rasters(
                 new_cfg, dem_path=paths.get("dem"), fuel_path=paths.get("fuel")))
-            st.success("Rasters imported"); st.rerun()
+            st.success("Rasters imported. Use the Layers toggles to inspect each "
+                       "field.")
+            st.rerun()
         except ImportError as exc:
             st.error(str(exc))
         except Exception as exc:  # pragma: no cover
             st.error(f"Import failed: {exc}")
-
-
-# ================================================================== ABOUT ====
-with tab_about:
-    st.markdown(
-        """
-### About
-
-DisasterAware Simulation Core implemented from thesis Chapter 4 and appendices.
-Per cell state `s = (B, Fload, I, tau)`; deterministic transition operator Phi.
-
-- Burning status `B_{k+1} = max(B_pers, B_prop, I_ign)` (Eq. 43)
-- Wind aligned propagation over the 8 neighbourhood (Eq. 46, 48)
-- Rothermel rate of spread `r_base g_moist g_wind g_slope g_aspect` (Eq. 123)
-- Fuel mass with combustion and suppression depletion (Eq. 68)
-- Suppression to fuel reduction mapping (Eq. 130 to 135)
-- Intensity proxy `I = B tanh(beta F + gamma_w W + gamma_s S)` (Eq. 137)
-
-The DSS is not part of this core; it couples only through the external input
-interface (`sim.step(resource_override=..., extra_ignition=...)`).
-        """
-    )
-    st.markdown("**Fuel classes (thesis Table A.1 / A.2)**")
-    st.table({
-        "fuel": [m.name for m in FUEL_MODELS.values()],
-        "r_base": [m.r_base for m in FUEL_MODELS.values()],
-        "m_ext": [m.m_ext for m in FUEL_MODELS.values()],
-        "b_base": [m.b_base for m in FUEL_MODELS.values()],
-    })
 
 
 # ---------------------------------------------------------------- auto play

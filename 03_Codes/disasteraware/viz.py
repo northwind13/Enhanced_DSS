@@ -122,11 +122,18 @@ def render_pil(world, sim=None, scale: int = 8, show_fire: bool = True,
                show_assets: bool = True, show_value: bool = False,
                show_hillshade: bool = True, show_wind: bool = True,
                show_ignitions: bool = True, show_grid: bool = False,
-               show_labels: bool = False):
+               show_labels: bool = False, show_roads: bool = True):
     """Render the map to a polished PIL image of size (nx*scale, ny*scale)."""
     from PIL import Image, ImageDraw
 
     rgb = _base_rgb(world, sim, show_fire, show_value, show_hillshade)
+    roads = getattr(world, 'roads', None)
+    if show_roads and roads is not None:
+        protect = np.zeros(rgb.shape[:2], dtype=bool)
+        if sim is not None:
+            protect = (sim.ever_burned | (sim.state.burning > 0.5))
+        rmask = np.asarray(roads, dtype=bool) & ~protect
+        rgb[rmask] = [0.82, 0.78, 0.66]
     arr = (np.clip(rgb, 0, 1) * 255).astype(np.uint8)
     img = Image.fromarray(arr, mode="RGB")
     ny, nx = world.shape
@@ -157,6 +164,11 @@ def render_pil(world, sim=None, scale: int = 8, show_fire: bool = True,
             style = _ASSET_STYLE.get(a.kind, {"color": (255, 255, 0), "shape": "circle"})
             col = style["color"] + (255,)
             cx, cy = a.x * scale + scale // 2, a.y * scale + scale // 2
+            if getattr(a, "radius", 0) and a.radius > 0:
+                fr = a.radius * scale
+                draw.ellipse([cx - fr, cy - fr, cx + fr, cy + fr],
+                             fill=style["color"] + (60,),
+                             outline=style["color"] + (160,), width=1)
             r = max(5, scale)
             shape = style["shape"]
             if shape == "square":
@@ -214,3 +226,76 @@ def legend_items():
     items = [(f"{m.name}", _FUEL_COLORS[i]) for i, m in FUEL_MODELS.items()]
     items += [("burned", (0.16, 0.13, 0.12)), ("active fire", (0.98, 0.35, 0.06))]
     return items
+
+
+def _hex(rgb01):
+    r, g, b = [int(round(255 * c)) for c in rgb01]
+    return f"#{r:02x}{g:02x}{b:02x}"
+
+
+def legend_entries():
+    """Full legend as (group, label, hex_color) for the dashboard side panel."""
+    out = []
+    for i, m in FUEL_MODELS.items():
+        label = {"non_fuel": "non fuel / water"}.get(m.name, m.name.replace("_", " "))
+        out.append(("Land cover", label, _hex(_FUEL_COLORS[i])))
+    out.append(("Fire", "burned scar", _hex((0.16, 0.13, 0.12))))
+    out.append(("Fire", "active fire", _hex((0.98, 0.35, 0.06))))
+    out.append(("Infrastructure", "road / access", _hex((0.82, 0.78, 0.66))))
+    out.append(("Markers", "ignition point", "#ff5a00"))
+    asset_labels = {"building": "building", "critical": "critical facility",
+                    "population": "population", "evac_route": "evacuation route"}
+    for kind, lab in asset_labels.items():
+        c = _ASSET_STYLE[kind]["color"]
+        out.append(("Assets", lab, f"#{c[0]:02x}{c[1]:02x}{c[2]:02x}"))
+    return out
+
+
+def render_compass(direction_rad: float, speed: float = 0.0, size: int = 150):
+    """Render a compass rose with the wind direction arrow as a PIL image.
+
+    The arrow points in the direction the wind blows toward, using the same
+    math convention as the simulator (0 rad = +x / East, increasing counter
+    clockwise)."""
+    from PIL import Image, ImageDraw
+    img = Image.new("RGBA", (size, size), (0, 0, 0, 0))
+    d = ImageDraw.Draw(img)
+    cx = cy = size // 2
+    r = size // 2 - 12
+    d.ellipse([cx - r, cy - r, cx + r, cy + r], fill=(245, 247, 250, 255),
+              outline=(60, 60, 60, 255), width=2)
+    for lab, ang in [("N", 90), ("E", 0), ("S", 270), ("W", 180)]:
+        ax = cx + (r - 10) * np.cos(np.radians(ang))
+        ay = cy - (r - 10) * np.sin(np.radians(ang))
+        d.text((ax - 4, ay - 6), lab, fill=(90, 90, 90, 255))
+    dx = np.cos(direction_rad) * (r - 18)
+    dy = -np.sin(direction_rad) * (r - 18)
+    d.line([cx, cy, cx + dx, cy + dy], fill=(200, 60, 30, 255), width=4)
+    ang = np.arctan2(dy, dx)
+    for da in (2.6, -2.6):
+        hx = cx + dx - 12 * np.cos(ang + da)
+        hy = cy + dy - 12 * np.sin(ang + da)
+        d.line([cx + dx, cy + dy, hx, hy], fill=(200, 60, 30, 255), width=4)
+    d.ellipse([cx - 4, cy - 4, cx + 4, cy + 4], fill=(60, 60, 60, 255))
+    return img
+
+
+def terrain_pil(world, scale: int = 6):
+    """Clear standalone 2D terrain map: elevation colour ramp shaded by relief."""
+    from PIL import Image
+    try:
+        from matplotlib import colormaps
+        cmap = colormaps["terrain"]
+    except Exception:                       # very old matplotlib
+        import matplotlib.cm as cm
+        cmap = cm.get_cmap("terrain")
+    elev = np.asarray(world.topo.elev, dtype=float)
+    span = float(np.ptp(elev))
+    en = (elev - elev.min()) / span if span > 1e-9 else np.zeros_like(elev)
+    base = np.asarray(cmap(en))[..., :3]
+    if span > 1.0:
+        hs = hillshade(elev, world.config.cell_size_m)
+        base = base * (0.45 + 0.6 * hs[..., None])
+    arr = (np.clip(base, 0, 1) * 255).astype(np.uint8)
+    ny, nx = elev.shape
+    return Image.fromarray(arr, "RGB").resize((nx * scale, ny * scale), Image.BILINEAR)

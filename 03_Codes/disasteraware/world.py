@@ -52,6 +52,7 @@ class World:
     resource: ResourceLayer
     assets: List[Asset] = field(default_factory=list)
     ignitions: List[IgnitionEvent] = field(default_factory=list)
+    roads: Optional[np.ndarray] = None   # boolean mask of road / access corridors
 
     # ------------------------------------------------------------------ build
     @classmethod
@@ -116,6 +117,13 @@ class World:
         self.fuel.fload[ys, xs] = 0.0
         self.fuel.fload0[ys, xs] = 0.0
 
+    def clear_fuel_disk(self, x: int, y: int, radius: int = 1) -> None:
+        """Circular firebreak: convert a disk to non burnable."""
+        m = self._disk(x, y, max(radius, 0))
+        self.fuel.ftype[m] = 0
+        self.fuel.fload[m] = 0.0
+        self.fuel.fload0[m] = 0.0
+
     def add_asset(self, asset: Asset) -> None:
         """Place an asset and write its contribution into the value layers."""
         self.assets.append(asset)
@@ -158,6 +166,35 @@ class World:
         self.resource.reff[sel] = reff
         self.resource.rtime[sel] = rtime
 
+    # -------------------------------------------------------------------- roads
+    def _ensure_roads(self) -> np.ndarray:
+        if self.roads is None or self.roads.shape != self.shape:
+            self.roads = np.zeros(self.shape, dtype=bool)
+        return self.roads
+
+    def add_road_disk(self, x: int, y: int, radius: int = 1) -> None:
+        """Stamp a circular road / access patch: marks roads and sets access=1."""
+        roads = self._ensure_roads()
+        m = self._disk(x, y, max(radius, 0))
+        roads[m] = True
+        self.topo.access[m] = 1.0
+
+    def add_road_rect(self, x0: int, y0: int, x1: int, y1: int) -> None:
+        roads = self._ensure_roads()
+        ys, xs = self._mask(x0, y0, x1, y1)
+        roads[ys, xs] = True
+        self.topo.access[ys, xs] = 1.0
+
+    def add_road_segment(self, x0: int, y0: int, x1: int, y1: int,
+                         width: int = 1) -> None:
+        """Rasterize a straight road segment and mark roads + access along it."""
+        x0, y0, x1, y1 = int(x0), int(y0), int(x1), int(y1)
+        n = max(abs(x1 - x0), abs(y1 - y0)) + 1
+        xs = np.linspace(x0, x1, n).round().astype(int)
+        ys = np.linspace(y0, y1, n).round().astype(int)
+        for x, y in zip(xs, ys):
+            self.add_road_disk(int(x), int(y), width)
+
     def priority_field(self) -> np.ndarray:
         return self.value.priority(self.config.value_weights)
 
@@ -193,6 +230,8 @@ class World:
                          ["rcap", "ravail", "reff", "rtime"]},
             "assets": [a.__dict__ for a in self.assets],
             "ignitions": [e.__dict__ for e in self.ignitions],
+            "roads": (np.asarray(self.roads).astype(int).tolist()
+                      if self.roads is not None else None),
         }
 
     @classmethod
@@ -213,5 +252,8 @@ class World:
                                     ["rcap", "ravail", "reff", "rtime"]})
         assets = [Asset(**d) for d in data.get("assets", [])]
         ignitions = [IgnitionEvent(**d) for d in data.get("ignitions", [])]
+        roads = data.get("roads")
+        roads = (np.asarray(roads, dtype=bool) if roads is not None else None)
         return cls(config=cfg, meteo=meteo, topo=topo, fuel=fuel, value=value,
-                   resource=resource, assets=assets, ignitions=ignitions)
+                   resource=resource, assets=assets, ignitions=ignitions,
+                   roads=roads)

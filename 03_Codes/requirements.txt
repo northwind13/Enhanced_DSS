@@ -4,6 +4,7 @@ numpy>=1.23
 # Dashboard
 streamlit>=1.30
 matplotlib>=3.6
+plotly>=5.0
 pillow>=9.0
 # mouse-driven map editing (paint forests, drop assets and ignitions)
 streamlit-drawable-canvas>=0.9.3
