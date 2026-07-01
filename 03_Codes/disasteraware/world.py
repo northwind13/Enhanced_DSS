@@ -178,12 +178,18 @@ class World:
         m = self._disk(x, y, max(radius, 0))
         roads[m] = True
         self.topo.access[m] = 1.0
+        self.fuel.ftype[m] = 0            # paved road is non flammable
+        self.fuel.fload[m] = 0.0
+        self.fuel.fload0[m] = 0.0
 
     def add_road_rect(self, x0: int, y0: int, x1: int, y1: int) -> None:
         roads = self._ensure_roads()
         ys, xs = self._mask(x0, y0, x1, y1)
         roads[ys, xs] = True
         self.topo.access[ys, xs] = 1.0
+        self.fuel.ftype[ys, xs] = 0       # paved road is non flammable
+        self.fuel.fload[ys, xs] = 0.0
+        self.fuel.fload0[ys, xs] = 0.0
 
     def add_road_segment(self, x0: int, y0: int, x1: int, y1: int,
                          width: int = 1) -> None:

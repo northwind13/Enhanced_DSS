@@ -122,6 +122,7 @@ def generate_landscape(config: SimConfig | None = None,
     shrub = FUEL_NAME_TO_ID["shrub"]
     pine = FUEL_NAME_TO_ID["pine_litter"]
     hard = FUEL_NAME_TO_ID["hardwood"]
+    WATER = FUEL_NAME_TO_ID["water"]
 
     ftype = np.full((ny, nx), grass, dtype=int)
     veg = fractal_noise(ny, nx, rng, octaves=5, persistence=0.6)
@@ -133,7 +134,7 @@ def generate_landscape(config: SimConfig | None = None,
 
     if water_level > 0:
         thr = np.quantile(elev_norm, np.clip(water_level, 0.0, 0.3))
-        ftype[elev_norm <= thr] = 0
+        ftype[elev_norm <= thr] = WATER
 
     # coastline: sea along the eastern edge with a wavy boundary
     if coast:
@@ -142,16 +143,16 @@ def generate_landscape(config: SimConfig | None = None,
         wave = 0.10 * nx * np.sin(2 * np.pi * yy / max(ny, 1) * 1.5)
         coastline = 0.82 * nx + wave
         sea = xx > coastline
-        ftype[sea] = 0
+        ftype[sea] = WATER
         elev[sea] = 0.0
         elev_norm = (elev - elev.min()) / max(elev.max() - elev.min(), 1e-9)
 
     # river: meandering non-fuel watercourse along the valley
-    yroad = _valley_road_y(elev)
+    valley = _valley_road_y(elev)
     if river:
         for x in range(nx):
-            y = int(np.clip(yroad[x], 0, ny - 1))
-            ftype[max(0, y - 1):y + 2, x] = 0
+            y = int(np.clip(valley[x], 0, ny - 1))
+            ftype[max(0, y - 1):y + 2, x] = WATER
 
     fload = np.where(ftype > 0,
                      0.55 + 0.45 * fractal_noise(ny, nx, rng, octaves=4), 0.0)
@@ -165,30 +166,58 @@ def generate_landscape(config: SimConfig | None = None,
     world.fuel = FuelLayer(ftype=ftype, fload=fload, fmoist=moisture)
     world.set_uniform_wind(wind_speed, wind_dir_rad)
 
-    # town on a flat, accessible spot
-    tx, ty = int(nx * 0.74), int(np.clip(yroad[int(nx * 0.74)], 4, ny - 5))
+    # land-constrained road path: lowest LAND cell per column, so the road never
+    # runs through the sea or the river
+    land = (ftype >= 1) & (ftype <= 4)
+    big = float(elev.max()) + 1e6
+    elev_land = np.where(land, elev, big)
+    road_y = _smooth1d(np.argmin(elev_land, axis=0).astype(float),
+                       max(3, nx // 12)).round().astype(int)
+    valid = land.any(axis=0)
+
+    def _to_land(x, y):
+        x = int(np.clip(x, 0, nx - 1)); y = int(np.clip(y, 0, ny - 1))
+        if land[y, x]:
+            return x, y
+        for r in range(1, max(ny, nx)):
+            for dy in (-r, r):
+                yy = y + dy
+                if 0 <= yy < ny and land[yy, x]:
+                    return x, yy
+        return x, y
+
+    # town on accessible land near the road, kept clear of water
+    tcol = int(nx * 0.72)
+    while tcol < nx - 5 and not valid[tcol]:
+        tcol += 1
+    tx, ty = _to_land(tcol, int(np.clip(road_y[tcol], 4, ny - 5)))
 
     if with_roads:
-        # a single curvy road following the valley, plus a short spur to the town
         rw = 1
         prev = None
         for x in range(nx):
-            y = int(np.clip(yroad[x], 0, ny - 1))
+            if not valid[x]:
+                prev = None
+                continue
+            y = int(np.clip(road_y[x], 0, ny - 1))
             if prev is not None:
                 world.add_road_segment(prev[0], prev[1], x, y, width=rw)
             prev = (x, y)
-        world.add_road_segment(tx, ty, tx, int(np.clip(yroad[tx], 0, ny - 1)),
-                               width=rw)
+        world.add_road_segment(tx, ty, int(np.clip(tx, 0, nx - 1)),
+                               int(np.clip(road_y[int(np.clip(tx, 0, nx - 1))],
+                                           0, ny - 1)), width=rw)
 
     if with_assets:
-        world.clear_fuel(tx - 5, ty - 4, tx + 5, ty + 4)
+        # clear a small urban footprint on land for the town
+        world.clear_fuel(tx - 4, ty - 3, tx + 4, ty + 3)
+        hx, hy = _to_land(tx - 3, ty - 2)
+        px, py = _to_land(tx + 3, ty + 2)
         world.add_asset(Asset("Town", "building", tx, ty, radius=4, value=1.0))
-        world.add_asset(Asset("Hospital", "critical", tx - 3, ty - 2,
-                              radius=1, value=1.0))
-        world.add_asset(Asset("Power substation", "critical", tx + 3, ty + 2,
+        world.add_asset(Asset("Hospital", "critical", hx, hy, radius=1, value=1.0))
+        world.add_asset(Asset("Power substation", "critical", px, py,
                               radius=1, value=0.9))
         world.add_asset(Asset("Residents", "population", tx, ty, radius=4,
                               value=1.0, population=8000))
-        world.add_asset(Asset("Evacuation route", "evac_route", nx - 1, ty,
-                              radius=0))
+        ex, ey = _to_land(nx - 2, ty)
+        world.add_asset(Asset("Evacuation route", "evac_route", ex, ey, radius=0))
     return world

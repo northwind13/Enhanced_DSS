@@ -18,11 +18,12 @@ from .config import FUEL_MODELS
 
 # base colours per fuel id (unburned landscape)
 _FUEL_COLORS = {
-    0: (0.40, 0.58, 0.75),   # non fuel / water: blue
+    0: (0.66, 0.63, 0.56),   # bare ground / non fuel: grey tan
     1: (0.80, 0.82, 0.45),   # grass: golden green
     2: (0.56, 0.68, 0.36),   # shrub: olive
     3: (0.20, 0.46, 0.26),   # pine litter: forest green
     4: (0.12, 0.34, 0.18),   # hardwood: dark green
+    5: (0.28, 0.52, 0.75),   # water: blue
 }
 
 _ASSET_STYLE = {
@@ -74,28 +75,33 @@ def fire_state_rgb(sim, show_intensity: bool = True) -> np.ndarray:
     if active.any():
         inten = np.clip(sim.state.intensity, 0.0, 1.0)
         if show_intensity:
-            r = 0.98 * np.ones_like(inten)
-            g = 0.85 * (1.0 - 0.8 * inten)
-            b = 0.10 * (1.0 - inten)
+            # deep red (cool) -> orange -> yellow/white (hot core)
+            r = np.ones_like(inten)
+            g = 0.18 + 0.77 * inten
+            b = 0.04 + 0.45 * inten * inten
         else:
-            r = np.full_like(inten, 0.95)
-            g = np.full_like(inten, 0.40)
-            b = np.full_like(inten, 0.05)
+            r = np.full_like(inten, 1.0)
+            g = np.full_like(inten, 0.45)
+            b = np.full_like(inten, 0.08)
         img[..., 0][active] = r[active]
-        img[..., 1][active] = g[active]
-        img[..., 2][active] = b[active]
+        img[..., 1][active] = np.clip(g[active], 0, 1)
+        img[..., 2][active] = np.clip(b[active], 0, 1)
     return img
 
 
-def value_overlay_rgb(world, alpha: float = 0.55) -> np.ndarray:
+def value_overlay_rgb(world, alpha: float = 0.65) -> np.ndarray:
+    """Landscape with the protection priority draped as a green->yellow->red
+    heat ramp (higher priority = more red)."""
     img = landscape_rgb(world)
-    prio = world.priority_field()
+    prio = np.clip(world.priority_field(), 0.0, 1.0)
     mask = prio > 0.02
-    overlay = np.zeros_like(img)
-    overlay[..., 0] = prio
-    overlay[..., 2] = prio
+    try:
+        from matplotlib import colormaps
+        ramp = np.asarray(colormaps["RdYlGn_r"](prio))[..., :3]
+    except Exception:
+        ramp = np.stack([prio, 1.0 - prio, np.zeros_like(prio)], axis=-1)
     for c in range(3):
-        img[..., c][mask] = (1 - alpha) * img[..., c][mask] + alpha * overlay[..., c][mask]
+        img[..., c][mask] = (1 - alpha) * img[..., c][mask] + alpha * ramp[..., c][mask]
     return img
 
 
@@ -158,34 +164,43 @@ def render_pil(world, sim=None, scale: int = 8, show_fire: bool = True,
             draw.line([cx - r, cy, cx + r, cy], fill=(255, 90, 0, 255), width=2)
             draw.line([cx, cy - r, cx, cy + r], fill=(255, 90, 0, 255), width=2)
 
-    # asset markers
+    # asset markers: recognizable icons
     if show_assets:
         for a in world.assets:
-            style = _ASSET_STYLE.get(a.kind, {"color": (255, 255, 0), "shape": "circle"})
-            col = style["color"] + (255,)
+            style = _ASSET_STYLE.get(a.kind, {"color": (255, 255, 0)})
+            base = style["color"]
             cx, cy = a.x * scale + scale // 2, a.y * scale + scale // 2
             if getattr(a, "radius", 0) and a.radius > 0:
                 fr = a.radius * scale
                 draw.ellipse([cx - fr, cy - fr, cx + fr, cy + fr],
-                             fill=style["color"] + (60,),
-                             outline=style["color"] + (160,), width=1)
-            r = max(5, scale)
-            shape = style["shape"]
-            if shape == "square":
-                draw.rectangle([cx - r, cy - r, cx + r, cy + r],
-                               outline=(0, 0, 0, 255), fill=col, width=1)
-            elif shape == "cross":
-                draw.line([cx - r, cy, cx + r, cy], fill=col, width=3)
-                draw.line([cx, cy - r, cx, cy + r], fill=col, width=3)
-            elif shape == "diamond":
-                draw.polygon([(cx, cy - r), (cx + r, cy), (cx, cy + r), (cx - r, cy)],
-                             outline=(0, 0, 0, 255), fill=col)
+                             fill=base + (55,), outline=base + (150,), width=1)
+            r = max(7, int(scale * 1.1))
+            black = (0, 0, 0, 255)
+            if a.kind == "building":
+                # house: body + roof
+                draw.rectangle([cx - r, cy - r // 3, cx + r, cy + r], fill=(238, 232, 220, 255), outline=black, width=1)
+                draw.polygon([(cx - r - 1, cy - r // 3), (cx, cy - r - 2), (cx + r + 1, cy - r // 3)], fill=(150, 60, 40, 255), outline=black)
+            elif a.kind == "critical":
+                # hospital: white square with red cross
+                draw.rectangle([cx - r, cy - r, cx + r, cy + r], fill=(250, 250, 250, 255), outline=black, width=1)
+                t = max(2, r // 3)
+                draw.rectangle([cx - t, cy - r + 2, cx + t, cy + r - 2], fill=(210, 30, 30, 255))
+                draw.rectangle([cx - r + 2, cy - t, cx + r - 2, cy + t], fill=(210, 30, 30, 255))
+            elif a.kind == "population":
+                # people: three dots
+                draw.ellipse([cx - r, cy - r, cx + r, cy + r], fill=(60, 130, 240, 210), outline=black, width=1)
+                for ox in (-r // 2, 0, r // 2):
+                    draw.ellipse([cx + ox - 2, cy - 3, cx + ox + 2, cy + 1], fill=(255, 255, 255, 255))
+            elif a.kind == "evac_route":
+                # exit: green square with arrow
+                draw.rectangle([cx - r, cy - r, cx + r, cy + r], fill=(40, 170, 90, 255), outline=black, width=1)
+                draw.polygon([(cx - r // 2, cy - r // 2), (cx + r // 2, cy), (cx - r // 2, cy + r // 2)], fill=(255, 255, 255, 255))
             else:
-                draw.ellipse([cx - r, cy - r, cx + r, cy + r],
-                             outline=(0, 0, 0, 255), fill=col, width=1)
+                draw.ellipse([cx - r, cy - r, cx + r, cy + r], fill=base + (255,), outline=black, width=1)
             if show_labels and getattr(a, "name", ""):
-                draw.text((cx + r + 2, cy - 6), str(a.name),
-                          fill=(255, 255, 255, 255))
+                tx0 = cx + r + 3
+                draw.rectangle([tx0 - 1, cy - 7, tx0 + 6 * len(str(a.name)) + 1, cy + 6], fill=(0, 0, 0, 120))
+                draw.text((tx0, cy - 6), str(a.name), fill=(255, 255, 255, 255))
 
     # wind arrow (top right)
     if show_wind:
@@ -237,7 +252,7 @@ def legend_entries():
     """Full legend as (group, label, hex_color) for the dashboard side panel."""
     out = []
     for i, m in FUEL_MODELS.items():
-        label = {"non_fuel": "non fuel / water"}.get(m.name, m.name.replace("_", " "))
+        label = {"non_fuel": "bare ground", "water": "water"}.get(m.name, m.name.replace("_", " "))
         out.append(("Land cover", label, _hex(_FUEL_COLORS[i])))
     out.append(("Fire", "burned scar", _hex((0.16, 0.13, 0.12))))
     out.append(("Fire", "active fire", _hex((0.98, 0.35, 0.06))))
@@ -299,3 +314,124 @@ def terrain_pil(world, scale: int = 6):
     arr = (np.clip(base, 0, 1) * 255).astype(np.uint8)
     ny, nx = elev.shape
     return Image.fromarray(arr, "RGB").resize((nx * scale, ny * scale), Image.BILINEAR)
+
+
+# --------------------------------------------------------------- 3D surface
+def _state_code_field(world, sim=None):
+    """Categorical field for 3D colouring: water/bare/grass/shrub/pine/hardwood
+    then burned and active fire on top."""
+    ftype = np.asarray(world.fuel.ftype)
+    code = np.zeros(ftype.shape, dtype=float)
+    code[ftype == 0] = 1     # bare
+    code[ftype == 1] = 2     # grass
+    code[ftype == 2] = 3     # shrub
+    code[ftype == 3] = 4     # pine
+    code[ftype == 4] = 5     # hardwood
+    code[ftype == 5] = 0     # water
+    if sim is not None:
+        code[sim.ever_burned] = 6
+        code[sim.state.burning > 0.5] = 7
+    return code
+
+
+def fire_surface_figure(world, sim=None, max_cells: int = 150,
+                        relief_frac: float = 0.28):
+    """Live 3D terrain with the same content as the 2D map: land cover, water,
+    roads, buildings and flame coloured active fire draped on the relief.
+
+    Returns a plotly Figure (drag to rotate, scroll to zoom)."""
+    import plotly.graph_objects as go
+    ny, nx = world.shape
+    step = max(1, max(nx, ny) // max_cells)
+    elev_full = np.asarray(world.topo.elev, dtype=float)
+    span = float(np.ptp(elev_full))
+    zfull = ((elev_full - elev_full.min()) / span if span > 1e-9
+             else np.zeros_like(elev_full)) * (relief_frac * max(nx, ny))
+
+    elev = elev_full[::step, ::step]
+    code = _state_code_field(world, sim)[::step, ::step]
+    # roads on the surface colour (bare-like tan) so the road shows in 3D
+    roads = getattr(world, "roads", None)
+    if roads is not None:
+        rr = np.asarray(roads, dtype=bool)[::step, ::step]
+        code = np.where(rr & (code < 6), 1, code)
+    sy, sx = elev.shape
+    xs = np.arange(sx) * step
+    ys = np.arange(sy) * step
+    z = zfull[::step, ::step]
+
+    cats = [(0.28, 0.52, 0.75), (0.66, 0.63, 0.56), (0.80, 0.82, 0.45),
+            (0.56, 0.68, 0.36), (0.20, 0.46, 0.26), (0.12, 0.34, 0.18),
+            (0.16, 0.13, 0.12), (0.98, 0.35, 0.06)]
+    n = len(cats)
+    colorscale = []
+    for i, c in enumerate(cats):
+        rgb = f"rgb({int(c[0]*255)},{int(c[1]*255)},{int(c[2]*255)})"
+        colorscale.append([i / n, rgb]); colorscale.append([(i + 1) / n, rgb])
+
+    data = [go.Surface(x=xs, y=ys, z=z, surfacecolor=code, colorscale=colorscale,
+                       cmin=0, cmax=n, showscale=False,
+                       lighting=dict(ambient=0.65, diffuse=0.75, specular=0.1),
+                       hoverinfo="skip")]
+
+    # asset markers (buildings, hospital, ...) as 3D points on the terrain
+    sym = {"building": "square", "critical": "cross",
+           "population": "circle", "evac_route": "diamond"}
+    col = {"building": "rgb(240,240,240)", "critical": "rgb(220,40,40)",
+           "population": "rgb(60,130,240)", "evac_route": "rgb(40,200,120)"}
+    if world.assets:
+        for kind in sym:
+            pts = [a for a in world.assets if a.kind == kind]
+            if not pts:
+                continue
+            data.append(go.Scatter3d(
+                x=[a.x for a in pts], y=[a.y for a in pts],
+                z=[zfull[int(np.clip(a.y, 0, ny - 1)), int(np.clip(a.x, 0, nx - 1))]
+                   + 0.6 for a in pts],
+                mode="markers+text", text=[a.name for a in pts],
+                textposition="top center", textfont=dict(size=9, color="white"),
+                marker=dict(size=6, symbol=sym[kind], color=col[kind],
+                            line=dict(width=1, color="black")),
+                name=kind, hoverinfo="text"))
+
+    # active fire as bright flame coloured points
+    if sim is not None:
+        act = sim.state.burning > 0.5
+        if act.any():
+            ay, ax = np.where(act)
+            if ax.size > 4000:                      # subsample very large fires
+                idx = np.random.default_rng(0).choice(ax.size, 4000, replace=False)
+                ax, ay = ax[idx], ay[idx]
+            inten = np.clip(sim.state.intensity[ay, ax], 0, 1)
+            data.append(go.Scatter3d(
+                x=ax, y=ay, z=zfull[ay, ax] + 0.4, mode="markers",
+                marker=dict(size=3.5, color=inten, colorscale=[[0, "rgb(180,20,10)"],
+                            [0.5, "rgb(255,120,0)"], [1, "rgb(255,240,120)"]],
+                            cmin=0, cmax=1, opacity=0.9),
+                name="fire", hoverinfo="skip"))
+
+    fig = go.Figure(data=data)
+    fig.update_layout(height=460, margin=dict(l=0, r=0, t=0, b=0),
+                      showlegend=False,
+                      scene=dict(aspectmode="data",
+                                 xaxis=dict(visible=False),
+                                 yaxis=dict(visible=False),
+                                 zaxis=dict(visible=False),
+                                 camera=dict(eye=dict(x=1.4, y=1.4, z=1.0))))
+    return fig
+
+
+def map_figure_2d(world, sim=None, scale: int = 6, **flags):
+    """2D map as a plotly image so it supports scroll zoom and pan like the 3D
+    view. Draws the same content as render_pil (land cover, roads, assets,
+    flame fire)."""
+    import plotly.graph_objects as go
+    pil = render_pil(world, sim=sim, scale=scale, show_labels=True, **flags)
+    arr = np.asarray(pil)
+    fig = go.Figure(go.Image(z=arr))
+    ny, nx = arr.shape[0], arr.shape[1]
+    fig.update_xaxes(visible=False, range=[0, nx], constrain="domain")
+    fig.update_yaxes(visible=False, range=[ny, 0], scaleanchor="x", scaleratio=1)
+    fig.update_layout(margin=dict(l=0, r=0, t=0, b=0), height=560,
+                      dragmode="pan")
+    return fig

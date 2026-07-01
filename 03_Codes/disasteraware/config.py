@@ -47,6 +47,7 @@ FUEL_MODELS: Dict[int, FuelModel] = {
     2: FuelModel("shrub",       r_base=0.80, m_ext=0.35, a_w=1.5, a_s=1.0, a_asp=0.25, b_base=0.15, is_forest=True,  economic_value=6.0),
     3: FuelModel("pine_litter", r_base=0.60, m_ext=0.45, a_w=1.2, a_s=1.2, a_asp=0.20, b_base=0.10, is_forest=True,  economic_value=12.0),
     4: FuelModel("hardwood",    r_base=0.40, m_ext=0.50, a_w=0.8, a_s=0.6, a_asp=0.15, b_base=0.05, is_forest=True,  economic_value=18.0),
+    5: FuelModel("water",       r_base=0.00, m_ext=1.00, a_w=0.0, a_s=0.0, a_asp=0.00, b_base=0.00, is_forest=False, economic_value=0.0),
 }
 
 FUEL_NAME_TO_ID: Dict[str, int] = {m.name: i for i, m in FUEL_MODELS.items()}
