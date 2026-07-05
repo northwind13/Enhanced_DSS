@@ -568,3 +568,18 @@ def probability_pil(world, prob, scale: int = 6):
     ny, nx = arr.shape[:2]
     return Image.fromarray(arr, "RGB").resize((nx * scale, ny * scale), Image.NEAREST)
 
+
+
+def agreement_pil(sim_mask, obs_mask, world, scale: int = 6):
+    """Overlay simulated vs observed burn: green = both (hit), red = simulated
+    only (false alarm), blue = observed only (missed)."""
+    from PIL import Image
+    img = landscape_rgb(world)
+    a = np.asarray(sim_mask, dtype=bool)
+    b = np.asarray(obs_mask, dtype=bool)
+    img[a & b] = [0.15, 0.75, 0.20]     # hit
+    img[a & ~b] = [0.90, 0.20, 0.15]    # false alarm (sim only)
+    img[~a & b] = [0.20, 0.45, 0.95]    # missed (obs only)
+    arr = (np.clip(img, 0, 1) * 255).astype(np.uint8)
+    ny, nx = arr.shape[:2]
+    return Image.fromarray(arr, "RGB").resize((nx * scale, ny * scale), Image.NEAREST)

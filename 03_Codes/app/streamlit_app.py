@@ -174,7 +174,8 @@ st.sidebar.title("DisasterAware")
 st.sidebar.caption("Grid based wildfire simulator")
 
 page = st.sidebar.radio("Page", ["Simulation", "Map editor", "Data layers",
-                                 "Parameters", "Risk", "Manual", "GIS import"])
+                                 "Parameters", "Risk", "Validation", "Manual",
+                                 "GIS import"])
 
 with st.sidebar.expander("New map / scenario", expanded=(page == "Simulation")):
     src = st.radio("Source", ["Landscape type", "Built in scenario", "Blank grid"])
@@ -757,9 +758,61 @@ def page_risk():
                    f"cells with >50% risk: {int((prob > 0.5).sum())}.")
 
 
+def page_validation():
+    st.subheader("Validation against observed data")
+    st.caption("Upload the observed burned area for the same landscape and time "
+               "window, then score how well the simulation matches it "
+               "(Jaccard/IoU, Dice, front position error).")
+    st.markdown("Steps: import the real DEM/fuel on the GIS import page, set the "
+                "observed wind and ignition, run the fire, then upload the "
+                "observed burned area here. See VALIDATION_GUIDE.md for data "
+                "sources (EFFIS, MTBS, NASA FIRMS, SRTM, CORINE, ERA5).")
+    up = st.file_uploader("Observed burned area (GeoTIFF or PNG, burned = bright)",
+                          type=["tif", "tiff", "png", "jpg"])
+    thr = st.slider("Burned threshold", 0.0, 1.0, 0.5, 0.05)
+    if up is not None:
+        import numpy as _np
+        ny, nx = cfg.ny, cfg.nx
+        name = up.name.lower()
+        try:
+            if name.endswith((".tif", ".tiff")):
+                path = os.path.join(os.path.dirname(__file__), "_obs_" + up.name)
+                with open(path, "wb") as fh:
+                    fh.write(up.getbuffer())
+                from disasteraware import gis
+                arr = gis._read_resampled(path, ny, nx, nearest=True)
+                arr = (arr - arr.min()) / max(arr.ptp(), 1e-9)
+            else:
+                from PIL import Image
+                im = Image.open(up).convert("L").resize((nx, ny))
+                arr = _np.asarray(im, dtype=float) / 255.0
+            obs = arr > thr
+            from disasteraware import validation, viz as _viz
+            metrics = validation.validate_run(sim, obs)
+            m = st.columns(4)
+            m[0].metric("Jaccard / IoU", f"{metrics['jaccard']:.2f}")
+            m[1].metric("Dice", f"{metrics['dice']:.2f}")
+            m[2].metric("Hit rate", f"{metrics['hit_rate']:.2f}")
+            m[3].metric("False alarm", f"{metrics['false_alarm']:.2f}")
+            m[0].metric("Front error mean (m)", f"{metrics['mean_m']:.0f}")
+            m[1].metric("Front error p90 (m)", f"{metrics['p90_m']:.0f}")
+            st.image(_viz.agreement_pil(sim.ever_burned, obs, world,
+                                        scale=max(4, 700 // max(nx, 1))))
+            st.caption("Green = correctly burned (hit), red = simulated only "
+                       "(false alarm), blue = observed only (missed).")
+        except ImportError as exc:
+            st.error(f"GeoTIFF needs rasterio. {exc}")
+        except Exception as exc:  # pragma: no cover
+            st.error(f"Could not read the file: {exc}")
+    else:
+        st.info("No observed data uploaded yet. Run a fire first, then upload the "
+                "observed burned area to score it.")
+
+
 PAGES = {"Simulation": page_simulation, "Map editor": page_editor,
          "Data layers": page_layers, "Parameters": page_params,
-         "Risk": page_risk, "Manual": page_manual, "GIS import": page_gis}
+         "Risk": page_risk, "Validation": page_validation,
+         "Manual": page_manual, "GIS import": page_gis}
 PAGES[page]()
 
 # animate: advance one step per rerun while playing (fast: only this page runs)
