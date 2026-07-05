@@ -8,7 +8,7 @@ from __future__ import annotations
 
 import numpy as np
 
-from .config import SimConfig
+from .config import SimConfig, FUEL_NAME_TO_ID
 from .world import World, Asset
 
 
@@ -80,7 +80,57 @@ def mountain_forest(seed: int = 13) -> World:
     return w
 
 
+def city_wui(seed: int = 21) -> World:
+    """Ready made city / wildland-urban interface map: a street grid of built-up
+    blocks surrounded by forest and shrub, with many building and critical
+    assets. Fire started in the wildland can spread into the city."""
+    cfg = SimConfig(nx=120, ny=90, cell_size_m=25.0, max_steps=400, rng_seed=seed)
+    w = World.blank(cfg, default_fuel="grass", default_load=0.7, default_moisture=0.09)
+    _synthetic_terrain(w, ridge=False)
+    urban = FUEL_NAME_TO_ID["urban"]
+
+    # surrounding wildland: forest belt on the west, shrub transition
+    w.add_forest_patch(2, 2, 45, 88, fuel_type="pine_litter", load=1.0, moisture=0.07)
+    w.add_forest_patch(45, 2, 60, 88, fuel_type="shrub", load=0.8, moisture=0.09)
+
+    # city core: grid of built-up blocks separated by streets
+    cx0, cy0, cx1, cy1 = 66, 18, 112, 74
+    block = 7
+    for by in range(cy0, cy1, block):
+        for bx in range(cx0, cx1, block):
+            w.paint_rect(bx, by, bx + block - 2, by + block - 2, urban,
+                         load=0.6, moisture=0.06)          # a city block
+    # major streets only (every 2 blocks) so fire can move block to block; the
+    # wildland-facing edge is left open so a WUI fire can enter the city
+    for gx in range(cx0 + 2 * block, cx1, 2 * block):
+        w.add_road_rect(gx, cy0, gx, cy1)
+    for gy in range(cy0 + 2 * block, cy1, 2 * block):
+        w.add_road_rect(cx0, gy, cx1, gy)
+    # an arterial from the wildland to the city (kept off the ignition row)
+    w.add_road_segment(0, 38, cx0, 38, width=1)
+    # embers let a wildfire jump streets into the built-up area (WUI behaviour)
+    cfg.spread.spotting = True
+    cfg.spread.spot_prob = 0.06
+    cfg.spread.spot_distance = 3
+    cfg.spread.spot_intensity_min = 0.4
+
+    # assets across the city
+    w.add_asset(Asset("Downtown", "building", 88, 45, radius=10, value=1.0))
+    w.add_asset(Asset("Residents", "population", 88, 45, radius=12,
+                      value=1.0, population=45000))
+    w.add_asset(Asset("City hospital", "critical", 78, 32, radius=2, value=1.0))
+    w.add_asset(Asset("Power plant", "critical", 104, 60, radius=2, value=1.0))
+    w.add_asset(Asset("Water works", "critical", 100, 28, radius=1, value=0.9))
+    w.add_asset(Asset("School", "building", 82, 60, radius=2, value=0.8))
+    w.add_asset(Asset("Evacuation route", "evac_route", 119, 45, radius=0))
+
+    w.set_uniform_wind(speed=10.0, direction_rad=0.0)      # wind toward the city
+    w.add_ignition(x=15, y=58, step=0, radius=2)           # ignition in the forest
+    return w
+
+
 SCENARIOS = {
+    "City / WUI": city_wui,
     "Wildland urban interface": wui_interface,
     "Grassland fire": grassland_run,
     "Mountain forest": mountain_forest,

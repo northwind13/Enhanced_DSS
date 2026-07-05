@@ -48,6 +48,7 @@ FUEL_MODELS: Dict[int, FuelModel] = {
     3: FuelModel("pine_litter", r_base=0.60, m_ext=0.45, a_w=1.2, a_s=1.2, a_asp=0.20, b_base=0.10, is_forest=True,  economic_value=12.0),
     4: FuelModel("hardwood",    r_base=0.40, m_ext=0.50, a_w=0.8, a_s=0.6, a_asp=0.15, b_base=0.05, is_forest=True,  economic_value=18.0),
     5: FuelModel("water",       r_base=0.00, m_ext=1.00, a_w=0.0, a_s=0.0, a_asp=0.00, b_base=0.00, is_forest=False, economic_value=0.0),
+    6: FuelModel("urban",       r_base=0.45, m_ext=0.30, a_w=1.0, a_s=0.5, a_asp=0.20, b_base=0.08, is_forest=False, economic_value=0.0),
 }
 
 FUEL_NAME_TO_ID: Dict[str, int] = {m.name: i for i, m in FUEL_MODELS.items()}
@@ -62,6 +63,8 @@ class SpreadParams:
     eps_fuel: float = 1.0e-4        # extinction fuel threshold (Eq. 44)
     diagonal_distance_weighting: bool = True   # divide diagonal influence by sqrt(2)
     slope_clip_rad: float = 1.40    # clip terrain slope to avoid tan() blow up near 90 deg
+    aniso_wind_full: float = 6.0    # wind speed (m/s) for fully directional spread;
+                                    # at zero wind spread is isotropic (fuel/slope driven)
     # --- optional realism modes (default off -> thesis behaviour unchanged) ---
     elliptical: bool = False        # Cell2Fire/FARSITE style wind elongated ellipse
     lb_ratio_base: float = 1.0      # length-to-breadth ratio at zero wind

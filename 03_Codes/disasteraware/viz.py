@@ -24,6 +24,7 @@ _FUEL_COLORS = {
     3: (0.20, 0.46, 0.26),   # pine litter: forest green
     4: (0.12, 0.34, 0.18),   # hardwood: dark green
     5: (0.28, 0.52, 0.75),   # water: blue
+    6: (0.55, 0.47, 0.44),   # urban / built-up: brownish grey
 }
 
 _ASSET_STYLE = {
@@ -373,6 +374,7 @@ def _state_code_field(world, sim=None):
     code[ftype == 3] = 4     # pine
     code[ftype == 4] = 5     # hardwood
     code[ftype == 5] = 0     # water
+    code[ftype == 6] = 1     # urban -> bare-like tone in 3D
     if sim is not None:
         code[sim.ever_burned] = 6
         code[sim.state.burning > 0.5] = 7

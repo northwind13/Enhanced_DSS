@@ -104,17 +104,23 @@ def propagation_influence(burning: np.ndarray, ros: np.ndarray,
     source = burning.astype(float) * ros
     psi = np.zeros_like(source)
     ecc = None
+    aniso = 1.0
     if params.elliptical and wws is not None:
         lb = params.lb_ratio_base + params.lb_ratio_wind * np.asarray(wws)
         lb = np.maximum(lb, 1.0)
         ecc = np.sqrt(np.clip(1.0 - 1.0 / (lb * lb), 0.0, 0.999))
+    elif wws is not None:
+        # blend the directional weight toward isotropic as wind drops to zero,
+        # so with no wind the fire spreads symmetrically driven by fuel and slope
+        aniso = np.clip(np.asarray(wws) / max(params.aniso_wind_full, 1e-6), 0.0, 1.0)
     for drow, dcol in _OFFSETS:
         theta = _neighbour_to_target_angle(drow, dcol)
         cosd = np.cos(wwd - theta)
         if ecc is not None:
             g_dir = np.clip((1.0 - ecc) / (1.0 - ecc * cosd), 0.0, None)
         else:
-            g_dir = np.maximum(0.0, cosd)
+            # aniso in [0,1]: 0 -> isotropic (g_dir=1), 1 -> thesis max(0,cos)
+            g_dir = (1.0 - aniso) + aniso * np.maximum(0.0, cosd)
         contrib = _shift(source, drow, dcol) * g_dir
         if params.diagonal_distance_weighting and drow != 0 and dcol != 0:
             contrib = contrib / np.sqrt(2.0)

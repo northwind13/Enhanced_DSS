@@ -218,3 +218,53 @@ def test_standard_fuel_resolve():
     from disasteraware import fuels_standard
     fid, load, moist = fuels_standard.resolve("Anderson 13", 3)
     assert fid in range(0, 6) and 0 <= load <= 1
+
+
+def test_ignition_at_corner_and_edges_no_crash():
+    for (ix, iy) in [(0, 0), (40, 0), (0, 40), (40, 40), (20, 0), (0, 20)]:
+        w = _simple_world(nx=41, ny=41, wind=6.0)
+        w.ignitions.clear()
+        w.add_ignition(ix, iy, step=0, radius=1)
+        sim = Simulator(w)
+        sim.run(n_steps=30)
+        assert sim.state.burning.shape == (41, 41)
+        assert sim.ever_burned.sum() >= 1
+
+
+def test_zero_wind_is_isotropic():
+    w = _simple_world(nx=41, ny=41, wind=0.0)
+    w.ignitions.clear(); w.add_ignition(20, 20, step=0)
+    sim = Simulator(w)
+    for _ in range(16):
+        sim.step()
+    b = sim.ever_burned
+    east, west = b[:, 21:].sum(), b[:, :20].sum()
+    north, south = b[:20, :].sum(), b[21:, :].sum()
+    assert abs(int(east) - int(west)) <= 3
+    assert abs(int(north) - int(south)) <= 3
+
+
+def test_strong_wind_is_directional():
+    w = _simple_world(nx=41, ny=41, wind=14.0, wind_dir=0.0)
+    w.ignitions.clear(); w.add_ignition(20, 20, step=0)
+    sim = Simulator(w)
+    for _ in range(16):
+        sim.step()
+    b = sim.ever_burned
+    assert b[:, 21:].sum() > b[:, :20].sum()
+
+
+def test_city_scenario_burns_structures():
+    sim = Simulator(scenarios.city_wui())
+    sim.run()
+    rep = compute_costs(sim)
+    assert rep.building_loss > 0 or rep.critical_infrastructure_loss > 0
+
+
+def test_validation_metrics():
+    from disasteraware import validation
+    a = np.zeros((10, 10), dtype=bool); a[2:6, 2:6] = True
+    b = np.zeros((10, 10), dtype=bool); b[3:7, 3:7] = True
+    m = validation.compare_masks(a, b)
+    assert 0.0 <= m["jaccard"] <= 1.0 and 0.0 <= m["dice"] <= 1.0
+    assert validation.compare_masks(a, a)["jaccard"] == 1.0

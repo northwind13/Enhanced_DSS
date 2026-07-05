@@ -208,8 +208,9 @@ def generate_landscape(config: SimConfig | None = None,
                                            0, ny - 1)), width=rw)
 
     if with_assets:
-        # clear a small urban footprint on land for the town
-        world.clear_fuel(tx - 4, ty - 3, tx + 4, ty + 3)
+        # flammable built-up town footprint (WUI): structures can burn
+        world.paint_rect(tx - 4, ty - 3, tx + 4, ty + 3,
+                         FUEL_NAME_TO_ID["urban"], load=0.6, moisture=0.06)
         hx, hy = _to_land(tx - 3, ty - 2)
         px, py = _to_land(tx + 3, ty + 2)
         world.add_asset(Asset("Town", "building", tx, ty, radius=4, value=1.0))
