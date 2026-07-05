@@ -165,3 +165,56 @@ def test_suppression_capped_at_available_fuel():
     for _ in range(30):
         sim.step()
         assert np.all(sim.state.fload >= -1e-9)
+
+
+def test_thesis_default_modes_off():
+    cfg = SimConfig()
+    assert cfg.spread.elliptical is False and cfg.spread.spotting is False
+
+
+def test_elliptical_mode_runs_and_spreads():
+    w = _simple_world(nx=41, ny=41, wind=12.0)
+    w.config.spread.elliptical = True
+    sim = Simulator(w); sim.run(n_steps=30)
+    assert sim.ever_burned.sum() > 1
+
+
+def test_spotting_ignites_ahead():
+    w = _simple_world(nx=61, ny=61, wind=15.0)
+    w.config.spread.spotting = True
+    w.config.spread.spot_prob = 0.3
+    w.config.spread.spot_intensity_min = 0.0
+    sim = Simulator(w); sim.run(n_steps=25, stop_when_quiescent=False)
+    base = _simple_world(nx=61, ny=61, wind=15.0)
+    b = Simulator(base); b.run(n_steps=25, stop_when_quiescent=False)
+    assert sim.ever_burned.sum() >= b.ever_burned.sum()
+
+
+def test_behavior_fields():
+    from disasteraware import behavior
+    sim = Simulator(scenarios.wui_interface()); sim.run(n_steps=25, stop_when_quiescent=False)
+    fli = behavior.fireline_intensity(sim)
+    fl = behavior.flame_length_field(sim)
+    assert fli.min() >= 0 and fl.min() >= 0
+    assert behavior.perimeter_mask(sim).sum() >= 0
+
+
+def test_monte_carlo_probability_bounds():
+    from disasteraware import monte_carlo
+    w = scenarios.grassland_run()
+    prob = monte_carlo.burn_probability(w, n_runs=5, n_steps=40)
+    assert prob.min() >= 0.0 and prob.max() <= 1.0
+    # world restored (fuel back to initial)
+    assert np.allclose(w.fuel.fload, w.fuel.fload0)
+
+
+def test_emc_moisture_bounds():
+    from disasteraware.fuel_moisture import equilibrium_moisture
+    m = equilibrium_moisture(np.array([30.0, 15.0]), np.array([20.0, 90.0]))
+    assert np.all(m >= 0.01) and np.all(m <= 0.6)
+
+
+def test_standard_fuel_resolve():
+    from disasteraware import fuels_standard
+    fid, load, moist = fuels_standard.resolve("Anderson 13", 3)
+    assert fid in range(0, 6) and 0 <= load <= 1

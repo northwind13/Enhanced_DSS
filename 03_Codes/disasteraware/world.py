@@ -124,6 +124,24 @@ class World:
         self.fuel.fload[m] = 0.0
         self.fuel.fload0[m] = 0.0
 
+    def paint_rect(self, x0: int, y0: int, x1: int, y1: int, ftype: int,
+                   load: float = 0.0, moisture: float = 0.08) -> None:
+        """Set a rectangular region to an arbitrary fuel class (water=5, bare=0,
+        vegetation 1-4). Used by the Fuel and Firebreak tools."""
+        ys, xs = self._mask(x0, y0, x1, y1)
+        self.fuel.ftype[ys, xs] = int(ftype)
+        self.fuel.fload[ys, xs] = load
+        self.fuel.fload0[ys, xs] = load
+        self.fuel.fmoist[ys, xs] = moisture
+
+    def paint_disk(self, x: int, y: int, radius: int, ftype: int,
+                   load: float = 0.0, moisture: float = 0.08) -> None:
+        m = self._disk(x, y, max(radius, 0))
+        self.fuel.ftype[m] = int(ftype)
+        self.fuel.fload[m] = load
+        self.fuel.fload0[m] = load
+        self.fuel.fmoist[m] = moisture
+
     def add_asset(self, asset: Asset) -> None:
         """Place an asset and write its contribution into the value layers."""
         self.assets.append(asset)

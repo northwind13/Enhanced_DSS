@@ -62,6 +62,14 @@ class SpreadParams:
     eps_fuel: float = 1.0e-4        # extinction fuel threshold (Eq. 44)
     diagonal_distance_weighting: bool = True   # divide diagonal influence by sqrt(2)
     slope_clip_rad: float = 1.40    # clip terrain slope to avoid tan() blow up near 90 deg
+    # --- optional realism modes (default off -> thesis behaviour unchanged) ---
+    elliptical: bool = False        # Cell2Fire/FARSITE style wind elongated ellipse
+    lb_ratio_base: float = 1.0      # length-to-breadth ratio at zero wind
+    lb_ratio_wind: float = 0.06     # extra length-to-breadth per m/s of wind
+    spotting: bool = False          # ember spotting ahead of the front
+    spot_prob: float = 0.02         # per active hot cell probability per step
+    spot_distance: int = 6          # spotting distance downwind (cells)
+    spot_intensity_min: float = 0.6 # only intense cells throw embers
 
 
 @dataclass
@@ -84,6 +92,9 @@ class IntensityParams:
     fload_max: float = 1.0          # reference maximum fuel load for normalization
     wws_max: float = 20.0           # reference maximum wind speed (m/s)
     slope_max_rad: float = 0.7854   # reference maximum slope (45 deg) for normalization
+    crown_fire_threshold: float = 0.6   # forest cells above this intensity -> crown fire
+    heat_content: float = 18000.0   # heat of combustion H (kJ/kg) for Byram intensity
+    biomass_ref: float = 2.0        # kg/m^2 represented by fuel load = 1 (Byram w)
 
 
 @dataclass

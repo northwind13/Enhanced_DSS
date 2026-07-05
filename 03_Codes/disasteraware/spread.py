@@ -93,13 +93,28 @@ def rate_of_spread(fuel, topo, meteo, params: SpreadParams) -> np.ndarray:
 
 
 def propagation_influence(burning: np.ndarray, ros: np.ndarray,
-                          wwd: np.ndarray, params: SpreadParams) -> np.ndarray:
-    """Accumulated wind aligned propagation influence Psi (Eq. 46, 48)."""
+                          wwd: np.ndarray, params: SpreadParams,
+                          wws: np.ndarray = None) -> np.ndarray:
+    """Accumulated wind aligned propagation influence Psi (Eq. 46, 48).
+
+    Default uses the thesis directional weight g_dir = max(0, cos(Wwd - theta)).
+    When params.elliptical is True, an optional Cell2Fire/FARSITE style wind
+    elongated ellipse is used instead, with a length-to-breadth ratio that grows
+    with wind speed. The thesis behaviour is unchanged unless elliptical is on."""
     source = burning.astype(float) * ros
     psi = np.zeros_like(source)
+    ecc = None
+    if params.elliptical and wws is not None:
+        lb = params.lb_ratio_base + params.lb_ratio_wind * np.asarray(wws)
+        lb = np.maximum(lb, 1.0)
+        ecc = np.sqrt(np.clip(1.0 - 1.0 / (lb * lb), 0.0, 0.999))
     for drow, dcol in _OFFSETS:
         theta = _neighbour_to_target_angle(drow, dcol)
-        g_dir = np.maximum(0.0, np.cos(wwd - theta))
+        cosd = np.cos(wwd - theta)
+        if ecc is not None:
+            g_dir = np.clip((1.0 - ecc) / (1.0 - ecc * cosd), 0.0, None)
+        else:
+            g_dir = np.maximum(0.0, cosd)
         contrib = _shift(source, drow, dcol) * g_dir
         if params.diagonal_distance_weighting and drow != 0 and dcol != 0:
             contrib = contrib / np.sqrt(2.0)

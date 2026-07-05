@@ -52,8 +52,12 @@ class Simulator:
         self.ever_burned = np.zeros(world.shape, dtype=bool)
         self.fuel_consumed_total = np.zeros(world.shape, dtype=float)
         self.fuel_suppressed_total = np.zeros(world.shape, dtype=float)
+        # step index at which each cell first ignited (-1 = never), for the
+        # time-to-burn propagation layer (Kose et al., 3D wildfire viz)
+        self.first_ignition_step = np.full(world.shape, -1, dtype=int)
         self.history: List[StepDiagnostics] = []
         self._b_base = _fuel_param(world.fuel.ftype, "b_base")
+        self._rng = np.random.default_rng(self.cfg.rng_seed)
 
     # ----------------------------------------------------------------- control
     def reset(self) -> None:
@@ -61,6 +65,7 @@ class Simulator:
         self.ever_burned[:] = False
         self.fuel_consumed_total[:] = 0.0
         self.fuel_suppressed_total[:] = 0.0
+        self.first_ignition_step[:] = -1
         self.history.clear()
         self.world.fuel.fload = self.world.fuel.fload0.copy()
         self.state.fload = self.world.fuel.fload0.copy()
@@ -87,7 +92,7 @@ class Simulator:
 
         # 1. rate of spread and accumulated propagation influence (Eq. 123, 46)
         ros = rate_of_spread(fuel, topo, meteo, cfg.spread)
-        psi = propagation_influence(B, ros, meteo.wwd, cfg.spread)
+        psi = propagation_influence(B, ros, meteo.wwd, cfg.spread, wws=meteo.wws)
 
         # 2. burning status update (Eq. 43 to 45)
         has_fuel = (Fload > cfg.spread.eps_fuel).astype(float)
@@ -101,6 +106,26 @@ class Simulator:
             ign = np.maximum(ign, extra_ignition)
         ign = ign * has_fuel
         B_next = np.maximum.reduce([b_pers, b_prop, ign])
+
+        # 2b. optional ember spotting: intense cells throw embers downwind
+        # (default off; adds stochastic ignition only when enabled)
+        if cfg.spread.spotting:
+            ny, nx = B_next.shape
+            hot = (B_next > 0.5) & (I > cfg.spread.spot_intensity_min)
+            if hot.any():
+                hy, hx = np.where(hot)
+                throw = self._rng.random(hx.size) < cfg.spread.spot_prob
+                hy, hx = hy[throw], hx[throw]
+                if hx.size:
+                    wd = meteo.wwd[hy, hx]
+                    d = cfg.spread.spot_distance
+                    tx = hx + np.round(d * np.cos(wd)).astype(int)
+                    ty = hy - np.round(d * np.sin(wd)).astype(int)
+                    ok = (tx >= 0) & (tx < nx) & (ty >= 0) & (ty < ny)
+                    tx, ty = tx[ok], ty[ok]
+                    if tx.size:
+                        fuelok = Fload[ty, tx] > cfg.spread.eps_fuel
+                        B_next[ty[fuelok], tx[fuelok]] = 1.0
 
         # 3. fuel mass update (Eq. 68 to 69, 129)
         f_burn = np.clip(self._b_base * (1.0 - fuel.fmoist), 0.0, 1.0)
@@ -125,6 +150,8 @@ class Simulator:
         s.step += 1
         world.fuel.fload = Fload_next  # keep the layer in sync for observation
 
+        newly = (B_next > 0.5) & (self.first_ignition_step < 0)
+        self.first_ignition_step[newly] = s.step
         self.ever_burned |= (B_next > 0.5)
         self.fuel_consumed_total += combustion
         self.fuel_suppressed_total += f_red

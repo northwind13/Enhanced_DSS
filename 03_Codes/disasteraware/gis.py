@@ -40,10 +40,18 @@ def _read_resampled(path: str, ny: int, nx: int, nearest: bool = False) -> np.nd
 
 
 def slope_aspect_from_dem(dem: np.ndarray, cell_size_m: float):
-    """Return (slope_rad, aspect_rad) derived from an elevation grid."""
-    gy, gx = np.gradient(dem, cell_size_m)
-    slope = np.arctan(np.hypot(gx, gy))
-    aspect = np.arctan2(-gy, -gx)
+    """Return (slope_rad, aspect_rad) from an elevation grid using Horn's 3x3
+    method (Horn 1981), the standard GIS estimator used by Kose et al. It is
+    more robust than a plain 2 point gradient near noisy DEM cells."""
+    p = np.pad(dem, 1, mode="edge")
+    # 3x3 neighbourhood (Horn weights)
+    a = p[:-2, :-2]; b = p[:-2, 1:-1]; c = p[:-2, 2:]
+    d = p[1:-1, :-2];                  f = p[1:-1, 2:]
+    g = p[2:, :-2];  h = p[2:, 1:-1];  i = p[2:, 2:]
+    dzdx = ((c + 2 * f + i) - (a + 2 * d + g)) / (8.0 * cell_size_m)
+    dzdy = ((g + 2 * h + i) - (a + 2 * b + c)) / (8.0 * cell_size_m)
+    slope = np.arctan(np.hypot(dzdx, dzdy))
+    aspect = np.arctan2(-dzdy, -dzdx)
     return np.clip(slope, 0.0, 1.4), aspect
 
 

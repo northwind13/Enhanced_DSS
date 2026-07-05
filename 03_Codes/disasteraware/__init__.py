@@ -25,6 +25,10 @@ from .core import Simulator, StepDiagnostics
 from .costs import compute_costs, CostReport
 from .interaction import InteractionOperator
 from .observation import observe, Observation
+from . import behavior
+from . import monte_carlo
+from . import fuel_moisture
+from . import fuels_standard
 from . import scenarios
 from . import io_utils
 from . import terrain
@@ -39,5 +43,6 @@ __all__ = [
     "World", "Asset", "IgnitionEvent", "SimulationState",
     "Simulator", "StepDiagnostics", "compute_costs", "CostReport",
     "InteractionOperator", "observe", "Observation",
+    "behavior", "monte_carlo", "fuel_moisture", "fuels_standard",
     "scenarios", "io_utils", "terrain", "viz",
 ]

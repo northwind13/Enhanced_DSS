@@ -51,9 +51,17 @@ def landscape_rgb(world) -> np.ndarray:
     return np.clip(img, 0, 1)
 
 
+_HS_CACHE = {}
+
+
 def hillshade(elev: np.ndarray, cell_size_m: float = 30.0,
               azimuth_deg: float = 315.0, altitude_deg: float = 45.0) -> np.ndarray:
-    """Standard hillshade in [0, 1] from an elevation grid."""
+    """Standard hillshade in [0, 1] from an elevation grid. Cached by the
+    elevation array identity so the animation loop does not recompute it."""
+    key = (id(elev), elev.shape, round(cell_size_m, 3))
+    hit = _HS_CACHE.get(key)
+    if hit is not None:
+        return hit
     az = np.radians(360.0 - azimuth_deg + 90.0)
     alt = np.radians(altitude_deg)
     gy, gx = np.gradient(elev, cell_size_m)
@@ -61,47 +69,55 @@ def hillshade(elev: np.ndarray, cell_size_m: float = 30.0,
     aspect = np.arctan2(-gy, -gx)
     sh = (np.sin(alt) * np.sin(slope)
           + np.cos(alt) * np.cos(slope) * np.cos(az - aspect))
-    return np.clip(sh, 0.0, 1.0)
+    out = np.clip(sh, 0.0, 1.0)
+    if len(_HS_CACHE) > 8:
+        _HS_CACHE.clear()
+    _HS_CACHE[key] = out
+    return out
+
+
+_BURN_SCAR = np.array([0.14, 0.11, 0.10])
+
+
+def apply_fire(img: np.ndarray, sim) -> np.ndarray:
+    """Overlay burned scar and RED to ORANGE active fire on an RGB image.
+
+    Fire stays red dominant (deep red -> orange) and never turns yellow, so the
+    colour is the same whether or not other overlays are active."""
+    burned = sim.ever_burned
+    active = sim.state.burning > 0.5
+    img[burned] = _BURN_SCAR
+    if active.any():
+        inten = np.clip(sim.state.intensity, 0.0, 1.0)
+        img[..., 0][active] = 1.0                       # red channel full
+        img[..., 1][active] = (0.10 + 0.32 * inten)[active]   # slight orange when hot
+        img[..., 2][active] = 0.02
+    return img
 
 
 def fire_state_rgb(sim, show_intensity: bool = True) -> np.ndarray:
     """Compose the landscape with burned scar and active fire overlays."""
-    img = landscape_rgb(sim.world)
-    burned = sim.ever_burned
-    active = sim.state.burning > 0.5
-
-    img[burned] = np.array([0.16, 0.13, 0.12])
-
-    if active.any():
-        inten = np.clip(sim.state.intensity, 0.0, 1.0)
-        if show_intensity:
-            # deep red (cool) -> orange -> yellow/white (hot core)
-            r = np.ones_like(inten)
-            g = 0.18 + 0.77 * inten
-            b = 0.04 + 0.45 * inten * inten
-        else:
-            r = np.full_like(inten, 1.0)
-            g = np.full_like(inten, 0.45)
-            b = np.full_like(inten, 0.08)
-        img[..., 0][active] = r[active]
-        img[..., 1][active] = np.clip(g[active], 0, 1)
-        img[..., 2][active] = np.clip(b[active], 0, 1)
-    return img
+    return apply_fire(landscape_rgb(sim.world), sim)
 
 
-def value_overlay_rgb(world, alpha: float = 0.65) -> np.ndarray:
-    """Landscape with the protection priority draped as a green->yellow->red
-    heat ramp (higher priority = more red)."""
+def value_overlay_rgb(world, alpha: float = 0.7) -> np.ndarray:
+    """Landscape with the protection priority shown ONLY on cells that actually
+    hold value (buildings, critical facilities, population). High priority is
+    magenta, lower priority is cyan. The rest of the landscape keeps its natural
+    colour so the map does not turn into a full heat map."""
     img = landscape_rgb(world)
+    v = world.value
+    asset = (v.vbld > 0.02) | (v.vcrit > 0.02) | (v.vpop > 0.0)
+    if not asset.any():
+        return img
     prio = np.clip(world.priority_field(), 0.0, 1.0)
-    mask = prio > 0.02
     try:
         from matplotlib import colormaps
-        ramp = np.asarray(colormaps["RdYlGn_r"](prio))[..., :3]
+        ramp = np.asarray(colormaps["cool"](prio))[..., :3]   # cyan -> magenta
     except Exception:
-        ramp = np.stack([prio, 1.0 - prio, np.zeros_like(prio)], axis=-1)
+        ramp = np.stack([prio, 1 - prio, np.ones_like(prio)], axis=-1)
     for c in range(3):
-        img[..., c][mask] = (1 - alpha) * img[..., c][mask] + alpha * ramp[..., c][mask]
+        img[..., c][asset] = (1 - alpha) * img[..., c][asset] + alpha * ramp[..., c][asset]
     return img
 
 
@@ -111,8 +127,7 @@ def _base_rgb(world, sim=None, show_fire=True, show_value=False,
     if show_value:
         img = value_overlay_rgb(world)
         if sim is not None and show_fire:
-            img[sim.ever_burned] = [0.16, 0.13, 0.12]
-            img[sim.state.burning > 0.5] = [0.98, 0.35, 0.06]
+            img = apply_fire(img, sim)
     elif sim is not None and show_fire:
         img = fire_state_rgb(sim)
     else:
@@ -128,7 +143,9 @@ def render_pil(world, sim=None, scale: int = 8, show_fire: bool = True,
                show_assets: bool = True, show_value: bool = False,
                show_hillshade: bool = True, show_wind: bool = True,
                show_ignitions: bool = True, show_grid: bool = False,
-               show_labels: bool = False, show_roads: bool = True):
+               show_labels: bool = False, show_roads: bool = True,
+               show_perimeter: bool = False, show_spread_arrows: bool = False,
+               sim_for_behavior=None):
     """Render the map to a polished PIL image of size (nx*scale, ny*scale)."""
     from PIL import Image, ImageDraw
 
@@ -234,6 +251,34 @@ def render_pil(world, sim=None, scale: int = 8, show_fire: bool = True,
                    fill=(255, 255, 255, 230), outline=(0, 0, 0, 255))
     meters = bar_cells * world.config.cell_size_m
     draw.text((bx0, by0 - 14), f"{meters:.0f} m", fill=(255, 255, 255, 255))
+
+    _sim = sim_for_behavior if sim_for_behavior is not None else sim
+    # fire perimeter outline (FARSITE style)
+    if show_perimeter and _sim is not None:
+        from . import behavior
+        per = behavior.perimeter_mask(_sim)
+        ys, xs = np.where(per)
+        for py, px in zip(ys, xs):
+            draw.rectangle([px * scale, py * scale,
+                            px * scale + scale, py * scale + scale],
+                           outline=(255, 60, 40, 255), width=max(1, scale // 4))
+    # spread direction arrows at the active front (wind aligned)
+    if show_spread_arrows and _sim is not None:
+        act = _sim.state.burning > 0.5
+        ys, xs = np.where(act)
+        if xs.size:
+            stride = max(1, xs.size // 60)
+            for py, px in zip(ys[::stride], xs[::stride]):
+                wd = float(world.meteo.wwd[py, px])
+                cx, cy = px * scale + scale // 2, py * scale + scale // 2
+                L = scale * 2.0
+                ex, ey = cx + L * np.cos(wd), cy - L * np.sin(wd)
+                draw.line([cx, cy, ex, ey], fill=(30, 30, 30, 230), width=2)
+                ang = np.arctan2(ey - cy, ex - cx)
+                for da in (2.6, -2.6):
+                    draw.line([ex, ey, ex - 5 * np.cos(ang + da),
+                               ey - 5 * np.sin(ang + da)],
+                              fill=(30, 30, 30, 230), width=2)
     return img
 
 
@@ -394,26 +439,28 @@ def fire_surface_figure(world, sim=None, max_cells: int = 150,
                             line=dict(width=1, color="black")),
                 name=kind, hoverinfo="text"))
 
-    # active fire as bright flame coloured points
+    # active fire: bright markers sitting on the surface (the surface itself is
+    # already coloured orange where burning, matching the 2D map)
     if sim is not None:
         act = sim.state.burning > 0.5
         if act.any():
             ay, ax = np.where(act)
-            if ax.size > 4000:                      # subsample very large fires
-                idx = np.random.default_rng(0).choice(ax.size, 4000, replace=False)
+            if ax.size > 3000:
+                idx = np.random.default_rng(0).choice(ax.size, 3000, replace=False)
                 ax, ay = ax[idx], ay[idx]
             inten = np.clip(sim.state.intensity[ay, ax], 0, 1)
             data.append(go.Scatter3d(
-                x=ax, y=ay, z=zfull[ay, ax] + 0.4, mode="markers",
-                marker=dict(size=3.5, color=inten, colorscale=[[0, "rgb(180,20,10)"],
-                            [0.5, "rgb(255,120,0)"], [1, "rgb(255,240,120)"]],
-                            cmin=0, cmax=1, opacity=0.9),
+                x=ax, y=ay, z=zfull[ay, ax] + 0.3, mode="markers",
+                marker=dict(size=4, color=inten,
+                            colorscale=[[0, "rgb(210,30,10)"], [0.5, "rgb(255,140,0)"],
+                                        [1, "rgb(255,235,120)"]],
+                            cmin=0, cmax=1, opacity=0.95),
                 name="fire", hoverinfo="skip"))
 
     fig = go.Figure(data=data)
     fig.update_layout(height=460, margin=dict(l=0, r=0, t=0, b=0),
-                      showlegend=False,
-                      scene=dict(aspectmode="data",
+                      showlegend=False, uirevision="keep",
+                      scene=dict(aspectmode="data", uirevision="keep",
                                  xaxis=dict(visible=False),
                                  yaxis=dict(visible=False),
                                  zaxis=dict(visible=False),
@@ -433,5 +480,89 @@ def map_figure_2d(world, sim=None, scale: int = 6, **flags):
     fig.update_xaxes(visible=False, range=[0, nx], constrain="domain")
     fig.update_yaxes(visible=False, range=[ny, 0], scaleanchor="x", scaleratio=1)
     fig.update_layout(margin=dict(l=0, r=0, t=0, b=0), height=560,
-                      dragmode="pan")
+                      dragmode="pan", uirevision="keep")
     return fig
+
+def ignition_time_pil(sim, scale: int = 6):
+    """2D time-to-burn map: cells coloured by the step they first ignited
+    (red = earliest, blue = latest). Unburned cells keep the landscape colour.
+    After Kose et al., '3D Wildfire Simulation System'."""
+    from PIL import Image
+    world = sim.world
+    img = landscape_rgb(world)
+    fis = sim.first_ignition_step
+    burned = fis >= 0
+    if burned.any():
+        t = fis.astype(float)
+        lo, hi = float(t[burned].min()), float(t[burned].max())
+        tn = (t - lo) / (hi - lo) if hi > lo else np.zeros_like(t)
+        try:
+            from matplotlib import colormaps
+            ramp = np.asarray(colormaps["RdYlBu"](tn))[..., :3]
+        except Exception:
+            ramp = np.stack([1 - tn, tn * 0.6, tn], axis=-1)
+        for c in range(3):
+            img[..., c][burned] = ramp[..., c][burned]
+    arr = (np.clip(img, 0, 1) * 255).astype(np.uint8)
+    ny, nx = arr.shape[:2]
+    return Image.fromarray(arr, "RGB").resize((nx * scale, ny * scale), Image.NEAREST)
+
+
+def flame_length_norm(intensity):
+    """Stylized normalized flame length from the intensity proxy (higher
+    intensity -> taller flame)."""
+    return np.sqrt(np.clip(intensity, 0.0, 1.0))
+
+def behavior_pil(sim, kind: str = "fireline_intensity", scale: int = 6):
+    """Render a FARSITE style behaviour field over the landscape.
+
+    kind in {fireline_intensity, flame_length, rate_of_spread, crown_fire}."""
+    from PIL import Image
+    from . import behavior
+    world = sim.world
+    img = landscape_rgb(world)
+    img[sim.ever_burned] = [0.16, 0.13, 0.12]
+    if kind == "crown_fire":
+        mask = behavior.crown_fire_mask(sim)
+        img[sim.state.burning > 0.5] = [0.98, 0.45, 0.10]
+        img[mask] = [1.0, 0.15, 0.0]
+    else:
+        if kind == "flame_length":
+            f = behavior.flame_length_field(sim); norm = np.clip(f / 8.0, 0, 1); mask = f > 0.01
+        elif kind == "rate_of_spread":
+            f = behavior.rate_of_spread_field(world)
+            m = float(f.max()); norm = f / m if m > 1e-9 else f
+            mask = (sim.state.burning > 0.5)
+        else:
+            f = behavior.fireline_intensity(sim)
+            m = float(f.max()); norm = f / m if m > 1e-9 else f
+            mask = f > 0
+        try:
+            from matplotlib import colormaps
+            ramp = np.asarray(colormaps["inferno"](norm))[..., :3]
+        except Exception:
+            ramp = np.stack([norm, norm * 0.4, np.zeros_like(norm)], axis=-1)
+        for c in range(3):
+            img[..., c][mask] = ramp[..., c][mask]
+    arr = (np.clip(img, 0, 1) * 255).astype(np.uint8)
+    ny, nx = arr.shape[:2]
+    return Image.fromarray(arr, "RGB").resize((nx * scale, ny * scale), Image.NEAREST)
+
+
+def probability_pil(world, prob, scale: int = 6):
+    """Render a burn probability field (0..1) as a heat map over the landscape."""
+    from PIL import Image
+    img = landscape_rgb(world)
+    prob = np.clip(np.asarray(prob, dtype=float), 0, 1)
+    mask = prob > 0.01
+    try:
+        from matplotlib import colormaps
+        ramp = np.asarray(colormaps["turbo"](prob))[..., :3]
+    except Exception:
+        ramp = np.stack([prob, np.zeros_like(prob), 1 - prob], axis=-1)
+    for c in range(3):
+        img[..., c][mask] = 0.25 * img[..., c][mask] + 0.75 * ramp[..., c][mask]
+    arr = (np.clip(img, 0, 1) * 255).astype(np.uint8)
+    ny, nx = arr.shape[:2]
+    return Image.fromarray(arr, "RGB").resize((nx * scale, ny * scale), Image.NEAREST)
+
