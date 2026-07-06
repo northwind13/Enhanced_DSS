@@ -28,10 +28,10 @@ _FUEL_COLORS = {
 }
 
 _ASSET_STYLE = {
-    "building":   {"color": (245, 245, 245), "shape": "square"},
-    "critical":   {"color": (220, 40, 40),  "shape": "cross"},
+    "building":   {"color": (150, 60, 40),  "shape": "square"},
+    "critical":   {"color": (210, 30, 30),  "shape": "cross"},
     "population": {"color": (60, 130, 240),  "shape": "circle"},
-    "evac_route": {"color": (40, 200, 120),  "shape": "diamond"},
+    "evac_route": {"color": (40, 170, 90),  "shape": "diamond"},
 }
 
 
@@ -101,24 +101,38 @@ def fire_state_rgb(sim, show_intensity: bool = True) -> np.ndarray:
     return apply_fire(landscape_rgb(sim.world), sim)
 
 
-def value_overlay_rgb(world, alpha: float = 0.7) -> np.ndarray:
-    """Landscape with the protection priority shown ONLY on cells that actually
-    hold value (buildings, critical facilities, population). High priority is
-    magenta, lower priority is cyan. The rest of the landscape keeps its natural
-    colour so the map does not turn into a full heat map."""
+def _dilate_mask(mask, r: int = 1):
+    out = np.array(mask, dtype=bool)
+    for _ in range(int(r)):
+        d = out.copy()
+        d[:-1, :] |= out[1:, :]; d[1:, :] |= out[:-1, :]
+        d[:, :-1] |= out[:, 1:]; d[:, 1:] |= out[:, :-1]
+        out = d
+    return out
+
+
+def value_overlay_rgb(world) -> np.ndarray:
+    """Landscape with the protection priority shown clearly on and around the
+    cells that hold value (buildings, critical facilities, population). Core
+    cells are strongly tinted (cyan = low, magenta = high) and a soft halo makes
+    even small assets easy to spot, without turning the whole map into a heat
+    map."""
     img = landscape_rgb(world)
     v = world.value
-    asset = (v.vbld > 0.02) | (v.vcrit > 0.02) | (v.vpop > 0.0)
-    if not asset.any():
+    core = (v.vbld > 0.02) | (v.vcrit > 0.02) | (v.vpop > 0.0)
+    if not core.any():
         return img
+    halo = _dilate_mask(core, 2) & ~core
     prio = np.clip(world.priority_field(), 0.0, 1.0)
+    prio = 0.25 + 0.75 * prio          # keep a visible tint even at low priority
     try:
         from matplotlib import colormaps
         ramp = np.asarray(colormaps["cool"](prio))[..., :3]   # cyan -> magenta
     except Exception:
         ramp = np.stack([prio, 1 - prio, np.ones_like(prio)], axis=-1)
     for c in range(3):
-        img[..., c][asset] = (1 - alpha) * img[..., c][asset] + alpha * ramp[..., c][asset]
+        img[..., c][core] = 0.10 * img[..., c][core] + 0.90 * ramp[..., c][core]
+        img[..., c][halo] = 0.55 * img[..., c][halo] + 0.45 * ramp[..., c][halo]
     return img
 
 
@@ -164,13 +178,15 @@ def render_pil(world, sim=None, scale: int = 8, show_fire: bool = True,
     img = img.resize((nx * scale, ny * scale), Image.NEAREST)
     draw = ImageDraw.Draw(img, "RGBA")
 
-    # optional cell grid for precise placement
-    if show_grid and scale >= 6:
-        step = scale * (5 if nx > 60 else 2)
-        for gx in range(0, nx * scale + 1, step):
-            draw.line([gx, 0, gx, ny * scale], fill=(255, 255, 255, 40), width=1)
-        for gy in range(0, ny * scale + 1, step):
-            draw.line([0, gy, nx * scale, gy], fill=(255, 255, 255, 40), width=1)
+    # optional cell grid for precise placement (dark, always visible)
+    if show_grid:
+        gstep = 10 if nx > 80 else 5
+        for gc in range(0, nx + 1, gstep):
+            gx = gc * scale
+            draw.line([gx, 0, gx, ny * scale], fill=(15, 15, 15, 120), width=1)
+        for gc in range(0, ny + 1, gstep):
+            gy = gc * scale
+            draw.line([0, gy, nx * scale, gy], fill=(15, 15, 15, 120), width=1)
 
     # scheduled ignition markers
     if show_ignitions:
@@ -178,9 +194,9 @@ def render_pil(world, sim=None, scale: int = 8, show_fire: bool = True,
             cx, cy = ev.x * scale + scale // 2, ev.y * scale + scale // 2
             r = max(4, scale)
             draw.ellipse([cx - r, cy - r, cx + r, cy + r],
-                         outline=(255, 90, 0, 255), width=2)
-            draw.line([cx - r, cy, cx + r, cy], fill=(255, 90, 0, 255), width=2)
-            draw.line([cx, cy - r, cx, cy + r], fill=(255, 90, 0, 255), width=2)
+                         outline=(162, 0, 222, 255), width=2)
+            draw.line([cx - r, cy, cx + r, cy], fill=(162, 0, 222, 255), width=2)
+            draw.line([cx, cy - r, cx, cy + r], fill=(162, 0, 222, 255), width=2)
 
     # asset markers: recognizable icons
     if show_assets:
@@ -303,7 +319,7 @@ def legend_entries():
     out.append(("Fire", "burned scar", _hex((0.16, 0.13, 0.12))))
     out.append(("Fire", "active fire", _hex((0.98, 0.35, 0.06))))
     out.append(("Infrastructure", "road / access", _hex((0.82, 0.78, 0.66))))
-    out.append(("Markers", "ignition point", "#ff5a00"))
+    out.append(("Markers", "ignition point", "#a200de"))
     asset_labels = {"building": "building", "critical": "critical facility",
                     "population": "population", "evac_route": "evacuation route"}
     for kind, lab in asset_labels.items():
@@ -382,7 +398,7 @@ def _state_code_field(world, sim=None):
 
 
 def fire_surface_figure(world, sim=None, max_cells: int = 150,
-                        relief_frac: float = 0.28):
+                        relief_frac: float = 0.28, pick: bool = False):
     """Live 3D terrain with the same content as the 2D map: land cover, water,
     roads, buildings and flame coloured active fire draped on the relief.
 
@@ -458,6 +474,19 @@ def fire_surface_figure(world, sim=None, max_cells: int = 150,
                                         [1, "rgb(255,235,120)"]],
                             cmin=0, cmax=1, opacity=0.95),
                 name="fire", hoverinfo="skip"))
+
+    if pick:
+        # a light grid of clickable points; a single click selects the nearest
+        # one and its (x, y) are the exact grid cell for the ignition
+        pstep = max(1, int(np.ceil(max(nx, ny) / 55.0)))
+        pj, pi = np.mgrid[0:ny:pstep, 0:nx:pstep]
+        pj = pj.ravel(); pi = pi.ravel()
+        data.append(go.Scatter3d(
+            x=pi, y=pj, z=zfull[pj, pi] + 0.6, mode="markers",
+            marker=dict(size=4, color="rgba(255,255,255,0.40)",
+                        line=dict(width=0)),
+            name="place",
+            hovertemplate="x=%{x}, y=%{y}<extra>click to place ignition</extra>"))
 
     fig = go.Figure(data=data)
     fig.update_layout(height=460, margin=dict(l=0, r=0, t=0, b=0),

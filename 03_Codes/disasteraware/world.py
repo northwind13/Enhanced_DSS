@@ -219,6 +219,29 @@ class World:
         for x, y in zip(xs, ys):
             self.add_road_disk(int(x), int(y), width)
 
+    # ----------------------------------------------------------- elevation
+    def bump_terrain(self, x: int, y: int, radius: int = 3,
+                     delta: float = 40.0, recompute: bool = True) -> None:
+        """Raise (delta > 0) or lower (delta < 0) the ground with a smooth
+        Gaussian bump centred on (x, y). Slope and aspect can be refreshed here
+        or once after a whole brush stroke via recompute_slope_aspect()."""
+        ny, nx = self.shape
+        yy, xx = np.ogrid[:ny, :nx]
+        sigma = max(float(radius), 1.0) / 2.0
+        g = np.exp(-((xx - x) ** 2 + (yy - y) ** 2) / (2.0 * sigma ** 2))
+        elev = np.asarray(self.topo.elev, dtype=float) + float(delta) * g
+        self.topo.elev = np.clip(elev, 0.0, None)
+        if recompute:
+            self.recompute_slope_aspect()
+
+    def recompute_slope_aspect(self) -> None:
+        """Refresh slope and aspect from the current elevation (Horn 3x3)."""
+        from .gis import slope_aspect_from_dem
+        slope, aspect = slope_aspect_from_dem(
+            np.asarray(self.topo.elev, dtype=float), self.config.cell_size_m)
+        self.topo.slope = slope
+        self.topo.aspect = aspect
+
     def priority_field(self) -> np.ndarray:
         return self.value.priority(self.config.value_weights)
 

@@ -14,6 +14,7 @@ import numpy as np
 import streamlit as st
 
 sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
+sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
 
 from disasteraware import (Simulator, World, SimConfig, Asset, compute_costs,
                            scenarios, io_utils, terrain, viz, FUEL_MODELS,
@@ -74,6 +75,40 @@ def _ensure_state() -> None:
     st.session_state.setdefault("anim_on", False)
     st.session_state.setdefault("canvas_key", 1)
     st.session_state.setdefault("map_version", 1)
+    st.session_state.setdefault("edit_undo", [])
+
+
+def _push_snapshot() -> None:
+    """Save the editable layers so a map edit can be undone."""
+    w = st.session_state.world
+    snap = {
+        "ftype": w.fuel.ftype.copy(), "fload": w.fuel.fload.copy(),
+        "fload0": w.fuel.fload0.copy(), "fmoist": w.fuel.fmoist.copy(),
+        "elev": w.topo.elev.copy(), "slope": w.topo.slope.copy(),
+        "aspect": w.topo.aspect.copy(), "access": w.topo.access.copy(),
+        "vbld": w.value.vbld.copy(), "vcrit": w.value.vcrit.copy(),
+        "vpop": w.value.vpop.copy(), "vevac": w.value.vevac.copy(),
+        "roads": None if w.roads is None else w.roads.copy(),
+        "assets": list(w.assets), "ignitions": list(w.ignitions)}
+    st.session_state.setdefault("edit_undo", []).append(snap)
+    st.session_state.edit_undo = st.session_state.edit_undo[-12:]
+
+
+def _restore_snapshot() -> None:
+    stack = st.session_state.setdefault("edit_undo", [])
+    if not stack:
+        return
+    s = stack.pop()
+    w = st.session_state.world
+    w.fuel.ftype[:] = s["ftype"]; w.fuel.fload[:] = s["fload"]
+    w.fuel.fload0[:] = s["fload0"]; w.fuel.fmoist[:] = s["fmoist"]
+    w.topo.elev[:] = s["elev"]; w.topo.slope[:] = s["slope"]
+    w.topo.aspect[:] = s["aspect"]; w.topo.access[:] = s["access"]
+    w.value.vbld[:] = s["vbld"]; w.value.vcrit[:] = s["vcrit"]
+    w.value.vpop[:] = s["vpop"]; w.value.vevac[:] = s["vevac"]
+    w.roads = None if s["roads"] is None else s["roads"].copy()
+    w.assets[:] = s["assets"]; w.ignitions[:] = s["ignitions"]
+    st.session_state.sim.reset(); st.session_state.cost_series = []
 
 
 def _record_costs() -> None:
@@ -132,6 +167,9 @@ def _do_point(gx, gy, kw):
         name = kw["aname"] or ASSET_LABELS.get(kw["akind"], "Asset")
         world.add_asset(Asset(name, kw["akind"], gx, gy, kw["aradius"],
                               kw["avalue"], kw["apop"]))
+    elif tool == "Elevation":
+        world.bump_terrain(gx, gy, kw.get("brush", 3),
+                           kw.get("elev_delta", 40.0), recompute=False)
 
 
 def _apply_edits(objects, scale, kw):
@@ -154,13 +192,27 @@ def _apply_edits(objects, scale, kw):
                 world.add_road_rect(x0, y0, x1, y1)
             n += 1
         elif otype == "path":
+            # walk the recorded points and fill the gap between each pair so a
+            # fast free-hand stroke stays continuous instead of dropping dots
             seen = set()
+            prev = None
             for px, py in _path_points(obj):
-                gxy = _clip(px / scale, py / scale)
-                if gxy in seen:
-                    continue
-                seen.add(gxy)
-                _do_point(gxy[0], gxy[1], kw)
+                cur = (px / scale, py / scale)
+                if prev is None:
+                    seg = [cur]
+                else:
+                    d = max(abs(cur[0] - prev[0]), abs(cur[1] - prev[1]))
+                    m = max(1, int(np.ceil(d)))
+                    seg = [(prev[0] + (cur[0] - prev[0]) * t / m,
+                            prev[1] + (cur[1] - prev[1]) * t / m)
+                           for t in range(1, m + 1)]
+                for sx, sy in seg:
+                    gxy = _clip(sx, sy)
+                    if gxy in seen:
+                        continue
+                    seen.add(gxy)
+                    _do_point(gxy[0], gxy[1], kw)
+                prev = cur
             n += 1
         elif otype == "circle":
             left, top = obj.get("left", 0), obj.get("top", 0)
@@ -168,50 +220,24 @@ def _apply_edits(objects, scale, kw):
             gx, gy = _clip((left + rad) / scale, (top + rad) / scale)
             _do_point(gx, gy, kw)
             n += 1
+    if kw.get("tool") == "Elevation" and n:
+        world.recompute_slope_aspect()
     return n
 
 
 # -------------------------------------------------------------------- sidebar
-st.sidebar.title("DisasterAware")
-st.sidebar.caption("Grid based wildfire simulator")
+_PAGES = ["Simulation", "Map editor", "Data layers", "Parameters",
+          "Risk", "Validation", "GIS import", "System Description"]
+_PAGE_ICONS = {"Simulation": "\U0001F525", "Map editor": "✏️", "Data layers": "\U0001F5FA️",
+               "Parameters": "⚙️", "Risk": "\U0001F4C8", "Validation": "✅",
+               "GIS import": "\U0001F30D", "System Description": "\U0001F4D8"}
 
-page = st.sidebar.radio("Page", ["Simulation", "Map editor", "Data layers",
-                                 "Parameters", "Risk", "Validation", "Manual",
-                                 "GIS import"], key="nav_page")
+with st.sidebar:
+    st.title("DisasterAware")
+    st.caption("Grid based wildfire simulator")
 
-with st.sidebar.expander("New map / scenario", expanded=(page == "Simulation")):
-    src = st.radio("Source", ["Landscape type", "Built in scenario", "Blank grid"])
-    nx = st.number_input("Resolution X (nx)", 20, 400, int(cfg.nx), 10)
-    ny = st.number_input("Resolution Y (ny)", 20, 400, int(cfg.ny), 10)
-    cell = st.number_input("Cell size (m)", 1.0, 1000.0, float(cfg.cell_size_m), 5.0)
-    if src == "Landscape type":
-        ltype = st.selectbox("Type", list(terrain.PRESETS.keys()))
-        seed = st.number_input("Seed", 0, 99999, 42)
-        gen_assets = st.checkbox("Add town, assets and roads", value=True)
-        if st.button("Generate map", use_container_width=True, type="primary"):
-            _new_simulator(terrain.generate_landscape(
-                SimConfig(nx=int(nx), ny=int(ny), cell_size_m=float(cell)),
-                seed=int(seed), preset=ltype, with_assets=gen_assets,
-                with_roads=gen_assets))
-            st.rerun()
-    elif src == "Built in scenario":
-        scen = st.selectbox("Scenario", list(scenarios.SCENARIOS.keys()))
-        if st.button("Load scenario", use_container_width=True, type="primary"):
-            _new_simulator(scenarios.SCENARIOS[scen]()); st.rerun()
-    else:
-        dfuel = st.selectbox("Default fuel", FUEL_TYPES)
-        if st.button("Create blank grid", use_container_width=True, type="primary"):
-            _new_simulator(World.blank(
-                SimConfig(nx=int(nx), ny=int(ny), cell_size_m=float(cell)),
-                default_fuel=dfuel)); st.rerun()
-    up = st.file_uploader("Load scenario file", type=["json", "yaml", "yml"])
-    if up is not None:
-        tmp = os.path.join(os.path.dirname(__file__), "_upload_" + up.name)
-        with open(tmp, "wb") as fh:
-            fh.write(up.getbuffer())
-        _new_simulator(io_utils.load_scenario(tmp)); st.rerun()
-
-with st.sidebar.expander("Run controls", expanded=True):
+    # --- run controls at the top ---
+    st.markdown("**Run**")
     c1, c2 = st.columns(2)
     if c1.button("Step", use_container_width=True):
         sim.step(); _record_costs(); st.rerun()
@@ -222,12 +248,57 @@ with st.sidebar.expander("Run controls", expanded=True):
         sim.run(); _record_costs(); st.rerun()
     if c4.button("Reset fire", use_container_width=True):
         sim.reset(); st.session_state.cost_series = []; st.rerun()
-    st.toggle("Run (animate step by step)", key="anim_on")
+    st.toggle("Animate step by step", key="anim_on")
     st.caption(f"Step {sim.state.step}    active fire "
                f"{int((sim.state.burning > 0.5).sum())} cells")
 
-if not HAS_CANVAS:
-    st.sidebar.warning("Install streamlit-drawable-canvas for mouse editing.")
+    st.divider()
+
+    # --- page navigation (icon menu) ---
+    page = st.radio("Navigation", _PAGES, key="nav_page",
+                    format_func=lambda p: f"{_PAGE_ICONS[p]}   {p}",
+                    label_visibility="collapsed")
+
+    st.divider()
+
+    # --- map generation at the bottom ---
+    with st.expander("New map / scenario", expanded=False):
+        src = st.radio("Source", ["Landscape type", "Built in scenario",
+                                  "Blank grid"])
+        nx = st.number_input("Resolution X (nx)", 20, 400, int(cfg.nx), 10)
+        ny = st.number_input("Resolution Y (ny)", 20, 400, int(cfg.ny), 10)
+        cell = st.number_input("Cell size (m)", 1.0, 1000.0,
+                               float(cfg.cell_size_m), 5.0)
+        if src == "Landscape type":
+            ltype = st.selectbox("Type", list(terrain.PRESETS.keys()))
+            seed = st.number_input("Seed", 0, 99999, 42)
+            gen_assets = st.checkbox("Add town, assets and roads", value=True)
+            if st.button("Generate map", use_container_width=True, type="primary"):
+                _new_simulator(terrain.generate_landscape(
+                    SimConfig(nx=int(nx), ny=int(ny), cell_size_m=float(cell)),
+                    seed=int(seed), preset=ltype, with_assets=gen_assets,
+                    with_roads=gen_assets))
+                st.rerun()
+        elif src == "Built in scenario":
+            scen = st.selectbox("Scenario", list(scenarios.SCENARIOS.keys()))
+            if st.button("Load scenario", use_container_width=True, type="primary"):
+                _new_simulator(scenarios.SCENARIOS[scen]()); st.rerun()
+        else:
+            dfuel = st.selectbox("Default fuel", FUEL_TYPES)
+            if st.button("Create blank grid", use_container_width=True,
+                         type="primary"):
+                _new_simulator(World.blank(
+                    SimConfig(nx=int(nx), ny=int(ny), cell_size_m=float(cell)),
+                    default_fuel=dfuel)); st.rerun()
+        up = st.file_uploader("Load scenario file", type=["json", "yaml", "yml"])
+        if up is not None:
+            tmp = os.path.join(os.path.dirname(__file__), "_upload_" + up.name)
+            with open(tmp, "wb") as fh:
+                fh.write(up.getbuffer())
+            _new_simulator(io_utils.load_scenario(tmp)); st.rerun()
+
+    if not HAS_CANVAS:
+        st.warning("Install streamlit-drawable-canvas for mouse editing.")
 
 st.title("DisasterAware Wildfire Simulator")
 
@@ -237,16 +308,13 @@ def page_simulation():
     view_col, side_col = st.columns([3.4, 1.2])
     with side_col:
         cur_wd = float(world.meteo.wwd.mean())
-        with st.expander("Conditions (change often)", expanded=True):
+        with st.expander("Conditions (Simulation)", expanded=True):
             ws = st.slider("Wind speed (m/s)", 0.0, 30.0,
                            float(world.meteo.wws.mean()), 0.5)
-            d0 = int(round(np.degrees(cur_wd)))
-            d0 = ((d0 + 180) % 360) - 180          # wrap into [-180, 180]
-            _opts = [-180, -135, -90, -45, 0, 45, 90, 135, 180]
-            d0 = min(_opts, key=lambda o: abs(o - d0))   # snap to a tick
+            d0 = int(round((np.degrees(cur_wd) % 360) / 45.0)) * 45  # nearest 45
+            d0 = min(d0, 360)
             wd_deg = st.select_slider(
-                "Wind direction (deg): 0=E, 90=N, 180=W, -90=S",
-                options=_opts, value=d0)
+                "Wind direction (deg)", options=list(range(0, 361, 45)), value=d0)
             st.image(viz.render_compass(np.radians(wd_deg), ws, size=140),
                      caption="wind blows toward the arrow")
             mo = st.slider("Fuel moisture", 0.0, 0.6,
@@ -258,8 +326,9 @@ def page_simulation():
                                    "dead fuel moisture from air temperature and "
                                    "relative humidity. Hotter/drier air -> drier "
                                    "fuel -> faster fire. Off = use the slider value.")
-            if st.button("Apply wind / moisture / threshold",
-                         use_container_width=True):
+            # apply immediately whenever a condition changes (no Apply button)
+            _sig = (round(ws, 3), int(wd_deg), round(mo, 3), round(th, 3), bool(emc))
+            if st.session_state.get("cond_sig") != _sig:
                 world.meteo.wws[:] = ws
                 world.meteo.wwd[:] = np.radians(wd_deg)
                 if emc:
@@ -268,13 +337,13 @@ def page_simulation():
                 else:
                     world.fuel.fmoist[:] = mo
                 cfg.spread.theta_ign = th
-                st.rerun()
-        with st.expander("Ignition", expanded=True):
+                st.session_state.cond_sig = _sig
+        with st.expander("Ignition", expanded=False):
             ig_live = st.checkbox("At current step", value=True)
             ig_step = sim.state.step if ig_live else st.number_input(
                 "Step", 0, 5000, 0, key="ig_step")
             ig_rad = st.number_input("Radius", 0, 20, 1, key="ig_rad")
-        with st.expander("Layers", expanded=True):
+        with st.expander("Layers", expanded=False):
             flags = dict(
                 show_hillshade=st.checkbox("Relief", True, key="l_relief"),
                 show_fire=st.checkbox("Fire", True, key="l_fire"),
@@ -283,7 +352,7 @@ def page_simulation():
                 show_grid=st.checkbox("Grid", False, key="l_grid"),
                 show_perimeter=st.checkbox("Fire perimeter", True, key="l_per"),
                 show_spread_arrows=st.checkbox("Spread arrows", False, key="l_arr"))
-        with st.expander("Legend", expanded=False):
+        with st.expander("Legend", expanded=True):
             st.markdown(legend_html(), unsafe_allow_html=True)
 
     with view_col:
@@ -298,7 +367,8 @@ def page_simulation():
                                 key="ign3d")
             st.caption("Drag to rotate, scroll to zoom. The view (rotation and "
                        "zoom) is kept between steps.")
-            fig = viz.fire_surface_figure(world, sim=sim)
+            fig = viz.fire_surface_figure(world, sim=sim,
+                                          pick=(ign3d and not playing))
             key3d = f"plot3d_{st.session_state.map_version}"
             if ign3d and not playing:
                 ev = st.plotly_chart(fig, use_container_width=True,
@@ -317,7 +387,7 @@ def page_simulation():
             if place and HAS_CANVAS and not playing:
                 bg = viz.render_pil(world, sim=sim, scale=scale,
                                     show_labels=True, **flags)
-                res = st_canvas(stroke_width=2, stroke_color="#ff5a00",
+                res = st_canvas(stroke_width=2, stroke_color="#a200de",
                                 background_image=bg, update_streamlit=True,
                                 height=cfg.ny * scale, width=cfg.nx * scale,
                                 drawing_mode="point",
@@ -386,35 +456,77 @@ def _place_from_selection(ev, ig_step, ig_rad, scale=None):
     st.rerun()
 
 
+_COST_COMPONENTS = [
+    ("Forest", "forest_value_loss", "#2e8b57"),
+    ("Structures", "building_loss", "#d9822b"),
+    ("Critical", "critical_infrastructure_loss", "#c0392b"),
+    ("Human", "human_cost", "#8e44ad"),
+    ("Suppression", "suppression_cost", "#2c3e50"),
+]
+
+
 def _cost_panel():
     import matplotlib.pyplot as plt
     rep = compute_costs(sim)
-    st.subheader("Cost report")
+    st.divider()
+    st.subheader("Cost function and impact")
+
+    # the cost function: each term computed separately, then summed
+    st.latex(r"C_{tot}=C_{forest}+C_{struct}+C_{crit}+C_{human}+C_{supp}")
+    st.caption("Terms are computed independently over the burned footprint and "
+               "summed. Forest = consumed fuel value plus land rehabilitation, "
+               "Struct = buildings, Crit = critical facilities, "
+               "Human = expected casualties times statistical life value, "
+               "Supp = suppression effort.")
+
+    # physical impact
     m = st.columns(4)
     m[0].metric("Burned area (ha)", f"{rep.burned_area_ha:,.1f}")
     m[1].metric("Burned forest (ha)", f"{rep.burned_forest_ha:,.1f}")
-    m[2].metric("Active cells", f"{rep.active_fire_cells:,}")
-    m[3].metric("Fuel consumed", f"{rep.fuel_consumed_total:,.0f}")
-    m[0].metric("Building loss", f"{rep.building_loss:,.0f}")
-    m[1].metric("Critical infra loss", f"{rep.critical_infrastructure_loss:,.0f}")
     m[2].metric("Population exposed", f"{rep.population_exposed:,.0f}")
     m[3].metric("Expected casualties", f"{rep.expected_casualties:,.1f}")
-    m[0].metric("Suppression cost", f"{rep.suppression_cost:,.0f}")
-    m[1].metric("Total economic cost", f"{rep.total_economic_cost:,.0f}")
+
+    # cost breakdown: each component and the total
+    d = rep.to_dict()
+    cc = st.columns(len(_COST_COMPONENTS) + 1)
+    for i, (lab, key, _) in enumerate(_COST_COMPONENTS):
+        cc[i].metric(lab, f"{d[key]:,.0f}")
+    cc[-1].metric("TOTAL", f"{rep.total_economic_cost:,.0f}")
+
     series = st.session_state.cost_series
     if len(series) > 1:
         steps = [r["step"] for r in series]
-        cc1, cc2 = st.columns(2)
-        with cc1:
-            f1, a1 = plt.subplots(figsize=(5, 2.4))
-            a1.plot(steps, [r["burned_area_ha"] for r in series], color="#c0392b")
-            a1.set_xlabel("step"); a1.set_ylabel("burned area (ha)")
-            st.pyplot(f1, use_container_width=True); plt.close(f1)
-        with cc2:
-            f2, a2 = plt.subplots(figsize=(5, 2.4))
-            a2.plot(steps, [r["total_economic_cost"] for r in series], color="#2c3e50")
-            a2.set_xlabel("step"); a2.set_ylabel("total cost")
-            st.pyplot(f2, use_container_width=True); plt.close(f2)
+        g1, g2, g3 = st.columns(3)
+        # (1) each cost component over time
+        with g1:
+            f1, a1 = plt.subplots(figsize=(4.6, 2.6))
+            for lab, key, col in _COST_COMPONENTS:
+                a1.plot(steps, [r[key] for r in series], color=col, label=lab)
+            a1.set_title("Cost components"); a1.set_xlabel("step")
+            a1.set_ylabel("cost"); a1.legend(fontsize=6, loc="upper left")
+            f1.tight_layout(); st.pyplot(f1, use_container_width=True); plt.close(f1)
+        # (2) total cost = sum of components
+        with g2:
+            f2, a2 = plt.subplots(figsize=(4.6, 2.6))
+            a2.plot(steps, [r["total_economic_cost"] for r in series],
+                    color="#111111", lw=2)
+            a2.set_title("Total cost"); a2.set_xlabel("step")
+            a2.set_ylabel(r"$C_{tot}$")
+            f2.tight_layout(); st.pyplot(f2, use_container_width=True); plt.close(f2)
+        # (3) physical growth: burned area and casualties
+        with g3:
+            f3, a3 = plt.subplots(figsize=(4.6, 2.6))
+            a3.plot(steps, [r["burned_area_ha"] for r in series],
+                    color="#c0392b", label="burned area")
+            a3.set_xlabel("step"); a3.set_ylabel("ha", color="#c0392b")
+            a3b = a3.twinx()
+            a3b.plot(steps, [r["expected_casualties"] for r in series],
+                     color="#8e44ad", label="casualties")
+            a3b.set_ylabel("casualties", color="#8e44ad")
+            a3.set_title("Physical impact")
+            f3.tight_layout(); st.pyplot(f3, use_container_width=True); plt.close(f3)
+    else:
+        st.caption("Step the simulation to build the cost curves over time.")
 
 
 # ============================================================== MAP EDITOR ===
@@ -424,7 +536,8 @@ def page_editor():
         st.markdown("**Tool palette**")
         pal = st.columns(2)
         tool_defs = [("Fuel", "Fuel"), ("Firebreak", "Firebreak"),
-                     ("Access", "Access"), ("Asset", "Asset")]
+                     ("Access", "Access"), ("Asset", "Asset"),
+                     ("Elevation", "Elevation")]
         for i, (tid, short) in enumerate(tool_defs):
             typ = "primary" if st.session_state.tool == tid else "secondary"
             if pal[i % 2].button(short, key=f"t_{tid}", use_container_width=True,
@@ -464,7 +577,7 @@ def page_editor():
             st.caption("Roads set accessibility so resources can reach; non flammable.")
             kw["brush"] = st.slider("Road width", 1, 8, 1)
             shape = st.radio("Shape", ["Brush", "Rectangle"], horizontal=True)
-        else:  # Asset
+        elif tool == "Asset":
             kw["akind"] = st.selectbox("Asset kind", ASSET_KINDS,
                                        format_func=lambda k: ASSET_LABELS[k])
             kw["aname"] = st.text_input("Name (blank = kind)", "")
@@ -472,6 +585,12 @@ def page_editor():
             kw["avalue"] = st.slider("Value", 0.0, 1.0, 1.0, 0.05)
             kw["apop"] = st.number_input("Population", 0, 1_000_000, 0)
             shape = "Point"
+        else:  # Elevation
+            st.caption("Raise or lower the ground. Uphill slope speeds the fire.")
+            direction = st.radio("Action", ["Raise", "Lower"], horizontal=True)
+            amt = st.slider("Amount (m)", 5, 200, 40, 5)
+            kw["elev_delta"] = float(amt if direction == "Raise" else -amt)
+            shape = st.radio("Shape", ["Brush", "Point"], horizontal=True)
         if shape == "Brush":
             kw["brush"] = st.slider("Brush size", 1, 12, 3, key="brushsz")
             drawing_mode = "freedraw"
@@ -495,32 +614,43 @@ def page_editor():
             st.markdown(legend_html(), unsafe_allow_html=True)
 
     with view_col:
+        from io import BytesIO
         scale = _fit_scale(cfg.nx)
         bg = viz.render_pil(world, sim=sim, scale=scale, show_labels=True, **eflags)
-        b0, b1, b2 = st.columns([1, 1, 3])
-        if b0.button("Reset view / refresh"):
+        # our own controls (the built in canvas toolbar is hidden below): a real
+        # PNG download, an edit undo and a drawing clear that all work
+        t1, t2, t3 = st.columns(3)
+        _buf = BytesIO(); bg.save(_buf, format="PNG")
+        t1.download_button("Download PNG", _buf.getvalue(), file_name="map.png",
+                           mime="image/png", use_container_width=True)
+        if t2.button("Undo edit", use_container_width=True,
+                     disabled=not st.session_state.get("edit_undo")):
+            _restore_snapshot(); st.session_state.canvas_key += 1; st.rerun()
+        if t3.button("Clear drawing", use_container_width=True):
             st.session_state.canvas_key += 1; st.rerun()
         if HAS_CANVAS:
             stroke = {"Fuel": "#1f7a1f", "Firebreak": "#3070b0",
-                      "Access": "#b08020", "Asset": "#ffd000"}[tool]
+                      "Access": "#b08020", "Asset": "#ffd000",
+                      "Elevation": "#7a5230"}[tool]
             sw = kw.get("brush", 2) * scale if drawing_mode == "freedraw" else 2
+            # the key also depends on the layer flags so toggling a layer (grid,
+            # relief, ...) rebuilds the canvas with the fresh background at once
+            flagsig = abs(hash(tuple(sorted(eflags.items())))) % 100000
+            ckey = f"canvas_{st.session_state.canvas_key}_{scale}_{flagsig}"
             result = st_canvas(fill_color="rgba(255,160,0,0.20)",
                                stroke_width=int(sw), stroke_color=stroke,
                                background_image=bg, update_streamlit=True,
                                height=cfg.ny * scale, width=cfg.nx * scale,
-                               drawing_mode=drawing_mode,
+                               drawing_mode=drawing_mode, display_toolbar=False,
                                point_display_radius=max(3, scale // 2),
-                               key=f"canvas_{st.session_state.canvas_key}_{scale}")
+                               key=ckey)
             objs = (result.json_data or {}).get("objects", []) if result else []
             if live and objs:
-                _apply_edits(objs, scale, kw)
+                _push_snapshot(); _apply_edits(objs, scale, kw)
                 st.session_state.canvas_key += 1; st.rerun()
-            cc1, cc2 = st.columns(2)
-            if not live and cc1.button("Apply edits", type="primary",
-                                       use_container_width=True):
-                _apply_edits(objs, scale, kw)
-                st.session_state.canvas_key += 1; st.rerun()
-            if cc2.button("Clear drawing", use_container_width=True):
+            if not live and st.button("Apply edits", type="primary",
+                                      use_container_width=True):
+                _push_snapshot(); _apply_edits(objs, scale, kw)
                 st.session_state.canvas_key += 1; st.rerun()
         else:
             st.image(bg)
@@ -666,35 +796,13 @@ def page_params():
                                                   float(cfg.value_weights.w_evac), 0.05)
 
 
-# ================================================================== MANUAL ===
-def _eq(latex, defs):
-    st.latex(latex)
-    st.markdown("\n".join(f"- {d}" for d in defs))
+# ====================================================== SYSTEM DESCRIPTION ===
+def page_system_description():
+    """Full mathematical description of the model (thesis Chapter 4, App. A-C).
 
-
-def page_manual():
-    st.subheader("DisasterAware simulation model")
-    st.markdown("A grid based, discrete time wildfire model. Each equation is "
-                "followed by the definition of the symbols it introduces.")
-    _eq(r"s_k=[\,B_k,\;F_{load,k},\;I_k,\;\tau_k\,]^T",
-        [r"$s_k$ - state of one cell at step $k$",
-         r"$B_k\in\{0,1\}$ - burning status", r"$F_{load,k}$ - remaining fuel",
-         r"$I_k$ - intensity proxy", r"$\tau_k$ - time since ignition"])
-    _eq(r"S_{k+1}(x,y)=\Phi\big(S_k(x,y),\,F_{in,k}\big)",
-        [r"$\Phi$ - transition operator", r"$F_{in,k}$ - external input set"])
-    _eq(r"B_{k+1}=\max\big(B_{pers},\,B_{prop},\,I_{Ign,k}\big)",
-        [r"$B_{pers}$ - keeps burning if fuel remains",
-         r"$B_{prop}$ - ignited by neighbours (if $\Psi_k>\Theta_{ign}$)"])
-    _eq(r"R_{spread}=r_{base}\,g_{moist}\,g_{wind}\,g_{slope}\,g_{aspect}",
-        [r"$g_{moist}=\max(0,1-F_{moist}/m_{ext})$",
-         r"$g_{wind}=1+a_w\tanh(W_{ws}/w_0)$"])
-    _eq(r"I_{k+1}=B_{k+1}\tanh\big(\beta(\tilde F+\gamma_W\tilde W+\gamma_S\tilde S)\big)",
-        [r"$\tilde F,\tilde W,\tilde S$ - normalized fuel, wind, slope"])
-    st.markdown("#### Fuel class parameters")
-    st.table({"fuel": [m.name for m in FUEL_MODELS.values()],
-              "r_base": [m.r_base for m in FUEL_MODELS.values()],
-              "m_ext": [m.m_ext for m in FUEL_MODELS.values()],
-              "b_base": [m.b_base for m in FUEL_MODELS.values()]})
+    The content lives in app/system_description.py to keep this file small."""
+    from system_description import render
+    render()
 
 
 # ============================================================== GIS IMPORT ===
@@ -811,11 +919,15 @@ def page_validation():
 PAGES = {"Simulation": page_simulation, "Map editor": page_editor,
          "Data layers": page_layers, "Parameters": page_params,
          "Risk": page_risk, "Validation": page_validation,
-         "Manual": page_manual, "GIS import": page_gis}
+         "GIS import": page_gis, "System Description": page_system_description}
 PAGES[page]()
 
 # animate: advance one step per rerun while playing (fast: only this page runs)
-if st.session_state.get("anim_on", False) and not sim.is_quiescent():
-    sim.step(); _record_costs(); time.sleep(0.08); st.rerun()
-elif st.session_state.get("anim_on", False) and sim.is_quiescent() and sim.ever_burned.any():
-    st.session_state.anim_on = False
+if st.session_state.get("anim_on", False):
+    _pending = any(ev.step >= sim.state.step for ev in world.ignitions)
+    _finished = sim.is_quiescent() and (
+        sim.ever_burned.any() or (not _pending and sim.state.step > 1))
+    if not _finished and sim.state.step < cfg.max_steps:
+        sim.step(); _record_costs(); time.sleep(0.08); st.rerun()
+    else:
+        st.session_state.anim_on = False
