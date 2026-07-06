@@ -213,3 +213,6 @@ __marimo__/
 # DisasterAware simulator runtime artifacts
 03_Codes/scenario_export.json
 03_Codes/**/scenario_export.json
+
+# Claude local session settings
+.claude/
