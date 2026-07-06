@@ -242,8 +242,11 @@ def page_simulation():
                            float(world.meteo.wws.mean()), 0.5)
             d0 = int(round(np.degrees(cur_wd)))
             d0 = ((d0 + 180) % 360) - 180          # wrap into [-180, 180]
-            wd_deg = st.slider("Wind direction (deg): 0=E, 90=N, 180/-180=W, -90=S",
-                               -180, 180, d0, 5)
+            _opts = [-180, -135, -90, -45, 0, 45, 90, 135, 180]
+            d0 = min(_opts, key=lambda o: abs(o - d0))   # snap to a tick
+            wd_deg = st.select_slider(
+                "Wind direction (deg): 0=E, 90=N, 180=W, -90=S",
+                options=_opts, value=d0)
             st.image(viz.render_compass(np.radians(wd_deg), ws, size=140),
                      caption="wind blows toward the arrow")
             mo = st.slider("Fuel moisture", 0.0, 0.6,
