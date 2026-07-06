@@ -1,0 +1,19 @@
+# Normalize line endings so Windows checkouts do not warn about LF/CRLF.
+# Source and text files are stored and checked out as LF.
+* text=auto eol=lf
+
+# Windows batch files must stay CRLF
+*.bat text eol=crlf
+
+# Binary files (never touch line endings)
+*.png  binary
+*.jpg  binary
+*.jpeg binary
+*.gif  binary
+*.pdf  binary
+*.xlsx binary
+*.docx binary
+*.dotx binary
+*.drawio binary
+*.tif  binary
+*.tiff binary
