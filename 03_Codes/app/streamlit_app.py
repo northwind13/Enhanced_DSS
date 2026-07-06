@@ -177,7 +177,7 @@ st.sidebar.caption("Grid based wildfire simulator")
 
 page = st.sidebar.radio("Page", ["Simulation", "Map editor", "Data layers",
                                  "Parameters", "Risk", "Validation", "Manual",
-                                 "GIS import"])
+                                 "GIS import"], key="nav_page")
 
 with st.sidebar.expander("New map / scenario", expanded=(page == "Simulation")):
     src = st.radio("Source", ["Landscape type", "Built in scenario", "Blank grid"])
@@ -287,23 +287,33 @@ def page_simulation():
             st.markdown(legend_html(), unsafe_allow_html=True)
 
     with view_col:
+        st.session_state.setdefault("sim_view", "2D map")
         vmode = st.radio("View", ["2D map", "3D terrain"], horizontal=True,
-                         label_visibility="collapsed")
+                         label_visibility="collapsed", key="sim_view")
         scale = _fit_scale(cfg.nx)
         playing = st.session_state.get("anim_on", False)
         if vmode == "3D terrain":
-            st.caption("Drag to rotate, scroll to zoom (zoom is kept between "
-                       "steps). Click a point on the terrain to drop an ignition.")
+            ign3d = st.checkbox("Click terrain to place ignition "
+                                "(off = free rotate / zoom)", value=False,
+                                key="ign3d")
+            st.caption("Drag to rotate, scroll to zoom. The view (rotation and "
+                       "zoom) is kept between steps.")
             fig = viz.fire_surface_figure(world, sim=sim)
-            ev = st.plotly_chart(fig, use_container_width=True,
-                                 config={"scrollZoom": True},
-                                 on_select="rerun", selection_mode="points",
-                                 key=f"plot3d_{st.session_state.map_version}")
-            if not playing:
+            key3d = f"plot3d_{st.session_state.map_version}"
+            if ign3d and not playing:
+                ev = st.plotly_chart(fig, use_container_width=True,
+                                     config={"scrollZoom": True},
+                                     on_select="rerun", selection_mode="points",
+                                     key=key3d)
                 _place_from_selection(ev, ig_step, int(ig_rad))
+            else:
+                # pure viewer: no on_select so the camera is never reset on a step
+                st.plotly_chart(fig, use_container_width=True,
+                                config={"scrollZoom": True}, key=key3d)
         else:
             place = st.checkbox("Click map to place ignition "
-                                "(off = scroll to zoom / pan)", value=False)
+                                "(off = scroll to zoom / pan)", value=False,
+                                key="sim_place")
             if place and HAS_CANVAS and not playing:
                 bg = viz.render_pil(world, sim=sim, scale=scale,
                                     show_labels=True, **flags)
