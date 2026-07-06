@@ -57,8 +57,9 @@ def _new_simulator(world: World) -> None:
     st.session_state.world = world
     st.session_state.sim = Simulator(world)
     st.session_state.cost_series = []
-    st.session_state.playing = False
+    st.session_state.anim_on = False
     st.session_state.canvas_key = st.session_state.get("canvas_key", 0) + 1
+    st.session_state.map_version = st.session_state.get("map_version", 0) + 1
     st.session_state.sim_applied = 0
 
 
@@ -70,8 +71,9 @@ def _ensure_state() -> None:
         st.session_state.world.add_ignition(25, 35, step=0, radius=2)
     st.session_state.setdefault("tool", "Fuel")
     st.session_state.setdefault("cost_series", [])
-    st.session_state.setdefault("playing", False)
+    st.session_state.setdefault("anim_on", False)
     st.session_state.setdefault("canvas_key", 1)
+    st.session_state.setdefault("map_version", 1)
 
 
 def _record_costs() -> None:
@@ -220,8 +222,7 @@ with st.sidebar.expander("Run controls", expanded=True):
         sim.run(); _record_costs(); st.rerun()
     if c4.button("Reset fire", use_container_width=True):
         sim.reset(); st.session_state.cost_series = []; st.rerun()
-    st.session_state.playing = st.toggle("Run (animate step by step)",
-                                         st.session_state.playing)
+    st.toggle("Run (animate step by step)", key="anim_on")
     st.caption(f"Step {sim.state.step}    active fire "
                f"{int((sim.state.burning > 0.5).sum())} cells")
 
@@ -239,29 +240,12 @@ def page_simulation():
         with st.expander("Conditions (change often)", expanded=True):
             ws = st.slider("Wind speed (m/s)", 0.0, 30.0,
                            float(world.meteo.wws.mean()), 0.5)
-            st.caption("Wind direction: click the compass to point where the "
-                       "wind blows toward.")
-            SZ = 150
-            if HAS_CANVAS:
-                comp = viz.render_compass(cur_wd, ws, size=SZ)
-                wc = st_canvas(background_image=comp, drawing_mode="point",
-                               height=SZ, width=SZ, stroke_color="#c0392b",
-                               point_display_radius=5, update_streamlit=True,
-                               key=f"windc_{st.session_state.get('windc_key', 0)}")
-                objs = (wc.json_data or {}).get("objects", []) if wc else []
-                if objs:
-                    o = objs[-1]
-                    px = o.get("left", 0) + o.get("radius", 0)
-                    py = o.get("top", 0) + o.get("radius", 0)
-                    ang = np.arctan2((SZ / 2) - py, px - (SZ / 2))
-                    world.meteo.wwd[:] = float(ang)
-                    st.session_state["windc_key"] = st.session_state.get("windc_key", 0) + 1
-                    st.rerun()
-            else:
-                deg = st.slider("Wind direction (deg)", 0, 360,
-                                int(np.degrees(cur_wd)) % 360, 5)
-                world.meteo.wwd[:] = np.radians(deg)
-            st.caption(f"Blowing toward {int(np.degrees(cur_wd)) % 360} deg")
+            d0 = int(round(np.degrees(cur_wd)))
+            d0 = ((d0 + 180) % 360) - 180          # wrap into [-180, 180]
+            wd_deg = st.slider("Wind direction (deg): 0=E, 90=N, 180/-180=W, -90=S",
+                               -180, 180, d0, 5)
+            st.image(viz.render_compass(np.radians(wd_deg), ws, size=140),
+                     caption="wind blows toward the arrow")
             mo = st.slider("Fuel moisture", 0.0, 0.6,
                            float(world.fuel.fmoist.mean()), 0.01)
             th = st.slider("Ignition threshold", 0.01, 0.5,
@@ -271,9 +255,10 @@ def page_simulation():
                                    "dead fuel moisture from air temperature and "
                                    "relative humidity. Hotter/drier air -> drier "
                                    "fuel -> faster fire. Off = use the slider value.")
-            if st.button("Apply speed / moisture / threshold",
+            if st.button("Apply wind / moisture / threshold",
                          use_container_width=True):
                 world.meteo.wws[:] = ws
+                world.meteo.wwd[:] = np.radians(wd_deg)
                 if emc:
                     from disasteraware.fuel_moisture import update_dead_fuel_moisture
                     update_dead_fuel_moisture(world)
@@ -302,7 +287,7 @@ def page_simulation():
         vmode = st.radio("View", ["2D map", "3D terrain"], horizontal=True,
                          label_visibility="collapsed")
         scale = _fit_scale(cfg.nx)
-        playing = st.session_state.playing
+        playing = st.session_state.get("anim_on", False)
         if vmode == "3D terrain":
             st.caption("Drag to rotate, scroll to zoom (zoom is kept between "
                        "steps). Click a point on the terrain to drop an ignition.")
@@ -310,7 +295,7 @@ def page_simulation():
             ev = st.plotly_chart(fig, use_container_width=True,
                                  config={"scrollZoom": True},
                                  on_select="rerun", selection_mode="points",
-                                 key="plot3d")
+                                 key=f"plot3d_{st.session_state.map_version}")
             if not playing:
                 _place_from_selection(ev, ig_step, int(ig_rad))
         else:
@@ -346,7 +331,8 @@ def page_simulation():
                 ev2 = st.plotly_chart(
                     viz.map_figure_2d(world, sim=sim, scale=scale, **flags),
                     use_container_width=True, on_select="rerun",
-                    selection_mode="points", key="plot2d",
+                    selection_mode="points",
+                    key=f"plot2d_{st.session_state.map_version}",
                     config={"scrollZoom": True,
                             "modeBarButtonsToRemove": ["lasso2d", "select2d"]})
                 _place_from_selection(ev2, ig_step, int(ig_rad), scale=scale)
@@ -816,7 +802,7 @@ PAGES = {"Simulation": page_simulation, "Map editor": page_editor,
 PAGES[page]()
 
 # animate: advance one step per rerun while playing (fast: only this page runs)
-if st.session_state.playing and not sim.is_quiescent():
+if st.session_state.get("anim_on", False) and not sim.is_quiescent():
     sim.step(); _record_costs(); time.sleep(0.08); st.rerun()
-elif st.session_state.playing and sim.is_quiescent() and sim.ever_burned.any():
-    st.session_state.playing = False
+elif st.session_state.get("anim_on", False) and sim.is_quiescent() and sim.ever_burned.any():
+    st.session_state.anim_on = False

@@ -465,8 +465,9 @@ def fire_surface_figure(world, sim=None, max_cells: int = 150,
                       scene=dict(aspectmode="data", uirevision="keep",
                                  xaxis=dict(visible=False),
                                  yaxis=dict(visible=False),
-                                 zaxis=dict(visible=False),
-                                 camera=dict(eye=dict(x=1.4, y=1.4, z=1.0))))
+                                 zaxis=dict(visible=False)))
+    # note: no explicit camera -> uirevision keeps the user's rotation and zoom
+    # across steps instead of resetting every frame
     return fig
 
 
