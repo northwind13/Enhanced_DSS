@@ -40,4 +40,6 @@ if "%KEY%"=="" (
 set CASE=%2
 if "%CASE%"=="" set CASE=manavgat2021
 python examples\auto_validate.py --case %CASE% --firms-key %KEY% --seeds 3
-if exist validation_report.png start validation_report
+if exist validation_report.png start validation_report.png
+:done
+pause
