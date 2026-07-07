@@ -26,16 +26,14 @@ from .costs import compute_costs, CostReport
 from .interaction import InteractionOperator
 from .observation import observe, Observation
 from . import behavior
-from . import monte_carlo
 from . import fuel_moisture
 from . import fuels_standard
-from . import validation
 from . import scenarios
 from . import io_utils
 from . import terrain
 from . import viz
 
-__version__ = "0.1.0"
+__version__ = "0.2.0"   # rewind, adaptive substepping, literature calibration
 
 __all__ = [
     "SimConfig", "SpreadParams", "SuppressionParams", "IntensityParams",
@@ -44,6 +42,6 @@ __all__ = [
     "World", "Asset", "IgnitionEvent", "SimulationState",
     "Simulator", "StepDiagnostics", "compute_costs", "CostReport",
     "InteractionOperator", "observe", "Observation",
-    "behavior", "monte_carlo", "fuel_moisture", "fuels_standard", "validation",
+    "behavior", "fuel_moisture", "fuels_standard",
     "scenarios", "io_utils", "terrain", "viz",
 ]

@@ -82,7 +82,7 @@ def rate_of_spread(fuel, topo, meteo, params: SpreadParams) -> np.ndarray:
     # slope enhancement (Eq. 127); slope clipped to keep tan() finite
     slope = np.clip(topo.slope, -params.slope_clip_rad, params.slope_clip_rad)
     g_slope = 1.0 + a_s * np.tan(slope)
-    g_slope = np.maximum(g_slope, 0.0)
+    g_slope = np.clip(g_slope, 0.0, getattr(params, "slope_gain_max", 3.0))
 
     # aspect alignment with wind (Eq. 128)
     g_aspect = 1.0 + a_asp * np.cos(topo.aspect - meteo.wwd)
@@ -90,6 +90,21 @@ def rate_of_spread(fuel, topo, meteo, params: SpreadParams) -> np.ndarray:
 
     ros = r_base * g_moist * g_wind * g_slope * g_aspect
     return np.maximum(ros, 0.0)
+
+
+def effective_spread_vector(topo, meteo, params):
+    """Combine the gradient wind with a slope-equivalent wind (FARSITE's
+    virtual-wind construction): upslope behaves like an extra wind of
+    slope_wind_equiv * tan(slope) m/s blowing uphill. Returns the speed and
+    direction fields used for the DIRECTIONAL weight; the scalar magnitude
+    factors g_wind and g_slope stay as defined (no double counting).
+
+    aspect is the downslope azimuth, so upslope = aspect + pi."""
+    k = float(getattr(params, "slope_wind_equiv", 10.0))
+    seq = k * np.tan(np.clip(topo.slope, 0.0, params.slope_clip_rad))
+    ux = meteo.wws * np.cos(meteo.wwd) - seq * np.cos(topo.aspect)
+    uy = meteo.wws * np.sin(meteo.wwd) - seq * np.sin(topo.aspect)
+    return np.hypot(ux, uy), np.arctan2(uy, ux)
 
 
 def propagation_influence(burning: np.ndarray, ros: np.ndarray,
@@ -111,8 +126,12 @@ def propagation_influence(burning: np.ndarray, ros: np.ndarray,
         ecc = np.sqrt(np.clip(1.0 - 1.0 / (lb * lb), 0.0, 0.999))
     elif wws is not None:
         # blend the directional weight toward isotropic as wind drops to zero,
-        # so with no wind the fire spreads symmetrically driven by fuel and slope
-        aniso = np.clip(np.asarray(wws) / max(params.aniso_wind_full, 1e-6), 0.0, 1.0)
+        # so with no wind the fire spreads symmetrically driven by fuel and
+        # slope. Even at full wind a flank/backing floor remains: backing
+        # fires run at a small fraction of the head fire rate.
+        back = float(np.clip(getattr(params, "back_frac", 0.10), 0.0, 1.0))
+        aniso = np.clip(np.asarray(wws) / max(params.aniso_wind_full, 1e-6),
+                        0.0, 1.0) * (1.0 - back)
     for drow, dcol in _OFFSETS:
         theta = _neighbour_to_target_angle(drow, dcol)
         cosd = np.cos(wwd - theta)

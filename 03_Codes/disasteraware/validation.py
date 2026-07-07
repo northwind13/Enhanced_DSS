@@ -1,68 +1,115 @@
-"""Validation utilities: compare a simulated burn against observed data.
+"""Event-level validation of the simulator against observed fire data.
 
-To trust the simulator you compare its output to a real fire. The standard way
-is to overlay the simulated burned area (or fire perimeter / arrival time) on the
-observed one and score the overlap. This module implements the common metrics
-used in the wildfire literature (FARSITE/Cell2Fire validation studies):
+The standard practice in the wildfire modelling literature (FARSITE,
+Prometheus, Cell2Fire validation studies) is to simulate a documented
+historical fire on its real landscape and weather, then score the simulated
+burned area against the observed final perimeter with overlap metrics:
 
-    Jaccard / IoU   intersection over union of the two burned areas
-    Sorensen-Dice   2|A n B| / (|A| + |B|)
-    hit rate        fraction of observed burn correctly predicted
-    false alarm     fraction of predicted burn that did not actually burn
-    front position  mean distance from simulated perimeter to observed perimeter
+    Jaccard / IoU        |A n B| / |A u B|
+    Sorensen-Dice        2|A n B| / (|A| + |B|)
+    Hit rate (POD)       |A n B| / |B|        (B = observed)
+    False alarm ratio    |A \\ B| / |A|        (A = simulated)
+    Area bias            |A| / |B|
+    Front position error distances between the two perimeters (m)
 
-All functions take boolean masks aligned on the same grid. Use the GIS import to
-put real DEM / fuel / perimeter rasters on a common grid first.
+Reported reference values: Cell2Fire reproduces historical fires with
+Sorensen-Dice around 0.7-0.9 on calibrated cases; 0.5-0.7 is typical for
+uncalibrated semi-empirical models. Because ember spotting is stochastic,
+validation should be run over several seeds and reported as mean +/- sd.
 """
 
 from __future__ import annotations
 
+from typing import Dict
+
 import numpy as np
 
 
-def compare_masks(sim_mask: np.ndarray, obs_mask: np.ndarray) -> dict:
-    """Overlap metrics between a simulated and an observed burned area."""
+def compare_masks(sim_mask: np.ndarray, obs_mask: np.ndarray) -> Dict[str, float]:
+    """Overlap metrics between the simulated and observed burned masks."""
     a = np.asarray(sim_mask, dtype=bool)
     b = np.asarray(obs_mask, dtype=bool)
-    if a.shape != b.shape:
-        raise ValueError(f"masks must share a grid; got {a.shape} vs {b.shape}")
-    inter = int(np.logical_and(a, b).sum())
-    union = int(np.logical_or(a, b).sum())
-    sa, sb = int(a.sum()), int(b.sum())
-    jaccard = inter / union if union else 1.0
-    dice = 2 * inter / (sa + sb) if (sa + sb) else 1.0
-    hit = inter / sb if sb else 0.0            # observed cells correctly burned
-    false_alarm = (sa - inter) / sa if sa else 0.0
-    return {"jaccard": jaccard, "dice": dice, "hit_rate": hit,
-            "false_alarm": false_alarm, "sim_cells": sa, "obs_cells": sb,
-            "intersection": inter, "union": union}
+    inter = float((a & b).sum())
+    union = float((a | b).sum())
+    na, nb = float(a.sum()), float(b.sum())
+    return {
+        "jaccard": inter / union if union else 1.0,
+        "dice": 2.0 * inter / (na + nb) if (na + nb) else 1.0,
+        "hit_rate": inter / nb if nb else 1.0,
+        "false_alarm": (na - inter) / na if na else 0.0,
+        "area_bias": na / nb if nb else float("inf"),
+        "sim_cells": na, "obs_cells": nb, "overlap_cells": inter,
+    }
 
 
-def _perimeter(mask: np.ndarray) -> np.ndarray:
+def _boundary(mask: np.ndarray) -> np.ndarray:
+    """Cells of the mask that touch a non-mask cell (4-neighbourhood)."""
     m = np.asarray(mask, dtype=bool)
-    if not m.any():
-        return np.zeros_like(m)
-    p = np.pad(m, 1)
-    interior = p[:-2, 1:-1] & p[2:, 1:-1] & p[1:-1, :-2] & p[1:-1, 2:]
-    return m & ~interior
+    er = np.ones_like(m)
+    er[1:, :] &= m[:-1, :]; er[:-1, :] &= m[1:, :]
+    er[:, 1:] &= m[:, :-1]; er[:, :-1] &= m[:, 1:]
+    return m & ~(er & m)
 
 
-def front_position_error(sim_mask, obs_mask, cell_size_m: float = 30.0) -> dict:
-    """Mean and 90th percentile distance from the simulated fire perimeter to the
-    nearest observed perimeter cell, in metres. Lower is better."""
-    sp = np.argwhere(_perimeter(sim_mask))
-    op = np.argwhere(_perimeter(obs_mask))
-    if sp.size == 0 or op.size == 0:
+def front_distance_errors(sim_mask, obs_mask, cell_size_m: float,
+                          max_points: int = 4000) -> Dict[str, float]:
+    """Distances from the simulated perimeter to the observed one (meters).
+
+    Symmetric nearest-neighbour distances between the two boundaries; the
+    mean and the 90th percentile are the front position errors reported in
+    FARSITE-style validation studies.
+    """
+    pa = np.argwhere(_boundary(sim_mask))
+    pb = np.argwhere(_boundary(obs_mask))
+    if len(pa) == 0 or len(pb) == 0:
         return {"mean_m": float("nan"), "p90_m": float("nan")}
-    # nearest observed perimeter cell for each simulated perimeter cell
-    d = np.sqrt(((sp[:, None, :] - op[None, :, :]) ** 2).sum(-1)).min(axis=1)
-    d = d * cell_size_m
+    rng = np.random.default_rng(0)
+    if len(pa) > max_points:
+        pa = pa[rng.choice(len(pa), max_points, replace=False)]
+    if len(pb) > max_points:
+        pb = pb[rng.choice(len(pb), max_points, replace=False)]
+
+    def _nn(p, q):
+        out = np.empty(len(p))
+        step = max(1, 2_000_000 // max(len(q), 1))
+        for i in range(0, len(p), step):
+            d = np.sqrt(((p[i:i + step, None, :] - q[None, :, :]) ** 2)
+                        .sum(-1)).min(axis=1)
+            out[i:i + step] = d
+        return out
+
+    d = np.concatenate([_nn(pa, pb), _nn(pb, pa)]) * cell_size_m
     return {"mean_m": float(d.mean()), "p90_m": float(np.percentile(d, 90))}
 
 
-def validate_run(sim, obs_mask: np.ndarray, cell_size_m: float = None) -> dict:
-    """Score a finished Simulator against an observed burned mask."""
-    cs = cell_size_m if cell_size_m is not None else sim.world.config.cell_size_m
-    out = compare_masks(sim.ever_burned, obs_mask)
-    out.update(front_position_error(sim.ever_burned, obs_mask, cs))
-    return out
+def validate_run(sim, obs_mask: np.ndarray) -> Dict[str, float]:
+    """Full report for a finished simulation against an observed burn mask."""
+    rep = compare_masks(sim.ever_burned, obs_mask)
+    rep.update(front_distance_errors(sim.ever_burned, obs_mask,
+                                     sim.cfg.cell_size_m))
+    return rep
+
+
+# --------------------------------------------------------------------- CORINE
+# CORINE Land Cover level-3 codes -> internal fuel classes, for Turkish /
+# European case studies (CLC codes, see Copernicus land monitoring service).
+CORINE_TO_FUEL: Dict[int, int] = {
+    # artificial surfaces -> urban (6) or non fuel
+    111: 6, 112: 6, 121: 6, 122: 0, 123: 0, 124: 0, 131: 0, 132: 0, 133: 0,
+    141: 1, 142: 6,
+    # agriculture -> grass-like fine fuels
+    211: 1, 212: 1, 213: 1, 221: 2, 222: 2, 223: 2, 231: 1,
+    241: 1, 242: 1, 243: 1, 244: 2,
+    # forest and semi natural
+    311: 4,   # broad-leaved forest      -> hardwood litter
+    312: 3,   # coniferous forest        -> pine litter
+    313: 3,   # mixed forest             -> pine litter (conservative)
+    321: 1,   # natural grasslands
+    322: 2,   # moors and heathland
+    323: 2,   # sclerophyllous (maquis)
+    324: 2,   # transitional woodland-shrub
+    331: 0, 332: 0, 333: 0, 334: 0, 335: 0,
+    # wetlands and water
+    411: 0, 412: 0, 421: 0, 422: 0, 423: 0,
+    511: 5, 512: 5, 521: 5, 522: 5, 523: 5,
+}

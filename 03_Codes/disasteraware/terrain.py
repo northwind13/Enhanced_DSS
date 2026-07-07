@@ -112,7 +112,14 @@ def generate_landscape(config: SimConfig | None = None,
     ny, nx = cfg.ny, cfg.nx
     rng = np.random.default_rng(seed)
 
-    elev = fractal_noise(ny, nx, rng, octaves=6, persistence=0.58) * relief_m
+    # relief: rolling fBm base + ridged mountains + gentle power-law valley
+    # flattening, which reads like real topography (plains, foothills, ridges)
+    base = fractal_noise(ny, nx, rng, octaves=6, persistence=0.55)
+    ridge = 1.0 - np.abs(2.0 * fractal_noise(ny, nx, rng, octaves=5,
+                                             persistence=0.5) - 1.0)
+    field = 0.55 * base + 0.45 * ridge ** 1.6
+    field = (field - field.min()) / max(field.max() - field.min(), 1e-9)
+    elev = (field ** 1.25) * relief_m
     gy, gx = np.gradient(elev, cfg.cell_size_m)
     slope = np.clip(np.arctan(np.hypot(gx, gy)), 0.0, 1.3)
     aspect = np.arctan2(-gy, -gx)
@@ -125,12 +132,18 @@ def generate_landscape(config: SimConfig | None = None,
     WATER = FUEL_NAME_TO_ID["water"]
 
     ftype = np.full((ny, nx), grass, dtype=int)
-    veg = fractal_noise(ny, nx, rng, octaves=5, persistence=0.6)
+    # larger, smoother vegetation clusters look like real forest stands
+    veg = fractal_noise(ny, nx, rng, octaves=3, persistence=0.55)
+    veg = _gaussian_smooth(veg, max(nx, ny) / 60.0)
+    veg = (veg - veg.min()) / max(veg.max() - veg.min(), 1e-9)
     ftype[(veg > 0.45) & (elev_norm > 0.25)] = shrub
     forest_threshold = np.quantile(veg, 1.0 - np.clip(forest_density, 0.0, 0.95))
     forest = veg >= forest_threshold
     ftype[forest & (elev_norm <= 0.55)] = hard
     ftype[forest & (elev_norm > 0.55)] = pine
+    # shrub ecotone around forest edges (transition belt, as in nature)
+    edge = _gaussian_smooth(forest.astype(float), 1.5)
+    ftype[(edge > 0.15) & (edge < 0.5) & ~forest & (elev_norm > 0.2)] = shrub
 
     if water_level > 0:
         thr = np.quantile(elev_norm, np.clip(water_level, 0.0, 0.3))
@@ -157,7 +170,12 @@ def generate_landscape(config: SimConfig | None = None,
     fload = np.where(ftype > 0,
                      0.55 + 0.45 * fractal_noise(ny, nx, rng, octaves=4), 0.0)
     fload = np.clip(fload, 0.0, 1.0)
+    # valleys hold more moisture; riparian belts near water are greener/wetter
     moisture = base_moisture + 0.10 * (1.0 - elev_norm)
+    wmask = (ftype == WATER).astype(float)
+    if wmask.any():
+        near_water = _gaussian_smooth(wmask, max(2.0, max(nx, ny) / 80.0))
+        moisture = moisture + 0.10 * np.clip(near_water * 3.0, 0.0, 1.0)
     moisture = np.clip(moisture, 0.02, 0.5)
 
     world = World.blank(cfg)
@@ -172,7 +190,12 @@ def generate_landscape(config: SimConfig | None = None,
     big = float(elev.max()) + 1e6
     elev_land = np.where(land, elev, big)
     road_y = _smooth1d(np.argmin(elev_land, axis=0).astype(float),
-                       max(3, nx // 12)).round().astype(int)
+                       max(5, nx // 10))
+    # limit the vertical step per column so the road bends like a real road
+    for _x in range(1, nx):
+        road_y[_x] = np.clip(road_y[_x], road_y[_x - 1] - 1.5,
+                             road_y[_x - 1] + 1.5)
+    road_y = _smooth1d(road_y, 7).round().astype(int)
     valid = land.any(axis=0)
 
     def _to_land(x, y):

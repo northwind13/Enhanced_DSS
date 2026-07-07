@@ -127,9 +127,11 @@ def value_overlay_rgb(world) -> np.ndarray:
     prio = 0.25 + 0.75 * prio          # keep a visible tint even at low priority
     try:
         from matplotlib import colormaps
-        ramp = np.asarray(colormaps["cool"](prio))[..., :3]   # cyan -> magenta
+        ramp = np.asarray(colormaps["RdPu"](prio))[..., :3]   # pink -> purple
+        # (distinct from water blue, fire orange and vegetation greens)
     except Exception:
-        ramp = np.stack([prio, 1 - prio, np.ones_like(prio)], axis=-1)
+        ramp = np.stack([0.99 - 0.55 * prio, 0.75 - 0.65 * prio,
+                         0.85 - 0.30 * prio], axis=-1)
     for c in range(3):
         img[..., c][core] = 0.10 * img[..., c][core] + 0.90 * ramp[..., c][core]
         img[..., c][halo] = 0.55 * img[..., c][halo] + 0.45 * ramp[..., c][halo]
@@ -215,11 +217,19 @@ def render_pil(world, sim=None, scale: int = 8, show_fire: bool = True,
                 draw.rectangle([cx - r, cy - r // 3, cx + r, cy + r], fill=(238, 232, 220, 255), outline=black, width=1)
                 draw.polygon([(cx - r - 1, cy - r // 3), (cx, cy - r - 2), (cx + r + 1, cy - r // 3)], fill=(150, 60, 40, 255), outline=black)
             elif a.kind == "critical":
-                # hospital: white square with red cross
-                draw.rectangle([cx - r, cy - r, cx + r, cy + r], fill=(250, 250, 250, 255), outline=black, width=1)
-                t = max(2, r // 3)
-                draw.rectangle([cx - t, cy - r + 2, cx + t, cy + r - 2], fill=(210, 30, 30, 255))
-                draw.rectangle([cx - r + 2, cy - t, cx + r - 2, cy + t], fill=(210, 30, 30, 255))
+                # generic critical infrastructure marker (hospital, power,
+                # water, fuel, ...): red-bordered white square with a bold
+                # red exclamation mark
+                draw.rectangle([cx - r, cy - r, cx + r, cy + r],
+                               fill=(250, 250, 250, 255),
+                               outline=(180, 20, 20, 255), width=2)
+                bw = max(2, (2 * r) // 5)
+                draw.rectangle([cx - bw // 2, cy - r + 3,
+                                cx + bw // 2, cy + r - bw - 4],
+                               fill=(200, 25, 25, 255))
+                draw.ellipse([cx - bw // 2, cy + r - 2 - bw,
+                              cx + bw // 2, cy + r - 2],
+                             fill=(200, 25, 25, 255))
             elif a.kind == "population":
                 # people: three dots
                 draw.ellipse([cx - r, cy - r, cx + r, cy + r], fill=(60, 130, 240, 210), outline=black, width=1)
@@ -398,7 +408,8 @@ def _state_code_field(world, sim=None):
 
 
 def fire_surface_figure(world, sim=None, max_cells: int = 150,
-                        relief_frac: float = 0.28, pick: bool = False):
+                        relief_frac: float = 0.28, pick: bool = False,
+                        pick_label: str = "click to place ignition"):
     """Live 3D terrain with the same content as the 2D map: land cover, water,
     roads, buildings and flame coloured active fire draped on the relief.
 
@@ -438,7 +449,7 @@ def fire_surface_figure(world, sim=None, max_cells: int = 150,
                        hoverinfo="skip")]
 
     # asset markers (buildings, hospital, ...) as 3D points on the terrain
-    sym = {"building": "square", "critical": "cross",
+    sym = {"building": "square", "critical": "x",
            "population": "circle", "evac_route": "diamond"}
     col = {"building": "rgb(240,240,240)", "critical": "rgb(220,40,40)",
            "population": "rgb(60,130,240)", "evac_route": "rgb(40,200,120)"}
@@ -478,15 +489,16 @@ def fire_surface_figure(world, sim=None, max_cells: int = 150,
     if pick:
         # a light grid of clickable points; a single click selects the nearest
         # one and its (x, y) are the exact grid cell for the ignition
-        pstep = max(1, int(np.ceil(max(nx, ny) / 55.0)))
+        pstep = max(1, int(np.ceil(max(nx, ny) / 110.0)))
         pj, pi = np.mgrid[0:ny:pstep, 0:nx:pstep]
         pj = pj.ravel(); pi = pi.ravel()
         data.append(go.Scatter3d(
             x=pi, y=pj, z=zfull[pj, pi] + 0.6, mode="markers",
-            marker=dict(size=4, color="rgba(255,255,255,0.40)",
+            marker=dict(size=5, color="rgba(255,255,255,0.55)",
                         line=dict(width=0)),
-            name="place",
-            hovertemplate="x=%{x}, y=%{y}<extra>click to place ignition</extra>"))
+            name="place", customdata=elev_full[pj, pi],
+            hovertemplate="x=%{x}, y=%{y}, elev=%{customdata:.0f} m"
+                          f"<extra>{pick_label}</extra>"))
 
     fig = go.Figure(data=data)
     fig.update_layout(height=460, margin=dict(l=0, r=0, t=0, b=0),
@@ -576,40 +588,6 @@ def behavior_pil(sim, kind: str = "fireline_intensity", scale: int = 6):
             ramp = np.stack([norm, norm * 0.4, np.zeros_like(norm)], axis=-1)
         for c in range(3):
             img[..., c][mask] = ramp[..., c][mask]
-    arr = (np.clip(img, 0, 1) * 255).astype(np.uint8)
-    ny, nx = arr.shape[:2]
-    return Image.fromarray(arr, "RGB").resize((nx * scale, ny * scale), Image.NEAREST)
-
-
-def probability_pil(world, prob, scale: int = 6):
-    """Render a burn probability field (0..1) as a heat map over the landscape."""
-    from PIL import Image
-    img = landscape_rgb(world)
-    prob = np.clip(np.asarray(prob, dtype=float), 0, 1)
-    mask = prob > 0.01
-    try:
-        from matplotlib import colormaps
-        ramp = np.asarray(colormaps["turbo"](prob))[..., :3]
-    except Exception:
-        ramp = np.stack([prob, np.zeros_like(prob), 1 - prob], axis=-1)
-    for c in range(3):
-        img[..., c][mask] = 0.25 * img[..., c][mask] + 0.75 * ramp[..., c][mask]
-    arr = (np.clip(img, 0, 1) * 255).astype(np.uint8)
-    ny, nx = arr.shape[:2]
-    return Image.fromarray(arr, "RGB").resize((nx * scale, ny * scale), Image.NEAREST)
-
-
-
-def agreement_pil(sim_mask, obs_mask, world, scale: int = 6):
-    """Overlay simulated vs observed burn: green = both (hit), red = simulated
-    only (false alarm), blue = observed only (missed)."""
-    from PIL import Image
-    img = landscape_rgb(world)
-    a = np.asarray(sim_mask, dtype=bool)
-    b = np.asarray(obs_mask, dtype=bool)
-    img[a & b] = [0.15, 0.75, 0.20]     # hit
-    img[a & ~b] = [0.90, 0.20, 0.15]    # false alarm (sim only)
-    img[~a & b] = [0.20, 0.45, 0.95]    # missed (obs only)
     arr = (np.clip(img, 0, 1) * 255).astype(np.uint8)
     ny, nx = arr.shape[:2]
     return Image.fromarray(arr, "RGB").resize((nx * scale, ny * scale), Image.NEAREST)

@@ -1,0 +1,19 @@
+# environments and caches
+.venv/
+__pycache__/
+*.pyc
+.pytest_cache/
+
+# downloaded validation data and run archives (large, regenerable)
+validation_cache/
+validation_runs/
+validation_report*
+
+# generated outputs
+dss_audit_log.json
+dss_demo_report.png
+
+# dashboard temp uploads
+app/_gis_*
+app/_upload_*
+app/_obs_*
