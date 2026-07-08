@@ -1,0 +1,69 @@
+{
+  "case_id": "milas2021",
+  "case": {
+    "west": 27.7,
+    "south": 36.95,
+    "east": 28.35,
+    "north": 37.35,
+    "start": "2021-08-01",
+    "hours": 6.0,
+    "tree_fuel": 3,
+    "label": "Milas-Kemerkoy (Mugla) 2021",
+    "t0_hour": 0
+  },
+  "settings": {
+    "cell_m": 90.0,
+    "step_minutes": 30.0,
+    "hours": 6.0,
+    "seeds": 1,
+    "wind_ensemble": false,
+    "truth": "firms"
+  },
+  "engine_version": "0.2.0",
+  "initial_front_cells": 159,
+  "summary": {
+    "jaccard": {
+      "mean": 0.7896844088553933,
+      "sd": 0.0
+    },
+    "dice": {
+      "mean": 0.8824845374391367,
+      "sd": 0.0
+    },
+    "hit_rate": {
+      "mean": 0.9838615023474179,
+      "sd": 0.0
+    },
+    "false_alarm": {
+      "mean": 0.19995227869243618,
+      "sd": 0.0
+    },
+    "area_bias": {
+      "mean": 1.2297535211267605,
+      "sd": 0.0
+    },
+    "mean_m": {
+      "mean": 318.660996284021,
+      "sd": 0.0
+    },
+    "p90_m": {
+      "mean": 630.0,
+      "sd": 0.0
+    }
+  },
+  "runs": [
+    {
+      "jaccard": 0.7896844088553933,
+      "dice": 0.8824845374391367,
+      "hit_rate": 0.9838615023474179,
+      "false_alarm": 0.19995227869243618,
+      "area_bias": 1.2297535211267605,
+      "sim_cells": 4191.0,
+      "obs_cells": 3408.0,
+      "overlap_cells": 3353.0,
+      "mean_m": 318.660996284021,
+      "p90_m": 630.0
+    }
+  ],
+  "wind_ensemble": null
+}

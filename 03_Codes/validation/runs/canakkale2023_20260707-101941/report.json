@@ -1,0 +1,69 @@
+{
+  "case_id": "canakkale2023",
+  "case": {
+    "west": 26.5,
+    "south": 39.9,
+    "east": 27.0,
+    "north": 40.2,
+    "start": "2023-08-22",
+    "hours": 6.0,
+    "tree_fuel": 3,
+    "label": "Canakkale-Kayadere 2023",
+    "t0_hour": 10
+  },
+  "settings": {
+    "cell_m": 90.0,
+    "step_minutes": 30.0,
+    "hours": 6.0,
+    "seeds": 1,
+    "wind_ensemble": false,
+    "truth": "firms"
+  },
+  "engine_version": "0.2.0",
+  "initial_front_cells": 38,
+  "summary": {
+    "jaccard": {
+      "mean": 0.19780728844966028,
+      "sd": 0.0
+    },
+    "dice": {
+      "mean": 0.3302823256413562,
+      "sd": 0.0
+    },
+    "hit_rate": {
+      "mean": 0.9937936384794415,
+      "sd": 0.0
+    },
+    "false_alarm": {
+      "mean": 0.801948051948052,
+      "sd": 0.0
+    },
+    "area_bias": {
+      "mean": 5.017843289371606,
+      "sd": 0.0
+    },
+    "mean_m": {
+      "mean": 1488.770838673183,
+      "sd": 0.0
+    },
+    "p90_m": {
+      "mean": 3240.0,
+      "sd": 0.0
+    }
+  },
+  "runs": [
+    {
+      "jaccard": 0.19780728844966028,
+      "dice": 0.3302823256413562,
+      "hit_rate": 0.9937936384794415,
+      "false_alarm": 0.801948051948052,
+      "area_bias": 5.017843289371606,
+      "sim_cells": 6468.0,
+      "obs_cells": 1289.0,
+      "overlap_cells": 1281.0,
+      "mean_m": 1488.770838673183,
+      "p90_m": 3240.0
+    }
+  ],
+  "wind_ensemble": null
+}

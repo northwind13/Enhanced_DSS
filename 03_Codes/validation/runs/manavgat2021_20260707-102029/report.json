@@ -1,0 +1,69 @@
+{
+  "case_id": "manavgat2021",
+  "case": {
+    "west": 31.3,
+    "south": 36.72,
+    "east": 31.8,
+    "north": 37.08,
+    "start": "2021-07-28",
+    "hours": 6.0,
+    "tree_fuel": 3,
+    "label": "Manavgat (Antalya) 2021",
+    "t0_hour": 11
+  },
+  "settings": {
+    "cell_m": 90.0,
+    "step_minutes": 30.0,
+    "hours": 6.0,
+    "seeds": 1,
+    "wind_ensemble": false,
+    "truth": "firms"
+  },
+  "engine_version": "0.2.0",
+  "initial_front_cells": 191,
+  "summary": {
+    "jaccard": {
+      "mean": 0.323563269281856,
+      "sd": 0.0
+    },
+    "dice": {
+      "mean": 0.48892754398876026,
+      "sd": 0.0
+    },
+    "hit_rate": {
+      "mean": 0.9894394800974817,
+      "sd": 0.0
+    },
+    "false_alarm": {
+      "mean": 0.675315443397903,
+      "sd": 0.0
+    },
+    "area_bias": {
+      "mean": 3.047386948280531,
+      "sd": 0.0
+    },
+    "mean_m": {
+      "mean": 1543.3954322233685,
+      "sd": 0.0
+    },
+    "p90_m": {
+      "mean": 3782.356081058063,
+      "sd": 0.0
+    }
+  },
+  "runs": [
+    {
+      "jaccard": 0.323563269281856,
+      "dice": 0.48892754398876026,
+      "hit_rate": 0.9894394800974817,
+      "false_alarm": 0.675315443397903,
+      "area_bias": 3.047386948280531,
+      "sim_cells": 11254.0,
+      "obs_cells": 3693.0,
+      "overlap_cells": 3654.0,
+      "mean_m": 1543.3954322233685,
+      "p90_m": 3782.356081058063
+    }
+  ],
+  "wind_ensemble": null
+}

@@ -1,0 +1,12 @@
+t=  0.5 h  burned=      338 ha  wind= 8.5 m/s
+t=  1.0 h  burned=      846 ha  wind= 8.5 m/s
+t=  1.5 h  burned=    1,407 ha  wind= 9.0 m/s
+t=  2.0 h  burned=    1,890 ha  wind= 9.0 m/s
+t=  2.5 h  burned=    2,290 ha  wind= 8.2 m/s
+t=  3.0 h  burned=    2,682 ha  wind= 8.2 m/s
+t=  3.5 h  burned=    3,165 ha  wind= 8.4 m/s
+t=  4.0 h  burned=    3,640 ha  wind= 8.4 m/s
+t=  4.5 h  burned=    4,035 ha  wind= 8.5 m/s
+t=  5.0 h  burned=    4,447 ha  wind= 8.5 m/s
+t=  5.5 h  burned=    4,859 ha  wind= 8.1 m/s
+t=  6.0 h  burned=    5,239 ha  wind= 8.1 m/s
