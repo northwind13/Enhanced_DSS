@@ -3,8 +3,8 @@
 Each feature is a scalar in [0, 1] computed over the agent's cells from the
 CURRENT observation (phase 1a: sensor-emulated, i.e. read directly from the
 live simulation state; the sensor catalogue with partial coverage arrives in
-a later phase). Every formula is explicit and hand-checkable; each feature
-carries established wildfire-science grounding.
+a later phase). Every formula is explicit and hand-checkable; the grounding
+of each feature in wildfire science is documented in the System Description page (DSS section).
 """
 
 from __future__ import annotations
@@ -24,6 +24,43 @@ FEATURE_ORDER = [
     "temporal_urgency",       # time pressure to act
 ]
 
+# display metadata: math symbol z_i, short name and WHAT it measures
+FEATURE_META = [
+    ("fire_intensity", "z_1", "fire intensity",
+     "mean normalized fireline intensity I over the region's burning "
+     "cells [0,1]"),
+    ("spread_potential", "z_2", "spread potential",
+     "mean rate of spread R_spread of the region, normalized by the "
+     "calibration maximum [0,1]"),
+    ("weather_severity", "z_3", "weather severity",
+     "FWI-style danger from wind, temperature, humidity and dryness "
+     "[0,1]"),
+    ("ignition_proximity", "z_4", "ignition proximity",
+     "closeness of the nearest active fire to the region (1 = inside) "
+     "[0,1]"),
+    ("fuel_load", "z_5", "fuel load",
+     "mean available fine fuel F_load still standing in the region "
+     "[0,1]"),
+    ("asset_exposure", "z_6", "asset exposure",
+     "protection-weighted values at risk (buildings, facilities, "
+     "population) present in the region [0,1]"),
+    ("resource_accessibility", "z_7", "resource accessibility",
+     "how workable the ground is for crews: terrain access field "
+     "G_access averaged over the region [0,1]"),
+    ("access_road_status", "z_8", "access / road status",
+     "road and egress availability of the region (road density, open "
+     "routes) [0,1]"),
+    ("suppression_availability", "z_9", "suppression availability",
+     "deployable suppression capacity currently present in the region "
+     "[0,1]"),
+    ("temporal_urgency", "z_10", "temporal urgency",
+     "time pressure to act: fire inside or bearing down on the region "
+     "soon [0,1]"),
+]
+FEATURE_SYM = {k: sym for k, sym, _, _ in FEATURE_META}
+FEATURE_NAME = {k: nm for k, _, nm, _ in FEATURE_META}
+FEATURE_MEASURES = {k: ms for k, _, _, ms in FEATURE_META}
+
 
 def ten_features(sim, region, network=None) -> dict:
     """Return {feature_name: value in [0,1]} for one agent region.
@@ -33,7 +70,7 @@ def ten_features(sim, region, network=None) -> dict:
     cells carry old values - while static prior maps (terrain, fuel type,
     values, own resources), fuel moisture and the weather field come from
     maps and the meteorological service. The matching confidence is
-    network.region_conf(region)."""
+    network.region_conf(region) (see sensors.py confidence model)."""
     world = sim.world
     cfg = sim.cfg
     sy, sx = region.slices()

@@ -1,4 +1,17 @@
-"""Simulation Core: the discrete time state transition operator Phi."""
+"""Simulation Core: the discrete time state transition operator Phi.
+
+This module implements the DisasterAware hybrid fire spread model,
+combining burning status evolution (Eq. 43 to 48), fuel mass evolution
+(Eq. 49 to 50, 68 to 69), fire intensity evolution (Eq. 51, 136 to 137) and
+ignition time evolution (Eq. 52) into a single coupled update:
+
+    S_{k+1} = Phi(S_k, F_in,k)
+
+The operator is deterministic; stochastic behaviour enters only through the
+exogenous input fields (for example wind gusts). External modules never write to
+the state directly; suppression and ignition influence the state only through
+the external input set.
+"""
 
 from __future__ import annotations
 
@@ -29,6 +42,19 @@ class StepDiagnostics:
     intensity_mean_active: float
 
 
+class _MeteoView:
+    """Meteo layer proxy with terrain-adjusted wind speed / direction."""
+
+    def __init__(self, base, wws, wwd=None):
+        self._base = base
+        self.wws = wws
+        if wwd is not None:
+            self.wwd = wwd
+
+    def __getattr__(self, name):
+        return getattr(self._base, name)
+
+
 class Simulator:
     """Stateful wrapper around the transition operator Phi."""
 
@@ -36,20 +62,25 @@ class Simulator:
         self.world = world
         self.cfg = world.config
         self.state = SimulationState.from_world(world)
+        # cumulative bookkeeping for cost and metric accounting
         self.ever_burned = np.zeros(world.shape, dtype=bool)
         self.fuel_consumed_total = np.zeros(world.shape, dtype=float)
         self.fuel_suppressed_total = np.zeros(world.shape, dtype=float)
-        # cumulative person-steps exposed inside the burned footprint
-        self.exposure_person_steps: float = 0.0
+        # step index at which each cell first ignited (-1 = never), for the
+        # time-to-burn propagation layer (Kose et al., 3D wildfire viz)
         self.first_ignition_step = np.full(world.shape, -1, dtype=int)
+        # ignition influence buildup A_k (Eq. 45): time-integrated neighbour
+        # influence; a cell ignites when the buildup crosses theta_ign
         self.ign_buildup = np.zeros(world.shape, dtype=float)
         self.history: List[StepDiagnostics] = []
         self._b_base = _fuel_param(world.fuel.ftype, "b_base")
         self._rng = np.random.default_rng(self.cfg.rng_seed)
+        # ---- rewind support: automatic per-step state snapshots ----------
         self.record_states: bool = True
         self._snap_budget_bytes: int = 150 * 1024 * 1024
         self._snapshots: dict = {0: self._snapshot()}
 
+    # ------------------------------------------------------------- snapshots
     def _snapshot(self) -> dict:
         s = self.state
         return {
@@ -62,15 +93,13 @@ class Simulator:
             "first": self.first_ignition_step.astype(np.int32),
             "cons": self.fuel_consumed_total.astype(np.float32),
             "supp": self.fuel_suppressed_total.astype(np.float32),
-            "exp_steps": float(self.exposure_person_steps),
         }
 
     def _record_snapshot(self) -> None:
         if not self.record_states:
             return
         self._snapshots[self.state.step] = self._snapshot()
-        per = sum(a.nbytes for a in self._snapshots[self.state.step].values()
-                  if hasattr(a, "nbytes"))
+        per = sum(a.nbytes for a in self._snapshots[self.state.step].values())
         cap = max(20, self._snap_budget_bytes // max(per, 1))
         while len(self._snapshots) > cap:
             self._snapshots.pop(min(self._snapshots))
@@ -80,6 +109,9 @@ class Simulator:
         return sorted(self._snapshots)
 
     def rewind(self, k: int) -> bool:
+        """Restore the full simulation state at step k (if snapshotted) and
+        drop everything after it, so the run can be replayed from k with
+        modified conditions (wind, moisture, resources, ...)."""
         if k not in self._snapshots:
             return False
         snap = self._snapshots[k]
@@ -94,18 +126,17 @@ class Simulator:
         self.first_ignition_step = snap["first"].astype(int)
         self.fuel_consumed_total = snap["cons"].astype(float)
         self.fuel_suppressed_total = snap["supp"].astype(float)
-        self.exposure_person_steps = float(snap.get("exp_steps", 0.0))
         self.world.fuel.fload = s.fload
         self.history = self.history[:k]
         self._snapshots = {kk: v for kk, v in self._snapshots.items() if kk <= k}
         return True
 
+    # ----------------------------------------------------------------- control
     def reset(self) -> None:
         self.state = SimulationState.from_world(self.world)
         self.ever_burned[:] = False
         self.fuel_consumed_total[:] = 0.0
         self.fuel_suppressed_total[:] = 0.0
-        self.exposure_person_steps = 0.0
         self.first_ignition_step[:] = -1
         self.ign_buildup[:] = 0.0
         self.history.clear()
@@ -113,8 +144,22 @@ class Simulator:
         self.world.fuel.fload = self.world.fuel.fload0.copy()
         self.state.fload = self.world.fuel.fload0.copy()
 
+    # -------------------------------------------------------------- transition
     def step(self, resource_override=None,
              extra_ignition: Optional[np.ndarray] = None) -> StepDiagnostics:
+        """Advance the state by one time step applying Phi.
+
+        One step represents cfg.step_minutes of real time. Per-step rates are
+        calibrated at a 30 min reference (System Description Sec. 9): with
+        s = step_minutes / 30 the engine runs ceil(s) internal substeps of
+        scale s / ceil(s), so long steps advance the front by up to ~s cells
+        while 30 min steps reproduce the reference equations exactly.
+
+        resource_override : an optional ResourceLayer supplied by a decision
+            support system to replace the static suppression field for this step.
+        extra_ignition : an optional binary field injected on top of the
+            scheduled ignitions (used by the interactive what if controls).
+        """
         cfg = self.cfg
         s = self.state
         world = self.world
@@ -122,8 +167,53 @@ class Simulator:
         resource = resource_override if resource_override is not None else world.resource
 
         tscale = float(getattr(cfg, "step_minutes", 30.0)) / 30.0
+        # terrain-modified wind: ridges are exposed (faster), valleys are
+        # sheltered (slower). Linearized mass-consistent adjustment on the
+        # normalized elevation; the direction keeps the gradient wind and
+        # the upslope pull enters via the effective spread vector below.
+        twg = float(getattr(cfg.spread, "terrain_wind_gain", 0.0))
+        if twg > 0.0:
+            if not hasattr(self, "_elev_norm"):
+                e = np.asarray(topo.elev, dtype=float)
+                span = float(np.ptp(e))
+                self._elev_norm = ((e - e.min()) / span if span > 1e-6
+                                   else np.zeros_like(e))
+                # valley channeling weight: on steep ground the flow veers
+                # toward the local slope axis (drainage direction), so any
+                # user-set uniform wind becomes a terrain-following field
+                self._chan = 0.5 * np.clip(topo.slope / 0.6, 0.0, 1.0)
+            factor = np.clip(1.0 + twg * (self._elev_norm - 0.5) * 2.0,
+                             0.4, 1.8)
+            c = self._chan
+            wwd_eff = np.arctan2(
+                (1.0 - c) * np.sin(meteo.wwd) + c * np.sin(topo.aspect),
+                (1.0 - c) * np.cos(meteo.wwd) + c * np.cos(topo.aspect))
+            meteo = _MeteoView(meteo, meteo.wws * factor, wwd_eff)
+        # precipitation wets the dead fuel: while it rains the moisture
+        # relaxes toward at least 0.35 (above every extinction threshold)
+        # with a ~30 min time constant scaled by rain intensity, so
+        # sustained rain stalls the spread and lets burning cells exhaust
+        # themselves. This runs for EVERY weather source (manual sliders,
+        # diurnal driver, real-case series).
+        _pr = np.asarray(meteo.prec, dtype=float)
+        if float(_pr.max()) > 0.05:
+            _fm = fuel.fmoist
+            _k = np.clip(_pr / 2.0, 0.0, 1.0) * min(1.0, tscale)
+            _fm += (np.maximum(_fm, 0.35) - _fm) * _k
+        # grid scaling: the fuel table calibrates r_base in m/min, i.e. in
+        # cells per 30 min AT 30 m cells. On a coarser/finer grid one cell is
+        # a different distance, so the cell rate is scaled by 30 m / cell so
+        # the METRIC speed is independent of the grid resolution.
         cell_scale = 30.0 / float(cfg.cell_size_m)
+        # adaptive substepping: the substep count also covers the fastest
+        # local rate of spread, so a fire running at R_spread cells per step
+        # is resolved without violating the one-cell-per-substep limit; the
+        # 99.5th percentile keeps single extreme cells (cliffs) from
+        # inflating the substep count
         ros_ref = rate_of_spread(fuel, topo, meteo, cfg.spread) * cell_scale
+        # directionality comes from the wind PLUS the upslope pull; the
+        # eight directional weight fields are constant within the step, so
+        # they are computed once and reused by every substep
         weff_ws, weff_wd = effective_spread_vector(topo, meteo, cfg.spread)
         dir_w = directional_weights(weff_wd, cfg.spread, wws=weff_ws)
         ros_peak = float(np.percentile(ros_ref, 99.5))
@@ -145,12 +235,26 @@ class Simulator:
             Fload = s.fload
             I = s.intensity
 
+            # 1. rate of spread and propagation influence (Eq. 123, 46),
+            #    scaled to the substep length
             ros = ros_ref * sub
             psi = propagation_influence(B, ros, weff_wd, cfg.spread,
                                         wws=weff_ws, weights=dir_w)
 
+            # 2. burning status update (Eq. 43 to 45): the influence builds
+            #    up over time (with a small leak) and the cell ignites when
+            #    the buildup crosses theta_ign; external ignition is
+            #    injected on the first substep only
             has_fuel = (Fload > cfg.spread.eps_fuel).astype(float)
             b_pers = B * has_fuel
+            # rain knockdown: under sustained rain (>= 3 mm/h) a burning
+            # cell is quenched once the rain has driven its fuel moisture
+            # up to ~0.35 (the wetting relaxation above supplies the ~30
+            # min time constant, so the front dies out gradually, not in
+            # one frame)
+            if float(_pr.max()) >= 3.0:
+                _quench = (_pr >= 3.0) & (fuel.fmoist >= 0.34)
+                b_pers = b_pers * (~_quench)
             leak = min(1.0, cfg.spread.buildup_leak * sub)
             self.ign_buildup *= (1.0 - leak)
             self.ign_buildup += psi
@@ -162,11 +266,16 @@ class Simulator:
             else:
                 B_next = np.maximum(b_pers, b_prop)
 
+            # 2b. optional ember spotting (default off)
             if cfg.spread.spotting:
                 ny, nx = B_next.shape
+                # embers need wind to loft and travel: no spotting in calm air
                 hot = ((B_next > 0.5) & (I > cfg.spread.spot_intensity_min)
-                       & (meteo.wws > 3.0))
+                       & (meteo.wws > 3.0) & (meteo.prec < 1.0))
                 if hot.any():
+                    # spot_prob is defined per REFERENCE step; compound it to
+                    # the substep so the expected ember count is independent
+                    # of the substep resolution
                     p_eff = 1.0 - (1.0 - min(cfg.spread.spot_prob, 1.0)) ** sub
                     hy, hx = np.where(hot)
                     throw = self._rng.random(hx.size) < p_eff
@@ -179,12 +288,15 @@ class Simulator:
                         ok = (tx >= 0) & (tx < nx) & (ty >= 0) & (ty < ny)
                         tx, ty = tx[ok], ty[ok]
                         if tx.size:
+                            # an ember only takes where fuel remains AND the
+                            # fuel is drier than its extinction moisture
                             m_ext = _fuel_param(fuel.ftype, "m_ext")
                             fuelok = ((Fload[ty, tx] > cfg.spread.eps_fuel)
                                       & (fuel.fmoist[ty, tx]
                                          < m_ext[ty, tx] - 1e-9))
                             B_next[ty[fuelok], tx[fuelok]] = 1.0
 
+            # 3. fuel mass update (Eq. 49, 129 to 135), substep compounded
             f_burn = np.clip(self._b_base * (1.0 - fuel.fmoist), 0.0, 1.0)
             if sub != 1.0:
                 f_burn = 1.0 - (1.0 - f_burn) ** sub
@@ -195,8 +307,10 @@ class Simulator:
             f_red = np.minimum(f_red_raw, Fload)
             Fload_next = np.maximum(0.0, Fload - combustion - f_red)
 
+            # 4. fire intensity update (Eq. 137); uses current fuel (Eq. 51)
             I_next = fire_intensity(B_next, Fload, topo, meteo, cfg.intensity)
 
+            # commit the substep; burning cells carry no buildup
             self.ign_buildup[B_next > 0.5] = 0.0
             burned_any |= B_next > 0.5
             s.burning = B_next
@@ -205,22 +319,20 @@ class Simulator:
             comb_tot += combustion
             red_tot += f_red
 
+        # 5. ignition time update (Eq. 52), once per outer step
         cont = (s.burning > 0.5) & (B_start > 0.5)
         s.tau = np.where(cont, s.tau + cfg.dt, 0.0)
         s.step += 1
-        world.fuel.fload = s.fload
+        world.fuel.fload = s.fload  # keep the layer in sync for observation
 
+        # 6. bookkeeping and diagnostics; cells that ignited and burned out
+        # within the substeps of this very step still count as burned
         active = s.burning > 0.5
         newly = burned_any & (self.first_ignition_step < 0)
         self.first_ignition_step[newly] = s.step
         self.ever_burned |= burned_any
         self.fuel_consumed_total += comb_tot
         self.fuel_suppressed_total += red_tot
-        # cumulative population-steps of exposure inside the burned footprint,
-        # used by the normalized population term of the decision cost
-        cell_km2 = self.cfg.cell_area_ha / 100.0
-        self.exposure_person_steps += float(
-            np.sum(self.world.value.vpop[self.ever_burned])) * cell_km2
 
         diag = StepDiagnostics(
             step=s.step,
@@ -236,6 +348,7 @@ class Simulator:
         self._record_snapshot()
         return diag
 
+    # --------------------------------------------------------------------- run
     def run(self, n_steps: Optional[int] = None,
             callback: Optional[Callable[["Simulator", StepDiagnostics], None]] = None,
             stop_when_quiescent: bool = True) -> List[StepDiagnostics]:
@@ -246,10 +359,13 @@ class Simulator:
             if callback is not None:
                 callback(self, diag)
             if stop_when_quiescent and diag.n_burning == 0 and self.state.step > 1:
+                # only stop once a fire has actually started and finished
                 if self.ever_burned.any():
                     break
         return self.history
 
+
+    # ----------------------------------------------------------------- helpers
     @property
     def burned_mask(self) -> np.ndarray:
         return self.ever_burned

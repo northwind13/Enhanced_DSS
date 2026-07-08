@@ -1,6 +1,6 @@
 """External data layers that drive the simulation.
 
-These containers instantiate the external input structure of thesis Section 4.2.1
+These containers instantiate the external input structure
 and the external data sources of Section 4.3:
 
     MeteoLayer     -> U_Meteo,k   (Table 4.2)

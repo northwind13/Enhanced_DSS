@@ -1,6 +1,6 @@
 """Optional standard fuel model catalogue.
 
-The thesis uses four representative fuel classes. For validation against
+The engine uses four representative fuel classes. For validation against
 operational tools it is useful to map the standard catalogues (Anderson 13,
 Scott and Burgan 40) onto those classes. This is a lookup only; the simulator
 still runs on the four internal classes with the associated load and moisture.

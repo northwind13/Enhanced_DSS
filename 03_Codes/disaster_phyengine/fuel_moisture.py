@@ -1,7 +1,7 @@
 """Optional dead fuel moisture dynamics.
 
 By default the simulator treats fuel moisture as a static exogenous field (the
-thesis assumption). This module provides an optional equilibrium moisture
+base assumption). This module provides an optional equilibrium moisture
 content (EMC) model (Simard 1968) so that moisture can respond to temperature
 and relative humidity, as operational tools do. It is only applied when the
 dashboard toggle is on."""

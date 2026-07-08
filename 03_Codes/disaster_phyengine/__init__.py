@@ -1,7 +1,7 @@
 """DisasterAware Simulation Framework.
 
 A grid based, discrete time wildfire simulator implementing the hybrid fire
-spread model of the DisasterAware PhD thesis (Chapter 4 and appendices). It
+spread model of DisasterAware. It
 exposes a clean Python core plus an editable World model so that a decision
 support system can later be built on top of it.
 
@@ -36,7 +36,7 @@ from . import viz
 __version__ = "0.2.1"   # region overlays, clock/night render, perf pass
 # Bumped on EVERY engine change; the app refuses to run against a stale
 # in-process engine (Streamlit hot-reloads the app but never the packages).
-ENGINE_BUILD = 4
+ENGINE_BUILD = 9
 
 __all__ = [
     "SimConfig", "SpreadParams", "SuppressionParams", "IntensityParams",

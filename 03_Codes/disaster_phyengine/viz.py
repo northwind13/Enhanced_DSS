@@ -418,7 +418,11 @@ def legend_entries():
     """Full legend as (group, label, hex_color) for the dashboard side panel."""
     out = []
     for i, m in FUEL_MODELS.items():
-        label = {"non_fuel": "bare ground", "water": "water"}.get(m.name, m.name.replace("_", " "))
+        label = {"non_fuel": "bare ground / rock", "water": "water",
+                 "grass": "grass / crops", "shrub": "shrub / maquis",
+                 "pine_litter": "conifer forest (pine litter)",
+                 "hardwood": "broadleaf forest (hardwood)",
+                 "urban": "urban / built-up"}.get(m.name, m.name.replace("_", " "))
         out.append(("Land cover", label, _hex(_FUEL_COLORS[i])))
     out.append(("Fire", "burned scar", _hex((0.16, 0.13, 0.12))))
     out.append(("Fire", "active fire", _hex((0.98, 0.35, 0.06))))

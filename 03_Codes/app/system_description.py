@@ -252,7 +252,7 @@ def _sec_2(ctx):
         "| $W_{ws,k}$ | Wind speed | spatio-temporal | m/s | Amplifies rate of spread (Sec. 5) and fire intensity (Sec. 7) |\n"
         "| $W_{wd,k}$ | Wind direction | spatio-temporal | rad | Direction the wind blows **toward** (math convention, $0$ = +x, counter-clockwise positive); sets the axis of anisotropic spread (Sec. 4) |\n"
         "| $W_{gust,k}$ | Wind gust speed | spatio-temporal | m/s | Exogenous stochastic forcing channel; not used by the deterministic core equations |\n"
-        "| $W_{prec,k}$ | Precipitation | spatio-temporal | mm/h | Exogenous moistening channel; raises fuel moisture when the moisture dynamics option is active |")
+        "| $W_{prec,k}$ | Precipitation | spatio-temporal | mm/h | Stops ember spotting above 1 mm/h and drives fuel moisture toward extinction (Sec. 9, note 13) |")
     st.caption(
         "Only wind speed and wind direction enter the transition equations "
         "directly. Temperature, humidity, gust and precipitation act "
@@ -480,7 +480,7 @@ def _sec_4(ctx):
         "directly to the west gives $g_{dir}=\\cos(0-0)=1$ (full weight); a "
         "diagonal neighbour gives $\\cos(\\pi/4)\\approx0.71$; a neighbour "
         "to the east gives $\\cos(\\pi)=-1 \\to 0$ (clipped).")
-    st.markdown("**Activation defaults:**")
+    st.markdown("**Activation defaults (Eq. 44–45):**")
     _table(
         "| Parameter | Symbol | Unit | Default | Current |\n"
         "|---|---|---|---|---|\n"
@@ -821,6 +821,29 @@ def _sec_9(ctx):
         f"a crown-fire flag for burning forest cells with $I_k>"
         f"{ip.crown_fire_threshold:g}$. These are reporting products only "
         "and never feed back into the transition.\n"
+        "12. **Terrain-modified wind field.** Exposed ridges accelerate "
+        "the wind and valleys shelter it: the wind speed entering the "
+        "spread model is scaled per cell by "
+        "$\\mathrm{clip}\\big(1+g_{tw}(2\\hat e-1),\\,0.4,\\,"
+        "1.8\\big)$ where $\\hat e$ is the normalized elevation and "
+        f"$g_{{tw}}={getattr(sp, 'terrain_wind_gain', 0.35):g}$ "
+        "(0 disables), a linearized adjustment in the spirit of "
+        "diagnostic terrain wind models. On steep ground the DIRECTION "
+        "is channeled toward the local slope axis as well: "
+        "$W_{wd}^{eff}=\\arg\\big((1-c)e^{iW_{wd}}+c\\,"
+        "e^{iG_{aspect}}\\big)$ with "
+        "$c=\\tfrac12\\,\\mathrm{clip}(G_{slope}/0.6,0,1)$, so a "
+        "uniform user-set wind becomes a valley-following field.\n"
+        "13. **Precipitation.** Handled by the engine for every weather "
+        "source. Rain above $1$ mm/h disables ember spotting; while it "
+        "rains, fuel moisture relaxes toward at least $0.35$ (above "
+        "every $m_{ext}$) as "
+        "$F_{moist}\\leftarrow F_{moist}+(\\max(F_{moist},0.35)-"
+        "F_{moist})\\,\\mathrm{clip}(W_{prec}/2,0,1)\\,"
+        "\\min(1,s)$ ($\\sim$30 min time constant), stopping new "
+        "spread; and under sustained rain of $W_{prec}\\ge 3$ mm/h a "
+        "burning cell is quenched once its moisture reaches $0.34$, so "
+        "the front dies out gradually. Light rain only slows the fire.\n"
         "11. **Slope-directional spread (effective wind).** The directional "
         "weight uses an effective vector that combines the wind with a "
         "slope-equivalent wind blowing uphill (the FARSITE virtual-wind "
@@ -936,23 +959,62 @@ def _sec_11(ctx):
         "$j \\in \\{B, F, I, \\tau\\}$ through a network of placed "
         "sensors; static prior maps (terrain, fuel type, values at risk, "
         "own resources), fuel moisture and the weather field come from "
-        "maps and the meteorological service. The source families follow "
-        "the heterogeneous sensing sources of the framework:")
+        "maps and the meteorological service. The source families are the "
+        "standard wildfire information sources:")
     _table(
         "| Type | Senses $j$ | $r_s$ | $T_s$ | $\\ell_s$ | "
         "$\\bar\\epsilon_j$ |\n"
         "|---|---|---|---|---|---|\n"
-        "| Satellite imagery | $B, I$ | whole map | 360 min | 20 min | 0.05 |\n"
-        "| Aerial recon / thermal IR | $B, I$ | 2500 m | 15 min | 2 min | 0.03 |\n"
-        "| In-situ ground sensors | $F_{load}$ | 1500 m | 5 min | 0 | 0.02 |\n"
-        "| Field reports / event log | $B, \\tau$ | 1000 m | 30 min | 10 min | 0.10 |")
+        "| Satellite imagery + hot-spot detection | $B, I$ | whole map | 1 min | 20 min | 0.05 |\n"
+        "| UAV / aerial thermal recon | $B, I$ | 2500 m | 1 min | 2 min | 0.03 |\n"
+        "| Fixed lookout camera (smoke/flame) | $B, I$ | 4000 m | 1 min | 1 min | 0.06 |\n"
+        "| Environmental ground sensors | $F_{load}$ | 1500 m | 1 min | 0 | 0.02 |\n"
+        "| First-responder field data | $B, \\tau$ | 1000 m | 1 min | 10 min | 0.10 |\n"
+        "| Public reports / emergency calls | $B$ | 1200 m | 1 min | 15 min | 0.20 |")
+    st.caption(
+        "Every source reads once per simulation minute ($T_s=1$ min, "
+        "the software's minimum step), so no source lags the "
+        "simulation; the sources differ by footprint, latency and "
+        "reliability. Cells OUTSIDE every footprint still age freely, "
+        "so the freshness factor $\\gamma_{fre}$ keeps degrading "
+        "uncovered ground.")
+    st.caption(
+        "The remaining input-space sources are not sensing assets: "
+        "terrain (DEM), the fuel/vegetation map, the road/access "
+        "network, values at risk and own resources / suppression "
+        "sources are KNOWN PRIORS entering $U_{Geo}, U_{Fuel}, U_{Val}, "
+        "U_{Res}$ directly; meteorological stations and forecasts drive "
+        "$U_{Meteo}$. The pre-fire fuel map additionally acts as an aged "
+        "prior source for the $F$ channel.")
     st.markdown(
+        "**Network deployment (Suggest network).** The field layout is "
+        "chosen by greedy maximum weighted coverage: assets are placed "
+        "one at a time to maximize")
+    _eq(r"\Delta\!\sum_{x,y} r(x,y)\,c(x,y),\qquad "
+        r"r=0.45\,\hat R_{spread}+0.35\,\hat V_{prio}+0.20\,F_{load}",
+        [r"$r(x,y)$ — observation-worth (risk) of the cell: spread "
+         r"danger, protection priority and standing fuel",
+         r"$c(x,y)$ — composed coverage, each asset lifting its "
+         r"footprint by its sensing quality $w_s=0.9\,|J_s|/4$ as "
+         r"$c \leftarrow 1-(1-c)(1-w_s)$",
+         r"greedy placement on a submodular objective: the standard "
+         r"$(1-1/e)$-approximation",
+         r"constraints — lookout cameras prefer high ground (line of "
+         r"sight), field posts sit on the road network, public-report "
+         r"sources are pinned to settlements, one satellite is always "
+         r"tasked, same-type assets keep one footprint apart"])
+    st.markdown(
+        "Reports are not instantaneous: each source samples on its own "
+        "revisit clock (first passes staggered within a family), and the "
+        "sampled picture is **delivered only after the source latency** "
+        "$\\ell_s$ \u2014 what arrives describes the situation at "
+        "sampling time, not now. "
         "Every component keeps its **last observed field** and its data "
         "age $\\Delta t_{rep}$. The per-component observation confidence "
         "aggregates four independent degradation factors by the "
-        "conservative minimum, the cell-level confidence is the "
-        "weakest component, and the bounded disturbance shrinks "
-        "with confidence:")
+        "conservative minimum (Eq. 68), the cell-level confidence is the "
+        "weakest component (Eq. 69), and the bounded disturbance shrinks "
+        "with confidence (Eqs. 67, 70):")
     _eq(r"conf_{j,k}^{i}(x,y)=\min\Big\{\,\theta_{j,k}^{i}(x,y),\;"
         r"\rho_{k}^{i}(x,y),\;e^{-\lambda_{conf}\,\Delta t_{rep,k}^{i}"
         r"(x,y)},\;\gamma_{k}^{i}\,\Big\}",
@@ -965,22 +1027,28 @@ def _sec_11(ctx):
          r"$\lambda_{conf} = \ln 2 / 90$ min$^{-1}$ (freshness halves "
          r"every 90 min)",
          r"$\gamma_{k}^{i} \in [0,1]$ — source reliability of the best "
-         r"covering sensor ($1-\bar\epsilon_s$)"])
+         r"covering sensor ($1-\bar\epsilon_s$)",
+         r"figure notation: the four factors are "
+         r"$\gamma_{obs}=\theta$, $\gamma_{cov}=\rho$, "
+         r"$\gamma_{fre}=e^{-\lambda_{conf}\Delta t}$, "
+         r"$\gamma_{rel}=\gamma$, so "
+         r"$conf=\min\{\gamma_{obs},\gamma_{cov},\gamma_{fre},"
+         r"\gamma_{rel}\}$"])
     _eq(r"conf_{k}^{i}(x,y)=\min_{j\in\{B,F,I,\tau\}} "
         r"conf_{j,k}^{i}(x,y),\qquad "
         r"\big|\epsilon_{j,k}^{i}(x,y)\big|\le "
         r"\big(1-conf_{j,k}^{i}(x,y)\big)\,\bar\epsilon_{j}^{i}",
-        [r"cell confidence = weakest component (conservative principle) "
-         r"— the model value that bounds the disturbance; the "
+        [r"cell confidence = weakest component (conservative principle, "
+         r"Eq. 69) — the model value that bounds the disturbance; the "
          r"region-level scalar DISPLAYED next to each agent is the "
          r"component-mean over its cells $\Omega_i$ (a component with "
          r"no source at all would otherwise pin the display to zero)",
          r"never-observed cells start at $\Delta t_{rep}=\infty$: the "
          r"agent assumes no fire until a source says otherwise — a blind "
          r"or stale region genuinely misleads its agent",
-         r"the ten features are computed from the fused "
-         r"observation $\hat z$, and each Local DSS reads it restricted "
-         r"to its own region $\Omega_i$ (regional aggregation)"])
+         r"the ten bounded features of the decision layer are computed "
+         r"from the fused observation $\hat z$, and each Local DSS reads "
+         r"it restricted to its own region $\Omega_i$"])
 
 
 def _sec_12(ctx):
@@ -1099,19 +1167,17 @@ def _sec_14(ctx):
          r"burned area (Term 1) prices land only, so no value is counted "
          r"twice"])
     st.markdown("**Term 3 — population exposure $J^{pop}$** (life safety):")
-    _eq(r"J_k^{pop}=\frac{E_k}{P^{risk}\,H}\Big/\rho_{risk}"
-        r"=\frac{E_k}{\big(\sum_{(x,y)}a_{km^2}V_{pop}\big)\,H}",
+    _eq(r"J_k^{pop}=\frac{E_k}{\big(\sum_{(x,y)}a_{km^2}V_{pop}\big)\,H}",
         [r"at-risk person-steps over the at-risk population times the "
-         r"horizon $H$; the risk fraction $\rho_{risk}$ cancels, so the "
-         r"term is the **exposed share of the available population-time**",
+         r"horizon $H$; the risk fraction cancels, so the term is the "
+         r"**exposed share of the available population-time**",
          rf"$\rho_{{risk}}$ — casualty share of the exposed population, "
          rf"currently {cp.population_at_risk_fraction:g} (used for the raw "
          r"casualty display)",
          rf"$H$ — scenario horizon, currently {cp.horizon_steps:g} steps",
-         r"an effective evacuation (Sec. 13) lowers $E_k$, which is how "
-         r"evacuation is scored by the cost; beyond its weight, a candidate "
-         rf"whose exposure exceeds a hard ceiling ({cp.population_ceiling:g}) "
-         r"is rejected at the acceptance gate outright"])
+         r"an effective evacuation (Sec. 13) lowers $E_k$; beyond its "
+         rf"weight, a candidate whose exposure exceeds a hard ceiling "
+         rf"({cp.population_ceiling:g}) is rejected at the acceptance gate"])
     st.markdown("**Term 4 — response cost $J^{resp}$** (committed resources):")
     _eq(r"J_k^{resp}=\frac{\sum_{(x,y)}R_{cap,k}(x,y)\,R_{avail,k}(x,y)}"
         r"{C_{avail}}",
@@ -1143,7 +1209,7 @@ def _sec_14(ctx):
         "The cost serves as an **acceptance criterion**, not an objective "
         "for global optimization. A candidate intervention is accepted as "
         "soon as its expected cost clears an adaptive threshold:")
-    _eq(r"J_k(U)\le J_k^{acc},\qquad "
+    _eq(rf"J_k(U)\le J_k^{{acc}},\qquad "
         rf"J_k^{{acc}}={cp.acceptance_fraction:g}\cdot J_k^{{do-nothing}}",
         [rf"$J_k^{{acc}}$ — acceptance threshold: a fixed fraction "
          rf"({cp.acceptance_fraction:g} by default) of the uncontrolled, "
@@ -1200,8 +1266,8 @@ def _sec_14(ctx):
         "With equal weights the total is the average of the five terms; "
         f"here $J=0.10$ sits below the acceptance threshold "
         f"({cp.acceptance_fraction:g}), so the do-nothing baseline would "
-        "already be acceptable. Raising $w_3$ would make the population "
-        "term dominate and push the DSS toward earlier protective action.")
+        "already be acceptable. Raising $w_3$ makes the population term "
+        "dominate and pushes the DSS toward earlier protective action.")
 
 
 def _sec_15(ctx):
@@ -1303,7 +1369,7 @@ def _sec_16(ctx):
         "| $\\mathcal{O}_k,\\ h,\\ \\epsilon_k$ | Observation, obs. function, obs. noise | – | Sec. 11 |\n"
         "| $r_s, T_s, \\ell_s, \\bar\\epsilon_j$ | Sensor footprint, revisit, latency, disturbance bound | m, min, min, – | Sec. 11 |\n"
         "| $\\theta_{j,k}^{i},\\ \\rho_k^i,\\ \\gamma_k^i$ | Observability weight, coverage density, source reliability | $[0,1]$ | Sec. 11 |\n"
-        "| $conf_{j,k}^{i},\\ \\lambda_{conf},\\ \\Delta t_{rep}$ | Observation confidence, freshness decay, data age | $[0,1]$, 1/min, min | Sec. 11 |\n"
+        "| $conf_{j,k}^{i},\\ \\lambda_{conf},\\ \\Delta t_{rep}$ | Observation confidence (Eq. 68–69), freshness decay, data age | $[0,1]$, 1/min, min | Sec. 11 |\n"
         "| $\\pi_{DSS}$ | Decision policy | – | Sec. 12 |\n"
         "| $A_k$ (burned mask) | Cumulative burned mask | $\\{0,1\\}$ | Sec. 14 |\n"
         "| $M_{cons,k}, M_{supp,k}$ | Cumulative consumed / suppressed fuel | norm. fuel | Sec. 14 |\n"

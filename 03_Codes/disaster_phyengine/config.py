@@ -3,9 +3,9 @@
 All physical and numerical parameters of the simulator are collected here as
 dataclasses so that a scenario can be configured, serialized and tuned from a
 single place. The values follow the formulation given in Chapter 4 and the
-appendices of the DisasterAware PhD thesis.
+DisasterAware spread model.
 
-Symbol map (thesis -> code):
+Symbol map (math -> code):
     r_base   = r_base(Ftype)        Appendix A, Table A.1 (Eq. 123)
     m_ext    = m_ext(Ftype)         extinction moisture (Eq. 124)
     a_w      = a_w(Ftype)           wind sensitivity (Eq. 126)
@@ -24,21 +24,36 @@ from typing import Dict
 class FuelModel:
     """Static combustion properties of a single fuel class.
 
-    Values for the four reference classes are taken from thesis Table A.1
+    Values for the four reference classes follow the standard fuel-model
     (rate of spread parameters) and Table A.2 (combustion coefficient).
     """
 
     name: str
-    r_base: float
-    m_ext: float
-    a_w: float
-    a_s: float
-    a_asp: float
-    b_base: float
-    is_forest: bool = False
-    economic_value: float = 0.0
+    r_base: float       # base rate of spread multiplier
+    m_ext: float        # extinction moisture fraction
+    a_w: float          # wind sensitivity coefficient
+    a_s: float          # slope sensitivity coefficient
+    a_asp: float        # aspect sensitivity coefficient
+    b_base: float       # baseline combustion coefficient (fraction per step)
+    is_forest: bool = False   # used by the cost model to separate forest loss
+    economic_value: float = 0.0   # nominal value per cell unit (forest stand value)
 
 
+# Reference fuel library. Index 0 is reserved for non burnable cells so that
+# water, bare ground and urban footprints never propagate fire on their own.
+#
+# Calibration is literature based at the reference grid
+# of 30 m cells and 30 min steps, where 1 cell/step = 1 m/min:
+#   r_base  no-wind, dry, flat rate of spread (m/min); with the wind factor
+#           1 + a_w tanh(Wws/w0) the benchmark ROS of the Anderson (1982)
+#           fuel models are approximated: grass FM1/FM3 ~ 15-50 m/min,
+#           shrub FM5/FM6 ~ 5-10, long-needle litter FM9 ~ 2-3, compact
+#           hardwood litter FM8 ~ 0.5-1 (see also Scott & Burgan 2005).
+#   m_ext   dead fuel moisture of extinction (Anderson 1982): FM1 0.12-0.15,
+#           FM5/6 0.20, FM9 0.25, FM8 0.30.
+#   b_base  fraction of available fuel consumed per 30 min of flaming front
+#           residence (fast in cured grass, slow in compact litter).
+#   a_s     slope response (Rothermel 1972 slope factor, tan-linearized).
 FUEL_MODELS: Dict[int, FuelModel] = {
     0: FuelModel("non_fuel",    r_base=0.00, m_ext=1.00, a_w=0.0,  a_s=0.0, a_asp=0.00, b_base=0.00, is_forest=False, economic_value=0.0),
     1: FuelModel("grass",       r_base=2.00, m_ext=0.15, a_w=25.0, a_s=2.0, a_asp=0.30, b_base=0.85, is_forest=False, economic_value=2.0),
@@ -56,48 +71,71 @@ FUEL_NAME_TO_ID: Dict[str, int] = {m.name: i for i, m in FUEL_MODELS.items()}
 class SpreadParams:
     """Parameters of the Rothermel type rate of spread and propagation rule."""
 
-    w0: float = 10.0
-    theta_ign: float = 0.125
-    buildup_leak: float = 0.05
-    eps_fuel: float = 1.0e-4
-    diagonal_distance_weighting: bool = True
-    slope_clip_rad: float = 1.40
-    aniso_wind_full: float = 6.0
-    slope_wind_equiv: float = 10.0
-    slope_gain_max: float = 3.0
-    back_frac: float = 0.10
-    elliptical: bool = True
-    lb_ratio_base: float = 1.0
-    lb_ratio_wind: float = 0.06
-    spotting: bool = True
-    spot_prob: float = 0.02
-    spot_distance: int = 6
-    spot_intensity_min: float = 0.6
+    w0: float = 10.0                # reference wind speed in the tanh saturation (Eq. 126)
+    theta_ign: float = 0.125        # ignition threshold on the accumulated influence
+                                    # buildup (Eq. 45). 1/8 cancels the neighbourhood
+                                    # normalization, so a front driven by one aligned
+                                    # neighbour advances at exactly R_spread.
+    buildup_leak: float = 0.05      # influence buildup leak per reference step:
+                                    # heating dissipates when the source disappears
+    eps_fuel: float = 1.0e-4        # extinction fuel threshold (Eq. 44)
+    diagonal_distance_weighting: bool = True   # divide diagonal influence by sqrt(2)
+    slope_clip_rad: float = 1.40    # clip terrain slope to avoid tan() blow up near 90 deg
+    aniso_wind_full: float = 6.0    # wind speed (m/s) for fully directional spread;
+                                    # at zero wind spread is isotropic (fuel/slope driven)
+    terrain_wind_gain: float = 0.35  # terrain modification of the wind field:
+                                    # exposed ridges speed the wind up, valleys
+                                    # shelter it (WindNinja-style mass-consistent
+                                    # adjustment, linearized on normalized
+                                    # elevation). 0 disables.
+    slope_wind_equiv: float = 10.0  # slope-equivalent wind (FARSITE style):
+                                    # upslope acts like an extra wind of
+                                    # slope_wind_equiv * tan(slope) m/s blowing
+                                    # uphill; steers fire up mountainsides even
+                                    # against a light gradient wind
+    slope_gain_max: float = 3.0     # saturation of the slope factor: real fires
+                                    # roughly double per ~15 deg but the effect
+                                    # levels off on very steep ground; unbounded
+                                    # tan() explodes on real DEM cliffs
+    back_frac: float = 0.10         # flank/backing floor of the directional weight:
+                                    # backing fires run at ~5-15% of the head fire
+                                    # rate (Rothermel 1972; Cheney & Sullivan 2008)
+    # --- realism modes (on by default; off = plain cosine kernel, no embers) ---
+    elliptical: bool = True         # Cell2Fire/FARSITE style wind elongated ellipse
+    lb_ratio_base: float = 1.0      # length-to-breadth ratio at zero wind
+    lb_ratio_wind: float = 0.06     # extra length-to-breadth per m/s of wind
+    spotting: bool = True           # ember spotting ahead of the front
+    spot_prob: float = 0.02         # per hot cell probability per REFERENCE step
+                                    # (compounded consistently over substeps)
+    spot_distance: int = 6          # spotting distance downwind (cells)
+    spot_intensity_min: float = 0.6 # only intense cells throw embers
 
 
 @dataclass
 class SuppressionParams:
     """Suppression to fuel reduction mapping (Appendix B, Eq. 130 to 135)."""
 
-    alpha_s: float = 0.20
-    beta_t: float = 0.03
-    gamma_I: float = 2.0
-    rcap_max: float = 1.0
+    alpha_s: float = 0.20           # global suppression gain (Eq. 130, range 0.01 to 0.30)
+    beta_t: float = 0.03            # travel time decay per minute (Eq. 133):
+                                    # effectiveness halves after ~23 min delay,
+                                    # matching initial-attack response curves
+    gamma_I: float = 2.0            # intensity resistance factor (Eq. 134)
+    rcap_max: float = 1.0           # reference maximum suppression capacity (Eq. 131)
 
 
 @dataclass
 class IntensityParams:
     """Fire intensity proxy parameters (Appendix C, Eq. 136 to 137)."""
 
-    beta: float = 2.0
-    gamma_w: float = 0.5
-    gamma_s: float = 0.3
-    fload_max: float = 1.0
-    wws_max: float = 20.0
-    slope_max_rad: float = 0.7854
-    crown_fire_threshold: float = 0.6
-    heat_content: float = 18000.0
-    biomass_ref: float = 2.0
+    beta: float = 2.0               # global intensity gain (Table C)
+    gamma_w: float = 0.5            # wind weighting coefficient
+    gamma_s: float = 0.3            # slope weighting coefficient
+    fload_max: float = 1.0          # reference maximum fuel load for normalization
+    wws_max: float = 20.0           # reference maximum wind speed (m/s)
+    slope_max_rad: float = 0.7854   # reference maximum slope (45 deg) for normalization
+    crown_fire_threshold: float = 0.6   # forest cells above this intensity -> crown fire
+    heat_content: float = 18000.0   # heat of combustion H (kJ/kg) for Byram intensity
+    biomass_ref: float = 2.0        # kg/m^2 represented by fuel load = 1 (Byram w)
 
 
 @dataclass
@@ -119,34 +157,46 @@ class ValueWeights:
 
 @dataclass
 class CostParams:
-    """Decision cost parameters (Sec. 2.5.2, Table 2.4)."""
+    """Decision cost parameters (Sec. 2.5.2, Table 2.4).
 
-    w_burn: float = 1.0
-    w_asset: float = 1.0
-    w_pop: float = 1.0
-    w_resp: float = 1.0
-    w_delay: float = 1.0
+    The decision cost follows the cost-plus-loss principle as a weighted sum
+    of five terms, each normalized to [0, 1] against a scenario reference
+    scale so that the terms are dimensionless and mutually summable before
+    the priority weights apply. The weights, not the term list, encode
+    operational priority.
+    """
 
-    population_at_risk_fraction: float = 0.02
-    horizon_steps: float = 200.0
-    capacity_reference: float = 100.0
-    delay_reference: float = 60.0
-    acceptance_fraction: float = 0.35
-    population_ceiling: float = 1.0
-    min_reference: float = 1e-9
+    # non-negative priority weights of the five normalized terms
+    w_burn: float = 1.0     # burned area (land and ecological loss)
+    w_asset: float = 1.0    # asset loss (structures + critical infrastructure)
+    w_pop: float = 1.0      # population exposure (life safety)
+    w_resp: float = 1.0     # response cost (committed capacity)
+    w_delay: float = 1.0    # response delay (timeliness)
+
+    # normalization references and safeguards
+    population_at_risk_fraction: float = 0.02  # rho_risk; casualty share of exposed
+    horizon_steps: float = 200.0               # scenario horizon H (decision steps)
+    capacity_reference: float = 100.0          # total available capacity pool
+    delay_reference: float = 60.0              # reference travel time for the delay term
+    acceptance_fraction: float = 0.35          # acceptance threshold as fraction of the do-nothing cost
+    population_ceiling: float = 1.0            # hard ceiling on the normalized population term (acceptance gate)
+    min_reference: float = 1e-9                # lower bound on any denominator
 
 
 @dataclass
 class SimConfig:
     """Top level simulation configuration."""
 
-    nx: int = 80
-    ny: int = 60
-    cell_size_m: float = 30.0
-    dt: float = 1.0
-    step_minutes: float = 1.0
-    max_steps: int = 500
-    rng_seed: int = 42
+    nx: int = 80                    # grid cells along x
+    ny: int = 60                    # grid cells along y
+    cell_size_m: float = 30.0       # edge length of one square cell in meters
+    dt: float = 1.0                 # time step length (model time units)
+    step_minutes: float = 1.0       # real time represented by one step, in
+                                    # minutes. The dynamics are calibrated at a
+                                    # 30 min reference and rescaled to this
+                                    # length (core.py, SD Sec. 9 note 8).
+    max_steps: int = 500            # safety cap for headless runs
+    rng_seed: int = 42              # seed for any stochastic forcing
 
     spread: SpreadParams = field(default_factory=SpreadParams)
     suppression: SuppressionParams = field(default_factory=SuppressionParams)

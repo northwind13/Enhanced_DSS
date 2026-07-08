@@ -191,23 +191,33 @@ class World:
         return self.roads
 
     def add_road_disk(self, x: int, y: int, radius: int = 1) -> None:
-        """Stamp a circular road / access patch: marks roads and sets access=1."""
+        """Stamp a circular road / access patch: marks roads and sets access=1.
+        Over water the road is a bridge: the roads/access layers are set
+        but the cell itself stays water (never drained, never flammable)."""
+        from .config import FUEL_NAME_TO_ID
         roads = self._ensure_roads()
         m = self._disk(x, y, max(radius, 0))
+        # over water the road is a BRIDGE: it carries access but the cell
+        # itself stays water (never drained, never flammable)
+        land = m & (self.fuel.ftype != FUEL_NAME_TO_ID["water"])
         roads[m] = True
         self.topo.access[m] = 1.0
-        self.fuel.ftype[m] = 0            # paved road is non flammable
-        self.fuel.fload[m] = 0.0
-        self.fuel.fload0[m] = 0.0
+        self.fuel.ftype[land] = 0         # paved road is non flammable
+        self.fuel.fload[land] = 0.0
+        self.fuel.fload0[land] = 0.0
 
     def add_road_rect(self, x0: int, y0: int, x1: int, y1: int) -> None:
+        """Rectangular road strip; over water it acts as a bridge (see
+        add_road_disk)."""
+        from .config import FUEL_NAME_TO_ID
         roads = self._ensure_roads()
         ys, xs = self._mask(x0, y0, x1, y1)
-        roads[ys, xs] = True
+        keep = self.fuel.ftype[ys, xs] != FUEL_NAME_TO_ID["water"]
+        roads[ys, xs] = True                 # bridges allowed over water
         self.topo.access[ys, xs] = 1.0
-        self.fuel.ftype[ys, xs] = 0       # paved road is non flammable
-        self.fuel.fload[ys, xs] = 0.0
-        self.fuel.fload0[ys, xs] = 0.0
+        self.fuel.ftype[ys, xs][keep] = 0   # paved road is non flammable
+        self.fuel.fload[ys, xs][keep] = 0.0
+        self.fuel.fload0[ys, xs][keep] = 0.0
 
     def add_road_segment(self, x0: int, y0: int, x1: int, y1: int,
                          width: int = 1) -> None:

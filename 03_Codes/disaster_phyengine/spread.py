@@ -148,10 +148,10 @@ def propagation_influence(burning: np.ndarray, ros: np.ndarray,
                           wws: np.ndarray = None, weights=None) -> np.ndarray:
     """Accumulated wind aligned propagation influence Psi (Eq. 46, 48).
 
-    Default uses the thesis directional weight g_dir = max(0, cos(Wwd - theta)).
+    Default uses the cosine directional weight g_dir = max(0, cos(Wwd - theta)).
     When params.elliptical is True, an optional Cell2Fire/FARSITE style wind
     elongated ellipse is used instead, with a length-to-breadth ratio that grows
-    with wind speed. The thesis behaviour is unchanged unless elliptical is on."""
+    with wind speed. The cosine behaviour is unchanged unless elliptical is on."""
     source = burning.astype(float) * ros
     psi = np.zeros_like(source)
     if weights is None:
