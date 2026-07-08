@@ -1,120 +1,57 @@
-# DisasterAware Wildfire Simulator
+# DisasterAware
 
-Tezin Chapter 4 (Simulation Framework) ve eklerinde tanimlanan hibrit yangin
-yayilim modelini uygulayan, grid tabanli ve ayrik zamanli bir orman yangini
-simulatorudur. Uzerine Decision Support System (DSS) kurulacak fiziksel
-omurgayi olusturur.
+Enhanced Decision Support System for Wildfire Disaster Response and
+Management. Grid tabanli, ayrik zamanli hibrit yangin yayilim motoru
+(tez Chapter 4 + Appendix A-C) ve uzerinde calisan tek ana uygulama.
 
-## Ne yapar
+## Calistirma
 
-- Grid uzerinde her hucre icin `s = (B, Fload, I, tau)` durumunu tutar:
-  yanma durumu, kalan yakit, yangin siddeti, atesleme suresi.
-- Rothermel tipi yayilim hizi (rate of spread), ruzgar yonlu anizotropik
-  yayilim, egim ve aspect etkisi, yakit nemine bagli sonme.
-- Bastirma (suppression) ile yakit azaltimi ve onleyici yakit azaltma
-  (firebreak) etkisi.
-- Cikti ve maliyet metrikleri: yanan alan, yanan orman, deger/asset kaybi,
-  insan maruziyeti ve beklenen kayip, altyapi kaybi, bastirma maliyeti.
-- Harita uzerine orman, asset, atesleme ve firebreak ekleme.
-- Tum model parametrelerini ayarlama.
-- Senaryo kaydetme/yukleme (JSON/YAML) ve GIS raster (DEM, yakit) import.
+    run_dashboard.bat        DisasterAware ana uygulamasi (tek giris noktasi)
 
-## Klasor yapisi
+Ilk kurulum: `python -m venv .venv && .venv\Scripts\pip install -r requirements.txt`
+
+## Klasor yapisi (self-descriptive)
 
 ```
 03_Codes/
-  disasteraware/        simulasyon paketi (motor)
-    config.py           parametreler (yakit modelleri, fizik, maliyet)
-    layers.py           dis veri katmanlari (meteo, topo, fuel, value, resource)
-    world.py            duzenlenebilir dunya/senaryo + editing API
-    state.py            durum vektoru s=(B,Fload,I,tau)
-    spread.py           Rothermel ROS + yonlu yayilim (Appendix A)
-    suppression.py      bastirma -> yakit azaltma (Appendix B)
-    intensity.py        yangin siddeti proxy (Appendix C)
-    core.py             gecis operatoru Phi ve Simulator
-    interaction.py      etkilesim operatoru Theta_UI (Bolum 4.2.4)
-    costs.py            maliyet ve etki modeli
-    viz.py              gorsellestirme yardimcilari
-    gis.py              GIS raster import (rasterio opsiyonel)
-    scenarios.py        hazir senaryolar
-    io_utils.py         senaryo kaydet/yukle
-  app/
-    streamlit_app.py    interaktif dashboard
-  tests/
-    test_core.py        birim testleri
-  examples/
-    run_headless.py     terminal ornegi
+  run_dashboard.bat        ana uygulamayi baslatir
+  requirements.txt         bagimliliklar
+  app/                     DisasterAware arayuzu (Streamlit)
+    streamlit_app.py         tum sayfalar (Simulation, Map editor, Data
+                             layers, Parameters, GIS import, Validation,
+                             System Description)
+    system_description.py    System Description sayfasi (tam matematiksel
+                             dokumantasyon: mimari, simulator, DSS, maliyet)
+  disaster_phyengine/      fizik motoru: gecis operatoru Phi, Rothermel ROS,
+                           bastirma, siddet, maliyet, rewind, GIS import,
+                           senaryolar, dogrulama metrikleri
+  validation/              gercek veriyle dogrulama (hindcast)
+    auto_validate.py         cekirdek: veri indirme + kor kosu + skorlar
+                             (Validation sayfasi bunu kullanir; CLI da olur)
+    cache/                   indirilen gercek veri, vaka bazli (git disi)
+    runs/                    kosu arsivleri: report.json, log, haritalar,
+                             kareler (git disi)
+  tests/                   pytest suiti (27 test): motor + dogrulama
 ```
 
-## Kurulum
+## Ana uygulamanin sayfalari
 
-```bash
-cd 03_Codes
-pip install -r requirements.txt
-```
+- **Simulation** - yangini kosturma; kosullar (ruzgar pusulasi, EMC nem,
+  adim suresi), atesleme, rewind, J-terimli maliyet paneli.
+- **Map editor** - harita uret/boyutlandir; yakit/yol/asset/yukselti boyama
+  (2D canvas; 3D salt onizleme).
+- **Data layers** - System Description ile ayni alanlar + operasyonel
+  teshisler (Byram).
+- **Parameters** - tum parametreler; literatur varsayilanlari (Anderson
+  1982, Scott & Burgan 2005, Rothermel 1972).
+- **GIS import** - gercek DEM/yakit rasteri ile harita.
+- **Validation** - gercek yanginlara karsi otomatik hindcast (Copernicus
+  DEM + ESA WorldCover + ERA5 + NASA FIRMS), canli izleme, ruzgar
+  belirsizligi ansambli, kosu arsivi. Yontem/metrik/protokol sayfanin
+  icindeki basliklarindadir.
+- **System Description** - modelin tam matematiksel dokumantasyonu
+  (arama + icindekiler agaci).
 
-## Kullanim
+## Test
 
-Dashboard:
-
-```bash
-streamlit run app/streamlit_app.py
-```
-
-Terminal ornegi:
-
-```bash
-python examples/run_headless.py
-```
-
-Python API:
-
-```python
-from disasteraware import Simulator, scenarios, compute_costs
-
-world = scenarios.wui_interface()   # veya World.blank(...) ile sifirdan
-sim = Simulator(world)
-sim.run()                            # yangin sonene kadar
-print(compute_costs(sim).to_dict())
-```
-
-Sifirdan dunya kurma ve duzenleme:
-
-```python
-from disasteraware import World, SimConfig, Asset, Simulator
-
-w = World.blank(SimConfig(nx=120, ny=80, cell_size_m=30.0))
-w.add_forest_patch(10, 10, 60, 60, fuel_type="pine_litter", load=1.0)
-w.add_asset(Asset("Hastane", "critical", x=90, y=40, radius=2, value=1.0))
-w.set_uniform_wind(speed=10.0, direction_rad=0.0)
-w.add_ignition(x=20, y=40, step=0, radius=1)
-
-sim = Simulator(w)
-sim.run()
-```
-
-## Testler
-
-```bash
-cd 03_Codes
-pytest -q
-```
-
-## Model haritasi (tez denklemleri)
-
-| Bilesen | Denklem |
-| --- | --- |
-| Yanma durumu guncellemesi | 43 to 48 |
-| Yakit kutlesi guncellemesi | 49, 68, 129 |
-| Yangin siddeti | 51, 136, 137 |
-| Atesleme suresi | 52 |
-| Rothermel ROS | 123 to 128 (Tablo A.1) |
-| Bastirma haritalamasi | 130 to 135 |
-| Deger oncelik skoru V_prio | 55 |
-| Etkilesim operatoru | 53, 54 (Tablo 4.1) |
-
-## DSS entegrasyonu icin notlar
-
-Simulator durumu disaridan dogrudan yazilmaz. Bir DSS, `sim.step()` cagrisina
-`resource_override` (kaynak alani) ve/veya `extra_ignition` vererek yalnizca dis
-girdi katmani uzerinden etki eder. Bu, Bolum 4.1 mimari ayrimini korur.
+    .venv\Scripts\python -m pytest tests -q

@@ -10,7 +10,7 @@ from __future__ import annotations
 
 import streamlit as st
 
-from disasteraware import FUEL_MODELS, SimConfig
+from disaster_phyengine import FUEL_MODELS, SimConfig
 
 
 # ------------------------------------------------------- architecture figure
@@ -480,7 +480,7 @@ def _sec_4(ctx):
         "directly to the west gives $g_{dir}=\\cos(0-0)=1$ (full weight); a "
         "diagonal neighbour gives $\\cos(\\pi/4)\\approx0.71$; a neighbour "
         "to the east gives $\\cos(\\pi)=-1 \\to 0$ (clipped).")
-    st.markdown("**Activation defaults (Eq. 44–45):**")
+    st.markdown("**Activation defaults:**")
     _table(
         "| Parameter | Symbol | Unit | Default | Current |\n"
         "|---|---|---|---|---|\n"
@@ -926,6 +926,61 @@ def _sec_11(ctx):
         "This boundary preserves state immutability: observation never "
         "mutates $S_k$, and every decision downstream is based on "
         "$\\mathcal{O}_k$, not on privileged internal data.")
+    st.markdown(
+        "#### The sensor network \u2014 structural incompleteness model")
+    st.markdown(
+        "The dominant observation uncertainty in wildfire response is not "
+        "statistical noise but **structural incompleteness**: limited "
+        "coverage, revisit periods, reporting latency and missing "
+        "components. The DSS senses the state components "
+        "$j \\in \\{B, F, I, \\tau\\}$ through a network of placed "
+        "sensors; static prior maps (terrain, fuel type, values at risk, "
+        "own resources), fuel moisture and the weather field come from "
+        "maps and the meteorological service. The source families follow "
+        "the heterogeneous sensing sources of the framework:")
+    _table(
+        "| Type | Senses $j$ | $r_s$ | $T_s$ | $\\ell_s$ | "
+        "$\\bar\\epsilon_j$ |\n"
+        "|---|---|---|---|---|---|\n"
+        "| Satellite imagery | $B, I$ | whole map | 360 min | 20 min | 0.05 |\n"
+        "| Aerial recon / thermal IR | $B, I$ | 2500 m | 15 min | 2 min | 0.03 |\n"
+        "| In-situ ground sensors | $F_{load}$ | 1500 m | 5 min | 0 | 0.02 |\n"
+        "| Field reports / event log | $B, \\tau$ | 1000 m | 30 min | 10 min | 0.10 |")
+    st.markdown(
+        "Every component keeps its **last observed field** and its data "
+        "age $\\Delta t_{rep}$. The per-component observation confidence "
+        "aggregates four independent degradation factors by the "
+        "conservative minimum, the cell-level confidence is the "
+        "weakest component, and the bounded disturbance shrinks "
+        "with confidence:")
+    _eq(r"conf_{j,k}^{i}(x,y)=\min\Big\{\,\theta_{j,k}^{i}(x,y),\;"
+        r"\rho_{k}^{i}(x,y),\;e^{-\lambda_{conf}\,\Delta t_{rep,k}^{i}"
+        r"(x,y)},\;\gamma_{k}^{i}\,\Big\}",
+        [r"$\theta_{j,k}^{i} \in [0,1]$ — observability weight of "
+         r"component $j$: $1$ = a sensor observing $j$ covers "
+         r"the cell, $0$ = complete coverage gap",
+         r"$\rho_{k}^{i} \in [0,1]$ — normalized sensor coverage "
+         r"density at the cell",
+         r"$\Delta t_{rep}$ — time since the most recent observation; "
+         r"$\lambda_{conf} = \ln 2 / 90$ min$^{-1}$ (freshness halves "
+         r"every 90 min)",
+         r"$\gamma_{k}^{i} \in [0,1]$ — source reliability of the best "
+         r"covering sensor ($1-\bar\epsilon_s$)"])
+    _eq(r"conf_{k}^{i}(x,y)=\min_{j\in\{B,F,I,\tau\}} "
+        r"conf_{j,k}^{i}(x,y),\qquad "
+        r"\big|\epsilon_{j,k}^{i}(x,y)\big|\le "
+        r"\big(1-conf_{j,k}^{i}(x,y)\big)\,\bar\epsilon_{j}^{i}",
+        [r"cell confidence = weakest component (conservative principle) "
+         r"— the model value that bounds the disturbance; the "
+         r"region-level scalar DISPLAYED next to each agent is the "
+         r"component-mean over its cells $\Omega_i$ (a component with "
+         r"no source at all would otherwise pin the display to zero)",
+         r"never-observed cells start at $\Delta t_{rep}=\infty$: the "
+         r"agent assumes no fire until a source says otherwise — a blind "
+         r"or stale region genuinely misleads its agent",
+         r"the ten features are computed from the fused "
+         r"observation $\hat z$, and each Local DSS reads it restricted "
+         r"to its own region $\Omega_i$ (regional aggregation)"])
 
 
 def _sec_12(ctx):
@@ -988,31 +1043,28 @@ def _sec_13(ctx):
 def _sec_14(ctx):
     cfg, sp, su, ip, vw, cp = ctx
     st.markdown(
-        "**Mathematical basis.** The cost follows the *cost-plus-loss* "
-        "(cost plus net value change) principle of wildfire economics: the "
-        "value of a response equals the money spent on suppression plus "
-        "the net value lost to the fire. The cost of a decision is "
-        "therefore an additive, weighted sum of the suppression effort it "
-        "spends and the losses it fails to prevent. Each term is a "
-        "distinct value that a decision trades against the others; the "
-        "**weights**, not the list, encode operational priority.")
+        "**Mathematical basis.** The decision cost follows the "
+        "*cost-plus-loss* principle of wildfire economics: the value of a "
+        "response is the effort it spends plus the losses it fails to "
+        "prevent. The cost is therefore an additive, weighted sum of five "
+        "terms. Because the terms are measured in different units (area, "
+        "value, persons, capacity, time), **each is normalized to $[0,1]$ "
+        "against a scenario reference scale** before the weights apply, so "
+        "the terms are dimensionless and mutually summable. The **weights**, "
+        "not the list, encode operational priority.")
 
     st.markdown("#### 14.1 Bookkeeping quantities (how the terms are measured)")
     st.markdown(
-        "All terms are computed from three cumulative fields the simulator "
-        "maintains, plus the static value layers. Nothing else is needed:")
+        "The terms are read from the cumulative fields the simulator "
+        "maintains and the static value layers:")
     _eq(r"A_k(x,y)=\max_{0\le\kappa\le k} B_\kappa(x,y)\;\in\{0,1\}",
         [r"$A_k$ — the **burned mask**: $1$ if the cell has burned at any "
          r"step up to $k$ (it never resets, unlike $B_k$)"])
-    _eq(r"M_{cons,k}(x,y)=\sum_{\kappa=0}^{k-1}"
-        r"B_\kappa(x,y)\,F_{burn,\kappa}(x,y)\,F_{load,\kappa}(x,y)",
-        [r"$M_{cons,k}$ — cumulative fuel consumed by combustion "
-         r"(normalized fuel units): the sum of the combustion terms of "
-         r"Sec. 6 over all past steps"])
-    _eq(r"M_{supp,k}(x,y)=\sum_{\kappa=0}^{k-1}F_{red,\kappa}(x,y)",
-        [r"$M_{supp,k}$ — cumulative fuel removed by suppression "
-         r"(normalized fuel units): the sum of the applied $F_{red}$ of "
-         r"Sec. 6 over all past steps"])
+    _eq(r"E_k=\sum_{\kappa=0}^{k}\;a_{km^2}\!\!\sum_{(x,y)\in G}"
+        r"A_\kappa(x,y)\,V_{pop}(x,y)",
+        [r"$E_k$ — cumulative **person-steps** of exposure inside the "
+         r"burned footprint (persons summed over steps): the base quantity "
+         r"of the population term"])
     _eq(r"a_{ha}=\frac{\Delta x^2}{10^4}\ \text{[ha/cell]},\qquad "
         r"a_{km^2}=\frac{\Delta x^2}{10^6}\ \text{[km}^2\text{/cell]}",
         [rf"cell area conversions; with $\Delta x={cfg.cell_size_m:g}$ m: "
@@ -1020,143 +1072,136 @@ def _sec_14(ctx):
          rf"$a_{{km^2}}={cfg.cell_area_ha/100.0:g}$ km²"])
 
     st.markdown("#### 14.2 The total decision cost")
-    _eq(r"J_k=w_1 J_k^{burn}+w_2 J_k^{val}+w_3 J_k^{inf}"
-        r"+w_4 J_k^{pop}+w_5 J_k^{sup}+w_6 J_k^{del}",
-        [r"$J_k$ — total cost at step $k$ (currency units)",
-         r"$w_1,\dots,w_6\ge0$ — non-negative priority weights; the "
-         r"dashboard cost report uses $w_1=\dots=w_5=1$ with all terms "
-         r"already expressed in a common currency, and $w_6$ is used by "
-         r"the decision evaluation",
-         r"each term $J^{(\cdot)}$ is defined explicitly below"])
+    _eq(r"J_k=w_1 J_k^{burn}+w_2 J_k^{asset}+w_3 J_k^{pop}"
+        r"+w_4 J_k^{resp}+w_5 J_k^{del}",
+        [r"$J_k$ — total decision cost at step $k$; with normalized weights "
+         r"it lies in $[0,1]$",
+         r"$w_1,\dots,w_5\ge0$ — non-negative priority weights; the "
+         r"dashboard uses equal weights by default and normalizes them so "
+         r"the total is a weighted average of the five terms",
+         r"each term $J^{(\cdot)}\in[0,1]$ is defined explicitly below"])
 
-    st.markdown("**Term 1 — land and vegetation loss $J^{burn}$** "
-                "(burned area rehabilitation + forest stand value):")
-    _eq(r"J_k^{burn}=c_{ha}\cdot a_{ha}\sum_{(x,y)\in G}A_k(x,y)"
-        r"\;+\;\lambda_{for}\sum_{(x,y)\in G}"
-        r"e\big(F_{type}(x,y)\big)\,M_{cons,k}(x,y)\,"
-        r"\mathbb{1}\big[F_{type}(x,y)\in\mathcal{T}_{for}\big]",
-        [rf"$c_{{ha}}$ — land rehabilitation cost per burned hectare, "
-         rf"currently {cp.cost_per_burned_ha:,.0f} currency/ha, applied to "
-         r"the whole burned area",
-         r"$e(F_{type})$ — economic value per cell unit of the fuel class "
-         r"(Table in Sec. 5: shrub 6, pine litter 12, hardwood 18, …)",
-         r"$\mathcal{T}_{for}$ — the set of forest fuel classes (flagged "
-         r"*forest* in the same table); stand value loss scales with the "
-         r"fuel **actually consumed** in forest cells, not with area alone",
-         rf"$\lambda_{{for}}$ — forest value multiplier, currently "
-         rf"{cp.forest_value_multiplier:g}"])
-    st.markdown("**Term 2 — structure loss $J^{val}$** (wildland–urban interface):")
-    _eq(r"J_k^{val}=c_{bld}\,\lambda_{loss}\sum_{(x,y)\in G}"
-        r"A_k(x,y)\,V_{bld}(x,y)",
-        [rf"$c_{{bld}}$ — value of one fully built cell "
-         rf"($V_{{bld}}=1$), currently {cp.building_unit_value:,.0f} currency",
-         rf"$\lambda_{{loss}}$ — fraction of asset value lost when the "
-         rf"cell burns, currently {cp.value_loss_on_burn:g}",
-         r"$V_{bld}$ — building footprint density (Sec. 2.5); the sum "
-         r"runs only over burned cells because of the $A_k$ factor"])
-    st.markdown("**Term 3 — critical infrastructure loss $J^{inf}$:**")
-    _eq(r"J_k^{inf}=c_{crit}\,\lambda_{loss}\sum_{(x,y)\in G}"
-        r"A_k(x,y)\,V_{crit}(x,y)",
-        [rf"$c_{{crit}}$ — value of one fully critical cell "
-         rf"($V_{{crit}}=1$), currently {cp.critical_unit_value:,.0f} "
-         r"currency: an order of magnitude above buildings, because the "
-         r"failure of a substation or hospital cascades beyond the fire",
-         r"$V_{crit}$ — critical facility index (Sec. 2.5)"])
-    st.markdown("**Term 4 — population exposure and human cost $J^{pop}$**, "
-                "measured in three explicit stages:")
-    _eq(r"P_k^{exp}=a_{km^2}\sum_{(x,y)\in G}A_k(x,y)\,V_{pop}(x,y)"
-        r"\quad\text{[persons]}",
-        [r"$P_k^{exp}$ — population living inside the burned footprint: "
-         r"density (person/km²) times burned cell area"])
-    _eq(r"N_k^{cas}=\rho_{risk}\cdot P_k^{exp},\qquad "
-        r"J_k^{pop}=v_L\cdot N_k^{cas}",
-        [rf"$\rho_{{risk}}$ — fraction of the exposed population assumed "
-         rf"at casualty risk, currently {cp.population_at_risk_fraction:g}",
-         rf"$v_L$ — value of statistical life used for monetization, "
-         rf"currently {cp.statistical_life_value:,.0f} currency",
-         r"an effective evacuation decision (Sec. 13) lowers the realized "
-         r"$P^{exp}$, which is how evacuation is scored by the cost"])
-    st.markdown("**Term 5 — suppression cost $J^{sup}$** (the resources committed):")
-    _eq(r"J_k^{sup}=c_{sup}\sum_{(x,y)\in G}M_{supp,k}(x,y)",
-        [rf"$c_{{sup}}$ — cost per unit of fuel actually removed by "
-         rf"intervention, currently {cp.suppression_unit_cost:,.0f} "
-         r"currency/unit: paying for effort delivered, not for effort "
-         r"ordered (an unavailable or unreachable allocation produces no "
-         r"$F_{red}$ and therefore no cost)"])
-    st.markdown("**Term 6 — response delay $J^{del}$** (decision-layer term):")
-    _eq(r"J_k^{del}=\bar t_k^{\,resp}="
+    st.markdown("**Term 1 — burned area $J^{burn}$** (land and ecological loss):")
+    _eq(r"J_k^{burn}=\frac{\sum_{(x,y)\in G}A_k(x,y)}"
+        r"{\sum_{(x,y)\in G}\mathbb{1}\big[F_{load,0}(x,y)>0\big]}",
+        [r"burned cells divided by the **burnable cells** of the scenario "
+         r"(cells that carry any initial fuel); pure area fraction, so a "
+         r"burned hectare of grass and of forest count the same here"])
+    st.markdown("**Term 2 — asset loss $J^{asset}$** "
+                "(structures together with critical infrastructure):")
+    _eq(r"J_k^{asset}=\frac{\sum_{(x,y)\in G}A_k(x,y)\,"
+        r"\big(V_{bld}(x,y)+V_{crit}(x,y)\big)}"
+        r"{\sum_{(x,y)\in G}\big(V_{bld}(x,y)+V_{crit}(x,y)\big)}",
+        [r"asset value lost divided by the **total exposed asset value**; "
+         r"$V_{bld}$ is building footprint and $V_{crit}$ the critical "
+         r"facility index (Sec. 2.5), both in $[0,1]$",
+         r"structures and infrastructure are priced in this single term; "
+         r"burned area (Term 1) prices land only, so no value is counted "
+         r"twice"])
+    st.markdown("**Term 3 — population exposure $J^{pop}$** (life safety):")
+    _eq(r"J_k^{pop}=\frac{E_k}{P^{risk}\,H}\Big/\rho_{risk}"
+        r"=\frac{E_k}{\big(\sum_{(x,y)}a_{km^2}V_{pop}\big)\,H}",
+        [r"at-risk person-steps over the at-risk population times the "
+         r"horizon $H$; the risk fraction $\rho_{risk}$ cancels, so the "
+         r"term is the **exposed share of the available population-time**",
+         rf"$\rho_{{risk}}$ — casualty share of the exposed population, "
+         rf"currently {cp.population_at_risk_fraction:g} (used for the raw "
+         r"casualty display)",
+         rf"$H$ — scenario horizon, currently {cp.horizon_steps:g} steps",
+         r"an effective evacuation (Sec. 13) lowers $E_k$, which is how "
+         r"evacuation is scored by the cost; beyond its weight, a candidate "
+         rf"whose exposure exceeds a hard ceiling ({cp.population_ceiling:g}) "
+         r"is rejected at the acceptance gate outright"])
+    st.markdown("**Term 4 — response cost $J^{resp}$** (committed resources):")
+    _eq(r"J_k^{resp}=\frac{\sum_{(x,y)}R_{cap,k}(x,y)\,R_{avail,k}(x,y)}"
+        r"{C_{avail}}",
+        [r"committed capacity divided by the **total available capacity** "
+         r"$C_{avail}$; deployed capacity is priced regardless of its "
+         r"eventual effectiveness, so protective actions carry a nonzero "
+         r"cost for the adaptation loop",
+         rf"$C_{{avail}}$ — total available capacity, currently "
+         rf"{cp.capacity_reference:g}"])
+    st.markdown("**Term 5 — response delay $J^{del}$** (timeliness):")
+    _eq(r"J_k^{del}=\frac{1}{t_{ref}}\cdot"
         r"\frac{\sum_{(x,y)}R_{cap,k}(x,y)\,R_{time,k}(x,y)}"
         r"{\sum_{(x,y)}R_{cap,k}(x,y)}\quad\text{(0 if no allocation)}",
-        [r"$\bar t^{\,resp}$ — capacity-weighted mean travel time of the "
-         r"allocated resources (model time units): late-arriving "
-         r"allocations are penalized even before their physical effect "
-         r"decays through $\eta_{reach}$ (Sec. 6)",
-         r"this term penalizes slow action, since timeliness changes every "
-         r"other loss; it is evaluated on the candidate allocation and "
-         r"multiplied by the weight $w_6$ (currency per time unit)"])
+        [r"capacity-weighted mean travel time of the allocated resources, "
+         r"divided by a reference delay $t_{ref}$; late-arriving "
+         r"allocations are penalized because timeliness changes every "
+         r"other loss",
+         rf"$t_{{ref}}$ — reference delay scale, currently "
+         rf"{cp.delay_reference:g}"])
     st.caption(
-        "Terms 1–5 are implemented in the dashboard cost report and are "
-        "recomputed at any step from the cumulative fields of Sec. 14.1. "
-        "Term 6 is evaluated by the decision layer when comparing "
-        "candidate allocations.")
+        "Terms 1–3 are read from the physical run. Terms 4–5 are "
+        "decision-layer quantities computed from the resource field "
+        "currently applied; they are zero when no allocation is active. "
+        "Every denominator is bounded below and every term is clipped to "
+        "$[0,1]$.")
 
-    st.markdown("#### 14.3 Using the cost to compare decisions (rollout evaluation)")
+    st.markdown("#### 14.3 Satisficing acceptance and rollout evaluation")
     st.markdown(
-        "The cost is not differentiable in the decision, so candidates are "
-        "compared by **forward rollout**: a candidate allocation $U$ is "
-        "applied to a copy of the simulator for a short horizon of $H$ "
-        "steps, and its cost is read at the end:")
-    _eq(r"J^{(H)}(U)=J_{k+H}\ \text{after simulating}\ "
-        r"S_{k+1},\dots,S_{k+H}\ \text{under}\ \Phi\ \text{with}\ "
-        r"U_{DSS}=U,\qquad \Delta J = J^{(H)}(U)-J^{(H)}(U_{base})",
-        [r"$H$ — evaluation horizon (a few steps: long enough to see the "
-         r"effect, short enough to evaluate online)",
-         r"$U_{base}$ — a conservative baseline allocation (e.g. current "
+        "The cost serves as an **acceptance criterion**, not an objective "
+        "for global optimization. A candidate intervention is accepted as "
+        "soon as its expected cost clears an adaptive threshold:")
+    _eq(r"J_k(U)\le J_k^{acc},\qquad "
+        rf"J_k^{{acc}}={cp.acceptance_fraction:g}\cdot J_k^{{do-nothing}}",
+        [rf"$J_k^{{acc}}$ — acceptance threshold: a fixed fraction "
+         rf"({cp.acceptance_fraction:g} by default) of the uncontrolled, "
+         r"do-nothing cost over the operational period; it tightens while "
+         r"confidence and capacity are high and relaxes as they degrade",
+         r"when no candidate clears the threshold, a graduated fail-safe "
+         r"attenuates the best available intervention toward a conservative "
+         r"baseline rather than forcing a binary act/abstain choice"])
+    st.markdown(
+        "Because the cost is not differentiable in the decision, candidates "
+        "are compared by **forward rollout**: a candidate allocation $U$ is "
+        "applied to a copy of the simulator for a short horizon and its "
+        "cost is read at the end.")
+    _eq(r"J^{(H)}(U)=J_{k+H}\ \text{under}\ \Phi\ \text{with}\ U_{DSS}=U,"
+        r"\qquad \Delta J = J^{(H)}(U)-J^{(H)}(U_{base})",
+        [r"$U_{base}$ — a conservative baseline allocation (e.g. current "
          r"doctrine or no change)",
-         r"$\Delta J<0$ — the candidate is an improvement; every "
-         r"adaptation of the decision layer is accepted **only** when it "
-         r"lowers the cost"])
+         r"$\Delta J<0$ — the candidate is an improvement; every adaptation "
+         r"is admitted **only** when it lowers the cost"])
 
     st.markdown("#### 14.4 Default cost parameters")
     _table(
         "| Parameter | Symbol | Current value | Unit |\n"
         "|---|---|---|---|\n"
-        f"| Rehabilitation cost per burned ha | $c_{{ha}}$ | {cp.cost_per_burned_ha:,.0f} | currency/ha |\n"
-        f"| Forest value multiplier | $\\lambda_{{for}}$ | {cp.forest_value_multiplier:g} | – |\n"
-        f"| Building unit value | $c_{{bld}}$ | {cp.building_unit_value:,.0f} | currency/cell |\n"
-        f"| Critical facility unit value | $c_{{crit}}$ | {cp.critical_unit_value:,.0f} | currency/cell |\n"
-        f"| Value loss fraction on burn | $\\lambda_{{loss}}$ | {cp.value_loss_on_burn:g} | – |\n"
-        f"| Value of statistical life | $v_L$ | {cp.statistical_life_value:,.0f} | currency/person |\n"
+        f"| Burned area weight | $w_1$ | {cp.w_burn:g} | – |\n"
+        f"| Asset loss weight | $w_2$ | {cp.w_asset:g} | – |\n"
+        f"| Population exposure weight | $w_3$ | {cp.w_pop:g} | – |\n"
+        f"| Response cost weight | $w_4$ | {cp.w_resp:g} | – |\n"
+        f"| Response delay weight | $w_5$ | {cp.w_delay:g} | – |\n"
+        f"| Acceptance threshold fraction | – | {cp.acceptance_fraction:g} | – |\n"
         f"| Population at risk fraction | $\\rho_{{risk}}$ | {cp.population_at_risk_fraction:g} | – |\n"
-        f"| Suppression unit cost | $c_{{sup}}$ | {cp.suppression_unit_cost:,.0f} | currency/fuel unit |")
+        f"| Scenario horizon | $H$ | {cp.horizon_steps:g} | steps |\n"
+        f"| Total available capacity | $C_{{avail}}$ | {cp.capacity_reference:g} | – |\n"
+        f"| Reference delay | $t_{{ref}}$ | {cp.delay_reference:g} | – |")
     st.caption(
-        "Monetary figures are abstract currency units so the model can be "
-        "calibrated to a real case study without changing its structure. "
-        "All eight values are adjustable in the **Parameters** page "
-        "(Cost model).")
+        "All values are adjustable in the **Parameters** page (Cost model). "
+        "The weights default to equal priority; adjust them to encode the "
+        "operational hierarchy for a given incident.")
 
     st.markdown("#### 14.5 Mini example — cost by hand")
     st.markdown(
-        "$\\Delta x=30$ m ⇒ $a_{ha}=0.09$ ha, $a_{km^2}=0.0009$ km². "
-        "Suppose by step $k$: 100 cells burned, of which 20 are pine "
-        "litter forest ($e=12$) with $M_{cons}=0.8$ each; the burned "
-        "footprint contains $\\sum A_k V_{bld}=3.0$, no critical cells, "
-        "$\\sum A_k V_{pop}=1200$ person/km²; total suppressed fuel "
-        "$\\sum M_{supp}=2.5$. Then, with default parameters:")
-    st.latex(r"J^{burn}=1000\times0.09\times100+1\times(12\times0.8\times20)"
-             r"=9000+192=9192")
-    st.latex(r"J^{val}=250{,}000\times1\times3.0=750{,}000,\qquad J^{inf}=0")
-    st.latex(r"P^{exp}=0.0009\times1200=1.08\ \text{persons},\quad "
-             r"N^{cas}=0.02\times1.08=0.0216,\quad "
-             r"J^{pop}=1{,}500{,}000\times0.0216=32{,}400")
-    st.latex(r"J^{sup}=5000\times2.5=12{,}500")
-    st.latex(r"J=9192+750{,}000+0+32{,}400+12{,}500=804{,}092"
-             r"\ \text{currency units}")
+        "Suppose a scenario with 5000 burnable cells and, by step $k$: "
+        "1000 cells burned; the burned footprint holds asset value "
+        "$\\sum A_k(V_{bld}+V_{crit})=8$ out of a scenario total of $40$; "
+        "cumulative exposure $E_k=600$ person-steps against an available "
+        "population-time of $\\big(\\sum a_{km^2}V_{pop}\\big)H=6000$; no "
+        "resources deployed. With equal weights:")
+    st.latex(r"J^{burn}=\tfrac{1000}{5000}=0.20,\qquad "
+             r"J^{asset}=\tfrac{8}{40}=0.20,\qquad "
+             r"J^{pop}=\tfrac{600}{6000}=0.10")
+    st.latex(r"J^{resp}=0,\qquad J^{del}=0")
+    st.latex(r"J=\tfrac{0.20+0.20+0.10+0+0}{5}=0.10")
     st.caption(
-        "The structure term dominates — which is exactly the signal the "
-        "DSS needs: protecting the three built cells is worth far more "
-        "than saving grass, and the weights $w_m$ let an operator shift "
-        "that balance.")
+        "With equal weights the total is the average of the five terms; "
+        f"here $J=0.10$ sits below the acceptance threshold "
+        f"({cp.acceptance_fraction:g}), so the do-nothing baseline would "
+        "already be acceptable. Raising $w_3$ would make the population "
+        "term dominate and push the DSS toward earlier protective action.")
 
 
 def _sec_15(ctx):
@@ -1256,6 +1301,9 @@ def _sec_16(ctx):
         "| $F_{max}, W_{ref}, S_{max}$ | Normalization references | norm., m/s, rad | Sec. 7 |\n"
         "| $\\beta, \\gamma_W, \\gamma_S$ | Intensity gain and weights | – | Sec. 7 |\n"
         "| $\\mathcal{O}_k,\\ h,\\ \\epsilon_k$ | Observation, obs. function, obs. noise | – | Sec. 11 |\n"
+        "| $r_s, T_s, \\ell_s, \\bar\\epsilon_j$ | Sensor footprint, revisit, latency, disturbance bound | m, min, min, – | Sec. 11 |\n"
+        "| $\\theta_{j,k}^{i},\\ \\rho_k^i,\\ \\gamma_k^i$ | Observability weight, coverage density, source reliability | $[0,1]$ | Sec. 11 |\n"
+        "| $conf_{j,k}^{i},\\ \\lambda_{conf},\\ \\Delta t_{rep}$ | Observation confidence, freshness decay, data age | $[0,1]$, 1/min, min | Sec. 11 |\n"
         "| $\\pi_{DSS}$ | Decision policy | – | Sec. 12 |\n"
         "| $A_k$ (burned mask) | Cumulative burned mask | $\\{0,1\\}$ | Sec. 14 |\n"
         "| $M_{cons,k}, M_{supp,k}$ | Cumulative consumed / suppressed fuel | norm. fuel | Sec. 14 |\n"

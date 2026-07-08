@@ -16,6 +16,10 @@ if not exist ".venv\Scripts\activate.bat" (
 )
 
 call ".venv\Scripts\activate.bat"
+REM stale .pyc files have caused "old code running" bugs after updates:
+REM never write bytecode and clear any leftover caches on every start
+set PYTHONDONTWRITEBYTECODE=1
+for /d /r %%d in (__pycache__) do @if exist "%%d" rd /s /q "%%d" 2>nul
 echo [setup] Installing dependencies...
 python -m pip install --upgrade pip >nul 2>nul
 pip install -r requirements.txt

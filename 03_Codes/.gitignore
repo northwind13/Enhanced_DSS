@@ -4,14 +4,9 @@ __pycache__/
 *.pyc
 .pytest_cache/
 
-# downloaded validation data and run archives (large, regenerable)
-validation_cache/
-validation_runs/
-validation_report*
-
-# generated outputs
-dss_audit_log.json
-dss_demo_report.png
+# validation data and run archives (large, regenerable)
+validation/cache/
+validation/runs/
 
 # dashboard temp uploads
 app/_gis_*
