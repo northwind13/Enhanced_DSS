@@ -1,0 +1,156 @@
+{
+ "map": {
+  "nx": 100,
+  "ny": 70,
+  "cell_m": 30.0,
+  "step_min": 1.0
+ },
+ "engine": {
+  "regions": 1,
+  "cycle_min": 1.0,
+  "horizon_min": 30.0,
+  "j_th": 0.35,
+  "eta": 0.6,
+  "adapt": true,
+  "genai": true,
+  "evfis": true,
+  "evfis_step": 0.05,
+  "rl_eps": 0.1,
+  "rl_lr": 0.05,
+  "attn": 0.35,
+  "min_gain": 0.05,
+  "seed_profile": "full"
+ },
+ "weather": {
+  "wx_mode": "Manual",
+  "emc_on": true,
+  "dr_start": 12.0,
+  "dr_tday": 34.0,
+  "dr_tnight": 22.0,
+  "dr_rhday": 20.0,
+  "dr_rhnight": 70.0,
+  "dr_rain_mm": 0.0,
+  "dr_rain_start": 18.0,
+  "dr_rain_dur": 3.0
+ },
+ "sensors": [
+  {
+   "kind": "satellite",
+   "x": 0,
+   "y": 0
+  },
+  {
+   "kind": "aerial",
+   "x": 47,
+   "y": 3
+  },
+  {
+   "kind": "public_report",
+   "x": 2,
+   "y": 1
+  },
+  {
+   "kind": "public_report",
+   "x": 8,
+   "y": 69
+  }
+ ],
+ "depots": [
+  {
+   "kind": "depot",
+   "x": 2,
+   "y": 1,
+   "radius": 7,
+   "cap": 0.8,
+   "avail": 1.0,
+   "t_disp": 10.0,
+   "label": "Town centre"
+  },
+  {
+   "kind": "depot",
+   "x": 5,
+   "y": 0,
+   "radius": 3,
+   "cap": 0.8,
+   "avail": 1.0,
+   "t_disp": 10.0,
+   "label": "Hospital"
+  },
+  {
+   "kind": "depot",
+   "x": 7,
+   "y": 4,
+   "radius": 3,
+   "cap": 0.8,
+   "avail": 1.0,
+   "t_disp": 10.0,
+   "label": "Power plant"
+  },
+  {
+   "kind": "depot",
+   "x": 0,
+   "y": 10,
+   "radius": 3,
+   "cap": 0.8,
+   "avail": 1.0,
+   "t_disp": 10.0,
+   "label": "Water treatment"
+  },
+  {
+   "kind": "depot",
+   "x": 0,
+   "y": 1,
+   "radius": 3,
+   "cap": 0.8,
+   "avail": 1.0,
+   "t_disp": 10.0,
+   "label": "Government office"
+  },
+  {
+   "kind": "depot",
+   "x": 0,
+   "y": 0,
+   "radius": 3,
+   "cap": 0.8,
+   "avail": 1.0,
+   "t_disp": 10.0,
+   "label": "School"
+  },
+  {
+   "kind": "depot",
+   "x": 8,
+   "y": 69,
+   "radius": 5,
+   "cap": 0.8,
+   "avail": 1.0,
+   "t_disp": 10.0,
+   "label": "Village 1 centre"
+  },
+  {
+   "kind": "depot",
+   "x": 6,
+   "y": 69,
+   "radius": 3,
+   "cap": 0.8,
+   "avail": 1.0,
+   "t_disp": 10.0,
+   "label": "Fire station (Village 1)"
+  },
+  {
+   "kind": "road_corridor",
+   "cap": 0.4,
+   "avail": 1.0,
+   "label": "road corridor"
+  },
+  {
+   "kind": "helibase",
+   "x": 2,
+   "y": 1,
+   "radius": 17,
+   "cap": 0.6,
+   "avail": 1.0,
+   "t_disp": 6.0,
+   "label": "helibase (aerial)"
+  }
+ ]
+}

@@ -1,0 +1,411 @@
+{
+ "map": {
+  "nx": 100,
+  "ny": 70,
+  "cell_m": 30.0,
+  "step_min": 1.0
+ },
+ "engine": {
+  "regions": 1,
+  "cycle_min": 1.0,
+  "horizon_min": 30.0,
+  "j_th": 0.35,
+  "eta": 0.6,
+  "adapt": true,
+  "genai": true,
+  "evfis": true,
+  "evfis_step": 0.05,
+  "rl_eps": 0.1,
+  "rl_lr": 0.05,
+  "attn": 0.35,
+  "min_gain": 0.05,
+  "seed_profile": "minimal"
+ },
+ "weather": {
+  "wx_mode": "Manual",
+  "emc_on": true,
+  "dr_start": 12.0,
+  "dr_tday": 34.0,
+  "dr_tnight": 22.0,
+  "dr_rhday": 20.0,
+  "dr_rhnight": 70.0,
+  "dr_rain_mm": 0.0,
+  "dr_rain_start": 18.0,
+  "dr_rain_dur": 3.0
+ },
+ "sensors": [
+  {
+   "kind": "satellite",
+   "x": 0,
+   "y": 0
+  },
+  {
+   "kind": "aerial",
+   "x": 47,
+   "y": 3
+  },
+  {
+   "kind": "ground_camera",
+   "x": 23,
+   "y": 37
+  },
+  {
+   "kind": "public_report",
+   "x": 2,
+   "y": 1
+  },
+  {
+   "kind": "public_report",
+   "x": 8,
+   "y": 69
+  }
+ ],
+ "depots": [
+  {
+   "kind": "depot",
+   "x": 2,
+   "y": 1,
+   "radius": 7,
+   "cap": 0.8,
+   "avail": 1.0,
+   "t_disp": 10.0,
+   "label": "Town centre"
+  },
+  {
+   "kind": "depot",
+   "x": 5,
+   "y": 0,
+   "radius": 3,
+   "cap": 0.8,
+   "avail": 1.0,
+   "t_disp": 10.0,
+   "label": "Hospital"
+  },
+  {
+   "kind": "depot",
+   "x": 7,
+   "y": 4,
+   "radius": 3,
+   "cap": 0.8,
+   "avail": 1.0,
+   "t_disp": 10.0,
+   "label": "Power plant"
+  },
+  {
+   "kind": "depot",
+   "x": 0,
+   "y": 10,
+   "radius": 3,
+   "cap": 0.8,
+   "avail": 1.0,
+   "t_disp": 10.0,
+   "label": "Water treatment"
+  },
+  {
+   "kind": "depot",
+   "x": 0,
+   "y": 1,
+   "radius": 3,
+   "cap": 0.8,
+   "avail": 1.0,
+   "t_disp": 10.0,
+   "label": "Government office"
+  },
+  {
+   "kind": "depot",
+   "x": 0,
+   "y": 0,
+   "radius": 3,
+   "cap": 0.8,
+   "avail": 1.0,
+   "t_disp": 10.0,
+   "label": "School"
+  },
+  {
+   "kind": "depot",
+   "x": 8,
+   "y": 69,
+   "radius": 5,
+   "cap": 0.8,
+   "avail": 1.0,
+   "t_disp": 10.0,
+   "label": "Village 1 centre"
+  },
+  {
+   "kind": "depot",
+   "x": 6,
+   "y": 69,
+   "radius": 3,
+   "cap": 0.8,
+   "avail": 1.0,
+   "t_disp": 10.0,
+   "label": "Fire station (Village 1)"
+  },
+  {
+   "kind": "road_corridor",
+   "cap": 0.4,
+   "avail": 1.0,
+   "label": "road corridor"
+  },
+  {
+   "kind": "helibase",
+   "x": 2,
+   "y": 1,
+   "radius": 17,
+   "cap": 0.6,
+   "avail": 1.0,
+   "t_disp": 6.0,
+   "label": "helibase (aerial)"
+  },
+  {
+   "kind": "helibase",
+   "x": 89,
+   "y": 69,
+   "radius": 8,
+   "cap": 0.7,
+   "avail": 1.0,
+   "t_disp": 8.0,
+   "label": "helibase 2 (target 75%)"
+  },
+  {
+   "kind": "helibase",
+   "x": 57,
+   "y": 21,
+   "radius": 8,
+   "cap": 0.7,
+   "avail": 1.0,
+   "t_disp": 8.0,
+   "label": "helibase 3 (target 75%)"
+  },
+  {
+   "kind": "helibase",
+   "x": 98,
+   "y": 0,
+   "radius": 8,
+   "cap": 0.7,
+   "avail": 1.0,
+   "t_disp": 8.0,
+   "label": "helibase 4 (target 75%)"
+  },
+  {
+   "kind": "helibase",
+   "x": 35,
+   "y": 11,
+   "radius": 8,
+   "cap": 0.7,
+   "avail": 1.0,
+   "t_disp": 8.0,
+   "label": "helibase 5 (target 75%)"
+  },
+  {
+   "kind": "helibase",
+   "x": 36,
+   "y": 63,
+   "radius": 8,
+   "cap": 0.7,
+   "avail": 1.0,
+   "t_disp": 8.0,
+   "label": "helibase 6 (target 75%)"
+  },
+  {
+   "kind": "helibase",
+   "x": 39,
+   "y": 37,
+   "radius": 8,
+   "cap": 0.7,
+   "avail": 1.0,
+   "t_disp": 8.0,
+   "label": "helibase 7 (target 75%)"
+  },
+  {
+   "kind": "helibase",
+   "x": 66,
+   "y": 44,
+   "radius": 8,
+   "cap": 0.7,
+   "avail": 1.0,
+   "t_disp": 8.0,
+   "label": "helibase 8 (target 75%)"
+  },
+  {
+   "kind": "helibase",
+   "x": 51,
+   "y": 3,
+   "radius": 8,
+   "cap": 0.7,
+   "avail": 1.0,
+   "t_disp": 8.0,
+   "label": "helibase 9 (target 75%)"
+  },
+  {
+   "kind": "helibase",
+   "x": 68,
+   "y": 7,
+   "radius": 8,
+   "cap": 0.7,
+   "avail": 1.0,
+   "t_disp": 8.0,
+   "label": "helibase 10 (target 75%)"
+  },
+  {
+   "kind": "helibase",
+   "x": 63,
+   "y": 69,
+   "radius": 8,
+   "cap": 0.7,
+   "avail": 1.0,
+   "t_disp": 8.0,
+   "label": "helibase 11 (target 75%)"
+  },
+  {
+   "kind": "helibase",
+   "x": 53,
+   "y": 39,
+   "radius": 8,
+   "cap": 0.7,
+   "avail": 1.0,
+   "t_disp": 8.0,
+   "label": "helibase 12 (target 75%)"
+  },
+  {
+   "kind": "helibase",
+   "x": 48,
+   "y": 28,
+   "radius": 8,
+   "cap": 0.7,
+   "avail": 1.0,
+   "t_disp": 8.0,
+   "label": "helibase 13 (target 75%)"
+  },
+  {
+   "kind": "helibase",
+   "x": 47,
+   "y": 16,
+   "radius": 8,
+   "cap": 0.7,
+   "avail": 1.0,
+   "t_disp": 8.0,
+   "label": "helibase 14 (target 75%)"
+  },
+  {
+   "kind": "helibase",
+   "x": 58,
+   "y": 11,
+   "radius": 8,
+   "cap": 0.7,
+   "avail": 1.0,
+   "t_disp": 8.0,
+   "label": "helibase 15 (target 75%)"
+  },
+  {
+   "kind": "helibase",
+   "x": 68,
+   "y": 26,
+   "radius": 8,
+   "cap": 0.7,
+   "avail": 1.0,
+   "t_disp": 8.0,
+   "label": "helibase 16 (target 75%)"
+  },
+  {
+   "kind": "helibase",
+   "x": 37,
+   "y": 23,
+   "radius": 8,
+   "cap": 0.7,
+   "avail": 1.0,
+   "t_disp": 8.0,
+   "label": "helibase 17 (target 75%)"
+  },
+  {
+   "kind": "helibase",
+   "x": 55,
+   "y": 27,
+   "radius": 8,
+   "cap": 0.7,
+   "avail": 1.0,
+   "t_disp": 8.0,
+   "label": "helibase 18 (target 75%)"
+  },
+  {
+   "kind": "helibase",
+   "x": 50,
+   "y": 22,
+   "radius": 8,
+   "cap": 0.7,
+   "avail": 1.0,
+   "t_disp": 8.0,
+   "label": "helibase 19 (target 75%)"
+  },
+  {
+   "kind": "helibase",
+   "x": 86,
+   "y": 8,
+   "radius": 8,
+   "cap": 0.7,
+   "avail": 1.0,
+   "t_disp": 8.0,
+   "label": "helibase 20 (target 75%)"
+  },
+  {
+   "kind": "helibase",
+   "x": 54,
+   "y": 16,
+   "radius": 8,
+   "cap": 0.7,
+   "avail": 1.0,
+   "t_disp": 8.0,
+   "label": "helibase 21 (target 75%)"
+  },
+  {
+   "kind": "helibase",
+   "x": 50,
+   "y": 10,
+   "radius": 8,
+   "cap": 0.7,
+   "avail": 1.0,
+   "t_disp": 8.0,
+   "label": "helibase 22 (target 75%)"
+  },
+  {
+   "kind": "helibase",
+   "x": 64,
+   "y": 15,
+   "radius": 8,
+   "cap": 0.7,
+   "avail": 1.0,
+   "t_disp": 8.0,
+   "label": "helibase 23 (target 75%)"
+  },
+  {
+   "kind": "helibase",
+   "x": 52,
+   "y": 31,
+   "radius": 8,
+   "cap": 0.7,
+   "avail": 1.0,
+   "t_disp": 8.0,
+   "label": "helibase 24 (target 75%)"
+  },
+  {
+   "kind": "helibase",
+   "x": 78,
+   "y": 0,
+   "radius": 8,
+   "cap": 0.7,
+   "avail": 1.0,
+   "t_disp": 8.0,
+   "label": "helibase 25 (target 75%)"
+  },
+  {
+   "kind": "helibase",
+   "x": 52,
+   "y": 19,
+   "radius": 8,
+   "cap": 0.7,
+   "avail": 1.0,
+   "t_disp": 8.0,
+   "label": "helibase 26 (target 75%)"
+  }
+ ]
+}

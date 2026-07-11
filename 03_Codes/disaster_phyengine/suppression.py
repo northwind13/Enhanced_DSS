@@ -19,14 +19,25 @@ from .config import SuppressionParams
 
 
 def fuel_reduction(resource, topo, intensity: np.ndarray,
-                   params: SuppressionParams) -> np.ndarray:
-    """Compute the per cell suppression driven fuel reduction F_red (Eq. 135)."""
+                   params: SuppressionParams,
+                   air_scale=1.0) -> np.ndarray:
+    """Compute the per cell suppression driven fuel reduction F_red (Eq. 135).
+
+    air_scale (scalar or field, [0, 1]) derates the AERIAL share for
+    weather: strong wind grounds the aircraft. Where the resource layer
+    carries an aerial share, that share replaces the road-access factor
+    (helicopters do not need a road), so remote ground stays workable
+    from the air."""
     eta_cap = resource.rcap / max(params.rcap_max, 1e-6)
     eta_cap = np.clip(eta_cap, 0.0, 1.0)
 
     eta_avail = np.clip(resource.ravail, 0.0, 1.0)
 
-    eta_reach = np.exp(-params.beta_t * resource.rtime) * np.clip(topo.access, 0.0, 1.0)
+    _acc = np.clip(topo.access, 0.0, 1.0)
+    _ra = getattr(resource, "rair", None)
+    if _ra is not None:
+        _acc = np.maximum(_acc, np.clip(_ra, 0.0, 1.0) * air_scale)
+    eta_reach = np.exp(-params.beta_t * resource.rtime) * _acc
 
     eta_eff = resource.reff / (1.0 + params.gamma_I * np.clip(intensity, 0.0, 1.0))
 

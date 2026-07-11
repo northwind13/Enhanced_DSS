@@ -146,12 +146,27 @@ class ResourceLayer:
     ravail: np.ndarray      # availability in [0, 1]
     reff: np.ndarray        # suppression efficiency in [0, 1]
     rtime: np.ndarray       # travel time to cell (min or h)
+    # aerial share in [0, 1]: fraction of the local capacity delivered
+    # from the AIR (helicopter / air tanker). Aerial delivery does not
+    # care about road access, so it substitutes for G_access in the
+    # reach product, but it is grounded by strong wind (see core).
+    rair: np.ndarray | None = None
+    # order-channel fields (set by the DSS allocator):
+    # rcut  in [0,1]: DIG here (containment line) - the committed
+    #        line-building floor applies ONLY on these cells, so a
+    #        protection ring around a town never scrapes its park
+    # revac in [0,1]: EVACUATE here - populated cells lose their
+    #        people toward safety at a tempo set by the order
+    rcut: np.ndarray | None = None
+    revac: np.ndarray | None = None
 
     @classmethod
     def none(cls, ny: int, nx: int) -> "ResourceLayer":
         return cls(
             rcap=uniform(ny, nx, 0.0), ravail=uniform(ny, nx, 0.0),
             reff=uniform(ny, nx, 0.0), rtime=uniform(ny, nx, 0.0),
+            rair=uniform(ny, nx, 0.0),
+            rcut=uniform(ny, nx, 0.0), revac=uniform(ny, nx, 0.0),
         )
 
 

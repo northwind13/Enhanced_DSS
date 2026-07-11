@@ -286,7 +286,8 @@ class SensorNetwork:
                 f"{fresh:.0%} of cells observed in the last 30 min")
 
 
-def suggest_network(world, budget: Dict[str, int] | None = None):
+def suggest_network(world, budget: Dict[str, int] | None = None,
+                    coverage_target: float | None = None):
     """Optimization-based field deployment (greedy maximum weighted
     coverage).
 
@@ -312,6 +313,12 @@ def suggest_network(world, budget: Dict[str, int] | None = None):
     cell = float(cfg.cell_size_m)
     budget = dict(budget or {"aerial": 2, "ground_camera": 2,
                              "in_situ": 3, "field_report": 2})
+    # coverage_target (0-100): instead of a fixed fleet, keep adding
+    # the best next asset (cycling the families) until the
+    # risk-weighted coverage fraction reaches the target
+    if coverage_target is not None:
+        ct = float(np.clip(coverage_target, 0.0, 100.0)) / 100.0
+        budget = None
 
     ros = np.asarray(rate_of_spread_field(world), dtype=float)
     ros = ros / (ros.max() + 1e-9)
@@ -343,8 +350,14 @@ def suggest_network(world, budget: Dict[str, int] | None = None):
     def _quality(kind):
         return 0.9 * len(SENSOR_CATALOG[kind]["channels"]) / len(CHANNELS)
 
-    order = [k for k in ("aerial", "ground_camera", "in_situ",
-                         "field_report") for _ in range(budget.get(k, 0))]
+    if budget is None:      # coverage-driven fleet: up to 36 assets
+        kinds4 = ("aerial", "ground_camera", "in_situ",
+                  "field_report")
+        order = [kinds4[i % 4] for i in range(36)]
+    else:
+        order = [k for k in ("aerial", "ground_camera", "in_situ",
+                             "field_report")
+                 for _ in range(budget.get(k, 0))]
     same_kind: Dict[str, list] = {}
     for kind in order:
         spec = SENSOR_CATALOG[kind]
@@ -382,6 +395,14 @@ def suggest_network(world, budget: Dict[str, int] | None = None):
                "field_report": "max risk coverage on the road network"}
         lines.append(f"{kind} @ ({x},{y}): {why[kind]} "
                      f"(gain {best_gain:.1f})")
+        if coverage_target is not None:
+            covfrac = float((risk * cov).sum()) / max(
+                float(risk.sum()), 1e-9)
+            if covfrac >= ct:
+                lines.append(f"coverage target reached: "
+                             f"{100 * covfrac:.0f}% of the "
+                             f"risk-weighted map")
+                break
 
     # public reports live where the people are
     pops = sorted((a for a in getattr(world, "assets", [])

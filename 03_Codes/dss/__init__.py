@@ -10,25 +10,52 @@ directly; the sensor catalogue arrives in a later phase.
 
 from .regions import Region, partition, partition_n
 from .features import (ten_features, FEATURE_ORDER, FEATURE_META,
-                       FEATURE_SYM, FEATURE_NAME, FEATURE_MEASURES)
+                       FEATURE_SYM, FEATURE_NAME, FEATURE_MEASURES,
+                       FEATURE_CHANNELS, feature_confidence)
 from .sensors import (Sensor, SensorNetwork, SENSOR_CATALOG, CHANNELS,
                       LAMBDA_CONF, CHANNEL_SYMBOL, suggest_network)
 from .fuzzy import (TERMS, fuzzify, term_vector, expected_value,
-                    default_partition)
+                    default_partition, REGISTRY, PartitionRegistry)
 from .concepts import (HIERARCHY, DECISION_CONCEPTS, CONCEPT_LABEL,
-                       GatedConcepts, infer_concepts, crisp, RHO_PERSIST)
+                       GatedConcepts, infer_concepts, crisp, RHO_PERSIST,
+                       concept_gates)
 from .rules import (Rule, SEED_RULES, INTERVENTIONS, INTERVENTION_LABEL,
-                    evaluate_rules)
+                    evaluate_rules, ALPHA_MIN)
+from .actions import (resource_suggestion, decision_to_resources,
+                      suggest_resource_items, build_resource_layer,
+                      pool_efficiency)
+from .evaluate import (clone_sim, forecast_cost, candidate_vs_noaction,
+                       quality_Q, graduated_failsafe, CONCEPT_FAMILY)
+from .persist import (save_learned, load_learned, merge_learned,
+                      prune_learned, wipe_learned)
+from .adapt import (make_runtime_rules, RLController, AdaptOutcome,
+                    stage1_evfis, stage2_resolution, stage3_generative,
+                    genai_status)
+from .decision_log import DecisionLog, DecisionRecord, RunLogger
+from .loop import DecisionEngine, counterfactual
 
 __all__ = ["Region", "partition", "partition_n", "ten_features",
            "FEATURE_ORDER", "FEATURE_META", "FEATURE_SYM", "FEATURE_NAME",
-           "FEATURE_MEASURES", "Sensor", "SensorNetwork", "SENSOR_CATALOG",
+           "FEATURE_MEASURES", "FEATURE_CHANNELS", "feature_confidence",
+           "concept_gates", "Sensor", "SensorNetwork", "SENSOR_CATALOG",
            "CHANNELS", "LAMBDA_CONF", "CHANNEL_SYMBOL", "suggest_network",
            "TERMS", "fuzzify", "term_vector", "expected_value",
-           "default_partition", "HIERARCHY", "DECISION_CONCEPTS",
+           "default_partition", "REGISTRY", "PartitionRegistry",
+           "HIERARCHY", "DECISION_CONCEPTS",
            "CONCEPT_LABEL", "GatedConcepts", "infer_concepts", "crisp",
            "RHO_PERSIST", "Rule", "SEED_RULES", "INTERVENTIONS",
-           "INTERVENTION_LABEL", "evaluate_rules"]
+           "INTERVENTION_LABEL", "evaluate_rules", "ALPHA_MIN",
+           "resource_suggestion", "decision_to_resources",
+           "suggest_resource_items", "build_resource_layer",
+           "pool_efficiency",
+           "clone_sim", "forecast_cost", "candidate_vs_noaction",
+           "quality_Q", "graduated_failsafe", "CONCEPT_FAMILY",
+           "make_runtime_rules", "RLController", "AdaptOutcome",
+           "save_learned", "load_learned", "merge_learned",
+           "prune_learned", "wipe_learned",
+           "DecisionLog", "DecisionRecord", "RunLogger", "genai_status",
+           "DecisionEngine",
+           "counterfactual"]
 
 # bumped on every dss change; checked by the app freshness gate
-DSS_BUILD = 5
+DSS_BUILD = 50

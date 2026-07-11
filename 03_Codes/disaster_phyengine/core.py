@@ -73,8 +73,24 @@ class Simulator:
         # influence; a cell ignites when the buildup crosses theta_ign
         self.ign_buildup = np.zeros(world.shape, dtype=float)
         self.history: List[StepDiagnostics] = []
+        # time-integrated cost accumulators (per engine step):
+        # persons inside actively burning cells, and committed
+        # response capacity; both feed the J_pop / J_resp terms
+        self.exposure_person_steps: float = 0.0
+        self.response_capacity_steps: float = 0.0
+        self.population_evacuated: float = 0.0
+        self._vpop0 = np.asarray(world.value.vpop,
+                                 dtype=float).copy()
+        # cumulative simulated time: step lengths may CHANGE mid-run
+        # (Time panel), so the clock integrates the actual minutes of
+        # every executed step instead of multiplying step x dt
+        self.t_elapsed_min: float = 0.0
         self._b_base = _fuel_param(world.fuel.ftype, "b_base")
         self._rng = np.random.default_rng(self.cfg.rng_seed)
+        # baseline fuel moisture: reset() must restore it, or the
+        # wetting left by a previous run's suppression/rain makes the
+        # NEXT run non-reproducible (same settings, different fire)
+        self._fmoist0 = np.asarray(world.fuel.fmoist, dtype=float).copy()
         # ---- rewind support: automatic per-step state snapshots ----------
         self.record_states: bool = True
         self._snap_budget_bytes: int = 150 * 1024 * 1024
@@ -93,16 +109,34 @@ class Simulator:
             "first": self.first_ignition_step.astype(np.int32),
             "cons": self.fuel_consumed_total.astype(np.float32),
             "supp": self.fuel_suppressed_total.astype(np.float32),
+            # in-place mutables outside SimState: suppression and rain
+            # WET the fuel (fmoist), spotting consumes rng draws; both
+            # must rewind or a counterfactual replay inherits the
+            # soaked fuel of the factual run and burns far too little
+            "fmoist": self.world.fuel.fmoist.astype(np.float32),
+            "rng": self._rng.bit_generator.state,
+            "exps": float(self.exposure_person_steps),
+            "resps": float(self.response_capacity_steps),
+            "tmin": float(self.t_elapsed_min),
+            "vpop": self.world.value.vpop.astype(np.float32),
+            "nevac": float(self.population_evacuated),
         }
 
     def _record_snapshot(self) -> None:
         if not self.record_states:
             return
         self._snapshots[self.state.step] = self._snapshot()
-        per = sum(a.nbytes for a in self._snapshots[self.state.step].values())
+        per = sum(a.nbytes for a in
+                  self._snapshots[self.state.step].values()
+                  if hasattr(a, "nbytes"))
         cap = max(20, self._snap_budget_bytes // max(per, 1))
         while len(self._snapshots) > cap:
-            self._snapshots.pop(min(self._snapshots))
+            # step 0 is the anchor of the "no orders at all"
+            # counterfactual: it is never evicted, the budget thins
+            # the oldest of the REST instead
+            _ks = sorted(self._snapshots)
+            self._snapshots.pop(_ks[1] if _ks[0] == 0 and len(_ks) > 1
+                                else _ks[0])
 
     @property
     def rewindable_steps(self) -> list:
@@ -127,6 +161,18 @@ class Simulator:
         self.fuel_consumed_total = snap["cons"].astype(float)
         self.fuel_suppressed_total = snap["supp"].astype(float)
         self.world.fuel.fload = s.fload
+        if "fmoist" in snap:
+            self.world.fuel.fmoist = snap["fmoist"].astype(float)
+        if "rng" in snap:
+            self._rng = np.random.default_rng()
+            self._rng.bit_generator.state = snap["rng"]
+        self.exposure_person_steps = float(snap.get("exps", 0.0))
+        self.response_capacity_steps = float(snap.get("resps", 0.0))
+        if "vpop" in snap:
+            self.world.value.vpop = snap["vpop"].astype(float)
+        self.population_evacuated = float(snap.get("nevac", 0.0))
+        self.t_elapsed_min = float(snap.get(
+            "tmin", k * float(getattr(self.cfg, "step_minutes", 30.0))))
         self.history = self.history[:k]
         self._snapshots = {kk: v for kk, v in self._snapshots.items() if kk <= k}
         return True
@@ -140,9 +186,19 @@ class Simulator:
         self.first_ignition_step[:] = -1
         self.ign_buildup[:] = 0.0
         self.history.clear()
-        self._snapshots = {0: self._snapshot()}
         self.world.fuel.fload = self.world.fuel.fload0.copy()
         self.state.fload = self.world.fuel.fload0.copy()
+        # a reset run must REPRODUCE the first run bit for bit: the
+        # rng is reseeded (spotting draws) and the fuel moisture
+        # returns to its baseline (undo suppression/rain wetting)
+        self.world.fuel.fmoist = self._fmoist0.copy()
+        self._rng = np.random.default_rng(self.cfg.rng_seed)
+        self.exposure_person_steps = 0.0
+        self.response_capacity_steps = 0.0
+        self.population_evacuated = 0.0
+        self.world.value.vpop = self._vpop0.copy()
+        self.t_elapsed_min = 0.0
+        self._snapshots = {0: self._snapshot()}
 
     # -------------------------------------------------------------- transition
     def step(self, resource_override=None,
@@ -165,6 +221,29 @@ class Simulator:
         world = self.world
         meteo, topo, fuel = world.meteo, world.topo, world.fuel
         resource = resource_override if resource_override is not None else world.resource
+        self.last_applied_resource = resource   # cost model reads THIS
+        # EVACUATION: an ordered evacuation physically MOVES people
+        # out of the ordered cells (~5%/min at full tempo). The
+        # evacuated are SAFE: they leave vpop, so the exposure and
+        # J_pop terms stop counting them; the running total is kept
+        # for reporting.
+        _rev = getattr(resource, "revac", None)
+        if _rev is not None and float(np.max(_rev)) > 1e-6:
+            _vp = world.value.vpop
+            _fracv = np.clip(_rev, 0.0, 1.0) * min(
+                0.9, 0.05 * float(getattr(cfg, "step_minutes", 30.0)))
+            _moved = _vp * _fracv
+            _vp -= _moved
+            self.population_evacuated += float(
+                _moved.sum() * (cfg.cell_area_ha / 100.0))
+        # cost accumulators: exposure (persons in burning cells) and
+        # committed capacity, integrated over the steps
+        _cell_km2 = self.cfg.cell_area_ha / 100.0
+        self.exposure_person_steps += float(
+            (world.value.vpop * _cell_km2)[s.burning > 0.5].sum())
+        self.response_capacity_steps += float(
+            (resource.rcap * np.clip(resource.ravail, 0, 1)).sum())
+        self.t_elapsed_min += float(getattr(cfg, "step_minutes", 30.0))
 
         tscale = float(getattr(cfg, "step_minutes", 30.0)) / 30.0
         # terrain-modified wind: ridges are exposed (faster), valleys are
@@ -219,6 +298,14 @@ class Simulator:
         ros_peak = float(np.percentile(ros_ref, 99.5))
         n_sub = max(1, int(np.ceil(tscale - 1e-9)),
                     min(200, int(np.ceil(tscale * ros_peak - 1e-9))))
+        # SHADOW-RUN FIDELITY CAP: forecast clones set _substep_cap so
+        # a 45-min lookahead does not pay hundreds of substeps on fine
+        # grids; all candidates of a comparison share the same cap, so
+        # the RELATIVE ranking (which is all a forecast is used for)
+        # is preserved while the live run keeps full fidelity.
+        _scap = getattr(self, "_substep_cap", None)
+        if _scap:
+            n_sub = min(n_sub, int(_scap))
         sub = tscale / n_sub
 
         B_start = s.burning.copy()
@@ -298,10 +385,125 @@ class Simulator:
 
             # 3. fuel mass update (Eq. 49, 129 to 135), substep compounded
             f_burn = np.clip(self._b_base * (1.0 - fuel.fmoist), 0.0, 1.0)
+            _fb_ref = f_burn                     # reference-step scale
             if sub != 1.0:
                 f_burn = 1.0 - (1.0 - f_burn) ** sub
             combustion = Fload * B * f_burn
-            f_red_raw = fuel_reduction(resource, topo, I, cfg.suppression)
+            # AERIAL OPS WEATHER GATE: helicopters and tankers fly
+            # freely below 8 m/s, are derated linearly above, and are
+            # grounded at 20 m/s (a per-cell field, so a sheltered
+            # valley can still be flown while the ridge is not)
+            _airs = np.clip(1.0 - (np.asarray(meteo.wws, dtype=float)
+                                   - 8.0) / 12.0, 0.0, 1.0)
+            f_red_raw = fuel_reduction(resource, topo, I,
+                                       cfg.suppression, air_scale=_airs)
+            # suppression KNOCKDOWN: crews put flames out, they do not
+            # only remove fuel. A burning cell is quenched when the
+            # suppression PRESSURE (the eta product of Eq. 130, without
+            # the fuel-removal gain alpha_s) exceeds the knockdown
+            # threshold scaled by how fiercely the cell burns relative
+            # to a calm 0.10/step reference. Running heads in cured
+            # grass stay unquenchable (as in reality); moderate surface
+            # fire within reach of committed capacity goes out.
+            _press = f_red_raw / max(float(cfg.suppression.alpha_s),
+                                     1e-6)
+            _kn = float(getattr(cfg.suppression, "knockdown_ratio", 0.15))
+            if _kn > 0.0:
+                # fierceness scales with fuel burn rate AND the local
+                # fire intensity: a low-intensity smolder (mop-up) is
+                # easy to put out even in fast fuel, while a running
+                # high-intensity head stays unquenchable
+                _fierce = np.maximum(_fb_ref / 0.10, 0.2) * (
+                    0.3 + 0.7 * np.clip(I, 0.0, 1.0))
+                _quench = _press > _kn * _fierce
+                # dedicated-commitment knockdown: a burning cell with
+                # NEAR-FULL committed, available capacity on it is
+                # extinguished within the step (crews and bucket
+                # drops finish what they fully engage, regardless of
+                # road access) UNLESS the cell can still RUN: the
+                # local rate of spread is the discriminator, so the
+                # operational sequence is engage -> wet (ROS dies)
+                # -> extinguish, and a dry wind-driven head stays
+                # immune to direct attack until it is wetted
+                _quench |= ((resource.rcap
+                             > 0.7 * cfg.suppression.rcap_max)
+                            & (np.clip(resource.ravail, 0, 1) > 0.6)
+                            & (ros_ref < 1.0))
+                # PARAMETER CONSISTENCY: the wetting chain drives the
+                # fuel toward 0.35 moisture; a committed, SOAKED cell
+                # (>=0.30) cannot sustain flame regardless of its
+                # nominal ROS, so it goes out instead of burning to
+                # black while surrounded by water
+                _quench |= ((resource.rcap
+                             > 0.5 * cfg.suppression.rcap_max)
+                            & (np.clip(resource.ravail, 0, 1) > 0.5)
+                            & (fuel.fmoist >= 0.30))
+                B_next = B_next * (~_quench)
+            # WETTING: suppression is water/retardant, so engaged cells
+            # get WETTER, exactly like rain: moisture relaxes toward
+            # 0.35 at a rate set by the suppression pressure. This is
+            # what makes a held line HOLD (moist fuel refuses ignition,
+            # g_moist -> 0) and what makes even a grass fire quenchable
+            # once its fuel is wetted (its fierceness f_burn drops).
+            _wg = float(getattr(cfg.suppression, "wet_gain", 1.0))
+            if _wg > 0.0 and _press.max() > 1e-6:
+                _fm = fuel.fmoist
+                # COMMITTED FLOOR: on low-access ground (remote
+                # forest) the pressure product collapses through
+                # eta_reach x eta_eff and pure pressure-driven
+                # wetting stalls near the ambient moisture, so a
+                # contained fire smolders forever. Crews that are
+                # FULLY COMMITTED on a cell (near-full capacity,
+                # high availability) keep applying water no matter
+                # how bad the road is; their wetting rate is floored
+                # (scaled down by access, never to zero) so the
+                # engage -> wet -> ROS dies -> extinguish chain
+                # always completes on a contained fire.
+                # the WETTING floor engages at half commitment: a
+                # containment band ordered at moderate strength must
+                # still wet up before the front arrives, else a big
+                # open-terrain fire outruns its own line (the QUENCH
+                # threshold above stays at the stricter 0.7/0.6)
+                _cmt = ((resource.rcap
+                         > 0.5 * cfg.suppression.rcap_max)
+                        & (np.clip(resource.ravail, 0, 1) > 0.5))
+                _acc_w = np.clip(topo.access, 0.0, 1.0)
+                _raw_ = getattr(resource, "rair", None)
+                if _raw_ is not None:
+                    _acc_w = np.maximum(
+                        _acc_w, np.clip(_raw_, 0.0, 1.0) * _airs)
+                # floor calibrated to OPERATIONS, not to the 30-min
+                # reference: a committed crew hoses a 30 m cell wet
+                # in ~15 min (0.9 per reference step), scaled by the
+                # (air-aware) access. The old 0.12/ref was 0.4%/min:
+                # a running head outgrew it hopelessly.
+                _floor = 0.9 * _cmt * np.clip(
+                    2.0 * _acc_w, 0.2, 1.0)
+                _rate = np.maximum(np.clip(_press, 0.0, 1.0) * _wg,
+                                   _floor) * min(1.0, sub)
+                _fm += (np.maximum(_fm, 0.35) - _fm) * _rate
+            # COMMITTED LINE-BUILDING: crews/dozers fully committed
+            # to an UNBURNING cell clear its fuel at a floor rate no
+            # matter how weak the pressure product is (low access,
+            # long dispatch): the ordered containment band really
+            # gets DUG, so the break exists before the front arrives
+            # (the has_fuel gate then makes it unburnable ground)
+            _cut = None
+            _rc_ord = getattr(resource, "rcut", None)
+            if _kn > 0.0 and _rc_ord is not None:
+                _cmt_l = ((resource.rcap
+                           > 0.5 * cfg.suppression.rcap_max)
+                          & (np.clip(resource.ravail, 0, 1) > 0.5))
+                # dig ONLY where the LINE is ordered: protection
+                # rings and deployments must never scrape the ground
+                _cut = _cmt_l & (B < 0.5) & (_rc_ord > 0.5)
+            if _cut is not None:
+                # a committed dozer/handcrew clears a 30 m cell in
+                # ~30 min (0.6 per reference step); the old 0.05/ref
+                # needed 5+ hours per cell and no line ever closed
+                f_red_raw = np.where(_cut,
+                                     np.maximum(f_red_raw, 0.6),
+                                     f_red_raw)
             if sub != 1.0:
                 f_red_raw = 1.0 - (1.0 - f_red_raw) ** sub
             f_red = np.minimum(f_red_raw, Fload)

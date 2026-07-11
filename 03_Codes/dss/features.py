@@ -62,8 +62,38 @@ FEATURE_NAME = {k: nm for k, _, nm, _ in FEATURE_META}
 FEATURE_MEASURES = {k: ms for k, _, _, ms in FEATURE_META}
 
 
-def ten_features(sim, region, network=None) -> dict:
+# which OBSERVED channels each feature's extraction map consumes; the
+# features absent here read known priors / the weather service and carry
+# full confidence (thesis Layer 2: the (value, confidence) pair is the
+# complete interface between perception and reasoning)
+FEATURE_CHANNELS = {
+    "fire_intensity": ("burning", "intensity"),
+    "ignition_proximity": ("burning",),
+    "fuel_load": ("fload",),
+    "temporal_urgency": ("burning",),
+}
+
+
+def feature_confidence(network, region) -> dict:
+    """{feature: confidence in [0,1]}: each feature inherits the weakest
+    confidence of the observation channels its extraction consumes;
+    prior-driven features carry confidence one."""
+    if network is None:
+        return {k: 1.0 for k in FEATURE_ORDER}
+    cc = network.region_conf_components(region)
+    out = {}
+    for k in FEATURE_ORDER:
+        chs = FEATURE_CHANNELS.get(k)
+        out[k] = (min(float(cc[c]) for c in chs) if chs else 1.0)
+    return out
+
+
+def ten_features(sim, region, network=None, pool=None) -> dict:
     """Return {feature_name: value in [0,1]} for one agent region.
+
+    pool: the STAGED external resource layer (Layer 1). When given, z9
+    reads the staged pool (resources exist and are deployable); the
+    world's live resource field is the fallback.
 
     With a SensorNetwork the sensed state components (channels
     B, F_load, I, tau) come from the fused observation - stale or uncovered
@@ -143,9 +173,17 @@ def ten_features(sim, region, network=None) -> dict:
 
     # --- z9 suppression availability: deployable capacity present in the
     #     region vs the reference capacity over 20% of the cells
-    rcap = world.resource.rcap[sy, sx] * world.resource.ravail[sy, sx]
-    ref = max(cfg.suppression.rcap_max, 1e-6) * 0.2
-    z9 = float(np.clip(rcap.mean() / ref, 0.0, 1.0))
+    # z9 measures SUPPLY, not average field strength: the staged
+    # deployable capacity in the region against a reference need of
+    # 5% coverage at full capacity (a depot serving a district reads
+    # ~0.4-0.8, an empty wilderness region reads ~0). A regional MEAN
+    # would dilute a full depot over thousands of cells to ~0.03 and
+    # falsely starve suppression feasibility.
+    _res = pool if pool is not None else world.resource
+    supply = float((_res.rcap[sy, sx] * _res.ravail[sy, sx]).sum())
+    need = max(cfg.suppression.rcap_max, 1e-6) * 0.05 * max(
+        (sy.stop - sy.start) * (sx.stop - sx.start), 1)
+    z9 = float(np.clip(supply / need, 0.0, 1.0))
 
     # --- z10 temporal urgency: fire at/near the region plus how much of the
     #     region is actively burning right now

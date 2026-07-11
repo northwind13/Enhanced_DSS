@@ -78,7 +78,17 @@ class SpreadParams:
                                     # neighbour advances at exactly R_spread.
     buildup_leak: float = 0.05      # influence buildup leak per reference step:
                                     # heating dissipates when the source disappears
-    eps_fuel: float = 1.0e-4        # extinction fuel threshold (Eq. 44)
+    eps_fuel: float = 0.03          # extinction fuel threshold: below a
+                                    # few percent of the nominal load a
+                                    # cell cannot sustain flaming
+                                    # combustion. The fuel update is
+                                    # GEOMETRIC (F <- F(1-f_burn)), so the
+                                    # old 1e-4 made every ignited cell
+                                    # burn for days (pine ~32 h, hardwood
+                                    # ~97 h) and made containment lines
+                                    # unreachable; 0.03 gives realistic
+                                    # burnout (grass ~75 min) and lets a
+                                    # pressed line become a true break
     diagonal_distance_weighting: bool = True   # divide diagonal influence by sqrt(2)
     slope_clip_rad: float = 1.40    # clip terrain slope to avoid tan() blow up near 90 deg
     aniso_wind_full: float = 6.0    # wind speed (m/s) for fully directional spread;
@@ -120,6 +130,15 @@ class SuppressionParams:
                                     # effectiveness halves after ~23 min delay,
                                     # matching initial-attack response curves
     gamma_I: float = 2.0            # intensity resistance factor (Eq. 134)
+    wet_gain: float = 2.0           # suppression wets the fuel: moisture
+                                    # relaxes toward 0.35 at pressure x
+                                    # this gain (0 disables wetting)
+    knockdown_ratio: float = 0.15   # a burning cell is quenched when the
+                                    # suppression pressure (eta product of
+                                    # Eq. 130 without alpha_s) exceeds this
+                                    # threshold scaled by the cell's burn
+                                    # fierceness (f_burn / 0.10 per step);
+                                    # 0 disables knockdown
     rcap_max: float = 1.0           # reference maximum suppression capacity (Eq. 131)
 
 
@@ -167,11 +186,21 @@ class CostParams:
     """
 
     # non-negative priority weights of the five normalized terms
+    # J_burn normalization: burned area is charged against a MAJOR-FIRE
+    # reference (this fraction of the burnable area), not the whole map.
+    # Against the whole map a 600-cell forest fire scored ~0.06 while a
+    # committed response cost 0.2*j_resp — the optimizer read "letting
+    # the forest burn is cheaper than fighting it", which is wrong.
+    burn_reference_fraction: float = 0.05
     w_burn: float = 1.0     # burned area (land and ecological loss)
     w_asset: float = 1.0    # asset loss (structures + critical infrastructure)
     w_pop: float = 1.0      # population exposure (life safety)
-    w_resp: float = 1.0     # response cost (committed capacity)
-    w_delay: float = 1.0    # response delay (timeliness)
+    w_resp: float = 0.2     # response cost (committed capacity). It is
+                            # a SECONDARY objective: fielding the whole
+                            # fleet during a major fire is normal and
+                            # must never outweigh saving the town, so
+                            # its default weight is a tie-breaker scale
+    w_delay: float = 0.2    # response delay (timeliness), secondary
 
     # normalization references and safeguards
     population_at_risk_fraction: float = 0.02  # rho_risk; casualty share of exposed

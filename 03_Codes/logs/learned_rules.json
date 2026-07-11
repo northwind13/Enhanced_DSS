@@ -1,0 +1,975 @@
+{
+ "profiles": {
+  "full": {
+   "born": [
+    {
+     "name": "A1",
+     "antecedents": [
+      [
+       "asset_exposure_risk",
+       "VH"
+      ],
+      [
+       "suppression_feasibility",
+       "VH"
+      ]
+     ],
+     "consequents": [
+      [
+       "asset_protection",
+       0.6541598560013027
+      ],
+      [
+       "evacuation",
+       0.43220390269018194
+      ]
+     ],
+     "note": "adaptation-born: resolution increase (instantiated antecedent cell) | restored from the learned store | restored from the learned store | evFIS: consequent -0.05 | restored from the learned store | evFIS: consequent -0.05 | evFIS: consequent -0.05 | restored from the learned store | restored from the learned store | restored from the learned store | restored from the learned store | restored from the learned store | restored from the learned store | restored from the learned store | restored from the learned store | restored from the learned store | restored from the learned store",
+     "strength": 2507.2470788326373
+    },
+    {
+     "name": "G2",
+     "antecedents": [
+      [
+       "asset_exposure_risk",
+       "VH"
+      ],
+      [
+       "evacuation_pressure",
+       "VH"
+      ]
+     ],
+     "consequents": [
+      [
+       "asset_protection",
+       0.9500000000000001
+      ],
+      [
+       "evacuation",
+       0.7200000000000001
+      ]
+     ],
+     "note": "adaptation-born: generative (template), gates G1-G4 | restored from the learned store | restored from the learned store | evFIS: consequent +0.05 | evFIS: consequent +0.05 | restored from the learned store | restored from the learned store | restored from the learned store | restored from the learned store | restored from the learned store | restored from the learned store | restored from the learned store | restored from the learned store | restored from the learned store | restored from the learned store | restored from the learned store",
+     "strength": 1509.2821929178297
+    },
+    {
+     "name": "G8",
+     "antecedents": [
+      [
+       "evacuation_pressure",
+       "VH"
+      ],
+      [
+       "intervention_urgency",
+       "VH"
+      ]
+     ],
+     "consequents": [
+      [
+       "evacuation",
+       0.74
+      ],
+      [
+       "resource_deployment",
+       0.03
+      ]
+     ],
+     "note": "adaptation-born: generative (template), gates G1-G4 | restored from the learned store | restored from the learned store | restored from the learned store | restored from the learned store | restored from the learned store | restored from the learned store | restored from the learned store | restored from the learned store | restored from the learned store | restored from the learned store | restored from the learned store",
+     "strength": 860.7656225331239
+    },
+    {
+     "name": "G10",
+     "antecedents": [
+      [
+       "intervention_urgency",
+       "VH"
+      ],
+      [
+       "fire_threat_level",
+       "VH"
+      ]
+     ],
+     "consequents": [
+      [
+       "resource_deployment",
+       0.13
+      ],
+      [
+       "suppression_effort",
+       0.02
+      ]
+     ],
+     "note": "adaptation-born: generative (template), gates G1-G4 | restored from the learned store | restored from the learned store | restored from the learned store | restored from the learned store | restored from the learned store | restored from the learned store | restored from the learned store | restored from the learned store | restored from the learned store | restored from the learned store | restored from the learned store",
+     "strength": 824.4830651204886
+    },
+    {
+     "name": "G9",
+     "antecedents": [
+      [
+       "evacuation_pressure",
+       "VH"
+      ],
+      [
+       "fire_threat_level",
+       "VH"
+      ]
+     ],
+     "consequents": [
+      [
+       "evacuation",
+       0.74
+      ],
+      [
+       "suppression_effort",
+       0.02
+      ]
+     ],
+     "note": "adaptation-born: generative (template), gates G1-G4 | restored from the learned store | restored from the learned store | restored from the learned store | restored from the learned store | restored from the learned store | restored from the learned store | restored from the learned store | restored from the learned store | restored from the learned store | restored from the learned store | restored from the learned store",
+     "strength": 777.9098536187178
+    },
+    {
+     "name": "G4",
+     "antecedents": [
+      [
+       "asset_exposure_risk",
+       "VH"
+      ],
+      [
+       "evacuation_pressure",
+       "VL"
+      ]
+     ],
+     "consequents": [
+      [
+       "asset_protection",
+       0.8
+      ],
+      [
+       "evacuation",
+       0.36
+      ]
+     ],
+     "note": "adaptation-born: generative (template), gates G1-G4 | restored from the learned store | restored from the learned store | restored from the learned store | restored from the learned store | restored from the learned store | restored from the learned store | restored from the learned store | restored from the learned store | restored from the learned store | restored from the learned store | restored from the learned store",
+     "strength": 653.5766528609968
+    },
+    {
+     "name": "G7",
+     "antecedents": [
+      [
+       "asset_exposure_risk",
+       "VH"
+      ],
+      [
+       "fire_threat_level",
+       "VH"
+      ]
+     ],
+     "consequents": [
+      [
+       "asset_protection",
+       0.85
+      ],
+      [
+       "suppression_effort",
+       0.03
+      ]
+     ],
+     "note": "adaptation-born: generative (template), gates G1-G4 | restored from the learned store | restored from the learned store | restored from the learned store | restored from the learned store | restored from the learned store | restored from the learned store | restored from the learned store | restored from the learned store | restored from the learned store | restored from the learned store | restored from the learned store",
+     "strength": 639.4462236620942
+    },
+    {
+     "name": "G13",
+     "antecedents": [
+      [
+       "asset_exposure_risk",
+       "VH"
+      ],
+      [
+       "fire_threat_level",
+       "M"
+      ]
+     ],
+     "consequents": [
+      [
+       "asset_protection",
+       0.96
+      ],
+      [
+       "suppression_effort",
+       0.71
+      ]
+     ],
+     "note": "adaptation-born: generative (template), gates G1-G4 | restored from the learned store | restored from the learned store | restored from the learned store | restored from the learned store | restored from the learned store | restored from the learned store | restored from the learned store | restored from the learned store | restored from the learned store | restored from the learned store | restored from the learned store",
+     "strength": 555.3139545836311
+    },
+    {
+     "name": "G1",
+     "antecedents": [
+      [
+       "asset_exposure_risk",
+       "VH"
+      ],
+      [
+       "intervention_urgency",
+       "VL"
+      ]
+     ],
+     "consequents": [
+      [
+       "asset_protection",
+       0.8
+      ],
+      [
+       "resource_deployment",
+       0.38
+      ]
+     ],
+     "note": "adaptation-born: generative (template), gates G1-G4 | restored from the learned store | restored from the learned store | restored from the learned store | restored from the learned store | restored from the learned store | restored from the learned store | restored from the learned store | restored from the learned store | restored from the learned store | restored from the learned store | restored from the learned store | restored from the learned store | restored from the learned store",
+     "strength": 400.6665300222958
+    },
+    {
+     "name": "G6",
+     "antecedents": [
+      [
+       "asset_exposure_risk",
+       "VH"
+      ],
+      [
+       "fire_threat_level",
+       "VL"
+      ]
+     ],
+     "consequents": [
+      [
+       "asset_protection",
+       0.85
+      ],
+      [
+       "suppression_effort",
+       0.28
+      ]
+     ],
+     "note": "adaptation-born: generative (template), gates G1-G4 | restored from the learned store | restored from the learned store | restored from the learned store | restored from the learned store | restored from the learned store | restored from the learned store | restored from the learned store | restored from the learned store | restored from the learned store | restored from the learned store | restored from the learned store",
+     "strength": 368.46638450770786
+    },
+    {
+     "name": "G15",
+     "antecedents": [
+      [
+       "fire_threat_level",
+       "VH"
+      ],
+      [
+       "asset_exposure_risk",
+       "M"
+      ]
+     ],
+     "consequents": [
+      [
+       "suppression_effort",
+       0.62
+      ],
+      [
+       "asset_protection",
+       0.51
+      ]
+     ],
+     "note": "adaptation-born: generative (template), gates G1-G4 | restored from the learned store | restored from the learned store | restored from the learned store | restored from the learned store | restored from the learned store | restored from the learned store | restored from the learned store | restored from the learned store | restored from the learned store | restored from the learned store | restored from the learned store",
+     "strength": 262.9457114252949
+    },
+    {
+     "name": "G14",
+     "antecedents": [
+      [
+       "fire_threat_level",
+       "VH"
+      ],
+      [
+       "intervention_urgency",
+       "M"
+      ]
+     ],
+     "consequents": [
+      [
+       "suppression_effort",
+       0.62
+      ],
+      [
+       "resource_deployment",
+       0.52
+      ]
+     ],
+     "note": "adaptation-born: generative (template), gates G1-G4 | restored from the learned store | restored from the learned store | restored from the learned store | restored from the learned store | restored from the learned store | restored from the learned store | restored from the learned store | restored from the learned store | restored from the learned store | restored from the learned store | restored from the learned store",
+     "strength": 249.24186168097808
+    },
+    {
+     "name": "G19",
+     "antecedents": [
+      [
+       "evacuation_pressure",
+       "VH"
+      ],
+      [
+       "fire_threat_level",
+       "M"
+      ]
+     ],
+     "consequents": [
+      [
+       "evacuation",
+       0.72
+      ],
+      [
+       "suppression_effort",
+       0.35
+      ]
+     ],
+     "note": "adaptation-born: generative (template), gates G1-G4 | restored from the learned store | restored from the learned store | restored from the learned store | restored from the learned store | restored from the learned store | restored from the learned store | restored from the learned store | restored from the learned store | restored from the learned store | restored from the learned store",
+     "strength": 201.60422527865583
+    },
+    {
+     "name": "G20",
+     "antecedents": [
+      [
+       "intervention_urgency",
+       "VH"
+      ],
+      [
+       "fire_threat_level",
+       "M"
+      ]
+     ],
+     "consequents": [
+      [
+       "resource_deployment",
+       0.44
+      ],
+      [
+       "suppression_effort",
+       0.33
+      ]
+     ],
+     "note": "adaptation-born: generative (template), gates G1-G4 | restored from the learned store | restored from the learned store | restored from the learned store | restored from the learned store | restored from the learned store | restored from the learned store | restored from the learned store | restored from the learned store | restored from the learned store | restored from the learned store",
+     "strength": 184.54247741718873
+    },
+    {
+     "name": "G22",
+     "antecedents": [
+      [
+       "asset_exposure_risk",
+       "VH"
+      ],
+      [
+       "intervention_urgency",
+       "M"
+      ]
+     ],
+     "consequents": [
+      [
+       "asset_protection",
+       0.95
+      ],
+      [
+       "resource_deployment",
+       0.41
+      ]
+     ],
+     "note": "adaptation-born: generative (template), gates G1-G4 | restored from the learned store | restored from the learned store | restored from the learned store | restored from the learned store | restored from the learned store | restored from the learned store | restored from the learned store | restored from the learned store | restored from the learned store",
+     "strength": 161.397315136688
+    },
+    {
+     "name": "G23",
+     "antecedents": [
+      [
+       "evacuation_pressure",
+       "H"
+      ],
+      [
+       "intervention_urgency",
+       "VH"
+      ]
+     ],
+     "consequents": [
+      [
+       "evacuation",
+       0.76
+      ],
+      [
+       "resource_deployment",
+       0.26
+      ]
+     ],
+     "note": "adaptation-born: generative (template), gates G1-G4 | restored from the learned store | restored from the learned store | restored from the learned store | restored from the learned store | restored from the learned store | restored from the learned store | restored from the learned store | restored from the learned store | restored from the learned store",
+     "strength": 150.52533572021326
+    },
+    {
+     "name": "G18",
+     "antecedents": [
+      [
+       "evacuation_pressure",
+       "VH"
+      ],
+      [
+       "fire_threat_level",
+       "H"
+      ]
+     ],
+     "consequents": [
+      [
+       "evacuation",
+       0.69
+      ],
+      [
+       "suppression_effort",
+       0.43
+      ]
+     ],
+     "note": "adaptation-born: generative (template), gates G1-G4 | restored from the learned store | restored from the learned store | restored from the learned store | restored from the learned store | restored from the learned store | restored from the learned store | restored from the learned store | restored from the learned store | restored from the learned store | restored from the learned store",
+     "strength": 135.518770038139
+    },
+    {
+     "name": "G21",
+     "antecedents": [
+      [
+       "intervention_urgency",
+       "VL"
+      ],
+      [
+       "evacuation_pressure",
+       "VL"
+      ]
+     ],
+     "consequents": [
+      [
+       "resource_deployment",
+       0.48
+      ],
+      [
+       "evacuation",
+       0.36
+      ]
+     ],
+     "note": "adaptation-born: generative (template), gates G1-G4 | restored from the learned store | restored from the learned store | restored from the learned store | restored from the learned store | restored from the learned store | restored from the learned store | restored from the learned store | restored from the learned store | restored from the learned store",
+     "strength": 119.23626524788537
+    },
+    {
+     "name": "G24",
+     "antecedents": [
+      [
+       "evacuation_pressure",
+       "H"
+      ],
+      [
+       "fire_threat_level",
+       "M"
+      ]
+     ],
+     "consequents": [
+      [
+       "evacuation",
+       0.77
+      ],
+      [
+       "suppression_effort",
+       0.09
+      ]
+     ],
+     "note": "adaptation-born: generative (template), gates G1-G4 | restored from the learned store | restored from the learned store | restored from the learned store | restored from the learned store | restored from the learned store | restored from the learned store | restored from the learned store | restored from the learned store | restored from the learned store",
+     "strength": 102.16042532155873
+    },
+    {
+     "name": "A2",
+     "antecedents": [
+      [
+       "suppression_feasibility",
+       "VH"
+      ],
+      [
+       "asset_exposure_risk",
+       "M"
+      ]
+     ],
+     "consequents": [
+      [
+       "asset_protection",
+       0.4716467526105309
+      ],
+      [
+       "evacuation",
+       0.3924245109445421
+      ]
+     ],
+     "note": "adaptation-born: resolution increase (instantiated antecedent cell) | restored from the learned store | restored from the learned store | restored from the learned store",
+     "strength": 124.39491450986134
+    },
+    {
+     "name": "G17",
+     "antecedents": [
+      [
+       "intervention_urgency",
+       "VL"
+      ],
+      [
+       "fire_threat_level",
+       "H"
+      ]
+     ],
+     "consequents": [
+      [
+       "resource_deployment",
+       0.51
+      ],
+      [
+       "suppression_effort",
+       0.39
+      ]
+     ],
+     "note": "adaptation-born: generative (template), gates G1-G4 | restored from the learned store | restored from the learned store | restored from the learned store | restored from the learned store | restored from the learned store | restored from the learned store | restored from the learned store | restored from the learned store | restored from the learned store | restored from the learned store",
+     "strength": 72.20079934677632
+    },
+    {
+     "name": "G20",
+     "antecedents": [
+      [
+       "evacuation_pressure",
+       "VH"
+      ],
+      [
+       "fire_threat_level",
+       "VL"
+      ]
+     ],
+     "consequents": [
+      [
+       "evacuation",
+       0.67
+      ],
+      [
+       "suppression_effort",
+       0.29
+      ]
+     ],
+     "note": "adaptation-born: generative (template), gates G1-G4 | restored from the learned store | restored from the learned store | restored from the learned store | restored from the learned store | restored from the learned store | restored from the learned store",
+     "strength": 73.12566540787329
+    },
+    {
+     "name": "G22",
+     "antecedents": [
+      [
+       "evacuation_pressure",
+       "VL"
+      ],
+      [
+       "fire_threat_level",
+       "VL"
+      ]
+     ],
+     "consequents": [
+      [
+       "evacuation",
+       0.42
+      ],
+      [
+       "suppression_effort",
+       0.16
+      ]
+     ],
+     "note": "adaptation-born: generative (template), gates G1-G4 | restored from the learned store | restored from the learned store | restored from the learned store | restored from the learned store",
+     "strength": 66.14451637775824
+    },
+    {
+     "name": "G23",
+     "antecedents": [
+      [
+       "asset_exposure_risk",
+       "M"
+      ],
+      [
+       "fire_threat_level",
+       "VL"
+      ]
+     ],
+     "consequents": [
+      [
+       "asset_protection",
+       0.46
+      ],
+      [
+       "suppression_effort",
+       0.22
+      ]
+     ],
+     "note": "adaptation-born: generative (template), gates G1-G4 | restored from the learned store | restored from the learned store | restored from the learned store",
+     "strength": 48.76909875474146
+    },
+    {
+     "name": "G21",
+     "antecedents": [
+      [
+       "intervention_urgency",
+       "VL"
+      ],
+      [
+       "fire_threat_level",
+       "M"
+      ]
+     ],
+     "consequents": [
+      [
+       "resource_deployment",
+       0.48
+      ],
+      [
+       "suppression_effort",
+       0.34
+      ]
+     ],
+     "note": "adaptation-born: generative (template), gates G1-G4 | restored from the learned store | restored from the learned store | restored from the learned store | restored from the learned store | restored from the learned store",
+     "strength": 47.70529243850429
+    },
+    {
+     "name": "G24",
+     "antecedents": [
+      [
+       "asset_exposure_risk",
+       "M"
+      ],
+      [
+       "intervention_urgency",
+       "VL"
+      ]
+     ],
+     "consequents": [
+      [
+       "asset_protection",
+       0.57
+      ],
+      [
+       "resource_deployment",
+       0.31
+      ]
+     ],
+     "note": "adaptation-born: generative (template), gates G1-G4 | restored from the learned store | restored from the learned store",
+     "strength": 22.95300397747216
+    },
+    {
+     "name": "A3",
+     "antecedents": [
+      [
+       "suppression_feasibility",
+       "VL"
+      ],
+      [
+       "asset_exposure_risk",
+       "M"
+      ]
+     ],
+     "consequents": [
+      [
+       "asset_protection",
+       0.4733613511096679
+      ],
+      [
+       "evacuation",
+       0.39319608026915376
+      ]
+     ],
+     "note": "adaptation-born: resolution increase (instantiated antecedent cell) | restored from the learned store | restored from the learned store | restored from the learned store",
+     "strength": 10.603086919406284
+    },
+    {
+     "name": "G27",
+     "antecedents": [
+      [
+       "evacuation_pressure",
+       "VL"
+      ],
+      [
+       "fire_threat_level",
+       "M"
+      ]
+     ],
+     "consequents": [
+      [
+       "evacuation",
+       0.46
+      ],
+      [
+       "suppression_effort",
+       0.34
+      ]
+     ],
+     "note": "adaptation-born: generative (template), gates G1-G4 | restored from the learned store",
+     "strength": 20.60963755487951
+    },
+    {
+     "name": "G26",
+     "antecedents": [
+      [
+       "fire_threat_level",
+       "VL"
+      ],
+      [
+       "intervention_urgency",
+       "VL"
+      ]
+     ],
+     "consequents": [
+      [
+       "suppression_effort",
+       0.1
+      ],
+      [
+       "resource_deployment",
+       0.0
+      ]
+     ],
+     "note": "adaptation-born: generative (template), gates G1-G4 | restored from the learned store | restored from the learned store",
+     "strength": 15.667275949091893
+    },
+    {
+     "name": "G25",
+     "antecedents": [
+      [
+       "asset_exposure_risk",
+       "M"
+      ],
+      [
+       "evacuation_pressure",
+       "VL"
+      ]
+     ],
+     "consequents": [
+      [
+       "asset_protection",
+       0.1
+      ],
+      [
+       "evacuation",
+       0.0
+      ]
+     ],
+     "note": "adaptation-born: generative (template), gates G1-G4 | restored from the learned store | restored from the learned store",
+     "strength": 19.709123865813527
+    },
+    {
+     "name": "G28",
+     "antecedents": [
+      [
+       "intervention_urgency",
+       "VH"
+      ],
+      [
+       "evacuation_pressure",
+       "VL"
+      ]
+     ],
+     "consequents": [
+      [
+       "resource_deployment",
+       0.67
+      ],
+      [
+       "evacuation",
+       0.51
+      ]
+     ],
+     "note": "adaptation-born: generative (template), gates G1-G4",
+     "strength": 1.82826368420315
+    }
+   ],
+   "tuned": {
+    "R30": [
+     [
+      "asset_protection",
+      1.0
+     ],
+     [
+      "containment_line",
+      0.8000000000000003
+     ]
+    ],
+    "R31": [
+     [
+      "containment_line",
+      0.49999999999999994
+     ]
+    ],
+    "R34": [
+     [
+      "resource_deployment",
+      1.0
+     ]
+    ],
+    "R41": [
+     [
+      "suppression_effort",
+      0.85
+     ]
+    ]
+   }
+  },
+  "minimal": {
+   "born": [
+    {
+     "name": "G1",
+     "antecedents": [
+      [
+       "asset_exposure_risk",
+       "VH"
+      ],
+      [
+       "intervention_urgency",
+       "VL"
+      ]
+     ],
+     "consequents": [
+      [
+       "asset_protection",
+       0.71
+      ],
+      [
+       "resource_deployment",
+       0.28
+      ]
+     ],
+     "note": "adaptation-born: generative (template), gates G1-G4",
+     "strength": 60.30262752942496
+    },
+    {
+     "name": "A1",
+     "antecedents": [
+      [
+       "suppression_feasibility",
+       "VH"
+      ],
+      [
+       "asset_exposure_risk",
+       "VH"
+      ]
+     ],
+     "consequents": [
+      [
+       "asset_protection",
+       0.7513117409208919
+      ],
+      [
+       "evacuation",
+       0.5216645519442533
+      ]
+     ],
+     "note": "adaptation-born: resolution increase (instantiated antecedent cell)",
+     "strength": 244.26475863282013
+    },
+    {
+     "name": "G2",
+     "antecedents": [
+      [
+       "asset_exposure_risk",
+       "H"
+      ],
+      [
+       "evacuation_pressure",
+       "H"
+      ]
+     ],
+     "consequents": [
+      [
+       "asset_protection",
+       0.76
+      ],
+      [
+       "evacuation",
+       0.58
+      ]
+     ],
+     "note": "adaptation-born: generative (template), gates G1-G4",
+     "strength": 98.60209641036516
+    },
+    {
+     "name": "A2",
+     "antecedents": [
+      [
+       "suppression_feasibility",
+       "VH"
+      ],
+      [
+       "asset_exposure_risk",
+       "H"
+      ]
+     ],
+     "consequents": [
+      [
+       "asset_protection",
+       0.6577274425612012
+      ],
+      [
+       "evacuation",
+       0.5826072794981721
+      ]
+     ],
+     "note": "adaptation-born: resolution increase (instantiated antecedent cell)",
+     "strength": 59.81411227444617
+    },
+    {
+     "name": "A3",
+     "antecedents": [
+      [
+       "suppression_feasibility",
+       "VH"
+      ],
+      [
+       "asset_exposure_risk",
+       "M"
+      ]
+     ],
+     "consequents": [
+      [
+       "asset_protection",
+       0.5950359045000068
+      ],
+      [
+       "evacuation",
+       0.582706173325068
+      ]
+     ],
+     "note": "adaptation-born: resolution increase (instantiated antecedent cell)",
+     "strength": 38.96969652798642
+    },
+    {
+     "name": "G3",
+     "antecedents": [
+      [
+       "asset_exposure_risk",
+       "VH"
+      ],
+      [
+       "intervention_urgency",
+       "VH"
+      ]
+     ],
+     "consequents": [
+      [
+       "asset_protection",
+       0.96
+      ],
+      [
+       "resource_deployment",
+       0.83
+      ]
+     ],
+     "note": "adaptation-born: generative (template), gates G1-G4",
+     "strength": 19.369532641771446
+    }
+   ],
+   "tuned": {
+    "R20": [
+     [
+      "resource_deployment",
+      1.0
+     ]
+    ]
+   }
+  }
+ }
+}

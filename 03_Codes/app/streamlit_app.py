@@ -88,10 +88,11 @@ def _resize_world(w: World, nx2: int, ny2: int) -> World:
                         fload0=R(w.fuel.fload0))
     w2.value = ValueLayer(vbld=R(w.value.vbld), vcrit=R(w.value.vcrit),
                           vpop=R(w.value.vpop), vevac=R(w.value.vevac))
-    w2.resource = ResourceLayer(rcap=R(w.resource.rcap),
-                                ravail=R(w.resource.ravail),
-                                reff=R(w.resource.reff),
-                                rtime=R(w.resource.rtime))
+    w2.resource = ResourceLayer(
+        rcap=R(w.resource.rcap), ravail=R(w.resource.ravail),
+        reff=R(w.resource.reff), rtime=R(w.resource.rtime),
+        rair=(None if getattr(w.resource, "rair", None) is None
+              else R(w.resource.rair)))
     if getattr(w, "roads", None) is not None:
         w2.roads = R(w.roads)
     sx, sy = nx2 / nx1, ny2 / ny1
@@ -111,6 +112,22 @@ def _new_simulator(world: World) -> None:
     st.session_state.canvas_key = st.session_state.get("canvas_key", 0) + 1
     st.session_state.map_version = st.session_state.get("map_version", 0) + 1
     st.session_state.sim_applied = 0
+    # a NEW MAP invalidates the whole DSS setup: sensors and depots
+    # carry coordinates of the old terrain, so everything is
+    # cleared and 'Apply decisions' drops to OFF (a fire RESET, in
+    # contrast, keeps the infrastructure and clears only the
+    # decisions)
+    for _k in ("dss_sensors", "dss_sens_edit", "dss_network",
+               "dss_net_sig", "dss_sensors_draw", "dss_res_items",
+               "dss_res_base", "dss_res_base_v", "dss_res_sig",
+               "dss_res_why", "res_edit", "dss_depots_draw",
+               "dss_suggest_why"):
+        st.session_state.pop(_k, None)
+    st.session_state["dss_apply"] = False
+    try:
+        _reset_dss_state(drop_engine=True)
+    except Exception:
+        pass
 
 
 def _ensure_state() -> None:
@@ -158,6 +175,28 @@ def _restore_snapshot() -> None:
     w.roads = None if s["roads"] is None else s["roads"].copy()
     w.assets[:] = s["assets"]; w.ignitions[:] = s["ignitions"]
     st.session_state.sim.reset(); st.session_state.cost_series = []
+    _reset_dss_state()
+
+
+def _reset_dss_state(drop_engine: bool = False) -> None:
+    """A fire reset clears the DECISION state (gating priors, feature
+    histories, per-run transients) but the engine SURVIVES: learned
+    rules, membership moves and the RL Q-table are knowledge, not
+    decisions, and persist across fires. drop_engine=True (map
+    regeneration) discards the engine too."""
+    for _k in list(st.session_state.keys()):
+        if _k.startswith(("l3_gate_", "dss_featprev_")):
+            del st.session_state[_k]
+    _eng_fr = st.session_state.get("dss_engine")
+    if drop_engine or _eng_fr is None:
+        for _k in ("dss_engine", "dss_engine_sig"):
+            st.session_state.pop(_k, None)
+    else:
+        try:
+            _eng_fr.new_fire()
+        except Exception:
+            for _k in ("dss_engine", "dss_engine_sig"):
+                st.session_state.pop(_k, None)
 
 
 def _record_costs() -> None:
@@ -168,32 +207,91 @@ def _fit_scale(nx) -> int:
     return int(max(4, min(16, 900 // max(nx, 1))))
 
 
+_IV_COLOR = {"suppression_effort": "#2878ff",
+             "resource_deployment": "#9aa0a6",
+             "containment_line": "#96501e",
+             "asset_protection": "#28dc5a",
+             "evacuation": "#ff8c00",
+             "public_warning": "#e6c400"}
+
+
+def _iv_bar(label: str, value: float, color: str) -> str:
+    """One colored intensity bar (the intervention palette matches
+    the map icons and the legend)."""
+    v = max(0.0, min(1.0, float(value)))
+    return (
+        "<div style='margin:3px 0'>"
+        f"<span style='display:inline-block;width:11px;height:11px;"
+        f"background:{color};border-radius:2px;margin-right:6px'>"
+        "</span>"
+        f"<span style='font-size:0.86em'>{label}: "
+        f"<b>{v:.2f}</b></span>"
+        "<div style='background:#8882;border-radius:3px;height:7px;"
+        "margin-top:2px'>"
+        f"<div style='width:{v * 100:.0f}%;background:{color};"
+        "height:7px;border-radius:3px'></div></div></div>")
+
+
+def _legend_swatch(hexc: str, glyph: str, px: int = 13) -> str:
+    """One legend swatch that mimics the MAP icon of the item."""
+    base = (f"width:{px}px;height:{px}px;display:inline-block;"
+            "flex:none;box-sizing:border-box;")
+    if glyph == "sq":
+        return (f"<span style='{base}background:{hexc};"
+                "border:1px solid #555'></span>")
+    if glyph == "dot":
+        return (f"<span style='{base}background:{hexc};"
+                "border:1px solid #444;border-radius:50%'></span>")
+    if glyph == "ring":
+        return (f"<span style='{base}border:2.5px solid {hexc};"
+                "border-radius:50%;background:transparent;"
+                "box-shadow:0 0 0 1px #7773'></span>")
+    if glyph == "box":
+        return (f"<span style='{base}border:2.5px solid {hexc};"
+                "background:transparent'></span>")
+    if glyph == "tri":
+        h = px
+        return ("<span style='display:inline-block;flex:none;width:0;"
+                f"height:0;border-left:{h // 2}px solid transparent;"
+                f"border-right:{h // 2}px solid transparent;"
+                f"border-bottom:{h}px solid {hexc};"
+                "filter:drop-shadow(0 0 1px #555)'></span>")
+    # literal text badge (e.g. the S/D/C/P/E/W order chip)
+    return ("<span style='display:inline-block;flex:none;"
+            f"background:#000c;color:{hexc};font-size:0.75em;"
+            "padding:0 3px;border-radius:2px;font-family:monospace'>"
+            f"{glyph}</span>")
+
+
 def legend_html(horizontal: bool = False) -> str:
     groups = {}
-    for grp, lab, hexc in viz.legend_entries():
-        groups.setdefault(grp, []).append((lab, hexc))
+    for grp, lab, hexc, glyph in viz.legend_entries():
+        groups.setdefault(grp, []).append((lab, hexc, glyph))
     if horizontal:
-        html = ("<div style='display:flex;flex-wrap:wrap;gap:4px 14px;"
-                "align-items:center;font-size:0.8em;margin-top:2px'>")
+        # one line per CATEGORY: the group name anchors the row and
+        # its items stay together (wrapping within the row only)
+        html = "<div style='font-size:0.8em;margin-top:2px'>"
         for grp, items in groups.items():
-            html += (f"<span style='font-weight:600;margin-right:2px'>"
-                     f"{grp}:</span>")
-            for lab, hexc in items:
+            html += ("<div style='display:flex;flex-wrap:wrap;"
+                     "gap:3px 12px;align-items:center;margin:2px 0;"
+                     "padding:1px 0;border-bottom:1px solid #8882'>"
+                     f"<span style='font-weight:600;min-width:110px'>"
+                     f"{grp}</span>")
+            for lab, hexc, glyph in items:
                 html += ("<span style='display:inline-flex;align-items:"
-                         "center;gap:4px;margin-right:6px'>"
-                         f"<span style='width:11px;height:11px;background:"
-                         f"{hexc};border:1px solid #555;display:inline-"
-                         "block'></span>"
-                         f"<span>{lab}</span></span>")
+                         "center;gap:4px'>"
+                         + _legend_swatch(hexc, glyph, px=11)
+                         + f"<span>{lab}</span></span>")
+            html += "</div>"
         return html + "</div>"
     html = "<div style='font-size:0.9em'>"
     for grp, items in groups.items():
         html += f"<div style='font-weight:600;margin:6px 0 2px'>{grp}</div>"
-        for lab, hexc in items:
-            html += ("<div style='display:flex;align-items:center;gap:6px;margin:1px 0'>"
-                     f"<span style='width:14px;height:14px;background:{hexc};"
-                     "border:1px solid #555;display:inline-block;flex:none'></span>"
-                     f"<span>{lab}</span></div>")
+        for lab, hexc, glyph in items:
+            html += ("<div style='display:flex;align-items:center;"
+                     "gap:6px;margin:1px 0'>"
+                     + _legend_swatch(hexc, glyph)
+                     + f"<span>{lab}</span></div>")
     return html + "</div>"
 
 
@@ -201,8 +299,8 @@ def legend_html(horizontal: bool = False) -> str:
 # surfaces as confusing TypeErrors deep inside the pages ----
 import disaster_phyengine as _dpe
 import dss as _dss_pkg
-_EXPECTED_ENGINE_BUILD = 9
-_EXPECTED_DSS_BUILD = 5
+_EXPECTED_ENGINE_BUILD = 33
+_EXPECTED_DSS_BUILD = 50
 if (getattr(_dpe, "ENGINE_BUILD", 0) != _EXPECTED_ENGINE_BUILD
         or getattr(_dss_pkg, "DSS_BUILD", 0) != _EXPECTED_DSS_BUILD):
     st.error(
@@ -342,13 +440,17 @@ def _wind_speed_label(ws: float) -> str:
 
 
 def _fmt_sim_time(minutes: float) -> str:
-    if minutes < 60:
-        return f"{minutes:.0f} min"
-    if minutes < 1440:
-        h = minutes / 60.0
-        return f"{h:.1f} h" if h % 1 else f"{h:.0f} h"
-    d = minutes / 1440.0
-    return f"{d:.1f} d" if d % 1 else f"{d:.0f} d"
+    m = int(round(minutes))
+    d, rem = divmod(m, 1440)
+    h, mm = divmod(rem, 60)
+    parts = []
+    if d:
+        parts.append(f"{d} d")
+    if h:
+        parts.append(f"{h} h")
+    if mm or not parts:
+        parts.append(f"{mm} min")
+    return " ".join(parts)
 
 
 def _wind_compass(cur_deg: float, key: str):
@@ -438,6 +540,66 @@ def _clock_info():
     return label, bright
 
 
+def _drive_weather(wobj, t_min: float) -> None:
+    """Exogenous weather at simulated minute t_min, applied to wobj.
+
+    Deterministic in t_min and the UI settings, so the counterfactual
+    replay drives its CLONE through exactly the weather history the
+    factual run saw (diurnal wave, EMC fuel-moisture drying, wind
+    veer, shower windows). Without this the replay froze the weather
+    at the rewind point and burned a different fire."""
+    import math as _m
+    mode = st.session_state.get("wx_mode", "Manual")
+    if mode == "Real case weather" and st.session_state.get("real_wx"):
+        wx = st.session_state["real_wx"]
+        h = min(int(wx["h0"] + t_min // 60.0), len(wx["ws"]) - 1)
+        wobj.meteo.wws[:] = float(wx["ws"][h])
+        wobj.meteo.wwd[:] = _m.radians((270.0 - float(wx["wd"][h]))
+                                       % 360.0)
+        wobj.meteo.temp[:] = float(wx["t"][h])
+        wobj.meteo.rh[:] = float(wx["rh"][h])
+        if st.session_state.get("emc_on", True):
+            from disaster_phyengine.fuel_moisture import (
+                update_dead_fuel_moisture)
+            update_dead_fuel_moisture(wobj)
+    elif mode == "Diurnal cycle":
+        start = float(st.session_state.get("dr_start", 12.0))
+        h = (start + t_min / 60.0) % 24.0
+        phase = _m.cos((h - 15.0) / 24.0 * 2.0 * _m.pi)  # peak 15:00
+        td = float(st.session_state.get("dr_tday", 34.0))
+        tn = float(st.session_state.get("dr_tnight", 22.0))
+        rd = float(st.session_state.get("dr_rhday", 20.0))
+        rn = float(st.session_state.get("dr_rhnight", 70.0))
+        wobj.meteo.temp[:] = (td + tn) / 2.0 + (td - tn) / 2.0 * phase
+        wobj.meteo.rh[:] = (rd + rn) / 2.0 - (rn - rd) / 2.0 * phase
+        if st.session_state.get("emc_on", True):
+            from disaster_phyengine.fuel_moisture import (
+                update_dead_fuel_moisture)
+            update_dead_fuel_moisture(wobj)
+        # diurnal wind: calmer at night, stronger mid-afternoon,
+        # direction veers; spatial pattern preserved by scaling a
+        # captured base field rather than overwriting it
+        _mv = st.session_state.get("map_version", 0)
+        _bkey = f"_wind_base_{_mv}"
+        if _bkey not in st.session_state:
+            st.session_state[_bkey] = (wobj.meteo.wws.copy(),
+                                       wobj.meteo.wwd.copy())
+        _bws, _bwd = st.session_state[_bkey]
+        _dayf = 0.55 + 0.55 * max(0.0, phase)
+        _veer = 0.6 * _m.sin((h - 9.0) / 24.0 * 2.0 * _m.pi)
+        wobj.meteo.wws[:] = np.clip(_bws * _dayf, 0.0, None)
+        wobj.meteo.wwd[:] = _bwd + _veer
+        wobj.meteo.gust[:] = wobj.meteo.wws * 1.4
+        # optional shower window: only sets W_prec; the ENGINE wets
+        # the fuel from precipitation every step and stops ember
+        # spotting above 1 mm/h
+        _mm = float(st.session_state.get("dr_rain_mm", 0.0))
+        _rs = float(st.session_state.get("dr_rain_start", 18.0))
+        _rd_ = float(st.session_state.get("dr_rain_dur", 3.0))
+        _raining = _mm > 0 and ((h - _rs) % 24.0) < _rd_
+        wobj.meteo.prec[:] = _mm if _raining else 0.0
+
+
 def _step_sim(n: int = 1):
     """Advance the simulation, driving the exogenous weather first.
 
@@ -446,60 +608,142 @@ def _step_sim(n: int = 1):
     EMC model. Nights are cool and humid, so the moisture can exceed the
     extinction threshold m_ext and the fire stalls or dies out on its own -
     the same mechanism that stops real fires overnight."""
-    import math as _m
     diag = None
-    mode = st.session_state.get("wx_mode", "Manual")
     for _ in range(int(n)):
         t_min = sim.state.step * float(getattr(cfg, "step_minutes", 1.0))
-        if mode == "Real case weather" and st.session_state.get("real_wx"):
-            wx = st.session_state["real_wx"]
-            h = min(int(wx["h0"] + t_min // 60.0), len(wx["ws"]) - 1)
-            world.meteo.wws[:] = float(wx["ws"][h])
-            world.meteo.wwd[:] = _m.radians((270.0 - float(wx["wd"][h]))
-                                            % 360.0)
-            world.meteo.temp[:] = float(wx["t"][h])
-            world.meteo.rh[:] = float(wx["rh"][h])
-            if st.session_state.get("emc_on", True):
-                from disaster_phyengine.fuel_moisture import (
-                    update_dead_fuel_moisture)
-                update_dead_fuel_moisture(world)
-        elif mode == "Diurnal cycle":
-            start = float(st.session_state.get("dr_start", 12.0))
-            h = (start + t_min / 60.0) % 24.0
-            phase = _m.cos((h - 15.0) / 24.0 * 2.0 * _m.pi)  # peak at 15:00
-            td = float(st.session_state.get("dr_tday", 34.0))
-            tn = float(st.session_state.get("dr_tnight", 22.0))
-            rd = float(st.session_state.get("dr_rhday", 20.0))
-            rn = float(st.session_state.get("dr_rhnight", 70.0))
-            world.meteo.temp[:] = (td + tn) / 2.0 + (td - tn) / 2.0 * phase
-            world.meteo.rh[:] = (rd + rn) / 2.0 - (rn - rd) / 2.0 * phase
-            if st.session_state.get("emc_on", True):
-                from disaster_phyengine.fuel_moisture import (
-                    update_dead_fuel_moisture)
-                update_dead_fuel_moisture(world)
-            # diurnal wind: calmer at night, stronger by mid-afternoon, and the
-            # direction veers over the day; the spatial pattern is preserved by
-            # scaling a captured base field rather than overwriting it
-            _mv = st.session_state.get("map_version", 0)
-            _bkey = f"_wind_base_{_mv}"
-            if _bkey not in st.session_state:
-                st.session_state[_bkey] = (world.meteo.wws.copy(),
-                                           world.meteo.wwd.copy())
-            _bws, _bwd = st.session_state[_bkey]
-            _dayf = 0.55 + 0.55 * max(0.0, phase)
-            _veer = 0.6 * _m.sin((h - 9.0) / 24.0 * 2.0 * _m.pi)
-            world.meteo.wws[:] = np.clip(_bws * _dayf, 0.0, None)
-            world.meteo.wwd[:] = _bwd + _veer
-            world.meteo.gust[:] = world.meteo.wws * 1.4
-            # optional shower window: only sets W_prec; the ENGINE wets the
-            # fuel from precipitation every step (works for all sources)
-            # and stops ember spotting above 1 mm/h
-            _mm = float(st.session_state.get("dr_rain_mm", 0.0))
-            _rs = float(st.session_state.get("dr_rain_start", 18.0))
-            _rd_ = float(st.session_state.get("dr_rain_dur", 3.0))
-            _raining = _mm > 0 and ((h - _rs) % 24.0) < _rd_
-            world.meteo.prec[:] = _mm if _raining else 0.0
-        diag = sim.step()
+        _drive_weather(world, t_min)
+        _ov = None
+        if (st.session_state.get("dss_apply")
+                and st.session_state.get("dss_res_base") is not None
+                and st.session_state.get("dss_res_base_v")
+                == st.session_state.get("map_version")):
+            import dss as _dss_step
+            _net0 = st.session_state.get("dss_network")
+            _obs0 = (_net0 if (st.session_state.get("dss_use_obs", True)
+                               and _net0 is not None) else None)
+            _sv0 = st.session_state.get
+            _esig = (st.session_state.get("map_version"),
+                     int(_sv0("dss_n", 1)),
+                     float(_sv0("dss_cycle_min", 1.0)),
+                     float(_sv0("dss_horizon_min", 30.0)),
+                     float(_sv0("dss_jth", 0.35)),
+                     float(_sv0("dss_eta", 0.60)),
+                     bool(_sv0("dss_adapt_on", True)),
+                     bool(_sv0("dss_genai_on", True)),
+                     bool(_sv0("dss_evfis_on", True)),
+                     float(_sv0("dss_evfis_step", 0.05)),
+                     float(_sv0("dss_rl_eps", 0.10)),
+                     float(_sv0("dss_rl_lr", 0.05)),
+                     float(_sv0("dss_attn_thr", 0.35)),
+                     float(_sv0("dss_min_gain", 0.05)),
+                     str(_sv0("dss_seed_profile", "full")),)
+            _eng = st.session_state.get("dss_engine")
+            if _eng is None or st.session_state.get(
+                    "dss_engine_sig") != _esig:
+                import os as _os_rl
+                _lg = _dss_step.RunLogger(
+                    _os_rl.path.join(_os_rl.path.dirname(
+                        _os_rl.path.dirname(_os_rl.path.abspath(
+                            __file__))), "logs"),
+                    tag=f"m{st.session_state.map_version}")
+                _eng = _dss_step.DecisionEngine(
+                    _dss_step.partition_n(cfg.nx, cfg.ny, _esig[1]),
+                    base_pool=st.session_state["dss_res_base"],
+                    network=_obs0, j_threshold=_esig[4], eta=_esig[5],
+                    cycle_min=_esig[2], horizon_min=_esig[3],
+                    evfis_step=_esig[9], adapt_on=_esig[6],
+                    genai_on=_esig[7], evfis_on=_esig[8],
+                    rl_eps=_esig[10], rl_lr=_esig[11],
+                    attention_thr=_esig[12], min_gain=_esig[13],
+                    seed_profile=_esig[14],
+                    learned_store=_os_rl.path.join(
+                        _os_rl.path.dirname(_os_rl.path.dirname(
+                            _os_rl.path.abspath(__file__))),
+                        "logs", "learned_rules.json"),
+                    run_logger=_lg)
+                try:
+                    _lg.write_meta(dict(
+                        map=dict(nx=cfg.nx, ny=cfg.ny,
+                                 cell_m=cfg.cell_size_m,
+                                 step_min=float(cfg.step_minutes)),
+                        engine=dict(
+                            regions=_esig[1], cycle_min=_esig[2],
+                            horizon_min=_esig[3], j_th=_esig[4],
+                            eta=_esig[5], adapt=_esig[6],
+                            genai=_esig[7], evfis=_esig[8],
+                            evfis_step=_esig[9],
+                            rl_eps=_esig[10], rl_lr=_esig[11],
+                            attn=_esig[12], min_gain=_esig[13],
+                            seed_profile=_esig[14]),
+                        weather=dict(
+                            wx_mode=_sv0("wx_mode", "Manual"),
+                            emc_on=bool(_sv0("emc_on", True)),
+                            dr_start=float(_sv0("dr_start", 12.0)),
+                            dr_tday=float(_sv0("dr_tday", 34.0)),
+                            dr_tnight=float(_sv0("dr_tnight", 22.0)),
+                            dr_rhday=float(_sv0("dr_rhday", 20.0)),
+                            dr_rhnight=float(_sv0("dr_rhnight", 70.0)),
+                            dr_rain_mm=float(_sv0("dr_rain_mm", 0.0)),
+                            dr_rain_start=float(_sv0("dr_rain_start",
+                                                     18.0)),
+                            dr_rain_dur=float(_sv0("dr_rain_dur", 3.0))),
+                        sensors=list(_sv0("dss_sensors", []) or []),
+                        depots=list(_sv0("dss_res_items", []) or [])))
+                    # the snapshot must be the t=0 BASELINE even if
+                    # the engine is (re)built mid-run: swap in the
+                    # pristine fuel state around the dump
+                    _fl_bk = world.fuel.fload
+                    _fm_bk = world.fuel.fmoist
+                    world.fuel.fload = world.fuel.fload0.copy()
+                    world.fuel.fmoist = getattr(
+                        sim, "_fmoist0", world.fuel.fmoist).copy()
+                    try:
+                        _lg.save_world(world)
+                    finally:
+                        world.fuel.fload = _fl_bk
+                        world.fuel.fmoist = _fm_bk
+                except Exception:
+                    pass
+                _eng_prev = st.session_state.get("dss_engine")
+                if (_eng_prev is not None
+                        and getattr(_eng_prev, "seed_profile", None)
+                        == _eng.seed_profile
+                        and st.session_state.get("dss_engine_map")
+                        == st.session_state.get("map_version")):
+                    # a SETTINGS change rebuilds the engine, but the
+                    # learned knowledge survives: rules and the RL
+                    # Q-table transplant (membership moves live in
+                    # the global registry, which the new engine
+                    # resets; the tuned consequents ride along in
+                    # the rules)
+                    _eng.rules = _eng_prev.rules
+                    _eng.rl.q = _eng_prev.rl.q
+                st.session_state["dss_engine"] = _eng
+                st.session_state["dss_engine_sig"] = _esig
+                st.session_state["dss_engine_map"] = \
+                    st.session_state.get("map_version")
+            _eng.network = _obs0
+            _eng.base_pool = st.session_state["dss_res_base"]
+            _dtm = float(getattr(cfg, "step_minutes", 1.0))
+            _cycm = (_eng.cycle_min if _eng.cycle_min is not None
+                     else _eng.cycle_steps * _dtm)
+            _due = (_eng.last_override is None
+                    or (sim.state.step - _eng.last_cycle_step)
+                    >= max(1, int(round(_cycm / _dtm))))
+            if _due:
+                with st.spinner("DSS decision cycle: shadow "
+                                "forecasts + adaptation..."):
+                    _ov = _eng.maybe_decide(sim)
+            else:
+                _ov = _eng.maybe_decide(sim)
+        diag = sim.step(resource_override=_ov)
+        _engL = st.session_state.get("dss_engine")
+        if _engL is not None and _engL.run_logger is not None:
+            try:
+                _engL.run_logger.log_step(sim, compute_costs(sim),
+                                          override=_ov)
+            except Exception:
+                pass
         _net = st.session_state.get("dss_network")
         if _net is not None and st.session_state.get("dss_use_obs", True):
             _net.update(sim, float(getattr(cfg, "step_minutes", 1.0)))
@@ -519,8 +763,8 @@ with st.sidebar:
                "Disaster Response and Management")
     import disaster_phyengine as _da
     _engine_ok = hasattr(Simulator, "rewind") and hasattr(sim, "rewindable_steps")
-    st.caption(f"engine v{getattr(_da, '__version__', '?')}"
-               + ("" if _engine_ok else " \u00b7 \u26a0 outdated in memory"))
+    if not _engine_ok:
+        st.caption("\u26a0 engine outdated in memory")
     if not _engine_ok:
         st.error("The simulation engine changed on disk but the running "
                  "process still uses the old version (Python caches "
@@ -531,58 +775,67 @@ with st.sidebar:
     # --- simulation control panel ---
     if st.session_state.pop("anim_stop", False):
         st.session_state.anim_on = False
+        st.session_state.runend_on = False
+    if st.session_state.pop("runend_stop", False):
+        st.session_state.runend_on = False
     with st.container(border=True):
         st.markdown("**Simulation**")
-        xsteps = int(st.number_input(
-            "Steps per click (X)", 1, 1000, 10, key="step_x",
-            help="How many steps the 'Step X' button advances at once."))
-        c1, c2 = st.columns(2)
+        c1, c2, c0 = st.columns([1.0, 1.2, 0.9])
+        _c0v = c0.container()
+        xsteps = int(_c0v.number_input(
+            "X", 1, 1000, 10, key="step_x",
+            label_visibility="collapsed",
+            help="How many steps the 'Step X' button advances at "
+                 "once."))
         if c1.button("Step", use_container_width=True,
                      help="Advance the fire by one time step."):
             _step_sim(); _record_costs(); st.rerun()
         if c2.button(f"Step {xsteps}", use_container_width=True,
-                     help="Advance X steps at once."):
+                     help="Advance X steps at once (set X in the box "
+                          "beside)."):
             _step_sim(xsteps); _record_costs(); st.rerun()
         st.toggle("Animate step by step", key="anim_on",
                   help="Advance automatically, one step per refresh, until "
                        "the fire is over.")
         c3, c4 = st.columns(2)
-        if c3.button("Run to end", use_container_width=True,
-                     help="Runs until the fire is out, the step cap "
-                          "(max_steps) is reached, or a 30 s compute budget "
-                          "is spent \u2014 press again to continue."):
-            _bar = st.progress(0.0, text="Running \u2026")
+        c3.toggle("Run to end", key="runend_on",
+                  help="Latches ON and keeps running until the fire "
+                       "is out or the step cap (max_steps) is "
+                       "reached; press again to stop. The map "
+                       "refreshes after every chunk.")
+        if c4.button("Reset fire", use_container_width=True,
+                     help="Clear the fire and the cost series; the map and "
+                          "all edits stay."):
+            sim.reset(); st.session_state.cost_series = []
+            _reset_dss_state()
+            st.session_state.pop("dss_net_sig", None)
+            st.rerun()
+        _telap = float(getattr(
+            sim, "t_elapsed_min",
+            sim.state.step * float(getattr(cfg, "step_minutes", 30.0))))
+        st.caption(f"Step {sim.state.step} \u00b7 "
+                   f"t = {_fmt_sim_time(_telap)}")
+        st.caption("active fire "
+                   f"{int((sim.state.burning > 0.5).sum())} cells")
+        if st.session_state.get("runend_on"):
             _t0 = time.time()
-            _start = sim.state.step
             _limit = int(cfg.max_steps)
-            _reason = f"step cap {_limit} reached"
-            while sim.state.step < _limit:
+            _done = None
+            while sim.state.step < _limit and time.time() - _t0 < 2.5:
                 _d = _step_sim(); _record_costs()
                 if (_d.n_burning == 0 and sim.state.step > 1
                         and sim.ever_burned.any()
                         and not any(ev.step >= sim.state.step
                                     for ev in world.ignitions)):
-                    _reason = "fire is out"
+                    _done = "fire is out"
                     break
-                if time.time() - _t0 > 30.0:
-                    _reason = "30 s budget \u2014 press again to continue"
-                    break
-                _bar.progress(min(1.0, (sim.state.step - _start)
-                                  / max(1, _limit - _start)),
-                              text=f"step {sim.state.step} \u00b7 "
-                                   f"active {_d.n_burning} cells")
-            _bar.empty()
-            st.toast(f"Stopped at step {sim.state.step}: {_reason}")
+            if sim.state.step >= _limit:
+                _done = f"step cap {_limit} reached"
+            if _done:
+                st.session_state["runend_stop"] = True
+                st.toast(f"Run to end stopped at step "
+                         f"{sim.state.step}: {_done}")
             st.rerun()
-        if c4.button("Reset fire", use_container_width=True,
-                     help="Clear the fire and the cost series; the map and "
-                          "all edits stay."):
-            sim.reset(); st.session_state.cost_series = []
-            st.session_state.pop("dss_net_sig", None)
-            st.rerun()
-        st.caption(f"Step {sim.state.step} \u00b7 "
-                   f"t = {_fmt_sim_time(sim.state.step * float(getattr(cfg, 'step_minutes', 30.0)))} \u00b7 "
-                   f"active fire {int((sim.state.burning > 0.5).sum())} cells")
         avail = (sim.rewindable_steps
                  if hasattr(sim, "rewindable_steps") else [])
         lo = int(avail[0]) if avail else 0
@@ -594,6 +847,20 @@ with st.sidebar:
                     st.session_state.cost_series = [
                         r for r in st.session_state.cost_series
                         if r.get("step", 0) <= int(_k)]
+                    # the DSS rolls back WITH the physics: standing
+                    # orders, overlays, logs and gating priors after
+                    # the rewind point disappear (learned rules stay,
+                    # they are knowledge, not decisions)
+                    _eng_rw = st.session_state.get("dss_engine")
+                    if _eng_rw is not None:
+                        try:
+                            _eng_rw.rewind_to(int(_k))
+                        except Exception:
+                            pass
+                    for _kk in list(st.session_state.keys()):
+                        if _kk.startswith(("l3_gate_",
+                                           "dss_featprev_")):
+                            del st.session_state[_kk]
                     st.rerun()
                 else:
                     st.warning("Snapshot for that step is no longer stored.")
@@ -645,14 +912,69 @@ def page_simulation():
         # one panel at a time: no scrolling, DSS first
         _panels = ["Layer 1 \u00b7 Input", "Layer 2 \u00b7 Perception",
                    "Layer 3 \u00b7 Concepts", "Layer 4 \u00b7 Decision",
-                   "Time", "Ignition", "Display"]
+                   "Rules", "Log", "Time", "Ignition", "Display"]
+        # shadow state: a Step press ends its run with st.rerun() BEFORE
+        # this radio is drawn again, so plain widget state would be
+        # dropped and the panel would snap back to Layer 1. The shadow
+        # variable keeps the selection across steps.
+        _pcur = st.session_state.get("sim_panel_v", _panels[0])
         panel = st.radio("Panel", _panels, horizontal=True,
-                         label_visibility="collapsed", key="sim_panel2")
+                         index=(_panels.index(_pcur)
+                                if _pcur in _panels else 0),
+                         label_visibility="collapsed", key="sim_panel3")
+        st.session_state["sim_panel_v"] = panel
         import dss as _dss
         # the sensor network lives OUTSIDE the panels: the map overlay
         # and Layer 2 need it no matter which panel is open
         _slist = list(_sv("dss_sensors", []))
         use_obs = bool(_sv("dss_use_obs", True))
+        # the resource pool is rasterized from its editable item rows
+        # whenever the rows change (signature check), panel-independent
+        _rit = st.session_state.get("dss_res_items")
+        if _rit and (st.session_state.get("dss_res_base_v")
+                     != st.session_state.get("map_version")):
+            # SELF-HEAL: rows exist but the bookkeeping says another
+            # map. If every row still fits this map, adopt the rows
+            # (the user DID stage a pool; a stale version stamp must
+            # not un-stage it); only rows that fall off the map void
+            # the pool for real.
+            if all((0 <= int(it.get("x", 0)) < cfg.nx
+                    and 0 <= int(it.get("y", 0)) < cfg.ny)
+                   for it in _rit if "x" in it):
+                st.session_state["dss_res_base_v"] = \
+                    st.session_state.get("map_version")
+            else:
+                st.session_state["dss_res_items"] = None
+                st.session_state["dss_res_base"] = None
+                _rit = None
+        if _rit and (st.session_state.get("dss_res_base_v")
+                     == st.session_state.get("map_version")):
+            _rsig = tuple(sorted((it["kind"], it.get("x", -1),
+                                  it.get("y", -1), it.get("cap", 0),
+                                  it.get("radius", 0),
+                                  it.get("avail", 1.0),
+                                  it.get("t_disp", 10.0))
+                                 for it in _rit))
+            if st.session_state.get("dss_res_sig") != _rsig:
+                _rl_new = _dss.build_resource_layer(world, _rit)
+                st.session_state["dss_res_base"] = _rl_new
+                st.session_state["dss_res_sig"] = _rsig
+                # the response-cost term is charged as the FRACTION
+                # of the staged pool committed (with the 1.2 surge),
+                # so J_resp reads "how much of what exists is in the
+                # field", not an absolute vs an arbitrary constant
+                cfg.cost.capacity_reference = max(
+                    100.0, 1.2 * float((_rl_new.rcap
+                                        * _rl_new.ravail).sum()))
+        elif st.session_state.get("dss_res_base") is not None \
+                and not _rit:
+            st.session_state["dss_res_base"] = None
+        st.session_state["dss_depots_draw"] = ([
+            (int(it["x"]), int(it["y"]), int(it.get("radius", 4)),
+             float(it.get("cap", 0.8)),
+             f"D{_k + 1}")
+            for _k, it in enumerate(_rit or [])
+            if it.get("kind") == "depot"] or None) if _rit else None
         # (re)build the network when the map or the fleet changes
         _sig = (st.session_state.get("map_version"),
                 tuple((d["kind"], d["x"], d["y"]) for d in _slist))
@@ -711,6 +1033,29 @@ def page_simulation():
                 _slist.append(dict(kind=_kadd, x=_xadd, y=_yadd))
                 st.session_state["dss_sensors"] = _slist
                 st.rerun()
+            _covt = st.slider(
+                "Coverage target (%)", 0, 100,
+                int(_sv("dss_cov_target", 60)), 5,
+                help="Suggest network keeps adding the best next "
+                     "asset (families in rotation, greedy maximum "
+                     "weighted coverage) until this fraction of "
+                     "the risk-weighted map is covered. 0 = only "
+                     "the satellite; 100 = blanket the risk.")
+            st.session_state["dss_cov_target"] = int(_covt)
+            if (st.session_state.get("dss_suggest_why")
+                    and st.session_state.get("dss_cov_applied")
+                    is not None
+                    and int(_covt) != int(
+                        st.session_state["dss_cov_applied"])):
+                # the network came from the optimizer: a moved target
+                # re-runs it live (adds or removes assets), exactly
+                # like pressing 'Suggest network' again
+                _pl, _why = _dss.suggest_network(
+                    world, coverage_target=float(_covt))
+                st.session_state["dss_sensors"] = _pl
+                st.session_state["dss_suggest_why"] = _why
+                st.session_state["dss_cov_applied"] = int(_covt)
+                st.rerun()
             sb1, sb2 = st.columns(2)
             if sb1.button(
                     "Suggest network", use_container_width=True,
@@ -727,9 +1072,12 @@ def page_simulation():
                          "sources are pinned to the settlements, one "
                          "satellite is always tasked, same-type assets "
                          "keep a footprint apart."):
-                _pl, _why = _dss.suggest_network(world)
+                _pl, _why = _dss.suggest_network(
+                    world,
+                    coverage_target=float(_covt))
                 st.session_state["dss_sensors"] = _pl
                 st.session_state["dss_suggest_why"] = _why
+                st.session_state["dss_cov_applied"] = int(_covt)
                 st.rerun()
             if st.session_state.get("dss_suggest_why"):
                 with st.expander("Why these positions (optimization "
@@ -748,8 +1096,16 @@ def page_simulation():
                         and hasattr(_net0, "status")):
                     _stat = _net0.status()
                 for _i, _sd in enumerate(list(_slist)):
-                    _c1, _c2 = st.columns([5, 1])
-                    _tx = (f"{_i + 1}. {_sd['kind']} @ "
+                    _c1, _c2, _c3 = st.columns([5, 0.7, 0.7])
+                    _scol = {"satellite": "#aa78ff",
+                             "aerial": "#00dcff",
+                             "ground_camera": "#ffffff",
+                             "in_situ": "#ffdc00",
+                             "field_report": "#ff9640",
+                             "public_report": "#ff69b4"}.get(
+                                 _sd["kind"], "#78c8ff")
+                    _full = _dss.SENSOR_CATALOG[_sd["kind"]]["label"]
+                    _tx = (f"S{_i + 1} \u2014 {_full} @ "
                            f"({_sd['x']}, {_sd['y']})")
                     if _stat is not None:
                         _si = _stat[_i]
@@ -763,19 +1119,232 @@ def page_simulation():
                             _tx += (f" \u00b7 {_si['in_transit']} report "
                                     f"en route ({_si['latency_min']:.0f} "
                                     f"min latency)")
-                    _c1.caption(_tx)
-                    if _c2.button("\u2716",
+                    _c1.markdown(
+                        f"<span style='color:{_scol}'>\u25cf</span> "
+                        f"<small>{_tx}</small>",
+                        unsafe_allow_html=True)
+                    if _c2.button("\u270e", key=f"dss_sed_{_i}",
+                                  help="Edit this sensor"):
+                        st.session_state["dss_sens_edit"] = (
+                            None if st.session_state.get("dss_sens_edit")
+                            == _i else _i)
+                        st.rerun()
+                    if _c3.button("\u2716",
                                   key=(f"dss_srm_{_i}_{_sd['kind']}_"
                                        f"{_sd['x']}_{_sd['y']}"),
                                   help="Remove this sensor"):
                         _slist.pop(_i)
                         st.session_state["dss_sensors"] = _slist
+                        st.session_state["dss_sens_edit"] = None
                         st.rerun()
+                    if st.session_state.get("dss_sens_edit") == _i:
+                        e1, e2, e3, e4 = st.columns([1.6, 0.9, 0.9, 0.8])
+                        _nk = e1.selectbox(
+                            "Type", _kinds,
+                            index=_kinds.index(_sd["kind"]),
+                            format_func=lambda k:
+                                _dss.SENSOR_CATALOG[k]["label"],
+                            key=f"dss_se_k_{_i}")
+                        _nx_ = int(e2.number_input(
+                            "x", 0, cfg.nx - 1, int(_sd["x"]),
+                            key=f"dss_se_x_{_i}"))
+                        _ny_ = int(e3.number_input(
+                            "y", 0, cfg.ny - 1, int(_sd["y"]),
+                            key=f"dss_se_y_{_i}"))
+                        e4.markdown("<div style='height:1.75em'></div>",
+                                    unsafe_allow_html=True)
+                        if e4.button("Save", key=f"dss_se_s_{_i}",
+                                     use_container_width=True):
+                            _slist[_i] = dict(kind=_nk, x=_nx_, y=_ny_)
+                            st.session_state["dss_sensors"] = _slist
+                            st.session_state["dss_sens_edit"] = None
+                            st.rerun()
             elif use_obs:
                 st.warning("No sensors placed \u2014 the agents are "
                            "BLIND ($conf \\approx 0$): they keep "
                            "assuming no fire. Add sensors or use 'Suggest "
                            "network'.")
+            st.divider()
+            st.markdown("**Resource pool \u2014 $U_{Res}$ "
+                        "($R_{cap}, R_{avail}, R_{eff}, R_{time}$)**")
+            _ritems = st.session_state.get("dss_res_items")
+            if (st.session_state.get("dss_res_base_v")
+                    != st.session_state.map_version):
+                _ritems = None      # map changed: the old pool is void
+            st.session_state["dss_eff_target"] = int(st.slider(
+                "Target effectiveness (%)", 10, 90,
+                int(_sv("dss_eff_target", 50)), 5,
+                help="The planner stages the baseline pool (depots + "
+                     "road corridor + one helibase), then keeps ADDING "
+                     "aerial units on the worst risk-weighted reach "
+                     "gaps until the expected intervention "
+                     "effectiveness meets this target (up to 10 "
+                     "additions). Every added unit stays an editable "
+                     "row below."))
+            if (st.session_state.get("dss_res_why") and _ritems
+                    and st.session_state.get("dss_eff_applied")
+                    is not None
+                    and int(st.session_state["dss_eff_target"])
+                    != int(st.session_state["dss_eff_applied"])):
+                _its, _rwhy = _dss.suggest_resource_items(
+                    world, efficiency_target=float(
+                        st.session_state["dss_eff_target"]) / 100.0)
+                st.session_state["dss_res_items"] = _its
+                st.session_state["dss_res_why"] = _rwhy
+                st.session_state["dss_res_base_v"] = \
+                    st.session_state.map_version
+                st.session_state["dss_eff_applied"] = int(
+                    st.session_state["dss_eff_target"])
+                st.rerun()
+            rp1, rp2 = st.columns(2)
+            if rp1.button(
+                    "Suggest resources", use_container_width=True,
+                    help="Builds the baseline pool as EDITABLE rows: a "
+                         "depot at every settlement / critical facility "
+                         "(capacity $0.8\\,R_{cap}^{max}$, station "
+                         "radius) plus a thin road-corridor capacity. "
+                         "$R_{eff}$ comes from the terrain access "
+                         "field, $R_{time}$ from the road-network "
+                         "distance (10 min dispatch + 2 min per "
+                         "off-road cell). The Layer 4 decisions "
+                         "allocate THIS pool and cannot exceed 1.5x "
+                         "the staged capacity anywhere."):
+                _its, _rwhy = _dss.suggest_resource_items(
+                    world, efficiency_target=float(
+                        st.session_state["dss_eff_target"]) / 100.0)
+                st.session_state["dss_res_items"] = _its
+                st.session_state["dss_res_why"] = _rwhy
+                st.session_state["dss_res_base_v"] = \
+                    st.session_state.map_version
+                st.session_state["dss_eff_applied"] = int(
+                    st.session_state["dss_eff_target"])
+                st.rerun()
+            if _ritems and rp2.button("Clear pool",
+                                      use_container_width=True):
+                st.session_state["dss_res_items"] = None
+                st.session_state["dss_res_base"] = None
+                st.rerun()
+            if st.session_state.get("dss_res_why") and _ritems:
+                for _ln in st.session_state["dss_res_why"]:
+                    st.caption(_ln)
+            if _ritems:
+                _bpe = st.session_state.get("dss_res_base")
+                if _bpe is None:   # first render after Suggest
+                    _bpe = _dss.build_resource_layer(world, _ritems)
+                _pe, _ped = _dss.pool_efficiency(world, _bpe)
+                st.progress(min(1.0, _pe),
+                            text=f"Expected intervention "
+                                 f"effectiveness: {_pe:.0%}")
+                st.caption(f"= reach {_ped['reach']:.0%} \u00d7 "
+                           f"capacity {_ped['capacity']:.0%} \u00b7 "
+                           f"aerial covers {_ped.get('air', 0.0):.0%} "
+                           "of the risk \u2014 "
+                           "risk-weighted: can the crews reach "
+                           "the ground that matters, and is the "
+                           "staged pool big enough for it? Add "
+                           "depots near the risk or raise their "
+                           "capacity to push this up.")
+            if _ritems:
+                for _j, _it in enumerate(list(_ritems)):
+                    _c1, _c2, _c3 = st.columns([5, 0.7, 0.7])
+                    if _it["kind"] == "road_corridor":
+                        _c1.caption(
+                            f"{_j + 1}. road corridor \u00b7 "
+                            f"$R_{{cap}}$ {_it['cap']:.2f} \u00b7 "
+                            f"$R_{{avail}}$ "
+                            f"{_it.get('avail', 1.0):.2f}")
+                    else:
+                        _c1.caption(
+                            f"{_j + 1}. D{_j + 1} depot @ ({_it['x']}, "
+                            f"{_it['y']}) \u00b7 $R_{{cap}}$ "
+                            f"{_it['cap']:.2f} \u00b7 $R_{{avail}}$ "
+                            f"{_it.get('avail', 1.0):.2f} \u00b7 "
+                            f"dispatch {_it.get('t_disp', 10.0):.0f} min "
+                            f"\u00b7 r {_it['radius']} \u00b7 "
+                            f"{_it.get('label', '')}")
+                    if _c2.button("\u270e", key=f"res_ed_{_j}",
+                                  help="Edit this row"):
+                        st.session_state["res_edit"] = (
+                            None if st.session_state.get("res_edit")
+                            == _j else _j)
+                        st.rerun()
+                    if _c3.button("\u2716", key=f"res_rm_{_j}",
+                                  help="Remove this row"):
+                        _ritems.pop(_j)
+                        st.session_state["dss_res_items"] = _ritems
+                        st.session_state["res_edit"] = None
+                        st.rerun()
+                    if st.session_state.get("res_edit") == _j:
+                        if _it["kind"] == "road_corridor":
+                            f1, f2, f3 = st.columns([1.0, 1.0, 0.8])
+                            _nc = float(f1.number_input(
+                                "$R_{cap}$", 0.0, 1.0, float(_it["cap"]),
+                                0.05, key=f"res_e_c_{_j}"))
+                            _na = float(f2.number_input(
+                                "$R_{avail}$", 0.0, 1.0,
+                                float(_it.get("avail", 1.0)), 0.05,
+                                key=f"res_e_a_{_j}"))
+                            f3.markdown("<div style='height:1.75em'>"
+                                        "</div>", unsafe_allow_html=True)
+                            if f3.button("Save", key=f"res_e_s_{_j}",
+                                         use_container_width=True):
+                                _it.update(cap=_nc, avail=_na)
+                                st.session_state["res_edit"] = None
+                                st.rerun()
+                        else:
+                            f1, f2, f3, f4 = st.columns(4)
+                            _nx_ = int(f1.number_input(
+                                "x", 0, cfg.nx - 1, int(_it["x"]),
+                                key=f"res_e_x_{_j}"))
+                            _ny_ = int(f2.number_input(
+                                "y", 0, cfg.ny - 1, int(_it["y"]),
+                                key=f"res_e_y_{_j}"))
+                            _nc = float(f3.number_input(
+                                "$R_{cap}$", 0.0, 1.0, float(_it["cap"]),
+                                0.05, key=f"res_e_c_{_j}"))
+                            _nr = int(f4.number_input(
+                                "r (cells)", 1, 20, int(_it["radius"]),
+                                key=f"res_e_r_{_j}"))
+                            f5, f6, f7 = st.columns([1.0, 1.0, 0.8])
+                            _na = float(f5.number_input(
+                                "$R_{avail}$", 0.0, 1.0,
+                                float(_it.get("avail", 1.0)), 0.05,
+                                key=f"res_e_a_{_j}"))
+                            _nt = float(f6.number_input(
+                                "dispatch (min)", 0.0, 120.0,
+                                float(_it.get("t_disp", 10.0)), 1.0,
+                                key=f"res_e_t_{_j}"))
+                            f7.markdown("<div style='height:1.75em'>"
+                                        "</div>", unsafe_allow_html=True)
+                            if f7.button("Save", key=f"res_e_s_{_j}",
+                                         use_container_width=True):
+                                _it.update(x=_nx_, y=_ny_, cap=_nc,
+                                           radius=_nr, avail=_na,
+                                           t_disp=_nt)
+                                st.session_state["res_edit"] = None
+                                st.rerun()
+                a1, a2, a3, a4, a5 = st.columns(
+                    [0.9, 0.9, 0.9, 0.9, 0.8])
+                _ax = int(a1.number_input("x", 0, cfg.nx - 1,
+                                          cfg.nx // 2, key="res_a_x"))
+                _ay = int(a2.number_input("y", 0, cfg.ny - 1,
+                                          cfg.ny // 2, key="res_a_y"))
+                _ac = float(a3.number_input("cap", 0.0, 1.0, 0.8, 0.05,
+                                            key="res_a_c"))
+                _ar = int(a4.number_input("r", 1, 20, 4, key="res_a_r"))
+                a5.markdown("<div style='height:1.75em'></div>",
+                            unsafe_allow_html=True)
+                if a5.button("Add", key="res_a_b",
+                             use_container_width=True):
+                    _ritems.append(dict(kind="depot", x=_ax, y=_ay,
+                                        cap=_ac, radius=_ar, avail=1.0,
+                                        t_disp=10.0,
+                                        label="manual depot"))
+                    st.session_state["dss_res_items"] = _ritems
+                    st.rerun()
+            else:
+                st.caption("No pool staged \u2014 without a pool the "
+                           "Layer 4 decisions have nothing to allocate.")
             st.divider()
             st.markdown("**Weather / environment drivers \u2014 $U_{Meteo}$**")
             ws = st.slider(
@@ -926,50 +1495,200 @@ def page_simulation():
                        "by the observation confidence and blended with "
                        "a persistence prior before any rule reads it.")
             _regsC = _dss.partition_n(cfg.nx, cfg.ny, int(_sv("dss_n", 1)))
-            _namesC = [r.name for r in _regsC]
+            _namesC = [r.name for r in _regsC] + ["All agents (table)"]
             _iC = min(int(_sv("dss_sel_i", 0)), len(_namesC) - 1)
             _selC = st.selectbox("Agent (region)", _namesC, index=_iC,
                                  key="l3_agent")
-            _regC = _regsC[_namesC.index(_selC)]
-            st.session_state["dss_region"] = (*_regC.box, _regC.name)
-            _fC = _dss.ten_features(sim, _regC, network=_obsnet)
-            _gamC = (_obsnet.region_conf(_regC)
-                     if _obsnet is not None else 1.0)
-            _gkey = f"l3_gate_{_regC.name}"
-            _gater = st.session_state.get(_gkey)
-            if _gater is None:
-                _gater = _dss.GatedConcepts()
-                st.session_state[_gkey] = _gater
-            _actC = _dss.infer_concepts(_fC)
-            _effC = _gater.gate(_actC, _gamC, step=int(sim.state.step))
-            _crO = _dss.crisp(_actC)
-            _crE = _dss.crisp(_effC)
-            st.caption(f"gate $\\gamma={_gamC:.2f}$ \u00b7 persistence "
-                       f"$\\rho={_dss.RHO_PERSIST}$ \u00b7 observed "
-                       "\u2192 gated (effective)")
-            _lvlname = {1: "Level 1 \u2014 base", 2: "Level 2",
-                        3: "Level 3", 4: "Level 4 \u2014 coordination"}
-            for _lvl in (1, 2, 3, 4):
-                st.markdown(f"**{_lvlname[_lvl]}**")
-                for _cn, (_l, _ins) in _dss.HIERARCHY.items():
-                    if _l != _lvl:
-                        continue
-                    _dec = _cn in _dss.DECISION_CONCEPTS
+            if _selC == "All agents (table)":
+                _pool3 = st.session_state.get("dss_res_base")
+                _head = "| concept |" + "".join(
+                    f" {_r.name} |" for _r in _regsC)
+                _sep = "|---|" + "---|" * len(_regsC)
+                _cols = {}
+                for _r in _regsC:
+                    _f3 = _dss.ten_features(sim, _r, network=_obsnet,
+                                            pool=_pool3)
+                    _g3 = _dss.concept_gates(
+                        _dss.feature_confidence(_obsnet, _r))
+                    _gt = st.session_state.get(f"l3_gate_{_r.name}")
+                    if _gt is None:
+                        _gt = _dss.GatedConcepts()
+                        st.session_state[f"l3_gate_{_r.name}"] = _gt
+                    _cols[_r.name] = _dss.crisp(_gt.gate(
+                        _dss.infer_concepts(_f3), _g3,
+                        step=int(sim.state.step)))
+                _rows3 = [_head, _sep]
+                for _cn, (_l, _ins3) in _dss.HIERARCHY.items():
                     _lab = _dss.CONCEPT_LABEL[_cn]
-                    if _dec:
-                        _lab = f"{_lab} \u2605"
-                    st.progress(min(1.0, _crE[_cn]),
-                                text=f"{_lab}: {_crO[_cn]:.2f} "
-                                     f"\u2192 {_crE[_cn]:.2f}")
-            st.caption("\u2605 = the five decision concepts the "
-                       "intervention rules read. Weights and inputs of "
-                       "every concept are in dss/concepts.py "
-                       "(HIERARCHY).")
+                    if _cn in _dss.DECISION_CONCEPTS:
+                        _lab = f"**{_lab}** \u2605"
+                    _cells = " | ".join(f"{_cols[_r.name][_cn]:.2f}"
+                                        for _r in _regsC)
+                    _rows3.append(f"| L{_l} {_lab} | {_cells} |")
+                st.markdown("\n".join(_rows3))
+                st.caption("gated (effective) activations, crisp "
+                           "readout \u00b7 \u2605 = the five decision "
+                           "concepts")
+            else:
+                _regC = _regsC[_namesC.index(_selC)]
+                st.session_state["dss_region"] = (*_regC.box, _regC.name)
+                _fC = _dss.ten_features(
+                    sim, _regC, network=_obsnet,
+                    pool=st.session_state.get("dss_res_base"))
+                _fcC = _dss.feature_confidence(_obsnet, _regC)
+                _gamC = _dss.concept_gates(_fcC)
+                _gkey = f"l3_gate_{_regC.name}"
+                _gater = st.session_state.get(_gkey)
+                if _gater is None:
+                    _gater = _dss.GatedConcepts()
+                    st.session_state[_gkey] = _gater
+                _actC = _dss.infer_concepts(_fC)
+                _effC = _gater.gate(_actC, _gamC, step=int(sim.state.step))
+                _crO = _dss.crisp(_actC)
+                _crE = _dss.crisp(_effC)
+                st.caption("per-concept gate $\\gamma$ = min of the "
+                           "feature confidences feeding the concept \u00b7 "
+                           f"persistence $\\rho={_dss.RHO_PERSIST}$ \u00b7 "
+                           "observed \u2192 gated (effective)")
+                _lvlname = {1: "Level 1 \u2014 base", 2: "Level 2",
+                            3: "Level 3", 4: "Level 4 \u2014 coordination"}
+                for _lvl in (1, 2, 3, 4):
+                    st.markdown(f"**{_lvlname[_lvl]}**")
+                    for _cn, (_l, _ins) in _dss.HIERARCHY.items():
+                        if _l != _lvl:
+                            continue
+                        _dec = _cn in _dss.DECISION_CONCEPTS
+                        _lab = _dss.CONCEPT_LABEL[_cn]
+                        if _dec:
+                            _lab = f"{_lab} \u2605"
+                        st.progress(min(1.0, _crE[_cn]),
+                                    text=f"{_lab}: {_crO[_cn]:.2f} "
+                                         f"\u2192 {_crE[_cn]:.2f} "
+                                         f"(\u03b3 {_gamC[_cn]:.2f})")
+                st.caption("\u2605 = the five decision concepts the "
+                           "intervention rules read.")
+            with st.expander("Feature \u2192 concept mapping "
+                             "($\\omega$, Eq. 40) \u2014 explicit"):
+                _fn = dict(_dss.FEATURE_NAME)
+                _fn["access_road_status_inv"] = \
+                    "access / road status (inverted)"
+                for _cn, (_l, _ins) in _dss.HIERARCHY.items():
+                    _parts = " + ".join(
+                        f"{_fn.get(_src, _dss.CONCEPT_LABEL.get(_src, _src))}"
+                        f" ({_w:.2f})" for _src, _w in _ins)
+                    st.caption(f"L{_l} **{_dss.CONCEPT_LABEL[_cn]}** "
+                               f"\u2190 {_parts}")
+                st.caption("Single source of truth: dss/concepts.py "
+                           "HIERARCHY \u00b7 weights are nonnegative "
+                           "and sum to one per concept \u00b7 the same "
+                           "table goes into the thesis as Table 4.X "
+                           "(update prompt, item 2).")
         elif panel == "Layer 4 \u00b7 Decision":
             st.caption("Layer 4 \u2014 decision space (evolution). "
                        "These knobs configure the staged adaptation; "
                        "the stages themselves arrive with the decision "
                        "layer.")
+            st.session_state["dss_apply"] = bool(st.toggle(
+                "Apply decisions to the simulation",
+                value=bool(_sv("dss_apply", False)),
+                help="ON: every simulation step, each Local DSS turns "
+                     "its intervention intensities into its region's "
+                     "slice of $U_{DSS}=[R_{cap},R_{avail},R_{eff},"
+                     "R_{time}]$ and the composed layer enters "
+                     "sim.step(resource_override=...). The suppression "
+                     "mapping (Eq. 130) converts it into fuel "
+                     "reduction; nothing else touches the physics. "
+                     "Requires a staged resource pool (Layer 1)."))
+            if (st.session_state["dss_apply"]
+                    and st.session_state.get("dss_res_base") is None):
+                _rit_fix = st.session_state.get("dss_res_items")
+                if _rit_fix:
+                    # rows are staged but the raster is missing (a
+                    # condition the bookkeeping missed): build it NOW
+                    st.session_state["dss_res_base"] = \
+                        _dss.build_resource_layer(world, _rit_fix)
+                    st.session_state["dss_res_base_v"] = \
+                        st.session_state.get("map_version")
+                    st.caption("Resource pool rebuilt from the "
+                               "staged rows.")
+                else:
+                    st.warning("No resource pool staged \u2014 go to "
+                               "Layer 1 and press 'Suggest "
+                               "resources'.")
+            dc1, dc2, dc3 = st.columns(3)
+            st.session_state["dss_cycle_min"] = float(dc1.number_input(
+                "Decision cycle (min)", 1.0, 240.0,
+                float(_sv("dss_cycle_min", 1.0)), 1.0,
+                help="A decision is recomputed every this many SIM "
+                     "minutes regardless of the step length; between "
+                     "cycles the last allocation holds. NOTE: every "
+                     "cycle boundary runs shadow forecasts (about "
+                     "1-3 s wall time); with a very short cycle the "
+                     "animation will stall on every frame. The 1 min "
+                     "default reacts fastest; raise it if "
+                     "Animate feels slow."))
+            st.session_state["dss_horizon_min"] = float(dc2.number_input(
+                "Forecast horizon (min)", 10.0, 480.0,
+                float(_sv("dss_horizon_min", 30.0)), 5.0,
+                help="Lookahead used to judge every candidate. With "
+                     "the 1-min decision cycle the decision is "
+                     "re-checked every minute but each check looks 30 "
+                     "min ahead (adaptation trials and the no-harm "
+                     "guard always re-check at >= 45 min). The "
+                     "shadow run steps at a coarse 5-min tick (the "
+                     "reference-step scaling keeps the physics "
+                     "identical), so a 1-minute live tick still gets "
+                     "a real horizon."))
+            st.session_state["dss_min_gain"] = float(dc3.number_input(
+                "Required forecast gain", 0.0, 0.5,
+                float(_sv("dss_min_gain", 0.05)), 0.01,
+                help="ADAPTIVE satisficing: a candidate must clear "
+                     "$J_{TH}$ OR beat the no-action forecast by this "
+                     "relative margin; otherwise the adaptation stages "
+                     "engage. 0 restores the absolute-threshold-only "
+                     "behaviour."))
+            st.markdown("**Decision mode**")
+            _md1, _md2 = st.columns(2)
+            st.session_state["dss_evfis_on"] = bool(_md1.toggle(
+                "evFIS adaptation (stages \u2460\u2461)",
+                value=bool(_sv("dss_evfis_on", True)),
+                help="Stage \u2460 tunes memberships/consequents, "
+                     "stage \u2461 instantiates a finer rule cell. "
+                     "OFF removes both from the RL's menu."))
+            st.session_state["dss_genai_on2"] = bool(_md2.toggle(
+                "GenAI proposals (stage \u2462)",
+                value=bool(_sv("dss_genai_on2",
+                               _sv("dss_genai_on", True))),
+                help="Stage \u2462 asks the generative proposer for "
+                     "a brand-new rule (4 admission gates). OFF "
+                     "removes it from the RL's menu."))
+            st.session_state["dss_genai_on"] =                 st.session_state["dss_genai_on2"]
+            st.caption("Mode now: " + (
+                "Fuzzy only \u2014 the seed rule base decides, no "
+                "adaptation" if not (
+                    st.session_state["dss_evfis_on"]
+                    or st.session_state["dss_genai_on"])
+                else "evFIS + GenAI \u2014 RL picks among stages "
+                     "\u2460\u2461\u2462" if (
+                    st.session_state["dss_evfis_on"]
+                    and st.session_state["dss_genai_on"])
+                else "evFIS only \u2014 stages \u2460\u2461"
+                if st.session_state["dss_evfis_on"]
+                else "GenAI only \u2014 stage \u2462"))
+            st.session_state["dss_adapt_on"] = bool(
+                st.session_state["dss_evfis_on"]
+                or st.session_state["dss_genai_on"])
+            with st.expander(f"Rule base \u2014 all "
+                             f"{len(_dss.SEED_RULES)} seed rules "
+                             "(dss/rules.py)"):
+                st.caption("The base is SPARSE: these seeds anchor the "
+                           "response surface; the adaptation loop "
+                           "instantiates further rules only for the "
+                           "situations that demand them. The antecedent "
+                           "space has $5^5=3125$ combinations; none of "
+                           "the enumeration is needed.")
+                for _r in _dss.SEED_RULES:
+                    st.caption(_r.text())
             st.markdown("**evFIS \u2014 evolving fuzzy rule base**")
             st.session_state["dss_jth"] = float(st.slider(
                 "$J_{TH}$ \u2014 acceptable cost threshold", 0.0, 1.0,
@@ -993,7 +1712,7 @@ def page_simulation():
             st.markdown("**GenAI \u2014 rule proposer (stage \u2462)**")
             st.session_state["dss_genai_on"] = bool(st.checkbox(
                 "Enable generative rule proposals",
-                value=bool(_sv("dss_genai_on", False)),
+                value=bool(_sv("dss_genai_on", True)),
                 help="Proposed rules pass 4 gates before use: G1 format "
                      "\u00b7 G2 constraints \u00b7 G3 simulated "
                      "$\\Delta J<0$ \u00b7 G4 A/B."))
@@ -1001,6 +1720,8 @@ def page_simulation():
                 "Proposal temperature", 0.0, 1.0,
                 float(_sv("dss_genai_temp", 0.3)), 0.05,
                 disabled=not st.session_state["dss_genai_on"]))
+            st.caption("Stage \u2462 proposer right now: "
+                       f"**{_dss.genai_status()}**")
             st.markdown("**RL \u2014 stage controller**")
             st.session_state["dss_rl_eps"] = float(st.slider(
                 "$\\epsilon$ \u2014 exploration", 0.0, 1.0,
@@ -1010,40 +1731,720 @@ def page_simulation():
             st.session_state["dss_rl_lr"] = float(st.slider(
                 "Learning rate", 0.001, 0.5,
                 float(_sv("dss_rl_lr", 0.05)), 0.001, format="%.3f"))
+            with st.expander("How the learning works \u2014 RL \u00b7 "
+                             "evFIS \u00b7 GenAI, and what persists"):
+                st.markdown(
+                    "**RL (stage controller)** is an "
+                    "$\\epsilon$-greedy contextual bandit. State = "
+                    "the cost-deficit bucket (low / mid / high), "
+                    "actions = the enabled adaptation stages, reward "
+                    "= the realized forecast improvement of the "
+                    "chosen stage. It is NOT pre-trained: it learns "
+                    "online during the run, every untried "
+                    "(bucket, stage) pair is tried once before "
+                    "greedy takes over, and the Q-table is written "
+                    "to the run log (cycles.jsonl) every cycle.\n\n"
+                    "**evFIS (stages \u2460\u2461)** modifies the "
+                    "ENGINE's own copy of the rule base: consequent "
+                    "nudges and membership-shoulder moves that "
+                    "survive for the lifetime of this engine. The "
+                    "thesis seed catalog in dss/rules.py is never "
+                    "touched.\n\n"
+                    "**GenAI (stage \u2462)** proposes a brand-new "
+                    "rule from the live concept situation \u2014 "
+                    "with ANTHROPIC_API_KEY set the proposal comes "
+                    "from Claude via the API (see the status line "
+                    "above), otherwise from a deterministic "
+                    "template. Admitted rules (gates G1-G4) join "
+                    "the runtime base with a G prefix.\n\n"
+                    "**Lifecycle**: everything learned lives in the "
+                    "running engine and its logs. A rebuilt engine "
+                    "(changed settings, new map) starts from the "
+                    "thesis seed state again. The button below "
+                    "resets by hand.")
+            if st.button("Reset learned adaptations",
+                         help="Drops the adaptation-born rules "
+                              "(A*/G*), restores every consequent "
+                              "and membership to the thesis tables "
+                              "(D.3 / E.1) and clears the RL "
+                              "Q-table."):
+                from dss.adapt import reset_partitions as _rsp
+                _rsp()
+                _eng_rs = st.session_state.get("dss_engine")
+                if _eng_rs is not None:
+                    _eng_rs.rules = _dss.make_runtime_rules()
+                    _eng_rs.rl.q.clear()
+                st.toast("Seed state restored: Table D.3 "
+                         "memberships, Table E.1 rules, empty "
+                         "Q-table.")
+                st.rerun()
             st.divider()
             st.markdown("**Candidate intervention \u2014 rule base "
                         "(Appendix D seeds)**")
             _regs4 = _dss.partition_n(cfg.nx, cfg.ny,
                                       int(_sv("dss_n", 1)))
             _names4 = [r.name for r in _regs4]
-            _i4 = min(int(_sv("dss_sel_i", 0)), len(_names4) - 1)
-            _sel4 = st.selectbox("Agent (region)", _names4, index=_i4,
-                                 key="l4_agent")
-            _reg4 = _regs4[_names4.index(_sel4)]
-            _f4 = _dss.ten_features(sim, _reg4, network=_obsnet)
-            _gam4 = (_obsnet.region_conf(_reg4)
-                     if _obsnet is not None else 1.0)
-            _g4 = st.session_state.get(f"l3_gate_{_reg4.name}")
-            if _g4 is None:
-                _g4 = _dss.GatedConcepts()
-                st.session_state[f"l3_gate_{_reg4.name}"] = _g4
-            _eff4 = _g4.gate(_dss.infer_concepts(_f4), _gam4,
-                             step=int(sim.state.step))
-            _u4, _tr4 = _dss.evaluate_rules(_eff4, _f4)
-            for _iv in _dss.INTERVENTIONS:
-                st.progress(min(1.0, _u4[_iv]),
-                            text=f"{_dss.INTERVENTION_LABEL[_iv]}: "
-                                 f"{_u4[_iv]:.2f}")
-            _fired = [(r, w) for r, w in _tr4 if w > 0.01]
-            with st.expander(f"Fired rules ({len(_fired)}) \u2014 "
-                             "traceability"):
-                if not _fired:
-                    st.caption("No rule fires in this region right now.")
-                for _r, _w in sorted(_fired, key=lambda t: -t[1]):
-                    st.caption(f"[{_w:.2f}] {_r.text()}")
-            st.caption("Read-only in this phase: the candidate is "
-                       "evaluated against $J$ and applied through the "
-                       "adaptation loop in the next phase.")
+            _eng4r = st.session_state.get("dss_engine")
+
+            def _cand_for(_regX):
+                _fX = _dss.ten_features(sim, _regX, network=_obsnet)
+                _gamX = _dss.concept_gates(
+                    _dss.feature_confidence(_obsnet, _regX))
+                _gX = st.session_state.get(f"l3_gate_{_regX.name}")
+                if _gX is None:
+                    _gX = _dss.GatedConcepts()
+                    st.session_state[f"l3_gate_{_regX.name}"] = _gX
+                _effX = _gX.gate(_dss.infer_concepts(_fX), _gamX,
+                                 step=int(sim.state.step))
+                return _dss.evaluate_rules(
+                    _effX, _fX,
+                    _eng4r.rules if _eng4r is not None else None)
+
+            _glbT = getattr(st.session_state.get("dss_engine"),
+                            "last_global", None)
+            st.markdown("**Global DSS**")
+            if _glbT:
+                st.markdown(_glbT["statement"])
+                st.caption("Ranking by operational priority: "
+                           + " > ".join(f"{n} ({p:.2f})"
+                                        for n, p in
+                                        _glbT["ranking"])
+                           + " \u00b7 shares steer both the "
+                           "offensive tempo and the budget "
+                           "concentration. Every cycle is logged to "
+                           "global.csv and cycles.jsonl.")
+            else:
+                st.caption("No global decision yet \u2014 enable "
+                           "'Apply decisions' and step; the Global "
+                           "DSS decides every cycle (with a single "
+                           "agent the ranking is trivial but still "
+                           "logged).")
+            _all4 = (st.checkbox("All agents (table)",
+                                 value=bool(_sv("l4_all", True)),
+                                 key="l4_all")
+                     if len(_regs4) > 1 else False)
+            if _all4:
+                _res4 = {r.name: _cand_for(r) for r in _regs4}
+                _head4 = "| intervention |" + "".join(
+                    f" {n} |" for n in _names4)
+                _sep4 = "|---|" + "---|" * len(_names4)
+                _rows4 = [_head4, _sep4]
+                for _iv in _dss.INTERVENTIONS:
+                    _cells4 = " | ".join(
+                        f"{_res4[n][0][_iv]:.2f}" for n in _names4)
+                    _chip4 = ("<span style='color:"
+                              f"{_IV_COLOR.get(_iv, '#999')}'>"
+                              "\u25a0</span> ")
+                    _rows4.append(
+                        f"| {_chip4}{_dss.INTERVENTION_LABEL[_iv]} | "
+                        f"{_cells4} |")
+                _rows4.append("| fired rules | " + " | ".join(
+                    str(sum(1 for _r, _w in _res4[n][1] if _w > 0.01))
+                    for n in _names4) + " |")
+                st.markdown("\n".join(_rows4),
+                            unsafe_allow_html=True)
+                st.caption("Every Local DSS agent side by side: the "
+                           "candidate order intensities its rule "
+                           "base produces from its own region right "
+                           "now, and how many rules fired. Untick "
+                           "for the single-agent detail with the "
+                           "rule trace.")
+
+            else:
+                _i4 = min(int(_sv("dss_sel_i", 0)), len(_names4) - 1)
+                _sel4 = st.selectbox("Agent (region)", _names4,
+                                     index=_i4, key="l4_agent")
+                _reg4 = _regs4[_names4.index(_sel4)]
+                _u4, _tr4 = _cand_for(_reg4)
+                st.markdown("".join(
+                    _iv_bar(_dss.INTERVENTION_LABEL[_iv], _u4[_iv],
+                            _IV_COLOR.get(_iv, "#999"))
+                    for _iv in _dss.INTERVENTIONS),
+                    unsafe_allow_html=True)
+                _fired = [(r, w) for r, w in _tr4 if w > 0.01]
+                with st.expander(f"Fired rules ({len(_fired)}) \u2014 "
+                                 "traceability"):
+                    if not _fired:
+                        st.caption("No rule fires in this region "
+                                   "right now.")
+                    for _r, _w in sorted(_fired, key=lambda t: -t[1]):
+                        st.caption(f"[{_w:.2f}] {_r.text()}")
+        elif panel == "Rules":
+            st.markdown("**Rule catalog \u2014 thesis seeds + "
+                        "everything this run has learned**")
+            _profs = {
+                "full \u2014 whole Table E.1 (40 seeds)": "full",
+                "core \u2014 doctrine R1-R22 only": "core",
+                "minimal \u2014 5 strongest seeds (one per "
+                "intervention family), LEARN the rest by trial":
+                "minimal"}
+            _pcur_r = str(_sv("dss_seed_profile", "full"))
+            _pidx = [i for i, v in enumerate(_profs.values())
+                     if v == _pcur_r]
+            _psel = st.selectbox(
+                "Seed profile \u2014 how much doctrine the run "
+                "starts with", list(_profs),
+                index=(_pidx[0] if _pidx else 0),
+                help="'minimal' starts nearly naked: the single "
+                     "strongest seed per intervention family, 5 "
+                     "rules in total (one seed answers two "
+                     "families). The adaptation "
+                     "stages (resolution + GenAI) must then DISCOVER "
+                     "the missing rules by trial, which is exactly "
+                     "the controlled-experiment setting for showing "
+                     "that the staged adaptation works. Changing "
+                     "the profile rebuilds the engine (learned "
+                     "rules are dropped).")
+            if _profs[_psel] != _pcur_r:
+                st.session_state["dss_seed_profile"] = _profs[_psel]
+                st.rerun()
+            import os as _os_st
+            _store_p = _os_st.path.join(_os_st.path.dirname(
+                _os_st.path.dirname(_os_st.path.abspath(__file__))),
+                "logs", "learned_rules.json")
+            _rb1, _rb2 = st.columns(2)
+            if _rb1.button("Reset (keep the strongest)",
+                           key="rules_reset",
+                           help="Restores Table D.3 memberships and "
+                                "the seed rules, clears the RL "
+                                "Q-table, and PRUNES the persistent "
+                                "learned store to its 10 strongest "
+                                "rules (strength = accumulated fired "
+                                "weight of applied decisions). The "
+                                "survivors reload immediately: this "
+                                "is the natural-selection reset."):
+                from dss.adapt import reset_partitions as _rspR
+                _rspR()
+                _nkeep = _dss.prune_learned(
+                    _store_p, keep=10,
+                    profile=str(_sv("dss_seed_profile", "full")))
+                _engRs = st.session_state.get("dss_engine")
+                if _engRs is not None:
+                    _engRs.rules = _dss.make_runtime_rules(
+                        str(_sv("dss_seed_profile", "full")))
+                    _dss.merge_learned(
+                        _engRs.rules, _store_p,
+                        profile=str(_sv("dss_seed_profile",
+                                        "full")))
+                    _engRs.rl.q.clear()
+                st.toast(f"Reset: seeds restored, the {_nkeep} "
+                         "strongest learned rules survive.")
+                st.rerun()
+            if _rb2.button("Wipe learned store",
+                           key="rules_wipe",
+                           help="Deletes logs/learned_rules.json and "
+                                "returns to the pure seed profile "
+                                "\u2014 the clean-room start for a "
+                                "new convergence experiment."):
+                from dss.adapt import reset_partitions as _rspW
+                _rspW()
+                _dss.wipe_learned(
+                    _store_p,
+                    profile=str(_sv("dss_seed_profile", "full")))
+                _engRw = st.session_state.get("dss_engine")
+                if _engRw is not None:
+                    _engRw.rules = _dss.make_runtime_rules(
+                        str(_sv("dss_seed_profile", "full")))
+                    _engRw.rl.q.clear()
+                st.toast("Learned store wiped; pure seed profile.")
+                st.rerun()
+            _engR = st.session_state.get("dss_engine")
+            import os as _os_rs
+            _store_v = _os_rs.path.join(_os_rs.path.dirname(
+                _os_rs.path.dirname(_os_rs.path.abspath(__file__))),
+                "logs", "learned_rules.json")
+            if _engR is not None:
+                _rlist = _engR.rules
+            else:
+                # no engine (fresh map / apply off): the DISPLAY must
+                # still show the persistent store merged into the
+                # seed profile, otherwise the learned rules LOOK
+                # lost even though the file has them
+                _rlist = _dss.make_runtime_rules(
+                    str(_sv("dss_seed_profile", "full")))
+                _dss.merge_learned(
+                    _rlist, _store_v,
+                    profile=str(_sv("dss_seed_profile", "full")))
+                st.caption("No engine running yet \u2014 showing "
+                           "the seed profile MERGED with the "
+                           "persistent learned store. Enable "
+                           "'Apply decisions' and step: the engine "
+                           "starts from exactly this base.")
+            _bornN, _tunedN = _dss.load_learned(
+                _store_v,
+                profile=str(_sv("dss_seed_profile", "full")))
+            if _os_rs.path.exists(_store_v):
+                import time as _t_rs
+                _mt = _t_rs.strftime(
+                    "%H:%M:%S", _t_rs.localtime(
+                        _os_rs.path.getmtime(_store_v)))
+                st.caption(f"Persistent store: `logs/learned_rules"
+                           f".json` \u00b7 lineage of THIS profile: "
+                           f"{len(_bornN)} born rules, "
+                           f"{len(_tunedN)} tuned seeds \u00b7 last "
+                           f"saved {_mt} \u00b7 saved EVERY decision "
+                           "cycle; survives fires, engines and maps. "
+                           "Each seed profile keeps its OWN lineage: "
+                           "the selected profile's rules are the "
+                           "base, evFIS/GenAI grow on top of it, and "
+                           "nothing leaks between profiles.")
+            else:
+                st.caption("Persistent store: not created yet "
+                           "(first accepted adaptation or decision "
+                           "cycle writes logs/learned_rules.json).")
+
+            def _origin_of(_r):
+                if _r.name.startswith("G"):
+                    return 3, "\U0001F7E9 GenAI (stage \u2462)"
+                if _r.name.startswith("A"):
+                    return 2, ("\U0001F7E7 resolution "
+                               "(stage \u2461)")
+                if "evFIS" in (_r.note or ""):
+                    return 1, ("\U0001F7E8 seed, evFIS-tuned "
+                               "(stage \u2460)")
+                return 0, "\U0001F7E6 seed (Table E.1)"
+
+            _tblR = [dict(
+                origin=_origin_of(_r)[1], name=_r.name,
+                IF=" AND ".join(f"{v} is {t}"
+                                for v, t in _r.antecedents),
+                THEN=", ".join(f"{iv} {x:.2f}"
+                               for iv, x in _r.consequents),
+                active="yes" if _r.active else "no",
+                strength=round(float(getattr(_r, "strength", 0.0)), 1),
+                note=(_r.note or "")) for _r in _rlist]
+            st.dataframe(_tblR, use_container_width=True, height=420)
+            _nnew = sum(1 for _r in _rlist if _r.name[0] in "AG")
+            _ntun = sum(1 for _r in _rlist if "evFIS" in (_r.note or ""))
+            _fullR = _dss.make_runtime_rules("full")
+            _cellsN = [set(_r.antecedents) for _r in _rlist
+                       if _r.active]
+            _hitR = sum(1 for _fr in _fullR if _fr.active and any(
+                set(_fr.antecedents) & _cn for _cn in _cellsN))
+            _totR = sum(1 for _fr in _fullR if _fr.active)
+            st.caption(f"{len(_rlist)} rules \u00b7 adaptation-born: "
+                       f"{_nnew} \u00b7 evFIS-tuned consequents: "
+                       f"{_ntun} \u00b7 convergence toward the "
+                       f"Table E.1 doctrine: {_hitR}/{_totR} doctrine "
+                       f"cells touched ({_hitR / max(_totR, 1):.0%})."
+                       " Learned rules persist in logs/"
+                       "learned_rules.json across fires, engines and "
+                       "MAPS; strength = accumulated fired weight.")
+            st.markdown("**Membership modifications (evFIS stage "
+                        "\u2460) \u2014 registry vs Table D.3**")
+            from dss.fuzzy import REGISTRY as _REGR
+            from dss.fuzzy import default_partition as _defpR
+            _dpR = _defpR()
+            _modsR = []
+            for _var in _REGR.variables():
+                for _term, _abcd in _REGR.get(_var).items():
+                    _d0 = _dpR.get(_term)
+                    if _d0 is None:
+                        continue
+                    if tuple(np.round(np.asarray(_abcd, float), 4)) \
+                            != tuple(np.round(np.asarray(_d0, float),
+                                              4)):
+                        _modsR.append(dict(
+                            variable=_var, term=_term,
+                            default=str(tuple(round(float(v), 3)
+                                              for v in _d0)),
+                            current=str(tuple(round(float(v), 3)
+                                              for v in _abcd))))
+            if _modsR:
+                st.dataframe(_modsR, use_container_width=True)
+            else:
+                st.caption("Every membership still sits on its "
+                           "Table D.3 default \u2014 stage \u2460 "
+                           "has not moved anything (yet).")
+        elif panel == "Log":
+            _eng4 = st.session_state.get("dss_engine")
+            with st.expander("Saved runs \u2014 load & replay"):
+                import os as _os_rp
+                import json as _js_rp
+                import gzip as _gz_rp
+                _logroot = _os_rp.path.join(_os_rp.path.dirname(
+                    _os_rp.path.dirname(_os_rp.path.abspath(__file__))),
+                    "logs")
+                _runs = sorted((d for d in (_os_rp.listdir(_logroot)
+                                if _os_rp.path.isdir(_logroot) else [])
+                                if _os_rp.path.exists(_os_rp.path.join(
+                                    _logroot, d, "world.json.gz"))),
+                               reverse=True)
+                if not _runs:
+                    st.caption("No replayable runs yet \u2014 every "
+                               "run with 'Apply decisions' ON saves "
+                               "itself under 03_Codes/logs "
+                               "(world.json.gz + meta.json + "
+                               "cycles.jsonl).")
+                else:
+                    _rsel_rp = st.selectbox("Run", _runs, key="rp_run")
+                    if st.button("Load this run for replay",
+                                 help="Rebuilds the exact map, "
+                                      "sensors, resource pool, "
+                                      "engine and weather settings "
+                                      "of the saved run. Then press "
+                                      "'Run to end': the engine and "
+                                      "the rng are deterministic, so "
+                                      "the run reproduces itself "
+                                      "(template/off GenAI; live "
+                                      "Claude proposals are not "
+                                      "deterministic)."):
+                        _rd = _os_rp.path.join(_logroot, _rsel_rp)
+                        with _gz_rp.open(_os_rp.path.join(
+                                _rd, "world.json.gz"), "rt") as _f:
+                            _wnew = World.from_dict(_js_rp.load(_f))
+                        try:
+                            _meta = _js_rp.load(open(_os_rp.path.join(
+                                _rd, "meta.json")))
+                        except Exception:
+                            _meta = {}
+                        _new_simulator(_wnew)
+                        _me = _meta.get("engine", {}) or {}
+                        for _mk, _sk in (
+                                ("regions", "dss_n"),
+                                ("cycle_min", "dss_cycle_min"),
+                                ("horizon_min", "dss_horizon_min"),
+                                ("j_th", "dss_jth"),
+                                ("eta", "dss_eta"),
+                                ("genai", "dss_genai_on"),
+                                ("evfis", "dss_evfis_on"),
+                                ("evfis_step", "dss_evfis_step"),
+                                ("rl_eps", "dss_rl_eps"),
+                                ("rl_lr", "dss_rl_lr"),
+                                ("attn", "dss_attn_thr"),
+                                ("min_gain", "dss_min_gain")):
+                            if _mk in _me:
+                                st.session_state[_sk] = _me[_mk]
+                        for _wk, _wv in (_meta.get("weather", {})
+                                         or {}).items():
+                            st.session_state[_wk] = _wv
+                        if _meta.get("sensors"):
+                            st.session_state["dss_sensors"] =                                 list(_meta["sensors"])
+                        if _meta.get("depots"):
+                            st.session_state["dss_res_items"] =                                 list(_meta["depots"])
+                            st.session_state["dss_res_base_v"] =                                 st.session_state.map_version
+                        st.session_state["dss_apply"] = True
+                        st.toast(f"{_rsel_rp} loaded \u2014 press "
+                                 "'Run to end' to replay.")
+                        st.rerun()
+            st.markdown("**Decision log \u2014 backward trace & "
+                        "counterfactual**")
+            if _eng4 is None or not _eng4.log.records:
+                st.caption("No decisions logged yet \u2014 stage a "
+                           "pool, toggle 'Apply decisions' and step "
+                           "the simulation.")
+            else:
+                _cyc = _eng4.log.cycles()
+                st.caption(f"{len(_cyc)} decision cycles \u00b7 "
+                           f"runtime rules: {len(_eng4.rules)} "
+                           f"(adaptation-born: "
+                           f"{sum(1 for r in _eng4.rules if r.name[0] in 'AG')})"
+                           f" \u00b7 RL Q: " + ", ".join(
+                               f"{k[0]}/s{k[1]}={v:.2f}"
+                               for k, v in sorted(_eng4.rl.q.items())))
+                _ksel = st.selectbox("Cycle (step)", list(reversed(_cyc)),
+                                     key="dlog_k")
+                _recs = _eng4.log.at(int(_ksel))
+                _ropt = (["All agents (table)"]
+                         if len(_recs) > 1 else []) \
+                    + [r.region for r in _recs]
+                _rsel = st.selectbox("Region", _ropt, key="dlog_r")
+                if _rsel == "All agents (table)":
+                    _hd = "| |" + "".join(f" {r.region} |"
+                                          for r in _recs)
+                    _rws = [_hd, "|---|" + "---|" * len(_recs)]
+                    for _ivL in _dss.INTERVENTIONS:
+                        _chipL = ("<span style='color:"
+                                  f"{_IV_COLOR.get(_ivL, '#999')}'>"
+                                  "\u25a0</span> ")
+                        _rws.append(
+                            f"| {_chipL}"
+                            f"{_dss.INTERVENTION_LABEL[_ivL]} | "
+                            + " | ".join(
+                                f"{r.intensities.get(_ivL, 0.0):.2f}"
+                                for r in _recs) + " |")
+                    _rws.append("| quality Q | " + " | ".join(
+                        f"{r.quality:.2f}" for r in _recs) + " |")
+                    _rws.append("| global share | " + " | ".join(
+                        f"{getattr(r, 'coord_share', 1.0):.2f}"
+                        for r in _recs) + " |")
+                    _rws.append("| attended | " + " | ".join(
+                        ("\u25cf" if getattr(r, "attended", True)
+                         else "\u2013") for r in _recs) + " |")
+                    st.markdown("\n".join(_rws),
+                                unsafe_allow_html=True)
+                    _glbL = getattr(_eng4, "last_global", None)
+                    if _glbL:
+                        st.markdown("**" + _glbL["statement"] + "**")
+                    _hotG = max(_recs, key=lambda r: getattr(
+                        r, "coord_share", 0.0))
+                    st.caption(
+                        "GLOBAL coordination \u00b7 the Global DSS "
+                        "reads every region's operational priority, "
+                        "assigns the shares above (budget "
+                        "concentration follows them) and keeps the "
+                        f"hotspot in focus: {_hotG.region} carries "
+                        "the largest share this cycle"
+                        + (" \u00b7 NO-HARM withheld the offensive "
+                           "orders" if getattr(_eng4, "last_withheld",
+                                               False) else "") + ".")
+                    _rec = _recs[0]
+                else:
+                    _rec = next(r for r in _recs
+                                if r.region == _rsel)
+                    st.markdown(f"**{_eng4.log.stage_story(_rec)}**")
+                    for _ln in _eng4.log.why(_rec)[2:]:
+                        st.caption(_ln)
+                st.markdown("**Cycle chronicle \u2014 one decision "
+                            "cycle, the full story**")
+                _cycsel = st.selectbox(
+                    "Cycle k", [c["step"] for c in
+                                reversed(_eng4.cycles)],
+                    key="chron_k") if _eng4.cycles else None
+                if _cycsel is not None:
+                    _cy = next(c for c in _eng4.cycles
+                               if c["step"] == _cycsel)
+                    _sm0 = _cy["sim"]
+                    st.caption(
+                        f"SITUATION \u00b7 k={_cy['step']} "
+                        f"(t={_cy['t_min']:.0f} min) \u00b7 "
+                        f"{_sm0['burning']} cells burning, "
+                        f"{_sm0['burned']} burned so far \u00b7 wind "
+                        f"{_sm0['wws_mean']:.1f} m/s \u00b7 rain "
+                        f"{_sm0['prec_mean']:.1f} mm/h \u00b7 fuel "
+                        f"moisture {_sm0['fmoist_mean']:.3f}")
+                    _fc0 = _cy["forecast"]
+                    st.caption(
+                        f"FORECAST \u00b7 with the decision "
+                        f"J={_fc0['j_candidate']:.3f}, doing nothing "
+                        f"J={_fc0['j_noaction']:.3f} \u00b7 "
+                        f"satisficing bound "
+                        f"{_fc0['satisficing_bound']:.3f} "
+                        f"(J_TH {_fc0['j_threshold']:.2f}) \u00b7 "
+                        + " ".join(f"{k}={v:.3f}" for k, v in
+                                   _cy["costs"].items()))
+                    _gain0 = (_fc0["j_noaction"]
+                              - _fc0["j_candidate"])
+                    st.caption(
+                        f"PERFORMANCE \u00b7 expected gain vs no "
+                        f"action \u0394J={_gain0:+.3f} "
+                        + ("(the decision helps)" if _gain0 > 1e-4
+                           else "(no measurable gain at this "
+                                "horizon)"))
+                    _rl0 = _cy["rl"]
+                    st.caption(
+                        "RL \u00b7 " + (
+                            f"selected adaptation stage "
+                            f"{_rl0['selected_stage']} (deficit "
+                            f"bucket {_rl0['bucket']}, "
+                            f"\u03b5={_rl0['eps']})"
+                            if _rl0["selected_stage"] else
+                            "no stage selected (the seed rule base "
+                            "satisficed)") + " \u00b7 Q: "
+                        + (", ".join(f"{k}={v}" for k, v in
+                                     _rl0["q_table"].items())
+                           or "empty"))
+                    _gd0 = _cy.get("global_dss")
+                    if _gd0:
+                        st.caption("GLOBAL \u00b7 "
+                                   + _gd0.get("statement", ""))
+                    _ad0 = _cy["adaptation"]
+                    if not _ad0["tried"]:
+                        st.caption("ADAPTATION \u00b7 not attempted "
+                                   "\u2014 the seed rule-base "
+                                   "decision was good enough (or the "
+                                   "trial cooldown is running); its "
+                                   "orders are the ones applied "
+                                   "below")
+                    if _ad0["tried"]:
+                        st.markdown(
+                            ("\u2705 " if _ad0["accepted"] else
+                             "\u274c ") + f"stage {_ad0['tried']}: "
+                            f"{_ad0['detail']} (dJ {_ad0['dJ']:+.4f})")
+                        if _ad0.get("info"):
+                            with st.expander("Adaptation trials \u2014 "
+                                             "every attempt, every "
+                                             "reject reason"):
+                                st.json(_ad0["info"])
+                    _rgsel = st.selectbox("Region detail",
+                                          list(_cy["regions"]),
+                                          key="chron_r")
+                    _rg = _cy["regions"][_rgsel]
+                    _zrow = " \u00b7 ".join(
+                        f"{_dss.FEATURE_SYM[k].replace('_', '')}="
+                        f"{v:.2f}" for k, v in _rg["features"].items())
+                    st.caption("z: " + _zrow)
+                    st.caption("concepts (gated): " + " \u00b7 ".join(
+                        f"{k.replace('_', ' ')}={v:.2f}"
+                        for k, v in
+                        _rg["concepts_effective"].items()))
+                    st.caption("fired: " + (" ".join(
+                        f"{n}[{w:.2f}]" for n, w in _rg["fired"])
+                        or "none"))
+                    st.caption(
+                        "DECISION APPLIED (orders rules\u2192final): "
+                        + " \u00b7 ".join(
+                            f"{k.split('_')[0]} "
+                            f"{_rg['orders_from_rules'][k]:.2f}"
+                            f"\u2192{v:.2f}"
+                            for k, v in _rg["orders_final"].items())
+                        + f" \u00b7 Q={_rg['quality']:.2f}"
+                        + (" \u00b7 FAILSAFE" if _rg["failsafe"]
+                           else "")
+                        + f" \u00b7 share {_rg['coord_share']:.2f}")
+                    import json as _js_c
+                    st.download_button(
+                        "Download this cycle (JSON)",
+                        _js_c.dumps(_cy, indent=1).encode(),
+                        file_name=f"cycle_k{_cy['step']}.json",
+                        mime="application/json", key="chron_dl")
+                st.divider()
+                st.markdown("**Trace table (all cycles, Excel-ready)**")
+                _sm_l = float(getattr(cfg, "step_minutes", 1.0))
+                _tbl = [dict(
+                    step=r.step, t_min=int(r.step * _sm_l),
+                    region=r.region,
+                    provenance=_eng4.log.stage_story(r),
+                    fired=" ".join(f"{n}[{w:.2f}]"
+                                   for n, w in r.fired[:4]),
+                    S=round(r.intensities.get("suppression_effort", 0), 2),
+                    D=round(r.intensities.get("resource_deployment", 0), 2),
+                    C=round(r.intensities.get("containment_line", 0), 2),
+                    P=round(r.intensities.get("asset_protection", 0), 2),
+                    E=round(r.intensities.get("evacuation", 0), 2),
+                    W=round(r.intensities.get("public_warning", 0), 2),
+                    Q=round(r.quality, 2),
+                    J_fc=round(r.j_forecast, 3),
+                    J_no=round(r.j_noaction, 3))
+                    for r in _eng4.log.records]
+                st.dataframe(_tbl, use_container_width=True, height=280)
+                import io as _io_l
+                import csv as _csv_l
+                _buf_l = _io_l.StringIO()
+                _wr = _csv_l.DictWriter(_buf_l,
+                                        fieldnames=list(_tbl[0].keys()),
+                                        delimiter=";")
+                _wr.writeheader()
+                _wr.writerows(_tbl)
+                st.download_button(
+                    "Download trace (CSV, opens in Excel)",
+                    _buf_l.getvalue().encode("utf-8-sig"),
+                    file_name="dss_decision_trace.csv",
+                    mime="text/csv")
+                with st.expander("Global DSS history (all "
+                                 "cycles)"):
+                    _gcyc = [(c.get("step"), c.get("t_min"),
+                              c.get("global_dss"))
+                             for c in _eng4.cycles
+                             if c.get("global_dss")]
+                    if not _gcyc:
+                        st.caption("No global decisions logged yet.")
+                    for _gs, _gt, _gg in _gcyc[-40:]:
+                        st.caption(f"k={_gs} (t={_gt:.0f} min): "
+                                   + _gg.get("statement", ""))
+                    st.caption("Full history: `global.csv` in the "
+                               "run folder (one row per cycle: "
+                               "hotspot, attended set, shares, "
+                               "statement).")
+                with st.expander("Adaptation history (all cycles)"):
+                    _seen_h = set()
+                    for _r_h in _eng4.log.records:
+                        if _r_h.step in _seen_h:
+                            continue
+                        _seen_h.add(_r_h.step)
+                        st.caption(f"k={_r_h.step}: "
+                                   + _eng4.log.stage_story(_r_h))
+                if _eng4.run_logger is not None:
+                    st.caption("Persistent run log: "
+                               f"`{_eng4.run_logger.dir}` "
+                               "(steps.csv + decisions.jsonl \u2014 "
+                               "every simulation step and every "
+                               "decision cycle).")
+                _cfsc = st.radio(
+                    "Counterfactual scope", [
+                        "no orders AT ALL (replay from the very "
+                        "beginning)",
+                        f"only from this decision on (k={_rec.step})"],
+                    index=0, key="cf_scope",
+                    help="First option answers 'what if the DSS had "
+                         "never intervened': the clone rewinds to "
+                         "step 0 and replays the whole history with "
+                         "no resource orders. Second option keeps "
+                         "everything up to the selected decision and "
+                         "withdraws only the orders from that cycle "
+                         "on.")
+                if st.button("What if these orders were NOT taken? "
+                             "(counterfactual replay)",
+                             help="Clones the live simulation, rewinds "
+                                  "the CLONE and replays history "
+                                  "without the selected orders; the "
+                                  "live run is untouched. Fuel "
+                                  "moisture and the rng state travel "
+                                  "with the snapshot, so the "
+                                  "difference is attributable to the "
+                                  "withdrawn orders alone."):
+                    _cf_from = (0 if _cfsc.startswith("no orders")
+                                else int(_rec.step))
+                    _dtm_cf = float(getattr(cfg, "step_minutes", 1.0))
+                    with st.spinner("Replaying without orders..."):
+                        _cf, _rcf = _dss.counterfactual(
+                            sim, _cf_from,
+                            step_hook=lambda w2, k2:
+                                _drive_weather(w2, k2 * _dtm_cf))
+                    if _cf is None:
+                        st.warning("No snapshot left at that step "
+                                   "(memory-capped history).")
+                    else:
+                        from disaster_phyengine.costs import (
+                            compute_costs as _cc4)
+                        _ract = _cc4(sim)
+                        _pa = float(getattr(_ract, "j_physical", 0.0))
+                        _pc = float(getattr(_rcf, "j_physical", 0.0))
+                        m1, m2, m3 = st.columns(3)
+                        m1.metric("Jφ actual (with DSS)",
+                                  f"{_pa:.3f}",
+                                  help="Fair outcome metric: "
+                                       "physical loss only, both "
+                                       "sides (a no-order run pays "
+                                       "no response cost by "
+                                       "definition, so the decision "
+                                       "cost would be biased).")
+                        m2.metric("Jφ without orders",
+                                  f"{_pc:.3f}",
+                                  delta=f"{_pc - _pa:+.3f}")
+                        m3.metric("Burned cells: actual vs without",
+                                  f"{int(sim.ever_burned.sum())} / "
+                                  f"{int(_cf.ever_burned.sum())}")
+                        i1, i2, i3 = st.columns(3)
+                        _sc4 = max(3, 380 // max(cfg.nx, 1))
+                        i1.image(viz.render_pil(world, sim=sim,
+                                                scale=_sc4),
+                                 caption="actual (orders applied)")
+                        i2.image(viz.render_pil(_cf.world, sim=_cf,
+                                                scale=_sc4),
+                                 caption="counterfactual (no orders)")
+                        from PIL import Image as _PILImg
+                        _ba = sim.ever_burned
+                        _bc = _cf.ever_burned
+                        _dif = np.zeros((cfg.ny, cfg.nx, 3),
+                                        dtype=np.uint8)
+                        _dif[...] = 34
+                        _dif[_ba & _bc] = (90, 90, 90)
+                        _dif[_bc & ~_ba] = (40, 200, 90)
+                        _dif[_ba & ~_bc] = (230, 60, 60)
+                        _im = _PILImg.fromarray(_dif).resize(
+                            (cfg.nx * _sc4, cfg.ny * _sc4),
+                            _PILImg.NEAREST)
+                        i3.image(_im, caption="difference \u2014 "
+                                 "green: cells the orders SAVED \u00b7 "
+                                 "red: burned only WITH orders \u00b7 "
+                                 "grey: burned in both")
+                        st.caption("Reading the maps: black = burned "
+                                   "OUT, orange = still burning now; a "
+                                   "slowed fire can look 'more orange' "
+                                   "while having burned far less. The "
+                                   "difference map is the honest "
+                                   "comparison.")
         elif panel == "Time":
             st.caption("Simulation time: what one step represents and "
                        "where the clock stands.")
@@ -1070,12 +2471,14 @@ def page_simulation():
                                          "days"].index(_u0), key="dt_unit")
             cfg.step_minutes = tval * {"minutes": 1, "hours": 60,
                                        "days": 1440}[tunit]
-            st.caption(f"Step {sim.state.step} = "
-                       f"{_fmt_sim_time(sim.state.step * cfg.step_minutes)} "
-                       "of fire time. Changing this rescales the "
-                       "dynamics (System Description Sec. 9, note 8): a "
-                       "longer step simply advances the clock further, "
-                       "the physical speed in m/min stays the same.")
+            st.caption("Elapsed fire time so far: "
+                       f"{_fmt_sim_time(getattr(sim, 't_elapsed_min', sim.state.step * cfg.step_minutes))}"
+                       f" in {sim.state.step} steps. Changing the "
+                       "step length applies from the NEXT step on and "
+                       "the elapsed total is PRESERVED (the clock "
+                       "integrates each executed step). The physical "
+                       "speed in m/min stays the same (System "
+                       "Description Sec. 9, note 8).")
             # live head-fire speed so the m/min meaning is always visible
             from disaster_phyengine.spread import rate_of_spread as _rosf
             _ros = _rosf(world.fuel, world.topo, world.meteo, cfg.spread)
@@ -1129,6 +2532,30 @@ def page_simulation():
                        "reads the fused observation restricted to its "
                        "region and extracts the ten features "
                        "$z_1..z_{10}$.")
+            if _obsnet is None:
+                st.warning("OBSERVATION BYPASS \u2014 'Partial "
+                           "observation via sensors' is OFF: every "
+                           "feature reads the TRUE simulation state "
+                           "with confidence 1. This is the idealized "
+                           "physics-test mode, not the thesis "
+                           "pipeline. Turn it on in Layer 1 for the "
+                           "sensor-fused feed.")
+            elif not _sv("dss_sensors", []):
+                st.warning("No sensors staged: the fire-driven "
+                           "features ($z_1$ intensity, $z_4$ "
+                           "proximity, $z_{10}$ urgency) read 0 with "
+                           "ZERO confidence \u2014 the DSS is blind "
+                           "to the fire. The values you still see "
+                           "come from sensor-independent sources "
+                           "(see below). Stage a network in Layer 1.")
+            st.caption("Where each value comes from \u00b7 "
+                       "$z_1, z_4, z_{10}$: SENSOR fusion (burning/"
+                       "intensity channels) \u00b7 $z_5$: pre-fire "
+                       "fuel map prior, aged \u00b7 $z_2$: spread "
+                       "model over maps + weather \u00b7 $z_3$: "
+                       "weather service \u00b7 $z_6, z_7, z_8$: GIS "
+                       "(assets, access, roads) \u00b7 $z_9$: own "
+                       "resource ledger (staged pool).")
             n_agents = int(st.number_input(
                 "Number of local DSS agents", 1, 12,
                 int(_sv("dss_n", 1)), 1,
@@ -1136,6 +2563,18 @@ def page_simulation():
                      "covering every cell (near-square blocks, Agent_1 "
                      "at the north-west)."))
             st.session_state["dss_n"] = n_agents
+            _nrec = max(1, min(12, round((cfg.nx * cfg.ny) / 2500.0)))
+            st.caption(f"Suggested: {_nrec} agent(s) \u2014 one "
+                       "Local DSS per ~50\u00d750-cell "
+                       "responsibility block. More agents pay off "
+                       "when regional situations diverge (big maps, "
+                       "several fronts); a single agent suffices on "
+                       "small maps.")
+            if _nrec != n_agents and st.button(
+                    f"Use suggested ({_nrec})",
+                    key="dss_n_sugg"):
+                st.session_state["dss_n"] = int(_nrec)
+                st.rerun()
             _regs = _dss.partition_n(cfg.nx, cfg.ny, n_agents)
             show_all = st.checkbox(
                 "Show all regions on the map",
@@ -1249,15 +2688,18 @@ def page_simulation():
                     _fprev = (_prev_rec[1] if _prev_rec else dict(_f))
                 else:
                     _fprev = _prev_rec[1]
+                _fcL = _dss.feature_confidence(_obsnet, _reg)
                 for _k in _dss.FEATURE_ORDER:
                     _d = float(_f[_k]) - float(_fprev.get(_k, _f[_k]))
                     _arr = ("\u2191" if _d > 0.005
                             else "\u2193" if _d < -0.005 else "")
                     _dtx = f"  {_arr}{abs(_d):.2f}" if _arr else ""
+                    _ctx = ("" if _fcL[_k] >= 0.999
+                            else f" \u00b7 conf {_fcL[_k]:.2f}")
                     st.progress(min(1.0, float(_f[_k])),
                                 text=f"{_zsub[_dss.FEATURE_SYM[_k]]} "
                                      f"{_dss.FEATURE_NAME[_k]}: "
-                                     f"{_f[_k]:.2f}{_dtx}")
+                                     f"{_f[_k]:.2f}{_dtx}{_ctx}")
                 if _prev_rec is None or _prev_rec[0] != _step_now:
                     st.session_state[_pk] = (_step_now, dict(_f))
                 with st.expander("What each $z_i$ measures"):
@@ -1272,7 +2714,14 @@ def page_simulation():
                     ("ly_val_v", "Protection value", True),
                     ("ly_roads_v", "Roads", True),
                     ("ly_grid_v", "Grid", True),
-                    ("ly_per_v", "Fire perimeter", True)]
+                    ("ly_per_v", "Fire perimeter", True),
+                    ("ly_orders_v", "DSS orders (icons)", True),
+                    ("ly_alloc_v", "DSS allocation glow", True),
+                    ("ly_sens_v", "Sensors + coverage", True),
+                    ("ly_deps_v", "Resource depots + service areas",
+                     True),
+                    ("ly_agents_v", "Agent regions (Local DSS "
+                     "boundaries)", True)]
             for _k, _lab, _d in _lyd:
                 st.session_state[_k] = st.checkbox(
                     _lab, value=bool(_sv(_k, _d)))
@@ -1319,8 +2768,24 @@ def page_simulation():
             _clk, _nf = _clock_info()
             _dreg = st.session_state.get("dss_region")
             _rb, _rl = (_dreg[:4], _dreg[4]) if _dreg else (None, None)
-            _rall = st.session_state.get("dss_regions_all")
-            _sens = st.session_state.get("dss_sensors_draw")
+            _rall = (st.session_state.get("dss_regions_all")
+                     if bool(_sv("ly_agents_v", True)) else None)
+            _sens = (st.session_state.get("dss_sensors_draw")
+                     if bool(_sv("ly_sens_v", True)) else None)
+            _deps = (st.session_state.get("dss_depots_draw")
+                     if bool(_sv("ly_deps_v", True)) else None)
+            if not bool(_sv("ly_agents_v", True)):
+                _rb, _rl = None, None
+            _eng_m = st.session_state.get("dss_engine")
+            _alloc = None
+            _acts = None
+            if (st.session_state.get("dss_apply")
+                    and _eng_m is not None
+                    and _eng_m.last_override is not None):
+                if bool(_sv("ly_alloc_v", True)):
+                    _alloc = _eng_m.last_override.rcap
+                if bool(_sv("ly_orders_v", True)):
+                    _acts = _eng_m.last_actions
             if playing:
                 # fast image frames while animating (keeps the loop
                 # responsive); pause to pan / zoom
@@ -1328,7 +2793,9 @@ def page_simulation():
                                         show_labels=True, clock_text=_clk,
                                         night_factor=_nf, region_box=_rb,
                                         region_label=_rl, regions=_rall,
-                                        sensors=_sens, **flags))
+                                        sensors=_sens, depots=_deps,
+                                        alloc=_alloc, actions=_acts,
+                                        **flags))
             elif place and HAS_CANVAS:
                 # ignition placement works exactly like the Map editor:
                 # a click canvas over the rendered map; each click drops a
@@ -1337,7 +2804,9 @@ def page_simulation():
                                     show_labels=True, clock_text=_clk,
                                     night_factor=_nf, region_box=_rb,
                                     region_label=_rl, regions=_rall,
-                                    sensors=_sens, **flags)
+                                    sensors=_sens, depots=_deps,
+                                    alloc=_alloc, actions=_acts,
+                                    **flags)
                 res = st_canvas(stroke_width=2, stroke_color="#a200de",
                                 background_image=bg, update_streamlit=True,
                                 height=cfg.ny * scale, width=cfg.nx * scale,
@@ -1373,6 +2842,9 @@ def page_simulation():
                                       clock_text=_clk, night_factor=_nf,
                                       region_box=_rb, region_label=_rl,
                                       regions=_rall, sensors=_sens,
+                                      depots=_deps, alloc=_alloc,
+                                      actions=_acts,
+                                      uirevision=f"m{st.session_state.map_version}",
                                       **flags),
                     use_container_width=True,
                     key=f"plot2d_{st.session_state.map_version}",
@@ -1384,9 +2856,15 @@ def page_simulation():
                              "marker."):
                     world.ignitions.pop()
                     st.rerun()
-        st.caption(f"State S_k at step k = {sim.state.step} "
-                   f"(t = {sim.state.step * cfg.dt:.0f}).  Active fire "
-                   f"{int((sim.state.burning > 0.5).sum())} cells.")
+        if _alloc is not None and float(np.asarray(_alloc).max()) > 1e-9:
+            st.caption("DSS orders on the map: blue dots = suppression "
+                       "(water on the engaged cells) | dark-brown "
+                       "squares = containment line being cut | green "
+                       "rings = asset protection | orange arrow+EVAC "
+                       "at settlements = evacuation | yellow ! = "
+                       "public warning | region badge S/D/C/P/E/W = "
+                       "ordered intensities | cyan glow = allocated "
+                       "$R_{cap}$ | D1.. = staged depots.")
         st.markdown(legend_html(horizontal=True), unsafe_allow_html=True)
 
     _cost_panel()
@@ -1433,8 +2911,6 @@ _J_TERMS = [
 
 def _cost_panel():
     import matplotlib.pyplot as plt
-    rep = compute_costs(sim)
-    d = rep.to_dict()
     thr = float(sim.cfg.cost.acceptance_fraction)
     st.divider()
     st.subheader("Cost function $J_k$")
@@ -1447,6 +2923,74 @@ def _cost_panel():
                f"line marks the acceptance threshold ({thr:g} of the "
                "do-nothing cost).")
 
+    # ---- operational priority: doctrine presets for the weights ----
+    _wpre = {
+        "Balanced (default)":            (0.294, 0.294, 0.294,
+                                          0.059, 0.059),
+        "Life first \u2014 \u00f6nce insan":  (0.20, 0.20, 0.45,
+                                          0.075, 0.075),
+        "Assets & infrastructure first": (0.20, 0.45, 0.25,
+                                          0.05, 0.05),
+        "Environment first \u2014 forest":    (0.45, 0.20, 0.25,
+                                          0.05, 0.05),
+        "Manual":                        None,
+    }
+    _wmode = st.selectbox(
+        "Operational priority \u2014 how the five losses are "
+        "weighted", list(_wpre), key="cost_wmode",
+        help="A doctrine choice assigns consistent weights (they "
+             "sum to 1). 'Life first' makes population exposure "
+             "dominant, 'Assets first' the built environment, "
+             "'Environment first' the burned area. Manual frees "
+             "the five weights; the live caption shows the "
+             "normalized shares the engine actually uses. The "
+             "choice steers the DSS: forecasts, satisficing, "
+             "adaptation gates and the counterfactual all read "
+             "this J.")
+    _cwm = sim.cfg.cost
+    if _wpre[_wmode] is not None:
+        (_cwm.w_burn, _cwm.w_asset, _cwm.w_pop,
+         _cwm.w_resp, _cwm.w_delay) = _wpre[_wmode]
+    else:
+        _mw = st.columns(5)
+        _defs = [("burn", _cwm.w_burn), ("asset", _cwm.w_asset),
+                 ("pop", _cwm.w_pop), ("resp", _cwm.w_resp),
+                 ("delay", _cwm.w_delay)]
+        _vals = []
+        for _i_w, (_nm_w, _dv_w) in enumerate(_defs):
+            _vals.append(float(_mw[_i_w].number_input(
+                f"w_{_nm_w}", 0.0, 1.0,
+                float(_sv(f"cost_w_{_nm_w}",
+                          round(float(_dv_w), 3))),
+                0.05, key=f"cost_w_{_nm_w}")))
+        (_cwm.w_burn, _cwm.w_asset, _cwm.w_pop,
+         _cwm.w_resp, _cwm.w_delay) = _vals
+    _wsm = (_cwm.w_burn + _cwm.w_asset + _cwm.w_pop
+            + _cwm.w_resp + _cwm.w_delay)
+    if _wsm <= 1e-9:
+        st.error("All weights are zero \u2014 J would be "
+                 "undefined; falling back to Balanced.")
+        (_cwm.w_burn, _cwm.w_asset, _cwm.w_pop,
+         _cwm.w_resp, _cwm.w_delay) = _wpre["Balanced (default)"]
+        _wsm = 1.0
+    st.caption(
+        "Normalized shares (always renormalized to sum 1): burn "
+        f"{(_cwm.w_burn / _wsm):.0%} \u00b7 asset "
+        f"{(_cwm.w_asset / _wsm):.0%} \u00b7 population "
+        f"{(_cwm.w_pop / _wsm):.0%} \u00b7 response "
+        f"{(_cwm.w_resp / _wsm):.0%} \u00b7 delay "
+        f"{(_cwm.w_delay / _wsm):.0%}")
+    if (_cwm.w_pop / _wsm) < 0.15:
+        st.warning("Life-safety share below 15% is unusual for an "
+                   "operational doctrine \u2014 make sure this is "
+                   "intended.")
+    if ((_cwm.w_resp + _cwm.w_delay) / _wsm) > 0.4:
+        st.warning("Response cost + delay above 40% makes the "
+                   "optimizer reluctant to field resources at all "
+                   "\u2014 the fire terms should dominate.")
+    rep = compute_costs(sim)
+    d = rep.to_dict()
+
     # physical impact
     m = st.columns(4)
     m[0].metric("Burned area (ha)", f"{rep.burned_area_ha:,.1f}")
@@ -1455,11 +2999,73 @@ def _cost_panel():
     m[3].metric("Asset value lost",
                 f"{rep.asset_value_lost:,.1f} / {rep.asset_value_total:,.1f}")
 
+    with st.expander("How each term is computed \u2014 actual "
+                     "value, unit, reference, normalization"):
+        _cw = sim.cfg.cost
+        _bref_c = float(getattr(_cw, "burn_reference_fraction", 0.02))
+        _aref_ha = _bref_c * rep.burnable_cells * sim.cfg.cell_area_ha
+        _H = float(_cw.horizon_steps)
+        _wsum = (_cw.w_burn + _cw.w_asset + _cw.w_pop
+                 + _cw.w_resp + _cw.w_delay)
+        _rows = [
+            ("J_burn", f"{rep.burned_area_ha:,.1f} ha burned "
+             f"({rep.burned_forest_ha:,.1f} ha forest)",
+             f"A_ref = {_aref_ha:,.0f} ha (5% of burnable; 'major "
+             "fire')",
+             "1 - exp(-A/A_ref) \u2014 saturating, never clips",
+             rep.j_burn, _cw.w_burn),
+            ("J_asset", f"{rep.asset_value_lost:,.2f} of "
+             f"{rep.asset_value_total:,.2f} value units lost",
+             "total building + critical-infrastructure value",
+             "lost / total", rep.j_asset, _cw.w_asset),
+            ("J_pop", f"{rep.population_person_steps:,.0f} "
+             "person-steps in burning cells "
+             f"(now exposed: {rep.population_exposed:,.0f})",
+             f"total population \u00d7 H={_H:g} steps",
+             "\u03a3 exposed / (pop \u00d7 H)", rep.j_pop,
+             _cw.w_pop),
+            ("J_resp", f"{rep.committed_capacity:,.0f} capacity now "
+             "fielded (effort integrates over time)",
+             f"staged pool \u00d7 1.2 = {rep.available_capacity:,.0f}"
+             f", \u00d7 H={_H:g}",
+             "\u03a3 committed / (ref \u00d7 H) \u2014 an army "
+             "held for hours costs more than a strike", rep.j_resp,
+             _cw.w_resp),
+            ("J_del", f"{rep.mean_response_delay:,.1f} min mean "
+             "dispatch (capacity-weighted)",
+             f"delay_reference = {_cw.delay_reference:g} min",
+             "mean delay / reference", rep.j_delay, _cw.w_delay),
+        ]
+        for _nm, _act, _ref, _frm, _jv, _wv in _rows:
+            st.markdown(
+                f"**{_nm}** = {_jv:.3f} \u00b7 weight {_wv:g} "
+                f"\u2192 contribution {(_wv * _jv / _wsum):.3f}  \n"
+                f"actual: {_act}  \n"
+                f"reference: {_ref}  \n"
+                f"normalization: {_frm}")
+        st.caption(
+            "J_resp and J_del price the response, never forbid it: "
+            "their weights are small (0.2 vs 1.0) and J_burn is "
+            "deliberately expensive, so 'never intervene' loses "
+            "whenever the fire is real. The no-harm guard compares "
+            "candidates on the PHYSICAL terms only (burn + asset + "
+            "pop).")
+
     # normalized J terms and the total, all in [0,1]
-    cc = st.columns(len(_J_TERMS) + 1)
+    cc = st.columns(len(_J_TERMS) + 2)
     for i, (lab, key, _c, sub) in enumerate(_J_TERMS):
         cc[i].metric(f"{lab} · {sub}", f"{d[key]:.3f}")
-    cc[-1].metric("J · TOTAL", f"{rep.j_total:.3f}")
+    cc[-2].metric("J · DECISION", f"{rep.j_total:.3f}",
+                  help="The 5-term cost the DSS optimizes (response "
+                       "cost and delay INCLUDED: a commander "
+                       "economizes the fleet).")
+    cc[-1].metric("Jφ · OUTCOME",
+                  f"{getattr(rep, 'j_physical', 0.0):.3f}",
+                  help="Physical loss only (burn + asset + pop). "
+                       "THE fair metric for comparing runs: a no-DSS "
+                       "run pays no response cost by definition, so "
+                       "J decision would reward doing nothing. Every "
+                       "with/without comparison reads THIS.")
 
     series = st.session_state.cost_series
     if len(series) > 1:
@@ -1468,7 +3074,9 @@ def _cost_panel():
         titles = {k: lab for lab, k, _c, _s in _J_TERMS}
         cells = st.columns(3)
         panels = [(lab, key, col, titles[key]) for lab, key, col, _ in _J_TERMS]
-        panels.append(("J", "j_total", "#111111", "J (total)"))
+        panels.append(("J", "j_total", "#111111", "J (decision)"))
+        panels.append(("Jφ", "j_physical", "#b03a2e",
+                       "Jφ (outcome, fair)"))
         for i, (lab, key, col, ttl) in enumerate(panels):
             with cells[i % 3]:
                 f, a = plt.subplots(figsize=(3.4, 2.0))
