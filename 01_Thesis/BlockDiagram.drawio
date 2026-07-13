@@ -336,7 +336,7 @@
       <root>
         <mxCell id="0" />
         <mxCell id="1" parent="0" />
-        <mxCell id="F24N-1" parent="1" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#1F3864;strokeColor=#12213E;fontColor=#FFFFFF;fontStyle=1;fontSize=11;arcSize=8;" value="Active rule base&#xa;(Mamdani decision core,&#xa;TS form for adaptation)" vertex="1">
+        <mxCell id="F24N-1" parent="1" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#1F3864;strokeColor=#12213E;fontColor=#FFFFFF;fontStyle=1;fontSize=11;arcSize=8;" value="Active rule base&#xa;(zero-order Takagi-Sugeno core)" vertex="1">
           <mxGeometry height="80" width="140" x="100" y="200" as="geometry" />
         </mxCell>
         <mxCell id="F24N-2" parent="1" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#DEEBF7;strokeColor=#2E75B6;fontColor=#1F4E79;fontStyle=1;fontSize=11;arcSize=8;" value="Stage 1&#xa;Tune membership functions" vertex="1">
@@ -348,7 +348,7 @@
         <mxCell id="F24N-4" parent="1" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#E4D3F0;strokeColor=#7030A0;fontColor=#432568;fontStyle=1;fontSize=11;arcSize=8;" value="Stage 3&#xa;Generate new candidate rule&#xa;(generative proposer)" vertex="1">
           <mxGeometry height="60" width="160" x="390" y="220" as="geometry" />
         </mxCell>
-        <mxCell id="F24N-5" parent="1" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#FBE4E4;strokeColor=#B02418;fontColor=#B02418;fontStyle=1;fontSize=11;arcSize=8;" value="Verification gate&lt;br&gt;(satisficing admission)" vertex="1">
+        <mxCell id="F24N-5" parent="1" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#FBE4E4;strokeColor=#B02418;fontColor=#B02418;fontStyle=1;fontSize=11;arcSize=8;" value="Verification gates&lt;br&gt;G1 format, G2 constraints,&lt;br&gt;G3 and G4 shadow rollouts&lt;br&gt;(+ G2b and G5 for packages)" vertex="1">
           <mxGeometry height="60" width="150" x="660" y="150" as="geometry" />
         </mxCell>
         <mxCell id="F24N-6" parent="1" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#E2EFDA;strokeColor=#375623;fontColor=#375623;fontStyle=1;fontSize=11;arcSize=8;" value="Field decisions&lt;br&gt;intervention intensities \(U_{DSS,k}\)" vertex="1">
@@ -3337,6 +3337,247 @@
         </mxCell>
         <mxCell id="F47-102" parent="1" style="text;html=1;fontSize=13;fontStyle=1;align=left;fontColor=#333333;" value="catalog of combinations:  5&#8309; = 3125  &#8594;  6 &#183; 5&#8308; = 3750" vertex="1">
           <mxGeometry height="22" width="600" x="940" y="664" as="geometry" />
+        </mxCell>
+      </root>
+    </mxGraphModel>
+  </diagram>
+  <diagram name="Figure 4.8 Generative proposal and the verification gates" id="F48gates01">
+    <mxGraphModel dx="1283" dy="750" grid="1" gridSize="10" guides="1" tooltips="1" connect="1" arrows="1" fold="1" page="1" pageScale="1" pageWidth="1300" pageHeight="800" math="0" shadow="0">
+      <root>
+        <mxCell id="0" />
+        <mxCell id="1" parent="0" />
+        <mxCell id="F48-1" parent="1" vertex="1" style="rounded=1;arcSize=8;whiteSpace=wrap;html=1;strokeColor=#7A7A7A;fillColor=#FFFFFF;fontSize=11;align=center;verticalAlign=middle;" value="Situation of the cycle&#10;&#10;crisp decision concepts&#10;the whole active rule base&#10;the coverage verdict">
+          <mxGeometry height="110" width="240" x="40" y="60" as="geometry" />
+        </mxCell>
+        <mxCell id="F48-2" parent="1" vertex="1" style="rounded=1;arcSize=8;whiteSpace=wrap;html=1;strokeColor=#1F6FB2;fillColor=#FFFFFF;fontSize=11;align=center;verticalAlign=middle;" value="Large language model&#10;in context, no weight update">
+          <mxGeometry height="60" width="220" x="340" y="60" as="geometry" />
+        </mxCell>
+        <mxCell id="F48-3" parent="1" vertex="1" style="rounded=1;arcSize=8;whiteSpace=wrap;html=1;strokeColor=#7A7A7A;fillColor=#FFFFFF;fontSize=10;align=center;verticalAlign=middle;" value="Template proposer&#10;offline stand-in, rules only, never a package">
+          <mxGeometry height="60" width="220" x="340" y="140" as="geometry" />
+        </mxCell>
+        <mxCell id="F48-4" parent="1" vertex="1" style="rounded=1;arcSize=8;whiteSpace=wrap;html=1;strokeColor=#C65911;fillColor=#FDF3EC;fontSize=11;align=center;verticalAlign=middle;" value="Proposal&#10;&#10;ONE rule&#10;or a package:&#10;one rule + ONE new object">
+          <mxGeometry height="140" width="200" x="620" y="60" as="geometry" />
+        </mxCell>
+        <mxCell id="F48-5" parent="1" vertex="1" style="rounded=1;arcSize=8;whiteSpace=wrap;html=1;strokeColor=#C65911;fillColor=#FFFFFF;fontSize=10;align=center;verticalAlign=middle;" value="intermediate concept&#10;normalized composition of at most&#10;four existing features or concepts">
+          <mxGeometry height="60" width="300" x="880" y="60" as="geometry" />
+        </mxCell>
+        <mxCell id="F48-6" parent="1" vertex="1" style="rounded=1;arcSize=8;whiteSpace=wrap;html=1;strokeColor=#C65911;fillColor=#FFFFFF;fontSize=10;align=center;verticalAlign=middle;" value="macro intervention&#10;named composition of at most three&#10;base channels, weights in (0,1]">
+          <mxGeometry height="60" width="300" x="880" y="140" as="geometry" />
+        </mxCell>
+        <mxCell id="F48-7" parent="1" edge="1" style="endArrow=classic;html=1;strokeWidth=2;strokeColor=#444444;dashed=0;rounded=0;">
+          <mxGeometry relative="1" as="geometry">
+            <mxPoint x="280" y="90" as="sourcePoint" />
+            <mxPoint x="340" y="90" as="targetPoint" />
+          </mxGeometry>
+        </mxCell>
+        <mxCell id="F48-8" parent="1" edge="1" style="endArrow=classic;html=1;strokeWidth=2;strokeColor=#7A7A7A;dashed=0;rounded=0;">
+          <mxGeometry relative="1" as="geometry">
+            <mxPoint x="280" y="140" as="sourcePoint" />
+            <mxPoint x="340" y="165" as="targetPoint" />
+          </mxGeometry>
+        </mxCell>
+        <mxCell id="F48-9" parent="1" edge="1" style="endArrow=classic;html=1;strokeWidth=2;strokeColor=#444444;dashed=0;rounded=0;">
+          <mxGeometry relative="1" as="geometry">
+            <mxPoint x="560" y="90" as="sourcePoint" />
+            <mxPoint x="620" y="105" as="targetPoint" />
+          </mxGeometry>
+        </mxCell>
+        <mxCell id="F48-10" parent="1" edge="1" style="endArrow=classic;html=1;strokeWidth=2;strokeColor=#7A7A7A;dashed=0;rounded=0;">
+          <mxGeometry relative="1" as="geometry">
+            <mxPoint x="560" y="170" as="sourcePoint" />
+            <mxPoint x="620" y="150" as="targetPoint" />
+          </mxGeometry>
+        </mxCell>
+        <mxCell id="F48-11" parent="1" edge="1" style="endArrow=classic;html=1;strokeWidth=2;strokeColor=#C65911;dashed=0;rounded=0;">
+          <mxGeometry relative="1" as="geometry">
+            <mxPoint x="820" y="95" as="sourcePoint" />
+            <mxPoint x="880" y="90" as="targetPoint" />
+          </mxGeometry>
+        </mxCell>
+        <mxCell id="F48-12" parent="1" edge="1" style="endArrow=classic;html=1;strokeWidth=2;strokeColor=#C65911;dashed=0;rounded=0;">
+          <mxGeometry relative="1" as="geometry">
+            <mxPoint x="820" y="165" as="sourcePoint" />
+            <mxPoint x="880" y="170" as="targetPoint" />
+          </mxGeometry>
+        </mxCell>
+        <mxCell id="F48-13" parent="1" vertex="1" style="rounded=1;arcSize=8;whiteSpace=wrap;html=1;strokeColor=#1F6FB2;fillColor=#FFFFFF;fontSize=10;align=center;verticalAlign=middle;" value="G1&#160;&#160;&#160;format: the antecedent and the consequent are well formed">
+          <mxGeometry height="50" width="560" x="340" y="240" as="geometry" />
+        </mxCell>
+        <mxCell id="F48-14" parent="1" vertex="1" style="rounded=1;arcSize=8;whiteSpace=wrap;html=1;strokeColor=#1F6FB2;fillColor=#FFFFFF;fontSize=10;align=center;verticalAlign=middle;" value="G2&#160;&#160;&#160;vocabulary, arity, numeric range, and no duplicate combination">
+          <mxGeometry height="50" width="560" x="340" y="310" as="geometry" />
+        </mxCell>
+        <mxCell id="F48-15" parent="1" vertex="1" style="rounded=1;arcSize=8;whiteSpace=wrap;html=1;strokeColor=#C65911;fillColor=#FFFFFF;fontSize=10;align=center;verticalAlign=middle;" value="G2b&#160;&#160;&#160;package only: cos(&#969;_new, &#969;_c) &lt; 0.95 against every existing concept">
+          <mxGeometry height="50" width="560" x="340" y="380" as="geometry" />
+        </mxCell>
+        <mxCell id="F48-16" parent="1" vertex="1" style="rounded=1;arcSize=8;whiteSpace=wrap;html=1;strokeColor=#2E7D32;fillColor=#FFFFFF;fontSize=10;align=center;verticalAlign=middle;" value="G3&#160;&#160;&#160;shadow rollout, first seed: &#916;J&#770;_phys &lt; 0">
+          <mxGeometry height="50" width="560" x="340" y="480" as="geometry" />
+        </mxCell>
+        <mxCell id="F48-17" parent="1" vertex="1" style="rounded=1;arcSize=8;whiteSpace=wrap;html=1;strokeColor=#2E7D32;fillColor=#FFFFFF;fontSize=10;align=center;verticalAlign=middle;" value="G4&#160;&#160;&#160;shadow rollout, second seed: the same comparison, a different seed">
+          <mxGeometry height="50" width="560" x="340" y="550" as="geometry" />
+        </mxCell>
+        <mxCell id="F48-18" parent="1" vertex="1" style="rounded=1;arcSize=8;whiteSpace=wrap;html=1;strokeColor=#C65911;fillColor=#FFFFFF;fontSize=10;align=center;verticalAlign=middle;" value="G5&#160;&#160;&#160;package only: both rollouts beat the vocabulary margin &#948;_v">
+          <mxGeometry height="50" width="560" x="340" y="620" as="geometry" />
+        </mxCell>
+        <mxCell id="F48-19" parent="1" edge="1" style="endArrow=classic;html=1;strokeWidth=2;strokeColor=#C65911;dashed=0;rounded=0;">
+          <mxGeometry relative="1" as="geometry">
+            <mxPoint x="720" y="200" as="sourcePoint" />
+            <mxPoint x="720" y="240" as="targetPoint" />
+          </mxGeometry>
+        </mxCell>
+        <mxCell id="F48-20" parent="1" edge="1" style="endArrow=classic;html=1;strokeWidth=2;strokeColor=#444444;dashed=0;rounded=0;">
+          <mxGeometry relative="1" as="geometry">
+            <mxPoint x="620" y="290" as="sourcePoint" />
+            <mxPoint x="620" y="310" as="targetPoint" />
+          </mxGeometry>
+        </mxCell>
+        <mxCell id="F48-21" parent="1" edge="1" style="endArrow=classic;html=1;strokeWidth=2;strokeColor=#444444;dashed=0;rounded=0;">
+          <mxGeometry relative="1" as="geometry">
+            <mxPoint x="620" y="360" as="sourcePoint" />
+            <mxPoint x="620" y="380" as="targetPoint" />
+          </mxGeometry>
+        </mxCell>
+        <mxCell id="F48-22" parent="1" edge="1" style="endArrow=classic;html=1;strokeWidth=2;strokeColor=#444444;dashed=0;rounded=0;">
+          <mxGeometry relative="1" as="geometry">
+            <mxPoint x="620" y="430" as="sourcePoint" />
+            <mxPoint x="620" y="480" as="targetPoint" />
+          </mxGeometry>
+        </mxCell>
+        <mxCell id="F48-23" parent="1" edge="1" style="endArrow=classic;html=1;strokeWidth=2;strokeColor=#444444;dashed=0;rounded=0;">
+          <mxGeometry relative="1" as="geometry">
+            <mxPoint x="620" y="530" as="sourcePoint" />
+            <mxPoint x="620" y="550" as="targetPoint" />
+          </mxGeometry>
+        </mxCell>
+        <mxCell id="F48-24" parent="1" edge="1" style="endArrow=classic;html=1;strokeWidth=2;strokeColor=#444444;dashed=0;rounded=0;">
+          <mxGeometry relative="1" as="geometry">
+            <mxPoint x="620" y="600" as="sourcePoint" />
+            <mxPoint x="620" y="620" as="targetPoint" />
+          </mxGeometry>
+        </mxCell>
+        <mxCell id="F48-25" parent="1" edge="1" style="endArrow=none;html=1;strokeWidth=1;strokeColor=#7A7A7A;dashed=0;rounded=0;">
+          <mxGeometry relative="1" as="geometry">
+            <mxPoint x="330" y="240" as="sourcePoint" />
+            <mxPoint x="330" y="430" as="targetPoint" />
+            <Array as="points">
+              <mxPoint x="316" y="240" />
+              <mxPoint x="316" y="430" />
+            </Array>
+          </mxGeometry>
+        </mxCell>
+        <mxCell id="F48-26" parent="1" edge="1" style="endArrow=none;html=1;strokeWidth=1;strokeColor=#7A7A7A;dashed=0;rounded=0;">
+          <mxGeometry relative="1" as="geometry">
+            <mxPoint x="330" y="480" as="sourcePoint" />
+            <mxPoint x="330" y="670" as="targetPoint" />
+            <Array as="points">
+              <mxPoint x="316" y="480" />
+              <mxPoint x="316" y="670" />
+            </Array>
+          </mxGeometry>
+        </mxCell>
+        <mxCell id="F48-27" parent="1" vertex="1" style="text;html=1;fontSize=10;fontColor=#7A7A7A;align=right;verticalAlign=middle;" value="no simulation is needed here:&#10;a rejection goes back to the proposer&#10;with the failing gate named, within&#10;a bounded revision budget">
+          <mxGeometry height="70" width="250" x="60" y="300" as="geometry" />
+        </mxCell>
+        <mxCell id="F48-28" parent="1" vertex="1" style="text;html=1;fontSize=10;fontColor=#7A7A7A;align=right;verticalAlign=middle;" value="a rollout is needed here:&#10;a rejection ends the stage for this cycle;&#10;the controller may select it again later">
+          <mxGeometry height="60" width="250" x="60" y="540" as="geometry" />
+        </mxCell>
+        <mxCell id="F48-29" parent="1" edge="1" style="endArrow=classic;html=1;strokeWidth=2;strokeColor=#B03A2E;dashed=1;rounded=0;">
+          <mxGeometry relative="1" as="geometry">
+            <mxPoint x="340" y="405" as="sourcePoint" />
+            <mxPoint x="340" y="110" as="targetPoint" />
+            <Array as="points">
+              <mxPoint x="305" y="405" />
+              <mxPoint x="305" y="110" />
+            </Array>
+          </mxGeometry>
+        </mxCell>
+        <mxCell id="F48-30" parent="1" edge="1" style="endArrow=classic;html=1;strokeWidth=1;strokeColor=#B03A2E;dashed=0;rounded=0;">
+          <mxGeometry relative="1" as="geometry">
+            <mxPoint x="900" y="265.0" as="sourcePoint" />
+            <mxPoint x="940" y="265.0" as="targetPoint" />
+          </mxGeometry>
+        </mxCell>
+        <mxCell id="F48-31" parent="1" edge="1" style="endArrow=classic;html=1;strokeWidth=1;strokeColor=#B03A2E;dashed=0;rounded=0;">
+          <mxGeometry relative="1" as="geometry">
+            <mxPoint x="900" y="335.0" as="sourcePoint" />
+            <mxPoint x="940" y="335.0" as="targetPoint" />
+          </mxGeometry>
+        </mxCell>
+        <mxCell id="F48-32" parent="1" edge="1" style="endArrow=classic;html=1;strokeWidth=1;strokeColor=#B03A2E;dashed=0;rounded=0;">
+          <mxGeometry relative="1" as="geometry">
+            <mxPoint x="900" y="405.0" as="sourcePoint" />
+            <mxPoint x="940" y="405.0" as="targetPoint" />
+          </mxGeometry>
+        </mxCell>
+        <mxCell id="F48-33" parent="1" edge="1" style="endArrow=classic;html=1;strokeWidth=1;strokeColor=#B03A2E;dashed=0;rounded=0;">
+          <mxGeometry relative="1" as="geometry">
+            <mxPoint x="900" y="505.0" as="sourcePoint" />
+            <mxPoint x="940" y="505.0" as="targetPoint" />
+          </mxGeometry>
+        </mxCell>
+        <mxCell id="F48-34" parent="1" edge="1" style="endArrow=classic;html=1;strokeWidth=1;strokeColor=#B03A2E;dashed=0;rounded=0;">
+          <mxGeometry relative="1" as="geometry">
+            <mxPoint x="900" y="575.0" as="sourcePoint" />
+            <mxPoint x="940" y="575.0" as="targetPoint" />
+          </mxGeometry>
+        </mxCell>
+        <mxCell id="F48-35" parent="1" edge="1" style="endArrow=classic;html=1;strokeWidth=1;strokeColor=#B03A2E;dashed=0;rounded=0;">
+          <mxGeometry relative="1" as="geometry">
+            <mxPoint x="900" y="645.0" as="sourcePoint" />
+            <mxPoint x="940" y="645.0" as="targetPoint" />
+          </mxGeometry>
+        </mxCell>
+        <mxCell id="F48-36" parent="1" edge="1" style="endArrow=none;html=1;strokeWidth=2;strokeColor=#B03A2E;dashed=0;rounded=0;">
+          <mxGeometry relative="1" as="geometry">
+            <mxPoint x="940" y="645" as="sourcePoint" />
+            <mxPoint x="940" y="335" as="targetPoint" />
+          </mxGeometry>
+        </mxCell>
+        <mxCell id="F48-37" parent="1" edge="1" style="endArrow=classic;html=1;strokeWidth=2;strokeColor=#B03A2E;dashed=0;rounded=0;">
+          <mxGeometry relative="1" as="geometry">
+            <mxPoint x="940" y="335" as="sourcePoint" />
+            <mxPoint x="980" y="335" as="targetPoint" />
+          </mxGeometry>
+        </mxCell>
+        <mxCell id="F48-38" parent="1" vertex="1" style="rounded=1;arcSize=8;whiteSpace=wrap;html=1;strokeColor=#B03A2E;fillColor=#FBEEEC;fontSize=10;align=center;verticalAlign=middle;" value="rejected&#10;&#10;the failing gate enters the cycle chronicle;&#10;the cycle falls back to the fail-safe">
+          <mxGeometry height="90" width="220" x="980" y="290" as="geometry" />
+        </mxCell>
+        <mxCell id="F48-39" parent="1" edge="1" style="endArrow=classic;html=1;strokeWidth=2;strokeColor=#2E7D32;dashed=0;rounded=0;">
+          <mxGeometry relative="1" as="geometry">
+            <mxPoint x="620" y="670" as="sourcePoint" />
+            <mxPoint x="1090" y="690" as="targetPoint" />
+            <Array as="points">
+              <mxPoint x="620" y="720" />
+              <mxPoint x="1090" y="720" />
+            </Array>
+          </mxGeometry>
+        </mxCell>
+        <mxCell id="F48-40" parent="1" vertex="1" style="rounded=1;arcSize=8;whiteSpace=wrap;html=1;strokeColor=#2E7D32;fillColor=#EEF6EE;fontSize=10;align=center;verticalAlign=middle;" value="admitted&#10;&#10;runtime rule base and lineage store;&#10;an admitted object is charged to the reward">
+          <mxGeometry height="90" width="220" x="980" y="600" as="geometry" />
+        </mxCell>
+        <mxCell id="F48-41" parent="1" vertex="1" style="rounded=1;arcSize=8;whiteSpace=wrap;html=1;strokeColor=#6A1B9A;fillColor=#FFFFFF;fontSize=10;align=center;verticalAlign=middle;" value="Cycle chronicle&#10;every closed cycle: the situation, the proposal, the gate verdict, the realized &#916;J&#770;_phys">
+          <mxGeometry height="60" width="560" x="340" y="-60" as="geometry" />
+        </mxCell>
+        <mxCell id="F48-42" parent="1" edge="1" style="endArrow=classic;html=1;strokeWidth=2;strokeColor=#6A1B9A;dashed=1;rounded=0;">
+          <mxGeometry relative="1" as="geometry">
+            <mxPoint x="500" y="0" as="sourcePoint" />
+            <mxPoint x="500" y="60" as="targetPoint" />
+          </mxGeometry>
+        </mxCell>
+        <mxCell id="F48-43" parent="1" vertex="1" style="text;html=1;fontSize=10;fontColor=#6A1B9A;align=left;verticalAlign=middle;" value="the k nearest past situations, with their verdicts,&#10;are retrieved into the prompt">
+          <mxGeometry height="40" width="340" x="520" y="10" as="geometry" />
+        </mxCell>
+        <mxCell id="F48-44" parent="1" edge="1" style="endArrow=classic;html=1;strokeWidth=2;strokeColor=#6A1B9A;dashed=0;rounded=0;">
+          <mxGeometry relative="1" as="geometry">
+            <mxPoint x="1200" y="335" as="sourcePoint" />
+            <mxPoint x="900" y="-30" as="targetPoint" />
+            <Array as="points">
+              <mxPoint x="1250" y="335" />
+              <mxPoint x="1250" y="-30" />
+            </Array>
+          </mxGeometry>
+        </mxCell>
+        <mxCell id="F48-45" parent="1" vertex="1" style="rounded=1;arcSize=8;whiteSpace=wrap;html=1;strokeColor=#7A7A7A;fillColor=#FFFFFF;fontSize=10;align=center;verticalAlign=middle;" value="Fixed by design&#10;&#10;ten observation features,&#10;five decision axes,&#10;six base physical channels;&#10;growth happens above and below&#10;this contract, never through it">
+          <mxGeometry height="110" width="240" x="40" y="600" as="geometry" />
         </mxCell>
       </root>
     </mxGraphModel>
