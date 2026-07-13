@@ -92,12 +92,18 @@ def _feature_inputs(features: Dict[str, float]) -> Dict[str, np.ndarray]:
     return vecs
 
 
-def infer_concepts(features: Dict[str, float]) -> Dict[str, np.ndarray]:
-    """Observed activations a_obs (Eq. 41): five-term vector per concept."""
+def infer_concepts(features: Dict[str, float],
+                   hierarchy: Dict | None = None
+                   ) -> Dict[str, np.ndarray]:
+    """Observed activations a_obs (Eq. 41): five-term vector per concept.
+
+    hierarchy: an ENGINE-LOCAL hierarchy (the base one possibly grown
+    by admitted concept packages); defaults to the thesis base."""
+    hh = HIERARCHY if hierarchy is None else hierarchy
     vecs = _feature_inputs(features)
     act: Dict[str, np.ndarray] = {}
     for lvl in (1, 2, 3, 4):
-        for name, (l, inputs) in HIERARCHY.items():
+        for name, (l, inputs) in hh.items():
             if l != lvl:
                 continue
             v = np.zeros(len(TERMS))
@@ -107,15 +113,17 @@ def infer_concepts(features: Dict[str, float]) -> Dict[str, np.ndarray]:
     return act
 
 
-def concept_gates(feature_conf: Dict[str, float]) -> Dict[str, float]:
+def concept_gates(feature_conf: Dict[str, float],
+                  hierarchy: Dict | None = None) -> Dict[str, float]:
     """Per-concept gate (thesis Layer 3): the observation confidence of a
     concept is the MINIMUM of the feature confidences feeding it; for a
     higher concept the minimum runs over its contributors' gates and its
     direct feature inputs, so the weakest ingredient bounds the whole
     chain."""
+    hh = HIERARCHY if hierarchy is None else hierarchy
     g: Dict[str, float] = {}
     for lvl in (1, 2, 3, 4):
-        for name, (l, ins) in HIERARCHY.items():
+        for name, (l, ins) in hh.items():
             if l != lvl:
                 continue
             vals = []

@@ -52,10 +52,15 @@ def suggest_resource_items(world, efficiency_target=None
     The rows are meant to be listed, edited and deleted in the UI, then
     rasterized by build_resource_layer."""
     items: List[dict] = []
+    _cellm = float(getattr(world.config, "cell_size_m", 30.0))
+    # a depot serves ~150 m of ground around its station regardless of
+    # the grid: the radius is METER-based and converted to cells
+    _rsrv = max(3, int(round(150.0 / max(_cellm, 1e-6))))
     for a in getattr(world, "assets", []):
         if getattr(a, "kind", "") in ("building", "critical"):
             items.append(dict(kind="depot", x=int(a.x), y=int(a.y),
-                              radius=max(3, int(getattr(a, "radius", 2))
+                              radius=max(_rsrv,
+                                         int(getattr(a, "radius", 2))
                                          + 2),
                               cap=0.8, avail=1.0, t_disp=10.0,
                               label=str(getattr(a, "name", "site"))))
@@ -170,14 +175,19 @@ def build_resource_layer(world, items: List[dict]):
     roads = getattr(world, "roads", None)
     roads = (np.asarray(roads, dtype=bool)
              if roads is not None else np.zeros((ny, nx), dtype=bool))
+    # off-road travel: ~2 min per 30 m of ground, SCALED by the cell
+    # size (on a 5 m grid the old per-cell constant meant 24 min per
+    # 100 m and the whole pool looked unreachable)
+    _tc = 2.0 * float(cfg.cell_size_m) / 30.0
     dist = np.full((ny, nx), 60.0)
     m = roads.copy()
     d = 0
-    while m.any() and d < 30:
-        dist[m & (dist > 60.0 - 1e-9)] = 10.0 + 2.0 * d
+    _dmax = max(30, int(round(30 * 30.0 / max(cfg.cell_size_m, 1e-6))))
+    while m.any() and d < _dmax:
+        dist[m & (dist > 60.0 - 1e-9)] = 10.0 + _tc * d
         m = _dilate(m, 1)
         d += 1
-    dist = np.where(dist > 59.0, 10.0 + 2.0 * 30, dist)
+    dist = np.where(dist > 59.0, 10.0 + _tc * _dmax, dist)
     rl.rtime[:] = dist
     rl.reff[:] = np.clip(world.topo.access, 0.0, 1.0)
 
@@ -213,7 +223,8 @@ def build_resource_layer(world, items: List[dict]):
             t0 = float(max(0.0, it.get("t_disp", 6.0)))
             dcell = np.sqrt((xx - int(it["x"])) ** 2
                             + (yy - int(it["y"])) ** 2)
-            rl.rtime[:] = np.minimum(rl.rtime, t0 + 0.5 * dcell)
+            _fc = 0.5 * float(cfg.cell_size_m) / 30.0   # flight min/cell
+            rl.rtime[:] = np.minimum(rl.rtime, t0 + _fc * dcell)
         elif it.get("kind") == "depot":
             r = max(1, int(it.get("radius", 4)))
             c = float(np.clip(it.get("cap", 0.8), 0.0, 1.0))
@@ -227,8 +238,9 @@ def build_resource_layer(world, items: List[dict]):
             t0 = float(max(0.0, it.get("t_disp", 10.0)))
             dcell = np.sqrt((xx - int(it["x"])) ** 2
                             + (yy - int(it["y"])) ** 2)
+            _gc = 2.0 * float(cfg.cell_size_m) / 30.0   # ground min/cell
             rl.rtime[disk] = np.minimum(rl.rtime[disk],
-                                        (t0 + 2.0 * dcell)[disk])
+                                        (t0 + _gc * dcell)[disk])
     rl.rcap[:] = cap * float(cfg.suppression.rcap_max)
     rl.ravail[:] = avail
     return rl

@@ -1,0 +1,396 @@
+{
+ "map": {
+  "nx": 100,
+  "ny": 100,
+  "cell_m": 5.0,
+  "step_min": 1.0
+ },
+ "engine": {
+  "regions": 1,
+  "cycle_min": 1.0,
+  "horizon_min": 30.0,
+  "j_th": 0.35,
+  "eta": 0.6,
+  "adapt": true,
+  "genai": true,
+  "evfis": true,
+  "evfis_step": 0.05,
+  "rl_eps": 0.1,
+  "rl_lr": 0.05,
+  "attn": 0.35,
+  "min_gain": 0.05,
+  "seed_profile": "minimal"
+ },
+ "weather": {
+  "wx_mode": "Manual",
+  "emc_on": true,
+  "dr_start": 12.0,
+  "dr_tday": 34.0,
+  "dr_tnight": 22.0,
+  "dr_rhday": 20.0,
+  "dr_rhnight": 70.0,
+  "dr_rain_mm": 0.0,
+  "dr_rain_start": 18.0,
+  "dr_rain_dur": 3.0
+ },
+ "sensors": [
+  {
+   "kind": "satellite",
+   "x": 0,
+   "y": 0
+  },
+  {
+   "kind": "aerial",
+   "x": 1,
+   "y": 1
+  },
+  {
+   "kind": "public_report",
+   "x": 89,
+   "y": 52
+  },
+  {
+   "kind": "public_report",
+   "x": 92,
+   "y": 73
+  }
+ ],
+ "depots": [
+  {
+   "kind": "depot",
+   "x": 89,
+   "y": 52,
+   "radius": 7,
+   "cap": 0.097,
+   "avail": 1.0,
+   "t_disp": 10.0,
+   "label": "Town centre"
+  },
+  {
+   "kind": "depot",
+   "x": 86,
+   "y": 50,
+   "radius": 3,
+   "cap": 0.097,
+   "avail": 1.0,
+   "t_disp": 10.0,
+   "label": "Hospital"
+  },
+  {
+   "kind": "depot",
+   "x": 88,
+   "y": 45,
+   "radius": 3,
+   "cap": 0.097,
+   "avail": 1.0,
+   "t_disp": 10.0,
+   "label": "Power plant"
+  },
+  {
+   "kind": "depot",
+   "x": 96,
+   "y": 45,
+   "radius": 3,
+   "cap": 0.097,
+   "avail": 1.0,
+   "t_disp": 10.0,
+   "label": "Water treatment"
+  },
+  {
+   "kind": "depot",
+   "x": 93,
+   "y": 52,
+   "radius": 3,
+   "cap": 0.097,
+   "avail": 1.0,
+   "t_disp": 10.0,
+   "label": "Government office"
+  },
+  {
+   "kind": "depot",
+   "x": 93,
+   "y": 58,
+   "radius": 3,
+   "cap": 0.097,
+   "avail": 1.0,
+   "t_disp": 10.0,
+   "label": "School"
+  },
+  {
+   "kind": "depot",
+   "x": 86,
+   "y": 61,
+   "radius": 3,
+   "cap": 0.097,
+   "avail": 1.0,
+   "t_disp": 10.0,
+   "label": "Fire station"
+  },
+  {
+   "kind": "depot",
+   "x": 85,
+   "y": 53,
+   "radius": 3,
+   "cap": 0.097,
+   "avail": 1.0,
+   "t_disp": 10.0,
+   "label": "Telecom tower"
+  },
+  {
+   "kind": "depot",
+   "x": 92,
+   "y": 73,
+   "radius": 6,
+   "cap": 0.097,
+   "avail": 1.0,
+   "t_disp": 10.0,
+   "label": "Village 1 centre"
+  },
+  {
+   "kind": "depot",
+   "x": 92,
+   "y": 76,
+   "radius": 3,
+   "cap": 0.097,
+   "avail": 1.0,
+   "t_disp": 10.0,
+   "label": "Power plant (Village 1)"
+  },
+  {
+   "kind": "depot",
+   "x": 93,
+   "y": 67,
+   "radius": 3,
+   "cap": 0.097,
+   "avail": 1.0,
+   "t_disp": 10.0,
+   "label": "School (Village 1)"
+  },
+  {
+   "kind": "depot",
+   "x": 74,
+   "y": 45,
+   "radius": 6,
+   "cap": 0.097,
+   "avail": 1.0,
+   "t_disp": 10.0,
+   "label": "Village 2 centre"
+  },
+  {
+   "kind": "depot",
+   "x": 77,
+   "y": 46,
+   "radius": 3,
+   "cap": 0.097,
+   "avail": 1.0,
+   "t_disp": 10.0,
+   "label": "Water treatment (Village 2)"
+  },
+  {
+   "kind": "depot",
+   "x": 0,
+   "y": 58,
+   "radius": 5,
+   "cap": 0.097,
+   "avail": 1.0,
+   "t_disp": 10.0,
+   "label": "Village 3 centre"
+  },
+  {
+   "kind": "depot",
+   "x": 2,
+   "y": 59,
+   "radius": 3,
+   "cap": 0.097,
+   "avail": 1.0,
+   "t_disp": 10.0,
+   "label": "Telecom tower (Village 3)"
+  },
+  {
+   "kind": "depot",
+   "x": 0,
+   "y": 56,
+   "radius": 3,
+   "cap": 0.097,
+   "avail": 1.0,
+   "t_disp": 10.0,
+   "label": "Water treatment (Village 3)"
+  },
+  {
+   "kind": "depot",
+   "x": 45,
+   "y": 90,
+   "radius": 5,
+   "cap": 0.097,
+   "avail": 1.0,
+   "t_disp": 10.0,
+   "label": "Village 4 centre"
+  },
+  {
+   "kind": "depot",
+   "x": 43,
+   "y": 90,
+   "radius": 3,
+   "cap": 0.097,
+   "avail": 1.0,
+   "t_disp": 10.0,
+   "label": "Government office (Village 4)"
+  },
+  {
+   "kind": "depot",
+   "x": 49,
+   "y": 90,
+   "radius": 3,
+   "cap": 0.097,
+   "avail": 1.0,
+   "t_disp": 10.0,
+   "label": "Telecom tower (Village 4)"
+  },
+  {
+   "kind": "depot",
+   "x": 0,
+   "y": 85,
+   "radius": 5,
+   "cap": 0.097,
+   "avail": 1.0,
+   "t_disp": 10.0,
+   "label": "Village 5 centre"
+  },
+  {
+   "kind": "depot",
+   "x": 1,
+   "y": 84,
+   "radius": 3,
+   "cap": 0.097,
+   "avail": 1.0,
+   "t_disp": 10.0,
+   "label": "Fire station (Village 5)"
+  },
+  {
+   "kind": "depot",
+   "x": 0,
+   "y": 88,
+   "radius": 3,
+   "cap": 0.097,
+   "avail": 1.0,
+   "t_disp": 10.0,
+   "label": "Hospital (Village 5)"
+  },
+  {
+   "kind": "depot",
+   "x": 91,
+   "y": 27,
+   "radius": 4,
+   "cap": 0.097,
+   "avail": 1.0,
+   "t_disp": 10.0,
+   "label": "Village 6 centre"
+  },
+  {
+   "kind": "depot",
+   "x": 91,
+   "y": 29,
+   "radius": 3,
+   "cap": 0.097,
+   "avail": 1.0,
+   "t_disp": 10.0,
+   "label": "Government office (Village 6)"
+  },
+  {
+   "kind": "depot",
+   "x": 74,
+   "y": 92,
+   "radius": 4,
+   "cap": 0.097,
+   "avail": 1.0,
+   "t_disp": 10.0,
+   "label": "Village 7 centre"
+  },
+  {
+   "kind": "depot",
+   "x": 73,
+   "y": 94,
+   "radius": 3,
+   "cap": 0.097,
+   "avail": 1.0,
+   "t_disp": 10.0,
+   "label": "Telecom tower (Village 7)"
+  },
+  {
+   "kind": "depot",
+   "x": 74,
+   "y": 20,
+   "radius": 4,
+   "cap": 0.097,
+   "avail": 1.0,
+   "t_disp": 10.0,
+   "label": "Village 8 centre"
+  },
+  {
+   "kind": "depot",
+   "x": 75,
+   "y": 19,
+   "radius": 3,
+   "cap": 0.097,
+   "avail": 1.0,
+   "t_disp": 10.0,
+   "label": "School (Village 8)"
+  },
+  {
+   "kind": "depot",
+   "x": 79,
+   "y": 2,
+   "radius": 4,
+   "cap": 0.097,
+   "avail": 1.0,
+   "t_disp": 10.0,
+   "label": "Village 9 centre"
+  },
+  {
+   "kind": "depot",
+   "x": 78,
+   "y": 1,
+   "radius": 3,
+   "cap": 0.097,
+   "avail": 1.0,
+   "t_disp": 10.0,
+   "label": "Hospital (Village 9)"
+  },
+  {
+   "kind": "depot",
+   "x": 26,
+   "y": 4,
+   "radius": 3,
+   "cap": 0.097,
+   "avail": 1.0,
+   "t_disp": 10.0,
+   "label": "Village 10 centre"
+  },
+  {
+   "kind": "depot",
+   "x": 26,
+   "y": 3,
+   "radius": 3,
+   "cap": 0.097,
+   "avail": 1.0,
+   "t_disp": 10.0,
+   "label": "Fuel depot (Village 10)"
+  },
+  {
+   "kind": "road_corridor",
+   "cap": 0.049,
+   "avail": 1.0,
+   "label": "road corridor"
+  },
+  {
+   "kind": "helibase",
+   "x": 89,
+   "y": 52,
+   "radius": 25,
+   "cap": 0.073,
+   "avail": 1.0,
+   "t_disp": 6.0,
+   "label": "helibase (aerial)"
+  }
+ ]
+}

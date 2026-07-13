@@ -102,13 +102,15 @@ CONCEPT_FAMILY = {
 
 
 def quality_Q(crisp_concepts: Dict[str, float],
-              intensities: Dict[str, float]) -> float:
+              intensities: Dict[str, float],
+              family: Dict | None = None) -> float:
     """Decision quality: does the candidate serve the concepts that
     demanded it. Per scored concept the effective activation is compared
     with the strongest intensity of its answering family; Q = 1 - mean
     absolute mismatch."""
+    fam_map = CONCEPT_FAMILY if family is None else family
     errs = []
-    for cn, fams in CONCEPT_FAMILY.items():
+    for cn, fams in fam_map.items():
         a = float(crisp_concepts.get(cn, 0.0))
         u = max(float(intensities.get(f, 0.0)) for f in fams)
         errs.append(abs(a - u))

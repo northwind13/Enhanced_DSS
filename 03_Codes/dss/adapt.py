@@ -166,29 +166,37 @@ def stage1_evfis(build_override, sim, rules: List[Rule],
                 rule_t.consequents = old_cons
     if trials > 0:
         var, term = rule.antecedents[0]
-        part = REGISTRY.get(var)
-        a, b, c, d = part[term]
-        moved = (max(0.0, a - step_size), max(0.0, b - step_size), c, d)
-        try:
-            REGISTRY.set_term(var, term, moved)
+        # A shoulder is a SHARED boundary of two neighbouring trapezoids, not
+        # a free parameter of one. Moving it through shift_boundary displaces
+        # BOTH terms together, so the Ruspini invariant (sum_t mu_t = 1) is
+        # preserved, and clamps the step to the neighbouring core widths so no
+        # plateau inverts. Moving a single trapezoid, as this used to do, tore
+        # the partition and violated the framework's own convexity guarantee.
+        before = REGISTRY.snapshot(var)
+        applied = REGISTRY.shift_boundary(var, term, -step_size)
+        if applied == 0.0:
+            tlog.append(dict(kind="membership", rule=rule.name,
+                             var=var, term=term, kept=False,
+                             reason="no admissible boundary move "
+                                    "(step clamped to zero by the core width)"))
+        else:
             j_try, _ = _cva(build_override, sim, rules, horizon)
             kept = j_try < j_best - 1e-6
             tlog.append(dict(kind="membership", rule=rule.name,
                              var=var, term=term,
-                             move=f"shoulder -{step_size:g}",
+                             move=f"shared boundary {applied:+g} "
+                                  f"({term} and its left neighbour move "
+                                  f"together)",
                              j_before=float(j_best),
                              j_after=float(j_try), kept=bool(kept),
                              reason="physical forecast improved" if kept
                              else "physical forecast did not improve"))
             if kept:
                 j_best = j_try
-                best_detail = f"{var}.{term} shoulder -{step_size:g}"
+                best_detail = (f"{var}.{term} shared boundary "
+                               f"{applied:+g}")
             else:
-                REGISTRY.set_term(var, term, (a, b, c, d))
-        except AssertionError:
-            tlog.append(dict(kind="membership", rule=rule.name,
-                             var=var, term=term, kept=False,
-                             reason="invalid trapezoid, move skipped"))
+                REGISTRY.restore(var, before)
     info = dict(rule=rule.name, trials=tlog)
     if best_detail is None:
         return AdaptOutcome(1, False, "no improving perturbation found",
@@ -234,17 +242,42 @@ def stage2_resolution(build_override, sim, rules: List[Rule],
     if not cons:
         return AdaptOutcome(2, False, "no scored concept to answer")
     if _cell_covered(rules, ants):
-        return AdaptOutcome(
-            2, False,
-            "cell already covered \u2014 an active rule sits on "
-            "this antecedent cell; numeric tuning of an existing "
-            "cell is stage \u2460 evFIS's job",
-            info=dict(cell=[list(a) for a in ants]))
+        # TRUE RESOLUTION INCREASE: when the covered situation sits
+        # BETWEEN the term cores of the hottest concept (ambiguous
+        # membership), the linguistic catalog itself grows: a new
+        # narrow term is inserted there and the rule is written on
+        # the REFINED cell. A crisp situation on a covered cell
+        # remains evFIS territory.
+        c1 = ants[0][0]
+        _v1 = eff.get(c1)
+        _amb = (_v1 is not None
+                and float(np.max(_v1)) < 0.62)
+        if not _amb:
+            return AdaptOutcome(
+                2, False,
+                "cell already covered \u2014 an active rule sits on "
+                "this antecedent cell and the situation is crisp; "
+                "numeric tuning is stage \u2460 evFIS's job",
+                info=dict(cell=[list(a) for a in ants]))
+        _x1 = float(crisp_c.get(c1, 0.5))
+        _newt = REGISTRY.insert_split(c1, _x1)
+        ants = [(c1, _newt)] + list(ants[1:])
+        if _cell_covered(rules, ants):
+            return AdaptOutcome(
+                2, False,
+                "refined cell already covered",
+                info=dict(cell=[list(a) for a in ants]))
+        _split_note = (f"resolution increase: term {_newt} inserted "
+                       f"into {c1} at {_x1:.2f} (catalog grew)")
+    else:
+        _split_note = None
     coverage_gap = True     # by definition: the cell was uncovered
     name = f"A{sum(1 for r in rules if r.name.startswith('A')) + 1}"
     newr = Rule(name, ants, cons,
-                note="adaptation-born: resolution increase "
-                     "(instantiated antecedent cell)")
+                note=("adaptation-born: " + _split_note)
+                if _split_note else
+                "adaptation-born: resolution increase "
+                "(instantiated antecedent cell)")
     j0c, j0 = _cva(build_override, sim, rules, horizon)
     rules.append(newr)
     j1, _ = _cva(build_override, sim, rules, horizon)
@@ -279,7 +312,24 @@ _GENAI_SCHEMA = ("Return ONLY a JSON object: {\"antecedents\": "
                  "[[intervention, intensity], ...]} with concepts from "
                  f"{list(DECISION_CONCEPTS)}, terms from {list(TERMS)}, "
                  f"interventions from {list(INTERVENTIONS)}, intensities "
-                 "in [0,1]. Max 3 antecedents, max 3 consequents.")
+                 "in [0,1]. Max 3 antecedents, max 3 consequents. "
+                 "OPTIONALLY the proposal may be a PACKAGE that grows "
+                 "the vocabulary, by adding ONE of: "
+                 "\"new_concept\": {\"name\": str, \"level\": "
+                 "\"intermediate\", \"inputs\": "
+                 "[[existing_feature_or_concept, weight], ...] "
+                 "(weights positive, at most 4, they will be "
+                 "normalized)} or "
+                 "\"new_intervention\": {\"name\": str, "
+                 "\"composition\": [[base_intervention, weight], "
+                 "...] (at most 3, weights in (0,1])}. A package must "
+                 "still contain the rule, and the rule must USE the "
+                 "new object (a new concept in its antecedents, a new "
+                 "intervention in its consequents). FIXED by design: "
+                 "the ten features, the five decision axes and the "
+                 "six base physical channels. Only compositions of "
+                 "the EXISTING semantics are possible: no new "
+                 "physics, no new features.")
 
 
 def _genai_propose(situation: str) -> Optional[dict]:
@@ -351,7 +401,121 @@ def _template_propose(eff, crisp_c, rules=None) -> dict:
                              round(float(crisp_c[c2]), 2)]]}
 
 
-def _g1_g2(prop: dict) -> Optional[str]:
+G5_MARGIN = 1e-3     # a vocabulary-growing package must clear this
+G2B_COS = 0.95       # structural redundancy bound for new concepts
+
+
+def _validate_package(prop: dict, engine) -> Optional[str]:
+    """G2 extension + G2b for vocabulary packages; returns an error
+    string or None. Weights are normalized in place."""
+    from .features import FEATURE_ORDER
+    nc = prop.get("new_concept")
+    ni = prop.get("new_intervention")
+    if nc and ni:
+        return "G2 package (one object per package)"
+    if nc:
+        name = str(nc.get("name", "")).strip().replace(" ", "_")
+        if not name or name in engine.hierarchy \
+                or name in FEATURE_ORDER:
+            return "G2 package (name empty or taken)"
+        lvl = str(nc.get("level", "intermediate"))
+        if lvl == "decision":
+            # DESIGN DECISION: the five decision axes (and with them
+            # the antecedent catalog dimensionality and the Q
+            # denominator) are FIXED. The vocabulary grows through
+            # macro interventions and intermediate concepts; the
+            # axes' RESOLUTION grows through stage-2 term insertion.
+            return ("G2 package (decision axes are fixed by design; "
+                    "propose an intermediate concept or a macro "
+                    "intervention)")
+        ins = nc.get("inputs") or []
+        if not (1 <= len(ins) <= 4):
+            return "G2 package (1..4 inputs)"
+        known = set(FEATURE_ORDER) | set(engine.hierarchy)
+        tot = 0.0
+        for pair in ins:
+            src, wv = str(pair[0]), float(pair[1])
+            if src not in known or wv <= 0:
+                return "G2 package (unknown input or bad weight)"
+            tot += wv
+        nc["inputs"] = [[str(a), float(b) / tot] for a, b in ins]
+        nc["name"] = name
+        if lvl == "decision":
+            fam = nc.get("family")
+            if fam not in INTERVENTIONS:
+                return ("G2 package (a decision concept must declare "
+                        "an answering intervention family)")
+        # G2b: STRUCTURAL non-redundancy - the normalized input
+        # weight vector must not be (near-)collinear with any
+        # existing concept over the same inputs
+        import numpy as _np
+        keys = [a for a, _b in nc["inputs"]]
+        v_new = _np.array([b for _a, b in nc["inputs"]])
+        for cn, (_l, cins) in engine.hierarchy.items():
+            m = dict(cins)
+            v_old = _np.array([float(m.get(k2, 0.0)) for k2 in keys])
+            if v_old.sum() <= 0:
+                continue
+            cos = float(v_new @ v_old
+                        / (_np.linalg.norm(v_new)
+                           * _np.linalg.norm(v_old) + 1e-12))
+            if cos >= G2B_COS and set(m) <= set(keys):
+                return (f"G2b redundancy (collinear with {cn}, "
+                        f"cos={cos:.2f})")
+    if ni:
+        name = str(ni.get("name", "")).strip().replace(" ", "_")
+        if not name or name in INTERVENTIONS \
+                or name in engine.macros:
+            return "G2 package (name empty or taken)"
+        comp = ni.get("composition") or []
+        if not (1 <= len(comp) <= 3):
+            return "G2 package (1..3 components)"
+        for pair in comp:
+            bi, bw = str(pair[0]), float(pair[1])
+            if bi not in INTERVENTIONS or not (0.0 < bw <= 1.0):
+                return ("G2 package (composition must reduce to the "
+                        "base physical channels)")
+        ni["composition"] = [[str(a), float(b)] for a, b in comp]
+        ni["name"] = name
+    return None
+
+
+def _install_package(prop: dict, engine) -> dict:
+    """Temporarily install the package into the ENGINE vocabulary;
+    returns an undo dict."""
+    undo = {}
+    nc = prop.get("new_concept")
+    ni = prop.get("new_intervention")
+    if nc:
+        lvl = 3 if nc.get("level") == "decision" else 2
+        engine.hierarchy[nc["name"]] = (
+            lvl, [(a, b) for a, b in nc["inputs"]])
+        undo["concept"] = nc["name"]
+        if nc.get("level") == "decision":
+            engine.decision_concepts.append(nc["name"])
+            engine.concept_family[nc["name"]] = (nc["family"],)
+            undo["decision"] = True
+    if ni:
+        engine.macros[ni["name"]] = dict(
+            composition=[(a, b) for a, b in ni["composition"]])
+        undo["macro"] = ni["name"]
+    return undo
+
+
+def _uninstall_package(undo: dict, engine) -> None:
+    if undo.get("concept"):
+        engine.hierarchy.pop(undo["concept"], None)
+        if undo.get("decision"):
+            try:
+                engine.decision_concepts.remove(undo["concept"])
+            except ValueError:
+                pass
+            engine.concept_family.pop(undo["concept"], None)
+    if undo.get("macro"):
+        engine.macros.pop(undo["macro"], None)
+
+
+def _g1_g2(prop: dict, engine=None) -> Optional[str]:
     try:
         ants = [(str(v), str(t)) for v, t in prop["antecedents"]]
         cons = [(str(i), float(x)) for i, x in prop["consequents"]]
@@ -359,11 +523,22 @@ def _g1_g2(prop: dict) -> Optional[str]:
         return "G1 format"
     if not (1 <= len(ants) <= 3 and 1 <= len(cons) <= 3):
         return "G2 arity"
+    _ncn = (prop.get("new_concept") or {}).get("name")
+    _nin = (prop.get("new_intervention") or {}).get("name")
+    _known_c = set(DECISION_CONCEPTS)
+    _known_i = set(INTERVENTIONS)
+    if engine is not None:
+        # learned vocabulary is CITABLE by every later rule
+        _known_c |= set(getattr(engine, "hierarchy", {}) or {})
+        _known_i |= set(getattr(engine, "macros", {}) or {})
     for v, t in ants:
-        if v not in DECISION_CONCEPTS or t not in TERMS:
+        if v not in _known_c and v != _ncn:
+            return "G2 vocabulary"
+        if t not in TERMS and t not in REGISTRY.get(v):
             return "G2 vocabulary"
     for i, x in cons:
-        if i not in INTERVENTIONS or not (0.0 <= x <= 1.0):
+        if (i not in _known_i and i != _nin) \
+                or not (0.0 <= x <= 1.0):
             return "G2 range"
     return None
 
@@ -371,7 +546,8 @@ def _g1_g2(prop: dict) -> Optional[str]:
 def stage3_generative(build_override, sim, rules: List[Rule],
                       eff, crisp_c, horizon: int,
                       coverage_gap: bool = False,
-                      cov_w: float = 1.0) -> AdaptOutcome:
+                      cov_w: float = 1.0,
+                      engine=None) -> AdaptOutcome:
     situation = ", ".join(f"{c}={crisp_c.get(c, 0.0):.2f}"
                           for c in DECISION_CONCEPTS)
     # the proposer sees the WHOLE current base and the coverage
@@ -391,13 +567,44 @@ def stage3_generative(build_override, sim, rules: List[Rule],
     if prop is None:
         prop = _template_propose(eff, crisp_c, rules=rules)
         src = "template"
-    err = _g1_g2(prop)
+    err = _g1_g2(prop, engine=engine)
     if err:
         return AdaptOutcome(3, False, f"rejected at {err} ({src})",
                             info=dict(source=src, proposal=prop,
                                       gate=err))
+    # ---- PACKAGE path: the proposal may GROW the vocabulary ----
+    _pkg = bool(prop.get("new_concept") or prop.get("new_intervention"))
+    _undo = None
+    if _pkg:
+        if engine is None:
+            return AdaptOutcome(3, False,
+                                "rejected at G2 package (no engine "
+                                f"context) ({src})",
+                                info=dict(source=src, proposal=prop))
+        perr = _validate_package(prop, engine)
+        if perr:
+            return AdaptOutcome(3, False,
+                                f"rejected at {perr} ({src})",
+                                info=dict(source=src, proposal=prop,
+                                          gate=perr, package=True))
+        # the rule must USE the new object
+        _ncn = (prop.get("new_concept") or {}).get("name")
+        _nin = (prop.get("new_intervention") or {}).get("name")
+        _uses = ((_ncn and any(v == _ncn for v, _t in
+                               prop["antecedents"]))
+                 or (_nin and any(i == _nin for i, _x in
+                                  prop["consequents"])))
+        if not _uses:
+            return AdaptOutcome(3, False,
+                                "rejected at G2 package (the rule "
+                                f"does not use the new object) ({src})",
+                                info=dict(source=src, proposal=prop,
+                                          package=True))
+        _undo = _install_package(prop, engine)
     _pants = [(str(v), str(t)) for v, t in prop["antecedents"]]
-    if _cell_covered(rules, _pants):
+    if _pkg and _undo:
+        pass      # a package rule sits on a NEW axis; never a duplicate
+    elif _cell_covered(rules, _pants):
         return AdaptOutcome(
             3, False,
             f"rejected at G2 duplicate cell ({src}) \u2014 an "
@@ -425,6 +632,27 @@ def stage3_generative(build_override, sim, rules: List[Rule],
                            g4=dict(j_with=float(j1b),
                                    j_without=float(j0b))))
     info["coverage_gap"] = bool(coverage_gap)
+    info["package"] = bool(_pkg)
+    if _pkg:
+        # G5 complexity: growing the vocabulary must BUY something -
+        # both reseeded rollouts must improve by at least the margin
+        if j1a < j0a - G5_MARGIN and j1b < j0b - G5_MARGIN:
+            info["gates"]["verdict"] = ("admitted (package, G5 "
+                                        "margin cleared)")
+            if prop.get("new_concept"):
+                info["new_concept"] = prop["new_concept"]
+            if prop.get("new_intervention"):
+                info["new_intervention"] = prop["new_intervention"]
+            return AdaptOutcome(3, True,
+                                f"{name}: {newr.text()} [+package]",
+                                dJ=j1a - j0c, info=info)
+        rules.pop()
+        if _undo:
+            _uninstall_package(_undo, engine)
+        info["gates"]["verdict"] = "rejected at G5 (package margin)"
+        return AdaptOutcome(3, False,
+                            f"rejected at G5 package margin ({src})",
+                            info=info)
     _tol = 1e-4 if coverage_gap else -1e-6
     if j1a <= j0a + _tol and j1b <= j0b + _tol and (
             coverage_gap or (j1a < j0a - 1e-6 and j1b < j0b - 1e-6)):
@@ -492,10 +720,9 @@ class RLController:
 
 
 def reset_partitions() -> None:
-    """Return every variable's partition to the Table D.3 default."""
-    for var in list(REGISTRY.variables()):
-        for term, abcd in default_partition().items():
-            REGISTRY.set_term(var, term, abcd)
+    """Return every variable's partition to the Table D.3 default,
+    DROPPING inserted terms as well."""
+    REGISTRY.reset()
 
 
 def genai_status() -> str:

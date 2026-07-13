@@ -299,8 +299,8 @@ def legend_html(horizontal: bool = False) -> str:
 # surfaces as confusing TypeErrors deep inside the pages ----
 import disaster_phyengine as _dpe
 import dss as _dss_pkg
-_EXPECTED_ENGINE_BUILD = 33
-_EXPECTED_DSS_BUILD = 50
+_EXPECTED_ENGINE_BUILD = 35
+_EXPECTED_DSS_BUILD = 56
 if (getattr(_dpe, "ENGINE_BUILD", 0) != _EXPECTED_ENGINE_BUILD
         or getattr(_dss_pkg, "DSS_BUILD", 0) != _EXPECTED_DSS_BUILD):
     st.error(
@@ -1505,21 +1505,26 @@ def page_simulation():
                     f" {_r.name} |" for _r in _regsC)
                 _sep = "|---|" + "---|" * len(_regsC)
                 _cols = {}
+                _eng_h = getattr(st.session_state.get("dss_engine"),
+                                 "hierarchy", None)
                 for _r in _regsC:
                     _f3 = _dss.ten_features(sim, _r, network=_obsnet,
                                             pool=_pool3)
                     _g3 = _dss.concept_gates(
-                        _dss.feature_confidence(_obsnet, _r))
+                        _dss.feature_confidence(_obsnet, _r),
+                        hierarchy=_eng_h)
                     _gt = st.session_state.get(f"l3_gate_{_r.name}")
                     if _gt is None:
                         _gt = _dss.GatedConcepts()
                         st.session_state[f"l3_gate_{_r.name}"] = _gt
                     _cols[_r.name] = _dss.crisp(_gt.gate(
-                        _dss.infer_concepts(_f3), _g3,
-                        step=int(sim.state.step)))
+                        _dss.infer_concepts(_f3, hierarchy=_eng_h),
+                        _g3, step=int(sim.state.step)))
                 _rows3 = [_head, _sep]
-                for _cn, (_l, _ins3) in _dss.HIERARCHY.items():
-                    _lab = _dss.CONCEPT_LABEL[_cn]
+                for _cn, (_l, _ins3) in (_eng_h
+                                         or _dss.HIERARCHY).items():
+                    _lab = _dss.CONCEPT_LABEL.get(
+                        _cn, _cn.replace("_", " ") + " \U0001F7E9")
                     if _cn in _dss.DECISION_CONCEPTS:
                         _lab = f"**{_lab}** \u2605"
                     _cells = " | ".join(f"{_cols[_r.name][_cn]:.2f}"
@@ -1536,13 +1541,15 @@ def page_simulation():
                     sim, _regC, network=_obsnet,
                     pool=st.session_state.get("dss_res_base"))
                 _fcC = _dss.feature_confidence(_obsnet, _regC)
-                _gamC = _dss.concept_gates(_fcC)
+                _eng_hC = getattr(st.session_state.get("dss_engine"),
+                                  "hierarchy", None)
+                _gamC = _dss.concept_gates(_fcC, hierarchy=_eng_hC)
                 _gkey = f"l3_gate_{_regC.name}"
                 _gater = st.session_state.get(_gkey)
                 if _gater is None:
                     _gater = _dss.GatedConcepts()
                     st.session_state[_gkey] = _gater
-                _actC = _dss.infer_concepts(_fC)
+                _actC = _dss.infer_concepts(_fC, hierarchy=_eng_hC)
                 _effC = _gater.gate(_actC, _gamC, step=int(sim.state.step))
                 _crO = _dss.crisp(_actC)
                 _crE = _dss.crisp(_effC)
@@ -1554,11 +1561,13 @@ def page_simulation():
                             3: "Level 3", 4: "Level 4 \u2014 coordination"}
                 for _lvl in (1, 2, 3, 4):
                     st.markdown(f"**{_lvlname[_lvl]}**")
-                    for _cn, (_l, _ins) in _dss.HIERARCHY.items():
+                    for _cn, (_l, _ins) in (_eng_hC
+                                            or _dss.HIERARCHY).items():
                         if _l != _lvl:
                             continue
                         _dec = _cn in _dss.DECISION_CONCEPTS
-                        _lab = _dss.CONCEPT_LABEL[_cn]
+                        _lab = _dss.CONCEPT_LABEL.get(
+                            _cn, _cn.replace("_", " ") + " \U0001F7E9")
                         if _dec:
                             _lab = f"{_lab} \u2605"
                         st.progress(min(1.0, _crE[_cn]),
@@ -1786,19 +1795,24 @@ def page_simulation():
             _names4 = [r.name for r in _regs4]
             _eng4r = st.session_state.get("dss_engine")
 
+            _eng_hX = getattr(_eng4r, "hierarchy", None)
+
             def _cand_for(_regX):
                 _fX = _dss.ten_features(sim, _regX, network=_obsnet)
                 _gamX = _dss.concept_gates(
-                    _dss.feature_confidence(_obsnet, _regX))
+                    _dss.feature_confidence(_obsnet, _regX),
+                    hierarchy=_eng_hX)
                 _gX = st.session_state.get(f"l3_gate_{_regX.name}")
                 if _gX is None:
                     _gX = _dss.GatedConcepts()
                     st.session_state[f"l3_gate_{_regX.name}"] = _gX
-                _effX = _gX.gate(_dss.infer_concepts(_fX), _gamX,
-                                 step=int(sim.state.step))
+                _effX = _gX.gate(
+                    _dss.infer_concepts(_fX, hierarchy=_eng_hX),
+                    _gamX, step=int(sim.state.step))
                 return _dss.evaluate_rules(
                     _effX, _fX,
-                    _eng4r.rules if _eng4r is not None else None)
+                    _eng4r.rules if _eng4r is not None else None,
+                    macros=getattr(_eng4r, "macros", None) or None)
 
             _glbT = getattr(st.session_state.get("dss_engine"),
                             "last_global", None)
@@ -2030,9 +2044,32 @@ def page_simulation():
                        " Learned rules persist in logs/"
                        "learned_rules.json across fires, engines and "
                        "MAPS; strength = accumulated fired weight.")
-            st.markdown("**Membership modifications (evFIS stage "
-                        "\u2460) \u2014 registry vs Table D.3**")
             from dss.fuzzy import REGISTRY as _REGR
+            _dcL = (list(getattr(_engR, "decision_concepts", []))
+                    or list(_dss.DECISION_CONCEPTS))
+            _catN = 1
+            for _dcC in _dcL:
+                _catN *= len(_REGR.get(_dcC))
+            _newC = [c for c in getattr(_engR, "hierarchy", {}) or {}
+                     if c not in _dss.HIERARCHY] if _engR else []
+            _newM = list(getattr(_engR, "macros", {}) or {}) \
+                if _engR else []
+            st.caption("LEARNED VOCABULARY \u00b7 concepts: "
+                       + (", ".join(_newC) or "none yet")
+                       + " \u00b7 macro interventions: "
+                       + (", ".join(_newM) or "none yet")
+                       + " \u2014 vocabulary packages (new object + "
+                       "a rule using it, gates G2/G2b/G3/G4/G5) come "
+                       "from the LIVE Claude proposer only; the "
+                       "offline template never proposes them. Set "
+                       "ANTHROPIC_API_KEY to enable.")
+            st.caption(f"Linguistic catalog: {_catN:,} antecedent "
+                       "cells over the five decision concepts "
+                       "(5\u2075 = 3,125 at the seed partition; "
+                       "stage \u2461 term insertions GROW it).")
+            st.markdown("**Membership modifications (evFIS stage "
+                        "\u2460 + inserted terms, stage \u2461) "
+                        "\u2014 registry vs Table D.3**")
             from dss.fuzzy import default_partition as _defpR
             _dpR = _defpR()
             _modsR = []
@@ -2040,6 +2077,12 @@ def page_simulation():
                 for _term, _abcd in _REGR.get(_var).items():
                     _d0 = _dpR.get(_term)
                     if _d0 is None:
+                        _modsR.append(dict(
+                            variable=_var, term=_term,
+                            default="(INSERTED \u2014 catalog "
+                                    "grew)",
+                            current=str(tuple(round(float(v), 3)
+                                              for v in _abcd))))
                         continue
                     if tuple(np.round(np.asarray(_abcd, float), 4)) \
                             != tuple(np.round(np.asarray(_d0, float),
@@ -2820,6 +2863,7 @@ def page_simulation():
                              "marker."):
                     world.ignitions.pop()
                     st.session_state.canvas_key += 1
+                    st.session_state.sim_applied = 0
                     st.rerun()
                 objs = (res.json_data or {}).get("objects", []) if res else []
                 new = objs[st.session_state.get("sim_applied", 0):]
@@ -2831,7 +2875,12 @@ def page_simulation():
                                            (o["top"] + rad) / scale)
                             world.add_ignition(gx, gy, step=ig_step,
                                                radius=int(ig_rad))
-                    st.session_state.canvas_key += 1
+                    # the canvas is NOT remounted between clicks (a
+                    # remount swallowed the next click, so placing a
+                    # second ignition needed re-ticking the box);
+                    # instead only the objects beyond the applied
+                    # counter are consumed, exactly like the editor
+                    st.session_state.sim_applied = len(objs)
                     st.rerun()
             else:
                 # plotly map exactly like the 3D view: top-right modebar
@@ -2992,11 +3041,17 @@ def _cost_panel():
     d = rep.to_dict()
 
     # physical impact
-    m = st.columns(4)
+    m = st.columns(5)
     m[0].metric("Burned area (ha)", f"{rep.burned_area_ha:,.1f}")
     m[1].metric("Burned forest (ha)", f"{rep.burned_forest_ha:,.1f}")
     m[2].metric("Population exposed", f"{rep.population_exposed:,.0f}")
-    m[3].metric("Asset value lost",
+    m[3].metric("Evacuated (safe)",
+                f"{getattr(rep, 'population_evacuated', 0.0):,.0f}",
+                help="People moved out by evacuation orders; they "
+                     "leave the exposure and J_pop accounting. Cells "
+                     "in or beside active flame empty at ~30%/min "
+                     "under an order, elsewhere ~5%/min.")
+    m[4].metric("Asset value lost",
                 f"{rep.asset_value_lost:,.1f} / {rep.asset_value_total:,.1f}")
 
     with st.expander("How each term is computed \u2014 actual "
@@ -3012,7 +3067,11 @@ def _cost_panel():
              f"({rep.burned_forest_ha:,.1f} ha forest)",
              f"A_ref = {_aref_ha:,.0f} ha (5% of burnable; 'major "
              "fire')",
-             "1 - exp(-A/A_ref) \u2014 saturating, never clips",
+             "x/(1+x), x = A/A_ref \u2014 rational saturation: "
+             "0.5 at the reference fire, gradient survives at ANY "
+             "size (the old 1-exp form went numerically flat past "
+             "3\u00d7 the reference and the optimizer lost its "
+             "incentive on big fires)",
              rep.j_burn, _cw.w_burn),
             ("J_asset", f"{rep.asset_value_lost:,.2f} of "
              f"{rep.asset_value_total:,.2f} value units lost",
@@ -3107,7 +3166,30 @@ def page_editor():
                                   "Blank grid"])
         nx = st.number_input("Resolution X (nx)", 20, 600, 200, 10)
         ny = st.number_input("Resolution Y (ny)", 20, 600, 200, 10)
-        cell = st.number_input("Cell size (m)", 1.0, 1000.0, 5.0, 1.0)
+        cell = st.number_input(
+            "Cell size (m)", 1.0, 1000.0, 30.0, 1.0,
+            help="30 m is the wildfire reference calibration: the "
+                 "spread physics (m/min), travel times, station and "
+                 "flight radii and the substep logic all reference "
+                 "30 m and AUTO-SCALE to other sizes. Pick the cell "
+                 "size for the DETAIL you want; pick nx/ny for the "
+                 "AREA you want.")
+        _ext_x = nx * cell / 1000.0
+        _ext_y = ny * cell / 1000.0
+        st.caption(f"Physical extent: **{_ext_x:.1f} \u00d7 "
+                   f"{_ext_y:.1f} km** ({_ext_x * _ext_y * 100:.0f} "
+                   "ha). Everything cell-size-dependent scales "
+                   "automatically (ROS, dispatch/flight minutes, "
+                   "service radii, burn reference = % of burnable "
+                   "area). A smaller cell does NOT change the "
+                   "physics \u2014 it only refines the grid of a "
+                   "smaller or same area.")
+        if cell < 15:
+            st.info(f"{cell:.0f} m cells over {nx}\u00d7{ny} gives "
+                    f"only {_ext_x:.1f}\u00d7{_ext_y:.1f} km \u2014 "
+                    "a neighbourhood, not a landscape. For wildfire "
+                    "scenarios 30 m cells are recommended; increase "
+                    "nx/ny instead if you need a larger area.")
         if src == "Landscape type":
             seed = st.number_input("Seed", 0, 99999, 42)
             _D2R = 0.017453292519943295

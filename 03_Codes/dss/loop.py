@@ -88,11 +88,25 @@ class DecisionEngine:
         self.rules = make_runtime_rules(self.seed_profile)
         # the persistent learned-rule store survives fires, engines
         # and MAPS: knowledge accumulated anywhere is reloaded here
+        # ---- ENGINE-LOCAL VOCABULARY (open decision space) ----
+        # Admitted concept/intervention packages grow these; the
+        # module-level base stays pristine. New intermediate concepts
+        # enrich the aggregation hierarchy; new decision concepts add
+        # antecedent variables (catalog x5) and declare an answering
+        # family; macro interventions expand to base channels.
+        import copy as _copy
+        from .concepts import HIERARCHY as _BASE_H
+        from .concepts import DECISION_CONCEPTS as _BASE_DC
+        from .evaluate import CONCEPT_FAMILY as _BASE_CF
+        self.hierarchy = _copy.deepcopy(dict(_BASE_H))
+        self.decision_concepts = list(_BASE_DC)
+        self.concept_family = _copy.deepcopy(dict(_BASE_CF))
+        self.macros: dict = {}
         self.learned_store = learned_store
         if learned_store:
             from .persist import merge_learned
             merge_learned(self.rules, learned_store,
-                          profile=self.seed_profile)
+                          profile=self.seed_profile, engine=self)
         # a NEW engine starts from the thesis seed state: the global
         # membership registry is returned to Table D.3 (evFIS moves
         # it in place during a run; 'Reset learned adaptations' and
@@ -128,7 +142,7 @@ class DecisionEngine:
             f = ten_features(sim, r, network=self.network,
                              pool=self.base_pool)
             fc = feature_confidence(self.network, r)
-            gates = concept_gates(fc)
+            gates = concept_gates(fc, hierarchy=self.hierarchy)
             ctx[r.name] = dict(region=r, f=f, fc=fc, gates=gates)
         return ctx
 
@@ -136,7 +150,7 @@ class DecisionEngine:
         """Gated activations; commit the persistence prior only when a
         real cycle step is given (trials pass None and stay pure)."""
         g = self.gaters[ctx_r["region"].name]
-        act = infer_concepts(ctx_r["f"])
+        act = infer_concepts(ctx_r["f"], hierarchy=self.hierarchy)
         if commit_step is not None:
             return g.gate(act, ctx_r["gates"], step=commit_step)
         prev = g.prev
@@ -154,9 +168,10 @@ class DecisionEngine:
         prios = {}
         for name, c in ctx.items():
             eff = self._effective(c, commit_step)
-            u, trace = evaluate_rules(eff, c["f"], rules)
+            u, trace = evaluate_rules(eff, c["f"], rules,
+                                      macros=self.macros)
             cr = crisp(eff)
-            q = quality_Q(cr, u)
+            q = quality_Q(cr, u, family=self.concept_family)
             u2, fs = graduated_failsafe(u, q, self.eta)
             rows[name] = dict(eff=eff, crisp=cr, u=u2,
                               u_rules=dict(u), q=q, fs=fs,
@@ -243,7 +258,8 @@ class DecisionEngine:
             from .persist import save_learned
             try:
                 save_learned(self.rules, self.learned_store,
-                             profile=self.seed_profile)
+                             profile=self.seed_profile,
+                             engine=self)
             except Exception:
                 pass
 
@@ -305,7 +321,8 @@ class DecisionEngine:
         fired_all = []
         for name in rows:
             eff = rows[name]["eff"]
-            _, tr = evaluate_rules(eff, ctx[name]["f"], self.rules)
+            _, tr = evaluate_rules(eff, ctx[name]["f"], self.rules,
+                                   macros=self.macros)
             fired_all.extend(tr)
         _covw = max((w for _r, w in fired_all), default=0.0)
         for _r_s, _w_s in fired_all:
@@ -365,15 +382,18 @@ class DecisionEngine:
                 outcome = stage3_generative(
                     build, sim, self.rules, rows[hot]["eff"],
                     rows[hot]["crisp"], self.horizon_steps,
-                    coverage_gap=_gap, cov_w=_covw)
+                    coverage_gap=_gap, cov_w=_covw, engine=self)
             outcome.stage = stage
-            self.rl.update(deficit, stage, reward=-outcome.dJ,
-                           gap=_gap)
+            _rw = -outcome.dJ
+            if outcome.accepted and (outcome.info or {}).get("package"):
+                _rw -= 0.02      # G5: vocabulary growth costs margin
+            self.rl.update(deficit, stage, reward=_rw, gap=_gap)
             if outcome.accepted and self.learned_store:
                 from .persist import save_learned
                 try:
                     save_learned(self.rules, self.learned_store,
-                             profile=self.seed_profile)
+                             profile=self.seed_profile,
+                             engine=self)
                 except Exception:
                     pass
             if not outcome.accepted:
@@ -545,7 +565,8 @@ class DecisionEngine:
             from .persist import save_learned
             try:
                 save_learned(self.rules, self.learned_store,
-                             profile=self.seed_profile)
+                             profile=self.seed_profile,
+                             engine=self)
             except Exception:
                 pass
         return ov

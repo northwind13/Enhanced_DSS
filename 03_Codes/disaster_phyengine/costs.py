@@ -3,11 +3,19 @@
 Five terms, each an ACTUAL quantity divided by a scenario reference so
 it lands in [0, 1]; J is their weighted mean. The formulas:
 
-  J_burn  = 1 - exp(-A_burned / A_ref)
+  J_burn  = x / (1 + x),  x = A_burned / A_ref
             A_burned = burned cells (any fuel; forest reported
-            separately), A_ref = burn_reference_fraction (2%) of the
-            burnable cells = a "major fire". Smoothly saturating, so a
-            60-cell save and a 600-cell disaster never both read 1.0.
+            separately), A_ref = burn_reference_fraction (5%) of the
+            burnable cells = a "major fire". RATIONAL saturation, not
+            exponential: 1 - exp(-x) is numerically DEAD past x ~ 5
+            (a fire growing 2900 -> 3500 cells moved J_phys only in
+            the 5th decimal, so satisficing, the adaptation trials
+            and the no-harm guard all lost their gradient exactly
+            when the fight mattered most). x/(1+x) is linear near the
+            origin, reads 0.5 at the reference fire, approaches one
+            without reaching it, and its slope decays only
+            quadratically: every saved cell keeps a MEASURABLE worth
+            at any fire size.
   J_asset = value lost / total value at risk
             (buildings + critical infrastructure indices over burned
             cells vs the whole map).
@@ -44,6 +52,7 @@ class CostReport:
     asset_value_total: float
     population_exposed: float
     population_person_steps: float
+    population_evacuated: float
     population_at_risk_total: float
     committed_capacity: float
     available_capacity: float
@@ -95,8 +104,9 @@ def compute_costs(sim, cost: CostParams | None = None) -> CostReport:
     burned_area_ha = n_burned * cell_ha
     burned_forest_ha = float((burned & forest).sum()) * cell_ha
 
-    _bref = float(getattr(cost, "burn_reference_fraction", 0.02))
-    j_burn = 1.0 - float(np.exp(-n_burned / max(_bref * n_burnable, 1.0)))
+    _bref = float(getattr(cost, "burn_reference_fraction", 0.05))
+    _xb = n_burned / max(_bref * n_burnable, 1.0)
+    j_burn = float(_xb / (1.0 + _xb))
 
     asset_field = np.clip(world.value.vbld, 0.0, 1.0) \
         + np.clip(world.value.vcrit, 0.0, 1.0)
@@ -109,6 +119,7 @@ def compute_costs(sim, cost: CostParams | None = None) -> CostReport:
     pop_total = float(pop_field.sum())
     pop_at_risk_total = cost.population_at_risk_fraction * pop_total
     person_steps = float(getattr(sim, "exposure_person_steps", 0.0))
+    pop_evac = float(getattr(sim, "population_evacuated", 0.0))
     denom_pop = max(pop_total * cost.horizon_steps, eps)
     j_pop = min(1.0, person_steps / denom_pop)
 
@@ -153,6 +164,7 @@ def compute_costs(sim, cost: CostParams | None = None) -> CostReport:
         asset_value_lost=asset_lost,
         asset_value_total=asset_total,
         population_exposed=population_exposed,
+        population_evacuated=pop_evac,
         population_person_steps=person_steps,
         population_at_risk_total=pop_at_risk_total,
         committed_capacity=committed,

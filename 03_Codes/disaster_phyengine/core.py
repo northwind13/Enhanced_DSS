@@ -230,8 +230,20 @@ class Simulator:
         _rev = getattr(resource, "revac", None)
         if _rev is not None and float(np.max(_rev)) > 1e-6:
             _vp = world.value.vpop
-            _fracv = np.clip(_rev, 0.0, 1.0) * min(
-                0.9, 0.05 * float(getattr(cfg, "step_minutes", 30.0)))
+            _dtm_e = float(getattr(cfg, "step_minutes", 30.0))
+            # ordered evacuation empties a cell at ~5%/min; people IN
+            # or BESIDE actively burning cells flee at ~30%/min, so
+            # the person-steps exposure collapses within a few
+            # decision steps once the order lands
+            _B_e = s.burning > 0.5
+            _hot = _B_e.copy()
+            _hot[1:, :] |= _B_e[:-1, :]
+            _hot[:-1, :] |= _B_e[1:, :]
+            _hot[:, 1:] |= _B_e[:, :-1]
+            _hot[:, :-1] |= _B_e[:, 1:]
+            _rate_e = np.where(_hot, 0.30 * _dtm_e, 0.05 * _dtm_e)
+            _fracv = np.clip(_rev, 0.0, 1.0) * np.minimum(0.9,
+                                                          _rate_e)
             _moved = _vp * _fracv
             _vp -= _moved
             self.population_evacuated += float(

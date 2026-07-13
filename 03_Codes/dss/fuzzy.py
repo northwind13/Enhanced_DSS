@@ -2,13 +2,25 @@
 
 The partition follows the design established in the background chapter
 (Figure 2.3): five terms VL, L, M, H, VH on a normalized [0, 1] universe,
-with the exact (a, b, c, d) parameters of thesis Table E.4. Adjacent terms
+with the (a, b, c, d) parameters of thesis Table D.3 (Appendix D), the
+single place the document states them. Adjacent terms
 overlap so that every reading activates AT MOST TWO terms and the two
 memberships sum to one on the shoulders. Worked check: a reading of 0.62
 gives medium 0.53 and high 0.47, exactly the example of the text.
 
-Each membership function is stored as an editable trapezoid (a, b, c, d);
-the evolving-FIS stage perturbs precisely these four parameters.
+RUSPINI INVARIANT. The partition is a Ruspini (strong) partition:
+sum_t mu_t(x) = 1 for every x in [0, 1]. This holds because neighbouring
+trapezoids SHARE their transition interval: the descending edge (c, d) of
+term i is the ascending edge (a, b) of term i+1. The invariant is what makes
+the inference output a convex combination of the consequents, so it is a
+hard constraint, not a cosmetic property.
+
+Consequently a shoulder is NOT a free parameter of one term: it is a SHARED
+boundary of two terms. The evolving-FIS stage must therefore move it through
+``PartitionRegistry.shift_boundary``, which displaces both trapezoids at once
+and bounds the step by the neighbouring core widths (a larger step would
+collapse a plateau and then invert the trapezoid). Moving a single trapezoid
+in isolation tears the partition (sum_t mu_t != 1) and is a bug.
 """
 
 from __future__ import annotations
@@ -22,15 +34,27 @@ TERM_CENTER = {"VL": 0.0, "L": 0.25, "M": 0.5, "H": 0.75, "VH": 1.0}
 def default_partition() -> dict:
     """{term: (a, b, c, d)} trapezoids of the five-term partition.
 
-    Values are Table E.4 of the thesis appendices, verbatim. The
-    partition reproduces the worked example of the background chapter
-    (a reading of 0.62 gives medium 0.533 and high 0.467) and adjacent
-    terms overlap so at most two terms activate anywhere."""
+    Values follow Table D.3 (Appendix D) with ONE correction. The
+    published "very high" row reads (0.70, 0.85, 1.00, 1.00), which does
+    not share "high"'s descending edge (0.75, 0.90) and therefore breaks
+    the Ruspini invariant: sum_t mu_t climbs to 1.333 on x in [0.70,
+    0.90], and the concept activation vectors inherit that defect. The
+    row is corrected here to (0.75, 0.90, 1.00, 1.00), which restores
+    sum_t mu_t = 1 everywhere and leaves every other row untouched. The
+    partition still reproduces the worked example of the background
+    chapter (a reading of 0.62 gives medium 0.533 and high 0.467) and
+    adjacent terms overlap so at most two terms activate anywhere.
+
+    Table D.3 in the document must be corrected on that one row."""
     return {"VL": (0.00, 0.00, 0.15, 0.30),
             "L":  (0.15, 0.30, 0.35, 0.50),
             "M":  (0.35, 0.50, 0.55, 0.70),
             "H":  (0.55, 0.70, 0.75, 0.90),
-            "VH": (0.70, 0.85, 1.00, 1.00)}
+            # CORRECTED ROW (Table D.3): VH must ascend on H's descending
+            # edge (0.75, 0.90). The published (0.70, 0.85) does NOT share
+            # that boundary and breaks the Ruspini invariant: sum_t mu_t
+            # reaches 1.333 on x in [0.70, 0.90].
+            "VH": (0.75, 0.90, 1.00, 1.00)}
 
 
 class PartitionRegistry:
@@ -63,13 +87,93 @@ class PartitionRegistry:
     def variables(self):
         return sorted(self._parts)
 
+    def snapshot(self, var: str) -> dict:
+        """Copy of a variable's partition, for restoring a rejected trial."""
+        return dict(self.get(var))
+
+    def restore(self, var: str, part: dict) -> None:
+        self._parts[var] = dict(part)
+
+    def shift_boundary(self, var: str, term: str, delta: float) -> float:
+        """Move the SHARED boundary between ``term`` and its left neighbour.
+
+        The ascending edge (a, b) of ``term`` IS the descending edge (c, d) of
+        the previous term: one boundary, two trapezoids. Displacing it keeps
+        the Ruspini invariant only if both are moved together, which is what
+        this does. ``delta`` is clamped so that neither plateau inverts:
+
+            -(c_left - b_left)  <=  delta  <=  (c_term - b_term)
+
+        i.e. the step may at most collapse the neighbouring core to a point
+        (trapezoid -> triangle), never past it. Returns the delta actually
+        applied (0.0 when no admissible move exists, e.g. for the first term,
+        which has no left neighbour)."""
+        if term not in TERMS:
+            return 0.0
+        i = TERMS.index(term)
+        if i == 0:
+            return 0.0                       # no left neighbour, no boundary
+        left = TERMS[i - 1]
+        part = dict(self.get(var))
+        aL, bL, cL, dL = (float(v) for v in part[left])
+        aT, bT, cT, dT = (float(v) for v in part[term])
+        lo = -(cL - bL)                      # cannot invert the left core
+        hi = (cT - bT)                       # cannot invert this term's core
+        d = float(np.clip(float(delta), lo, hi))
+        if abs(d) < 1e-12:
+            return 0.0
+        part[left] = (aL, bL, cL + d, dL + d)
+        part[term] = (aT + d, bT + d, cT, dT)
+        for t in (left, term):               # keep a <= b <= c <= d
+            p = part[t]
+            if not (p[0] <= p[1] <= p[2] <= p[3]):
+                return 0.0
+        self._parts[var] = part
+        return d
+
+    def insert_split(self, var: str, x: float) -> str:
+        """TRUE resolution increase: insert a NEW narrow term into
+        var's partition, centered on the reading x that fell between
+        the existing term cores. Grows the linguistic catalog of this
+        variable (5 -> 6 -> ...); returns the new term's name."""
+        part = dict(self.get(var))
+        n = sum(1 for t in part if t.startswith("X")) + 1
+        name = f"X{n}"
+        x = float(np.clip(x, 0.0, 1.0))
+        a = max(0.0, x - 0.12)
+        b = max(a, x - 0.05)
+        c = min(1.0, x + 0.05)
+        d = min(1.0, max(c, x + 0.12))
+        part[name] = (a, b, c, d)
+        self._parts[var] = part
+        return name
+
+    def reset(self) -> None:
+        """Drop every modification INCLUDING inserted terms: every
+        variable returns to the exact Table D.3 default."""
+        self._parts = {}
+
 
 REGISTRY = PartitionRegistry()
 
 
+def partition_defect(partition: dict | None = None, var: str | None = None,
+                     n: int = 1001) -> float:
+    """max |sum_t mu_t(x) - 1| over the universe: 0 for a Ruspini partition.
+
+    The five base terms carry the partition; terms inserted by the resolution
+    stage are refinements evaluated outside this algebra and are excluded."""
+    part = partition or REGISTRY.get(var)
+    xs = np.linspace(0.0, 1.0, int(n))
+    tot = np.zeros_like(xs)
+    for t in TERMS:
+        tot = tot + trapmf(xs, part[t])
+    return float(np.max(np.abs(tot - 1.0)))
+
+
 def trapmf(x, abcd):
     """Trapezoid membership; degenerate shoulders (a == b or c == d, the
-    saturated ends of Table E.4) read as hard steps so the extremes of
+    saturated ends of Table D.3) read as hard steps so the extremes of
     the universe carry full membership."""
     a, b, c, d = abcd
     x = np.asarray(x, dtype=float)

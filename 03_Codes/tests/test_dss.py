@@ -559,3 +559,213 @@ def test_minimal_profile_learns_and_extinguishes():
     assert out is not None, "minimal-profile DSS never put the fire out"
     assert len(eng.rules) > 5, "the rule base did not grow"
     assert int(sim.ever_burned.sum()) < 150
+
+
+def test_stage2_term_insertion_grows_catalog():
+    """TRUE resolution increase: on a COVERED antecedent cell whose
+    situation is ambiguous (reading between two term cores), stage 2
+    inserts a new linguistic term, writes the rule on the refined
+    cell, and the catalog grows (5^5 = 3125 -> 3750). The inserted
+    term must evaluate in the rule pass and reset must drop it."""
+    import numpy as np
+    import dss
+    from dss.fuzzy import REGISTRY
+    from dss.adapt import (stage2_resolution, reset_partitions,
+                           _dominant_terms)
+    from dss.rules import Rule, evaluate_rules
+    from disaster_phyengine import terrain
+    from disaster_phyengine.config import SimConfig
+    from disaster_phyengine.core import Simulator
+    reset_partitions()
+    cfg = SimConfig(nx=30, ny=20, cell_size_m=30.0)
+    cfg.step_minutes = 1.0
+    w = terrain.generate_landscape(cfg, seed=3, preset="Rolling hills",
+                                   n_settlements=2,
+                                   population_per_settlement=5000)
+    w.add_ignition(15, 10, step=0, radius=1)
+    sim = Simulator(w)
+    sim.record_states = False
+    sim.step()
+    sim._dss_hmin = 10.0
+    eff = {c: np.array([0., 0., 0.5, 0.5, 0.])
+           for c in dss.DECISION_CONCEPTS}
+    crisp = {c: 0.62 for c in dss.DECISION_CONCEPTS}
+    dom = _dominant_terms(eff)
+    ranked = sorted(dss.CONCEPT_FAMILY,
+                    key=lambda c: -crisp.get(c, 0))
+    c1, c2 = ranked[0], ranked[1]
+    rules = dss.make_runtime_rules("minimal")
+    rules.append(Rule("A0", [(c1, dom[c1]), (c2, dom[c2])],
+                      [("suppression_effort", 0.5)]))
+    out = stage2_resolution(lambda rr: None, sim, rules, eff, crisp, 8)
+    assert out.accepted, out.detail
+    assert any(t.startswith("X") for t in REGISTRY.get(c1))
+    cat = 1
+    for c in dss.DECISION_CONCEPTS:
+        cat *= len(REGISTRY.get(c))
+    assert cat > 3125
+    _u, tr = evaluate_rules(eff, {}, rules)
+    w_new = [wt for r, wt in tr if r.name == rules[-1].name][0]
+    assert w_new > 0.1, "inserted-term antecedent must evaluate"
+    reset_partitions()
+    assert all(not t.startswith("X") for t in REGISTRY.get(c1))
+
+
+def test_genai_package_grows_vocabulary():
+    """Open decision space at the VOCABULARY level: a stage-3 package
+    (new object + a rule using it) can add a macro intervention that
+    reduces to the base physical channels and an intermediate concept
+    composed of existing features. G2 validates the composition, G2b
+    rejects collinear copies, G3/G4/G5 run the shadow rollouts, and
+    the admitted vocabulary persists in the profile lineage. The G5
+    margin is relaxed here: this test checks the PLUMBING, the
+    physics margin is exercised by the live gates."""
+    import json
+    import os
+    import numpy as np
+    import dss
+    import dss.adapt as A
+    from dss.adapt import (stage3_generative, _validate_package,
+                           reset_partitions)
+    from disaster_phyengine import terrain
+    from disaster_phyengine.config import SimConfig
+    from disaster_phyengine.core import Simulator
+    store = "/tmp/test_pkg_reg/learned_rules.json"
+    if os.path.exists(store):
+        os.remove(store)
+    reset_partitions()
+    cfg = SimConfig(nx=60, ny=40, cell_size_m=30.0)
+    cfg.step_minutes = 1.0
+    w = terrain.generate_landscape(cfg, seed=11, preset="Rolling hills",
+                                   n_settlements=4,
+                                   population_per_settlement=15000)
+    w.fuel.fmoist[:] = 0.08
+    w.meteo.wws[:] = 6.0
+    base, _ = dss.resource_suggestion(w)
+    w.config.cost.capacity_reference = max(
+        100.0, 1.2 * float((base.rcap * base.ravail).sum()))
+    w.add_ignition(30, 20, step=0, radius=2)
+    sim = Simulator(w)
+    sim.record_states = False
+    eng = dss.DecisionEngine(dss.partition_n(60, 40, 1),
+                             base_pool=base, cycle_min=1.0,
+                             horizon_min=15.0, adapt_on=True,
+                             genai_on=True, evfis_on=True,
+                             seed_profile="minimal",
+                             learned_store=store)
+    for _ in range(8):
+        sim.step(resource_override=eng.maybe_decide(sim))
+    sim._dss_hmin = 15.0
+    ctx = eng._perceive(sim)
+    rows, _p = eng._decide_regions(sim, ctx, eng.rules)
+    hot = list(rows)[0]
+
+    def build(rr):
+        _r2, prs = eng._decide_regions(sim, ctx, rr)
+        return eng._override(sim, prs)
+
+    old_margin, old_prop = A.G5_MARGIN, A._genai_propose
+    try:
+        A.G5_MARGIN = -1.0
+        pkg = {"antecedents": [["fire_threat_level", "H"]],
+               "consequents": [["backburn", 0.9]],
+               "new_intervention": {
+                   "name": "backburn",
+                   "composition": [["containment_line", 0.7],
+                                   ["suppression_effort", 0.5]]}}
+        A._genai_propose = lambda s_: json.loads(json.dumps(pkg))
+        out = stage3_generative(build, sim, eng.rules,
+                                rows[hot]["eff"], rows[hot]["crisp"],
+                                8, coverage_gap=True, engine=eng)
+        assert out.accepted, out.detail
+        assert "backburn" in eng.macros
+        pkg2 = {"antecedents": [["ember_pressure", "H"]],
+                "consequents": [["containment_line", 0.8]],
+                "new_concept": {
+                    "name": "ember_pressure",
+                    "level": "intermediate",
+                    "inputs": [["weather_severity", 0.6],
+                               ["fuel_load", 0.4]]}}
+        A._genai_propose = lambda s_: json.loads(json.dumps(pkg2))
+        out2 = stage3_generative(build, sim, eng.rules,
+                                 rows[hot]["eff"], rows[hot]["crisp"],
+                                 8, coverage_gap=True, engine=eng)
+        assert out2.accepted, out2.detail
+        assert "ember_pressure" in eng.hierarchy
+        # G2b: a collinear copy of fuel_hazard must be rejected
+        bad = {"antecedents": [["copy_f", "H"]],
+               "consequents": [["suppression_effort", 0.8]],
+               "new_concept": {"name": "copy_f",
+                               "level": "intermediate",
+                               "inputs": [["weather_severity", 0.4],
+                                          ["fuel_load", 0.6]]}}
+        assert "G2b" in (_validate_package(
+            json.loads(json.dumps(bad)), eng) or "")
+        # macro expands to base channels in the rule pass
+        u, _tr = dss.evaluate_rules(rows[hot]["eff"], ctx[hot]["f"],
+                                    eng.rules, macros=eng.macros)
+        assert u["containment_line"] > 0.0
+        # persistence: a fresh engine reloads the grown vocabulary
+        sim.step(resource_override=eng.maybe_decide(sim))
+        reset_partitions()
+        e2 = dss.DecisionEngine(dss.partition_n(60, 40, 1),
+                                seed_profile="minimal",
+                                learned_store=store)
+        assert "backburn" in e2.macros
+        assert "ember_pressure" in e2.hierarchy
+    finally:
+        A.G5_MARGIN, A._genai_propose = old_margin, old_prop
+        reset_partitions()
+
+
+# --------------------------------------------------------------------------
+# Ruspini (strong) partition invariant: sum_t mu_t(x) = 1 for every x.
+# It is what makes the inference output a convex combination of the
+# consequents, so adaptation may never break it.
+# --------------------------------------------------------------------------
+def test_default_partition_is_ruspini():
+    from dss.fuzzy import default_partition, partition_defect, TERMS
+    p = default_partition()
+    # neighbouring trapezoids must SHARE their transition interval
+    for i in range(len(TERMS) - 1):
+        lo, hi = TERMS[i], TERMS[i + 1]
+        assert (p[lo][2], p[lo][3]) == (p[hi][0], p[hi][1]), \
+            f"{lo}->{hi} boundary is not shared"
+    assert partition_defect(p) < 1e-9
+
+
+def test_worked_example_preserved():
+    from dss.fuzzy import fuzzify
+    mu = fuzzify(0.62)
+    assert abs(mu["M"] - 0.533) < 0.01
+    assert abs(mu["H"] - 0.467) < 0.01
+    assert abs(sum(mu.values()) - 1.0) < 1e-9
+
+
+def test_boundary_shift_preserves_partition_and_stays_bounded():
+    import numpy as np
+    from dss.fuzzy import REGISTRY, partition_defect, TERMS
+    REGISTRY.reset()
+    rng = np.random.default_rng(7)
+    for k in range(200):
+        var = f"v{k % 5}"
+        term = TERMS[int(rng.integers(1, 5))]
+        REGISTRY.shift_boundary(var, term, float(rng.uniform(-0.3, 0.3)))
+        part = REGISTRY.get(var)
+        # partition still sums to one
+        assert partition_defect(var=var) < 1e-9
+        # and no trapezoid inverted
+        for t in TERMS:
+            a, b, c, d = part[t]
+            assert a <= b <= c <= d
+    REGISTRY.reset()
+
+
+def test_shift_is_clamped_by_the_neighbouring_core_width():
+    from dss.fuzzy import REGISTRY, default_partition
+    REGISTRY.reset()
+    p = default_partition()
+    core_M = p["M"][2] - p["M"][1]              # 0.05
+    applied = REGISTRY.shift_boundary("x", "H", -0.50)
+    assert abs(applied + core_M) < 1e-9         # clamped to exactly -core_M
+    REGISTRY.reset()

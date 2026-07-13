@@ -1,0 +1,5 @@
+﻿step;t_min;region;story;stage_tried;stage_accepted;fired_rules;suppression;deployment;containment;protection;evacuation;warning;quality;gate_min;J_forecast;J_noaction;attended
+0;0;Agent_1;RL selected stage 3 [GenAI] (deficit bucket: low) → ACCEPTED: G4: G4: IF asset exposure risk is VH AND evacuation pressure is VL THEN asset protection 0.8, evacuation 0.3 (adaptation-born: generative (template), gates G1-G4);3;3;R20[0.19] A1[0.54] G3[0.19] A3[0.20] G1[0.38] G4[0.53];0.00;0.45;0.00;0.63;0.27;0.00;0.89;0.00;0.0557;0.0557;1
+1;1;Agent_1;orders came from the seed rule base (rules as-is);0;0;R20[0.17] A1[0.49] G3[0.17] A3[0.18] G1[0.34] G4[0.47];0.00;0.41;0.00;0.63;0.27;0.00;0.90;0.00;0.0563;0.0563;1
+2;2;Agent_1;orders came from the seed rule base (rules as-is);0;0;R20[0.16] A1[0.59] G3[0.16] A3[0.22] G1[0.32] G4[0.58];0.00;0.38;0.00;0.62;0.27;0.00;0.88;0.12;0.0594;0.0594;1
+3;3;Agent_1;orders came from the seed rule base (rules as-is);0;0;R20[0.17] R26[0.04] A1[0.68] G3[0.17] A3[0.23] G1[0.25];0.04;0.42;0.00;0.58;0.25;0.00;0.79;0.12;0.0340;0.0625;1

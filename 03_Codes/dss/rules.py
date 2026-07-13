@@ -222,17 +222,34 @@ SEED_RULES: List[Rule] = [
 
 def _membership(var: str, term: str, concepts: Dict[str, np.ndarray],
                 features: Dict[str, float]) -> float:
+    if term in TERMS:
+        if var in concepts:
+            return float(concepts[var][TERMS.index(term)])
+        if var in features:
+            return float(term_vector(float(features[var]),
+                                     var=var)[TERMS.index(term)])
+        return 0.0
+    # INSERTED term (catalog growth, stage 2 resolution increase):
+    # the five-term activation algebra of Layer 3 stays untouched;
+    # a refined term is evaluated on the variable's CRISP reading
+    # against its own registry trapezoid
+    from .fuzzy import REGISTRY, trapmf, expected_value
+    abcd = REGISTRY.get(var).get(term)
+    if abcd is None:
+        return 0.0
     if var in concepts:
-        return float(concepts[var][TERMS.index(term)])
-    if var in features:
-        return float(term_vector(float(features[var]),
-                                 var=var)[TERMS.index(term)])
-    return 0.0
+        x = float(expected_value(concepts[var]))
+    elif var in features:
+        x = float(features[var])
+    else:
+        return 0.0
+    return float(trapmf(x, abcd))
 
 
 def evaluate_rules(concepts: Dict[str, np.ndarray],
                    features: Dict[str, float],
-                   rules: List[Rule] | None = None):
+                   rules: List[Rule] | None = None,
+                   macros: Dict[str, dict] | None = None):
     """Zero-order TS pass over the active rules.
 
     Returns (intensities dict, trace rows [(rule, firing strength)]).
@@ -256,6 +273,18 @@ def evaluate_rules(concepts: Dict[str, np.ndarray],
         if w <= 1e-9:
             continue
         for interv, v in r.consequents:
+            if macros and interv in macros:
+                # MACRO intervention: a learned composition of the
+                # base physical channels (e.g. a backburn pattern =
+                # containment + suppression ahead of the front); it
+                # expands here, so the physics only ever sees the
+                # six base channels
+                for bi, bw in macros[interv]["composition"]:
+                    num[bi] += w * float(v) * float(bw)
+                    den[bi] += w * float(bw)
+                continue
+            if interv not in num:
+                continue
             num[interv] += w * float(v)
             den[interv] += w
         for e in r.effects:
