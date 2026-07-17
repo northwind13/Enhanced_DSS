@@ -1,4 +1,4 @@
-<mxfile host="Electron" agent="Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) draw.io/29.2.9 Chrome/140.0.7339.249 Electron/38.7.2 Safari/537.36" version="29.2.9" pages="19">
+<mxfile host="Electron" agent="Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) draw.io/29.2.9 Chrome/140.0.7339.249 Electron/38.7.2 Safari/537.36" version="29.2.9" pages="22">
   <diagram name="Figure 1.2 Research question, hypothesis, gaps and contributions" id="JPyGAiY2zR-p6zgdMY3D">
     <mxGraphModel dx="1540" dy="900" grid="1" gridSize="10" guides="1" tooltips="1" connect="1" arrows="1" fold="1" page="1" pageScale="1" pageWidth="1169" pageHeight="827" math="0" shadow="0">
       <root>
@@ -3453,6 +3453,190 @@
         </mxCell>
         <mxCell id="bxTQW_NBIBj9sRsA5LDN-27" parent="1" style="rounded=1;arcSize=8;whiteSpace=wrap;html=1;strokeColor=#7A7A7A;fillColor=#FBFBEA;fontSize=12;align=left;verticalAlign=middle;spacingLeft=8;spacingRight=8;dashed=0;" value="Each package (rule + new object) passes the full verification sequence: The universal gates G1 to G4, and the payoff gate G5 that every package must clear. G2b above is the extra check that applies only to a new concept." vertex="1">
           <mxGeometry height="56" width="588" x="1287" y="632" as="geometry" />
+        </mxCell>
+      </root>
+    </mxGraphModel>
+  </diagram>
+  <diagram id="XZh2vkIS_GSoPpFAArMJ" name="Figure 4.10 Local decision and graduated fail-safe">
+    <mxGraphModel dx="1540" dy="900" grid="1" gridSize="10" guides="1" tooltips="1" connect="1" arrows="1" fold="1" page="1" pageScale="1" pageWidth="1169" pageHeight="827" math="1" shadow="0">
+      <root>
+        <mxCell id="0" />
+        <mxCell id="1" parent="0" />
+        <mxCell id="eJwHMeqF2bI5ILnGksuy-6" parent="1" style="rhombus;whiteSpace=wrap;html=1;fillColor=#FDF3EC;strokeColor=#C65911;fontSize=14;align=center;verticalAlign=middle;" value="Quality gate&#xa;\(Q \ge \eta\)?" vertex="1">
+          <mxGeometry height="90" width="220" x="440" y="550" as="geometry" />
+        </mxCell>
+        <mxCell id="eJwHMeqF2bI5ILnGksuy-7" parent="1" style="rounded=1;arcSize=8;whiteSpace=wrap;html=1;fillColor=#EEF6EE;strokeColor=#2E7D32;fontSize=14;align=center;verticalAlign=middle;" value="Orders issued in full" vertex="1">
+          <mxGeometry height="54" width="250" x="210" y="690" as="geometry" />
+        </mxCell>
+        <mxCell id="eJwHMeqF2bI5ILnGksuy-8" parent="1" style="rounded=1;arcSize=8;whiteSpace=wrap;html=1;fillColor=#FDECEC;strokeColor=#C0392B;fontSize=14;align=center;verticalAlign=middle;spacingLeft=6;spacingRight=6;" value="Graduated fail-safe&#xa;offensive families scaled by \(\lambda = Q/\eta\) toward the watchful baseline \(U_{DSS,safe}\)&#xa;life-safety families kept in full" vertex="1">
+          <mxGeometry height="84" width="340" x="590" y="660" as="geometry" />
+        </mxCell>
+        <mxCell id="eJwHMeqF2bI5ILnGksuy-9" parent="1" style="rounded=1;arcSize=8;whiteSpace=wrap;html=1;fillColor=#F3E9F7;strokeColor=#6A1B9A;fontSize=14;align=center;verticalAlign=middle;spacingLeft=6;spacingRight=6;fontStyle=0;" value="Local orders and upward summary&#xa;operational priority, resource request, confidence" vertex="1">
+          <mxGeometry height="64" width="380" x="360" y="830" as="geometry" />
+        </mxCell>
+        <mxCell id="eJwHMeqF2bI5ILnGksuy-15" edge="1" parent="1" source="eJwHMeqF2bI5ILnGksuy-6" style="edgeStyle=orthogonalEdgeStyle;rounded=1;html=1;endArrow=block;strokeColor=#333333;strokeWidth=1.3;fontSize=14;fontColor=#1F4E79;exitX=0;exitY=0.5;exitDx=0;exitDy=0;" target="eJwHMeqF2bI5ILnGksuy-7" value="">
+          <mxGeometry relative="1" x="0.05" y="-47" as="geometry">
+            <mxPoint x="2" y="-15" as="offset" />
+          </mxGeometry>
+        </mxCell>
+        <mxCell id="eJwHMeqF2bI5ILnGksuy-16" edge="1" parent="1" source="eJwHMeqF2bI5ILnGksuy-6" style="edgeStyle=orthogonalEdgeStyle;rounded=1;html=1;endArrow=block;strokeColor=#333333;strokeWidth=1.3;fontSize=14;fontColor=#1F4E79;exitX=1;exitY=0.5;exitDx=0;exitDy=0;" target="eJwHMeqF2bI5ILnGksuy-8" value="">
+          <mxGeometry relative="1" as="geometry">
+            <mxPoint x="815" y="590" as="sourcePoint" />
+          </mxGeometry>
+        </mxCell>
+        <mxCell id="eJwHMeqF2bI5ILnGksuy-17" edge="1" parent="1" source="eJwHMeqF2bI5ILnGksuy-7" style="edgeStyle=orthogonalEdgeStyle;rounded=1;html=1;endArrow=block;strokeColor=#333333;strokeWidth=1.3;fontSize=14;fontColor=#1F4E79;" target="eJwHMeqF2bI5ILnGksuy-9" value="send to Global DSS">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="eJwHMeqF2bI5ILnGksuy-18" edge="1" parent="1" source="eJwHMeqF2bI5ILnGksuy-8" style="edgeStyle=orthogonalEdgeStyle;rounded=1;html=1;endArrow=block;strokeColor=#333333;strokeWidth=1.3;fontSize=14;fontColor=#1F4E79;" target="eJwHMeqF2bI5ILnGksuy-9" value="send to Global DSS">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="DpZ3G7kQrAdcKdAPeDku-5" edge="1" parent="1" source="DpZ3G7kQrAdcKdAPeDku-4" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;exitX=0.5;exitY=1;exitDx=0;exitDy=0;entryX=0.5;entryY=0;entryDx=0;entryDy=0;fontSize=14;" target="eJwHMeqF2bI5ILnGksuy-6">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="DpZ3G7kQrAdcKdAPeDku-4" parent="1" style="text;whiteSpace=wrap;html=1;fontSize=14;" value="\(U_{DSS,k}\)" vertex="1">
+          <mxGeometry height="40" width="80" x="510" y="480" as="geometry" />
+        </mxCell>
+        <mxCell id="DpZ3G7kQrAdcKdAPeDku-8" parent="1" style="text;whiteSpace=wrap;html=1;fontSize=14;" value="yes: \(Q\ge\eta\)" vertex="1">
+          <mxGeometry height="40" width="120" x="330" y="560" as="geometry" />
+        </mxCell>
+        <mxCell id="DpZ3G7kQrAdcKdAPeDku-11" parent="1" style="text;whiteSpace=wrap;html=1;fontSize=14;" value="no: \(Q &amp;lt; \eta\)" vertex="1">
+          <mxGeometry height="40" width="110" x="710" y="560" as="geometry" />
+        </mxCell>
+      </root>
+    </mxGraphModel>
+  </diagram>
+  <diagram id="ctFP5iIh_U_Ki4w1DfzC" name="Figure 4.11 Global coordination and no-harm fail-safe">
+    <mxGraphModel dx="1062" dy="621" grid="1" gridSize="10" guides="1" tooltips="1" connect="1" arrows="1" fold="1" page="1" pageScale="1" pageWidth="1169" pageHeight="827" math="1" shadow="0">
+      <root>
+        <mxCell id="0" />
+        <mxCell id="1" parent="0" />
+        <mxCell id="ebRH9_izZCovWzlnWHGh-2" parent="1" style="rounded=1;arcSize=8;whiteSpace=wrap;html=1;fillColor=#EAF0FA;strokeColor=#4472C4;fontSize=12;align=center;verticalAlign=middle;spacingLeft=4;spacingRight=4;" value="Local DSS 1 forms the candidate \(U_{DSS,k}^{1}\) for its region" vertex="1">
+          <mxGeometry height="60" width="220" x="179" y="85" as="geometry" />
+        </mxCell>
+        <mxCell id="ebRH9_izZCovWzlnWHGh-4" parent="1" style="rounded=1;arcSize=8;whiteSpace=wrap;html=1;fillColor=#EAF0FA;strokeColor=#4472C4;fontSize=12;align=center;verticalAlign=middle;spacingLeft=4;spacingRight=4;" value="Local DSS N forms the candidate \(U_{DSS,k}^{N}\) for its region" vertex="1">
+          <mxGeometry height="60" width="220" x="518" y="85" as="geometry" />
+        </mxCell>
+        <mxCell id="ebRH9_izZCovWzlnWHGh-6" parent="1" style="rounded=1;arcSize=8;whiteSpace=wrap;html=1;fillColor=#F3E9F7;strokeColor=#6A1B9A;fontSize=12;align=center;verticalAlign=middle;spacingLeft=6;spacingRight=6;fontStyle=0;" value="&lt;b&gt;Global DSS&lt;/b&gt;&lt;div&gt;ranks the regions by operational priority,&lt;br&gt;assigns each an attention share (full for the focus, reduced for a monitored region),&lt;br&gt;and steers the offensive tempo and the shared budget.&lt;/div&gt;" vertex="1">
+          <mxGeometry height="96" width="460" x="229" y="219" as="geometry" />
+        </mxCell>
+        <mxCell id="ebRH9_izZCovWzlnWHGh-7" parent="1" style="rounded=1;arcSize=8;whiteSpace=wrap;html=1;fillColor=#EAF0FA;strokeColor=#4472C4;fontSize=12;align=center;verticalAlign=middle;spacingLeft=4;spacingRight=4;" value="The regional candidates are merged into one composed allocation." vertex="1">
+          <mxGeometry height="60" width="360" x="279" y="350" as="geometry" />
+        </mxCell>
+        <mxCell id="ebRH9_izZCovWzlnWHGh-8" parent="1" style="rhombus;whiteSpace=wrap;html=1;fillColor=#FDF3EC;strokeColor=#C65911;fontSize=12;align=center;verticalAlign=middle;" value="No-harm guard.&lt;br&gt;Forecast \(\tau_{horizon}\) ahead:&lt;br&gt;Is the outcome worse than taking no action?" vertex="1">
+          <mxGeometry height="120" width="230" x="344" y="450" as="geometry" />
+        </mxCell>
+        <mxCell id="ebRH9_izZCovWzlnWHGh-9" parent="1" style="rounded=1;arcSize=8;whiteSpace=wrap;html=1;fillColor=#EEF6EE;strokeColor=#2E7D32;fontSize=12;align=center;verticalAlign=middle;" value="The composed plan is applied." vertex="1">
+          <mxGeometry height="54" width="220" x="150" y="565" as="geometry" />
+        </mxCell>
+        <mxCell id="ebRH9_izZCovWzlnWHGh-10" parent="1" style="rounded=1;arcSize=8;whiteSpace=wrap;html=1;fillColor=#FDECEC;strokeColor=#C0392B;fontSize=12;align=center;verticalAlign=middle;spacingLeft=6;spacingRight=6;" value="The offensive orders are withheld this cycle.&#xa;No capacity is fielded and no response cost is paid,&#xa;while the life-safety orders (evacuation and public warning) still stand." vertex="1">
+          <mxGeometry height="84" width="291" x="520" y="560" as="geometry" />
+        </mxCell>
+        <mxCell id="ebRH9_izZCovWzlnWHGh-14" edge="1" parent="1" source="ebRH9_izZCovWzlnWHGh-4" style="edgeStyle=orthogonalEdgeStyle;rounded=1;html=1;endArrow=block;strokeColor=#333333;strokeWidth=1.3;fontSize=10;fontColor=#1F4E79;entryX=0.75;entryY=0;entryDx=0;entryDy=0;exitX=0.25;exitY=1;exitDx=0;exitDy=0;" target="ebRH9_izZCovWzlnWHGh-6" value="operational priority,&amp;nbsp;&lt;div&gt;resource request, confidence&lt;/div&gt;">
+          <mxGeometry relative="1" x="-0.0745" y="-8" as="geometry">
+            <mxPoint as="offset" />
+          </mxGeometry>
+        </mxCell>
+        <mxCell id="ebRH9_izZCovWzlnWHGh-15" edge="1" parent="1" source="ebRH9_izZCovWzlnWHGh-6" style="edgeStyle=orthogonalEdgeStyle;rounded=1;html=1;endArrow=block;strokeColor=#333333;strokeWidth=1.3;fontSize=10;fontColor=#1F4E79;exitX=1;exitY=0.5;exitDx=0;exitDy=0;;dashed=1;entryX=1;entryY=0.5;entryDx=0;entryDy=0;" target="ebRH9_izZCovWzlnWHGh-4" value="">
+          <mxGeometry relative="1" as="geometry">
+            <Array as="points">
+              <mxPoint x="760" y="267" />
+              <mxPoint x="760" y="115" />
+            </Array>
+          </mxGeometry>
+        </mxCell>
+        <mxCell id="o0GtjoNhhDa_-aW8Pc8q-7" connectable="0" parent="ebRH9_izZCovWzlnWHGh-15" style="edgeLabel;html=1;align=center;verticalAlign=middle;resizable=0;points=[];" value="&lt;div style=&quot;color: rgb(31, 78, 121); font-size: 10px;&quot;&gt;the allocation,&amp;nbsp;&lt;/div&gt;&lt;div style=&quot;color: rgb(31, 78, 121); font-size: 10px;&quot;&gt;the normalized priority weights,&amp;nbsp;&lt;/div&gt;&lt;div style=&quot;color: rgb(31, 78, 121); font-size: 10px;&quot;&gt;and the acceptance thresholds.&lt;/div&gt;" vertex="1">
+          <mxGeometry relative="1" x="0.073" y="4" as="geometry">
+            <mxPoint as="offset" />
+          </mxGeometry>
+        </mxCell>
+        <mxCell id="ebRH9_izZCovWzlnWHGh-16" edge="1" parent="1" source="ebRH9_izZCovWzlnWHGh-6" style="edgeStyle=orthogonalEdgeStyle;rounded=1;html=1;endArrow=block;strokeColor=#333333;strokeWidth=1.3;fontSize=10;fontColor=#1F4E79;" target="ebRH9_izZCovWzlnWHGh-7" value="shares scale offensive families">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="ebRH9_izZCovWzlnWHGh-17" edge="1" parent="1" source="ebRH9_izZCovWzlnWHGh-7" style="edgeStyle=orthogonalEdgeStyle;rounded=1;html=1;endArrow=block;strokeColor=#333333;strokeWidth=1.3;fontSize=10;fontColor=#1F4E79;" target="ebRH9_izZCovWzlnWHGh-8" value="shadow forecast">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="ebRH9_izZCovWzlnWHGh-18" edge="1" parent="1" source="ebRH9_izZCovWzlnWHGh-8" style="edgeStyle=orthogonalEdgeStyle;rounded=1;html=1;endArrow=block;strokeColor=#333333;strokeWidth=1.3;fontSize=10;fontColor=#1F4E79;exitX=0;exitY=0.5;exitDx=0;exitDy=0;" target="ebRH9_izZCovWzlnWHGh-9" value="no: not worse">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="ebRH9_izZCovWzlnWHGh-19" edge="1" parent="1" source="ebRH9_izZCovWzlnWHGh-8" style="edgeStyle=orthogonalEdgeStyle;rounded=1;html=1;endArrow=block;strokeColor=#333333;strokeWidth=1.3;fontSize=10;fontColor=#1F4E79;exitX=1;exitY=0.5;exitDx=0;exitDy=0;" target="ebRH9_izZCovWzlnWHGh-10" value="yes: worse than no action">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="o0GtjoNhhDa_-aW8Pc8q-1" parent="1" style="text;html=1;whiteSpace=wrap;strokeColor=none;fillColor=none;align=center;verticalAlign=middle;rounded=0;fontSize=20;fontStyle=1" value="......." vertex="1">
+          <mxGeometry height="30" width="120" x="400" y="100" as="geometry" />
+        </mxCell>
+        <mxCell id="o0GtjoNhhDa_-aW8Pc8q-9" edge="1" parent="1" source="ebRH9_izZCovWzlnWHGh-2" style="edgeStyle=orthogonalEdgeStyle;rounded=1;html=1;endArrow=block;strokeColor=#333333;strokeWidth=1.3;fontSize=10;fontColor=#1F4E79;entryX=0.25;entryY=0;entryDx=0;entryDy=0;exitX=0.75;exitY=1;exitDx=0;exitDy=0;" target="ebRH9_izZCovWzlnWHGh-6" value="operational priority,&amp;nbsp;&lt;div&gt;resource request, confidence&lt;/div&gt;">
+          <mxGeometry relative="1" x="-0.0745" y="-8" as="geometry">
+            <mxPoint as="offset" />
+            <mxPoint x="490" y="200" as="sourcePoint" />
+            <mxPoint x="490" y="276" as="targetPoint" />
+          </mxGeometry>
+        </mxCell>
+        <mxCell id="o0GtjoNhhDa_-aW8Pc8q-10" edge="1" parent="1" source="ebRH9_izZCovWzlnWHGh-6" style="edgeStyle=orthogonalEdgeStyle;rounded=1;html=1;endArrow=block;strokeColor=#333333;strokeWidth=1.3;fontSize=10;fontColor=#1F4E79;exitX=0;exitY=0.5;exitDx=0;exitDy=0;;dashed=1;entryX=0;entryY=0.5;entryDx=0;entryDy=0;" target="ebRH9_izZCovWzlnWHGh-2" value="">
+          <mxGeometry relative="1" as="geometry">
+            <Array as="points">
+              <mxPoint x="160" y="267" />
+              <mxPoint x="160" y="115" />
+            </Array>
+            <mxPoint x="50" y="362" as="sourcePoint" />
+            <mxPoint x="54" y="210" as="targetPoint" />
+          </mxGeometry>
+        </mxCell>
+        <mxCell id="o0GtjoNhhDa_-aW8Pc8q-11" connectable="0" parent="o0GtjoNhhDa_-aW8Pc8q-10" style="edgeLabel;html=1;align=center;verticalAlign=middle;resizable=0;points=[];" value="&lt;div style=&quot;color: rgb(31, 78, 121); font-size: 10px;&quot;&gt;the allocation,&amp;nbsp;&lt;/div&gt;&lt;div style=&quot;color: rgb(31, 78, 121); font-size: 10px;&quot;&gt;the normalized priority weights,&amp;nbsp;&lt;/div&gt;&lt;div style=&quot;color: rgb(31, 78, 121); font-size: 10px;&quot;&gt;and the acceptance thresholds.&lt;/div&gt;" vertex="1">
+          <mxGeometry relative="1" x="0.073" y="4" as="geometry">
+            <mxPoint as="offset" />
+          </mxGeometry>
+        </mxCell>
+      </root>
+    </mxGraphModel>
+  </diagram>
+  <diagram id="KhOOvvZTiyKz7Psqo140" name="Figure 4.12 Worked example: locals, global, fail-safe">
+    <mxGraphModel dx="1812" dy="1059" grid="1" gridSize="10" guides="1" tooltips="1" connect="1" arrows="1" fold="1" page="1" pageScale="1" pageWidth="1169" pageHeight="827" math="1" shadow="0">
+      <root>
+        <mxCell id="0" />
+        <mxCell id="1" parent="0" />
+        <mxCell id="D066kyzz_8KezAGM8SY4-27" parent="1" style="rounded=1;arcSize=8;whiteSpace=wrap;html=1;fillColor=#FDECEC;strokeColor=#C0392B;fontSize=12;align=left;verticalAlign=middle;spacingLeft=6;spacingRight=6;" value="&lt;b&gt;Agent 1&lt;/b&gt; sees an intense fire close to a settlement&lt;br&gt;(high fire threat and high asset exposure).&lt;br&gt;&lt;i&gt;Operational priority \(p_1 = 0.82\).&lt;/i&gt;" vertex="1">
+          <mxGeometry height="54" width="300" x="50" y="36" as="geometry" />
+        </mxCell>
+        <mxCell id="D066kyzz_8KezAGM8SY4-28" parent="1" style="rounded=1;arcSize=8;whiteSpace=wrap;html=1;fillColor=#FFF6E6;strokeColor=#C65911;fontSize=12;align=left;verticalAlign=middle;" value="&lt;b&gt;Agent 2&lt;/b&gt; sees a fire of similar intensity in empty forest&lt;br&gt;(high fire threat, low asset exposure).&lt;br&gt;&lt;i&gt;Operational priority \(p_2 = 0.45\).&lt;/i&gt;" vertex="1">
+          <mxGeometry height="54" width="300" x="50" y="120" as="geometry" />
+        </mxCell>
+        <mxCell id="D066kyzz_8KezAGM8SY4-29" parent="1" style="rounded=1;arcSize=8;whiteSpace=wrap;html=1;fillColor=#F2F2F2;strokeColor=#7A7A7A;fontSize=12;align=left;verticalAlign=middle;spacingLeft=4;spacingRight=4;" value="&lt;b&gt;Agent 3&lt;/b&gt; is quiet (low fire threat).&lt;br&gt;&lt;i&gt;Operational priority \(p_3 = 0.12\).&lt;/i&gt;" vertex="1">
+          <mxGeometry height="54" width="300" x="50" y="210" as="geometry" />
+        </mxCell>
+        <mxCell id="D066kyzz_8KezAGM8SY4-30" parent="1" style="rounded=1;arcSize=8;whiteSpace=wrap;html=1;fillColor=#F3E9F7;strokeColor=#6A1B9A;fontSize=12;align=left;verticalAlign=middle;spacingLeft=6;spacingRight=6;fontStyle=0;" value="Global DSS ranks \(p_1 &amp;gt; p_2 &amp;gt; p_3\) and makes Agent 1 the focus.&lt;div&gt;&lt;br&gt;Shares \(\sigma_1 = 1.00\), \(\sigma_2 = 1.00\), \(\sigma_3 = 0.57\); budget concentrated on Agent 1.&lt;/div&gt;&lt;div&gt;&lt;br&gt;It returns to each agent the allocation, the normalized priority weights, and the acceptance thresholds.&lt;/div&gt;" vertex="1">
+          <mxGeometry height="120" width="360" x="450" y="90" as="geometry" />
+        </mxCell>
+        <mxCell id="D066kyzz_8KezAGM8SY4-31" parent="1" style="rounded=1;arcSize=8;whiteSpace=wrap;html=1;fillColor=#EAF0FA;strokeColor=#4472C4;fontSize=12;align=left;verticalAlign=middle;spacingLeft=4;spacingRight=4;" value="Final orders after the shares scale the candidates:&#xa;Agent 1 fields full suppression effort and resource deployment,&#xa;Agent 2 a lighter suppression effort on a smaller budget,&#xa;Agent 3 protection and monitoring at \(\sigma_3 = 0.57\)." vertex="1">
+          <mxGeometry height="64" width="360" x="450" y="270" as="geometry" />
+        </mxCell>
+        <mxCell id="D066kyzz_8KezAGM8SY4-32" parent="1" style="rounded=1;arcSize=8;whiteSpace=wrap;html=1;fillColor=#EEF6EE;strokeColor=#2E7D32;fontSize=12;align=center;verticalAlign=middle;" value="&lt;b&gt;Decision cycle \(k\).&amp;nbsp;&lt;/b&gt;&lt;div&gt;No-harm check: plan \(\hat J = 0.22\) is below no action \(\hat J_0 = 0.35\),&amp;nbsp;so the plan is applied and the orders are fielded.&lt;/div&gt;" vertex="1">
+          <mxGeometry height="60" width="520" x="370" y="400" as="geometry" />
+        </mxCell>
+        <mxCell id="D066kyzz_8KezAGM8SY4-33" parent="1" style="rounded=1;arcSize=8;whiteSpace=wrap;html=1;fillColor=#FDECEC;strokeColor=#C0392B;fontSize=12;align=center;verticalAlign=middle;spacingLeft=6;spacingRight=6;" value="&lt;b&gt;A later decision cycle.&amp;nbsp;&lt;/b&gt;&lt;div&gt;The wind reverses, so the same plan is now forecast at \(\hat J = 0.40\),&amp;nbsp;above no action \(\hat J_0 = 0.31\).&lt;/div&gt;&lt;div&gt;The no-harm guard withholds the offensive orders;&amp;nbsp;only Agent 1 public warning and evacuation are fielded, and the offensive posture resumes next cycle.&lt;/div&gt;" vertex="1">
+          <mxGeometry height="90" width="680" x="290" y="510" as="geometry" />
+        </mxCell>
+        <mxCell id="D066kyzz_8KezAGM8SY4-34" edge="1" parent="1" source="D066kyzz_8KezAGM8SY4-27" style="edgeStyle=orthogonalEdgeStyle;rounded=1;html=1;endArrow=block;strokeColor=#333333;strokeWidth=1.3;fontSize=10;fontColor=#1F4E79;entryX=0;entryY=0.25;entryDx=0;entryDy=0;" target="D066kyzz_8KezAGM8SY4-30" value="priority, request,&amp;nbsp;&lt;div&gt;confidence&lt;/div&gt;">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="D066kyzz_8KezAGM8SY4-35" edge="1" parent="1" source="D066kyzz_8KezAGM8SY4-28" style="edgeStyle=orthogonalEdgeStyle;rounded=1;html=1;endArrow=block;strokeColor=#333333;strokeWidth=1.3;fontSize=10;fontColor=#1F4E79;" target="D066kyzz_8KezAGM8SY4-30" value="priority, request,&amp;nbsp;&lt;div&gt;confidence&lt;/div&gt;">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="D066kyzz_8KezAGM8SY4-36" edge="1" parent="1" source="D066kyzz_8KezAGM8SY4-29" style="edgeStyle=orthogonalEdgeStyle;rounded=1;html=1;endArrow=block;strokeColor=#333333;strokeWidth=1.3;fontSize=10;fontColor=#1F4E79;entryX=0;entryY=0.75;entryDx=0;entryDy=0;" target="D066kyzz_8KezAGM8SY4-30" value="priority, request,&amp;nbsp;&lt;div&gt;confidence&lt;/div&gt;">
+          <mxGeometry relative="1" x="0.0018" as="geometry">
+            <mxPoint as="offset" />
+          </mxGeometry>
+        </mxCell>
+        <mxCell id="D066kyzz_8KezAGM8SY4-37" edge="1" parent="1" source="D066kyzz_8KezAGM8SY4-30" style="edgeStyle=orthogonalEdgeStyle;rounded=1;html=1;endArrow=block;strokeColor=#333333;strokeWidth=1.3;fontSize=10;fontColor=#1F4E79;" target="D066kyzz_8KezAGM8SY4-31" value="shares scale the candidates">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="D066kyzz_8KezAGM8SY4-38" edge="1" parent="1" source="D066kyzz_8KezAGM8SY4-31" style="edgeStyle=orthogonalEdgeStyle;rounded=1;html=1;endArrow=block;strokeColor=#333333;strokeWidth=1.3;fontSize=10;fontColor=#1F4E79;" target="D066kyzz_8KezAGM8SY4-32" value="shadow forecast">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="D066kyzz_8KezAGM8SY4-39" edge="1" parent="1" source="D066kyzz_8KezAGM8SY4-32" style="edgeStyle=orthogonalEdgeStyle;rounded=1;html=1;endArrow=block;strokeColor=#333333;strokeWidth=1.3;fontSize=10;fontColor=#1F4E79;;dashed=1" target="D066kyzz_8KezAGM8SY4-33" value="later cycle, conditions change">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="jwZVE05a1n1PSdnAtXqr-5" parent="1" style="rounded=1;arcSize=6;whiteSpace=wrap;html=1;fillColor=#FBFBEA;strokeColor=#7A7A7A;dashed=1;fontSize=14;align=left;verticalAlign=top;spacingLeft=8;spacingRight=8;spacingTop=6;" value="Attention threshold \(= 0.35\).&lt;div&gt;&lt;br&gt;A region is attended with \(\sigma = 1.00\) when \(p_i \ge 0.35\,p_{max}\) or \(p_i \ge 0.35\); otherwise it is monitored with&amp;nbsp;&lt;/div&gt;&lt;div&gt;\(\sigma = 0.5 + 0.5\,(p_i/p_{max})\).&lt;/div&gt;&lt;div&gt;&lt;br&gt;The share scales only the monitored region; the focus and its budget follow the priority ranking.&lt;/div&gt;" vertex="1">
+          <mxGeometry height="190" width="280" x="50" y="290" as="geometry" />
         </mxCell>
       </root>
     </mxGraphModel>
