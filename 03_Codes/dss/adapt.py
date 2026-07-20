@@ -1,8 +1,9 @@
 """Staged adaptation of the rule base (Layer 4, Figure 4.1 loop).
 
 The stages engage ONLY when the satisficing test fails (forecast J above
-J_TH); which stage is tried is chosen by a small reinforcement-learning
-controller whose reward is the realized cost reduction:
+J_TH); which stage is tried is chosen by a small value-based stage
+controller (an associative-search contextual bandit, Sutton & Barto 2018)
+whose reward is the realized cost reduction:
 
   stage 1  evFIS       bounded, derivative-free perturbation of the
                        trapezoid parameters of the antecedent terms of
@@ -14,11 +15,12 @@ controller whose reward is the realized cost reduction:
                        decision concepts), consequents seeded from the
                        concept demands; the sparse base grows on demand
   stage 3  generative  a rule proposed by Claude (Anthropic API, model
-                       from DSS_GENAI_MODEL, key from ANTHROPIC_API_KEY;
-                       a deterministic template proposer stands in when
-                       the API is unavailable) and admitted only through
-                       the four gates: G1 format, G2 constraints, G3
-                       simulated dJ < 0, G4 A/B on two seeds.
+                       from DSS_GENAI_MODEL, key from ANTHROPIC_API_KEY).
+                       A reachable model is REQUIRED: there is no offline
+                       stand-in; if none is reachable the stage is skipped
+                       and logged. A proposal is admitted only through the
+                       gates: G1 format, G2 constraints, G3 simulated
+                       dJ < 0, G4 A/B on two seeds (G2b/G5 for packages).
 
 All adaptation acts on RUNTIME copies (rules list, per-variable
 partition registry); provenance is recorded on every admitted change.
@@ -333,7 +335,8 @@ _GENAI_SCHEMA = ("Return ONLY a JSON object: {\"antecedents\": "
 
 
 def _genai_propose(situation: str) -> Optional[dict]:
-    """One rule proposal from Claude; deterministic template fallback."""
+    """One rule proposal from Claude. Returns None when no model is
+    reachable (no key, SDK/REST failure, or unparseable reply)."""
     key = os.environ.get("ANTHROPIC_API_KEY")
     model = os.environ.get("DSS_GENAI_MODEL", "claude-sonnet-4-5")
     if not key:
@@ -374,35 +377,9 @@ def _genai_propose(situation: str) -> Optional[dict]:
         return None
 
 
-def _template_propose(eff, crisp_c, rules=None) -> dict:
-    """Offline stand-in: answer the LARGEST unanswered demand with a
-    doctrine-style two-antecedent rule, on an UNCOVERED cell (the
-    ranked concept pairs are scanned until one is free; re-numbering
-    an existing cell is evFIS's job, not the proposer's)."""
-    dom = _dominant_terms(eff)
-    ranked = sorted(CONCEPT_FAMILY,
-                    key=lambda c: -float(crisp_c.get(c, 0.0)))
-    import itertools
-    for c1, c2 in itertools.combinations(ranked, 2):
-        ants = [(c1, dom[c1]), (c2, dom[c2])]
-        if rules is not None and _cell_covered(rules, ants):
-            continue
-        return {"antecedents": [[c1, dom[c1]], [c2, dom[c2]]],
-                "consequents": [[CONCEPT_FAMILY[c1][0],
-                                 round(min(1.0, crisp_c[c1] + 0.1),
-                                       2)],
-                                [CONCEPT_FAMILY[c2][0],
-                                 round(float(crisp_c[c2]), 2)]]}
-    c1, c2 = ranked[0], ranked[1]
-    return {"antecedents": [[c1, dom[c1]], [c2, dom[c2]]],
-            "consequents": [[CONCEPT_FAMILY[c1][0],
-                             round(min(1.0, crisp_c[c1] + 0.1), 2)],
-                            [CONCEPT_FAMILY[c2][0],
-                             round(float(crisp_c[c2]), 2)]]}
-
-
-G5_MARGIN = 1e-3     # a vocabulary-growing package must clear this
-G2B_COS = 0.95       # structural redundancy bound for new concepts
+G5_MARGIN = 1e-3     # a vocabulary-growing package must clear this on both
+                     # reseeded rollouts (the vocabulary margin delta_v)
+G2B_COS = 0.95       # structural redundancy bound for new concepts (G2b)
 
 
 def _validate_package(prop: dict, engine) -> Optional[str]:
@@ -543,6 +520,49 @@ def _g1_g2(prop: dict, engine=None) -> Optional[str]:
     return None
 
 
+def _nearest_cases(engine, crisp_c, k: int = 3) -> str:
+    """CHRONICLE RETRIEVAL: the k past cycles whose decision-concept
+    situation is nearest (Euclidean over the five crisps) to the
+    current one, summarized compactly for the proposer prompt. The
+    chronicle is recorded anyway; retrieving from it grounds the
+    proposal in what was actually tried and what it did."""
+    if engine is None or not getattr(engine, "cycles", None):
+        return ""
+    import numpy as _np
+    cur = _np.array([float(crisp_c.get(c, 0.0))
+                     for c in DECISION_CONCEPTS])
+    scored = []
+    for cyc in engine.cycles[:-1][-400:]:
+        regs = cyc.get("regions") or {}
+        for rn, rd in regs.items():
+            cc = (rd.get("concepts_effective")
+                  or rd.get("concepts_crisp") or {})
+            if not cc:
+                continue
+            v = _np.array([float(cc.get(c, 0.0))
+                           for c in DECISION_CONCEPTS])
+            d = float(_np.linalg.norm(cur - v))
+            ad = cyc.get("adaptation") or {}
+            scored.append((d, cyc.get("step"), rn, cc,
+                           rd.get("orders_final") or {},
+                           ad.get("detail") or "no adaptation",
+                           bool(ad.get("accepted"))))
+    if not scored:
+        return ""
+    scored.sort(key=lambda t: t[0])
+    lines = ["\nNearest past cases from this incident's chronicle "
+             "(situation -> orders -> adaptation verdict):"]
+    for d, step, rn, cc, of, det, acc in scored[:k]:
+        sit = ", ".join(f"{c.split('_')[0]}={float(cc.get(c, 0.0)):.2f}"
+                        for c in DECISION_CONCEPTS)
+        ords = ", ".join(f"{kk.split('_')[0]}={vv:.2f}"
+                         for kk, vv in list(of.items())[:6])
+        lines.append(f"- k={step} [{rn}] {sit} | orders: {ords} | "
+                     f"{'ACCEPTED' if acc else 'no change'}: "
+                     f"{det[:90]}")
+    return "\n".join(lines)
+
+
 def stage3_generative(build_override, sim, rules: List[Rule],
                       eff, crisp_c, horizon: int,
                       coverage_gap: bool = False,
@@ -562,16 +582,48 @@ def stage3_generative(build_override, sim, rules: List[Rule],
     situation += ("\nDo NOT re-issue an existing rule's antecedent "
                   "cell with different numbers (that is the tuning "
                   "stage's job); pick an UNCOVERED situation cell.")
+    situation += _nearest_cases(engine, crisp_c)
+    # ---- BOUNDED REVISION BUDGET: a proposal rejected at the CHEAP
+    # gates (G1 form, G2 constraints, G2b redundancy) returns to the
+    # model with the failing gate as feedback, up to B times; the
+    # (there is no template; the model is required). Only the
+    # simulation gates (G3-G5) end the stage outright: they are the
+    # expensive verdicts and re-rolling them would buy noise.
+    _budget = int(getattr(engine, "revision_budget", 3) or 0) \
+        if engine is not None else 0
+    _revisions = []
     prop = _genai_propose(situation)
     src = "claude"
+    # The generative stage REQUIRES a reachable model: there is no offline
+    # stand-in. If the model cannot be reached (or returns nothing usable)
+    # the stage is skipped and logged, never silently substituted.
     if prop is None:
-        prop = _template_propose(eff, crisp_c, rules=rules)
-        src = "template"
+        return AdaptOutcome(
+            3, False,
+            "generative stage requires a reachable model; none available "
+            "(set ANTHROPIC_API_KEY / DSS_GENAI_MODEL)",
+            info=dict(source="none", reason="model unreachable"))
     err = _g1_g2(prop, engine=engine)
+    while err and len(_revisions) < _budget:
+        _revisions.append(dict(proposal=prop, gate=err))
+        retry = (situation
+                 + f"\nYour previous proposal was rejected at gate "
+                 f"{err}. Revise it: fix exactly that defect and "
+                 "return the corrected JSON only.")
+        prop = _genai_propose(retry)
+        if prop is None:
+            return AdaptOutcome(
+                3, False,
+                "generative stage aborted: model unreachable during "
+                "revision",
+                info=dict(source="claude", reason="model unreachable",
+                          revisions=_revisions))
+        err = _g1_g2(prop, engine=engine)
     if err:
         return AdaptOutcome(3, False, f"rejected at {err} ({src})",
                             info=dict(source=src, proposal=prop,
-                                      gate=err))
+                                      gate=err,
+                                      revisions=_revisions))
     # ---- PACKAGE path: the proposal may GROW the vocabulary ----
     _pkg = bool(prop.get("new_concept") or prop.get("new_intervention"))
     _undo = None
@@ -625,6 +677,7 @@ def stage3_generative(build_override, sim, rules: List[Rule],
     j1b, j0b = _cva(build_override, sim, rules, horizon, reseed=202)
     j0a = _cva(build_override, sim, rules[:-1], horizon, reseed=101)[0]
     info = dict(source=src, proposal=prop, rule=newr.text(),
+                revisions=_revisions,
                 basis="physical cost at >=45 min",
                 gates=dict(g1_g2="pass",
                            g3=dict(j_with=float(j1a),
@@ -670,9 +723,13 @@ def stage3_generative(build_override, sim, rules: List[Rule],
                         info=info)
 
 
-# ------------------------------------------------------------- RL
-class RLController:
-    """epsilon-greedy stage selector; reward = realized cost reduction."""
+# ---------------------------------------- STAGE CONTROLLER (bandit)
+class StageController:
+    """Value-based stage controller: an associative-search contextual
+    bandit (Sutton & Barto 2018) that reads the current state and picks
+    one adaptation stage. It keeps one action value per (state, stage)
+    pair, acts epsilon-greedy, and moves the chosen value a small step
+    toward the realized reward (the physical forecast improvement)."""
 
     def __init__(self, eps: float = 0.1, lr: float = 0.05):
         self.eps = float(eps)
@@ -730,4 +787,99 @@ def genai_status() -> str:
     key = os.environ.get("ANTHROPIC_API_KEY")
     model = os.environ.get("DSS_GENAI_MODEL", "claude-sonnet-4-5")
     return (f"Claude via API ({model})" if key
-            else "template fallback (set ANTHROPIC_API_KEY for Claude)")
+            else "generative disabled: no model reachable "
+                 "(set ANTHROPIC_API_KEY)")
+
+
+def genai_config() -> dict:
+    """Static view of the generative wiring WITHOUT touching the network.
+
+    Reports whether a key is present (masked, never the value), the model
+    that stage 3 would call, and how the transport would be made (SDK vs
+    raw REST). Cheap: safe to render on every frame."""
+    key = os.environ.get("ANTHROPIC_API_KEY")
+    model = os.environ.get("DSS_GENAI_MODEL", "claude-sonnet-4-5")
+    try:
+        import anthropic  # noqa: F401
+        transport = "anthropic SDK"
+        sdk = True
+    except Exception:
+        transport = "REST (urllib, no SDK)"
+        sdk = False
+    masked = ""
+    if key:
+        masked = (key[:7] + "…" + key[-4:]) if len(key) > 12 \
+            else "set"
+    return {
+        "key_present": bool(key),
+        "key_masked": masked,
+        "model": model,
+        "endpoint": "https://api.anthropic.com/v1/messages",
+        "transport": transport,
+        "sdk": sdk,
+        "reachable": bool(key),
+    }
+
+
+def genai_probe(max_tokens: int = 64) -> dict:
+    """Make ONE real, live call to Claude and return the proof.
+
+    This is not a mock. It reads ANTHROPIC_API_KEY from the environment,
+    sends a tiny message to the configured model over the same transport
+    stage 3 uses, and returns Claude's OWN reply text together with the
+    round-trip latency, the reported model id and the token usage. Any
+    failure (missing key, auth, network, quota) is returned as a plain
+    error string so the app can show exactly why the generative stage is
+    or is not live."""
+    import time
+    cfg = genai_config()
+    out = dict(cfg)
+    out.update({"ok": False, "reply": "", "latency_ms": None,
+                "reported_model": "", "usage": None, "error": ""})
+    key = os.environ.get("ANTHROPIC_API_KEY")
+    if not key:
+        out["error"] = "no ANTHROPIC_API_KEY in the environment"
+        return out
+    model = out["model"]
+    ask = ("Reply with exactly this line and nothing else: "
+           "DisasterAware GenAI link is live.")
+    t0 = time.time()
+    try:
+        import anthropic
+        client = anthropic.Anthropic(api_key=key)
+        msg = client.messages.create(
+            model=model, max_tokens=max_tokens,
+            messages=[{"role": "user", "content": ask}])
+        out["reply"] = "".join(
+            b.text for b in msg.content
+            if getattr(b, "type", "") == "text").strip()
+        out["reported_model"] = getattr(msg, "model", model)
+        u = getattr(msg, "usage", None)
+        if u is not None:
+            out["usage"] = {"input_tokens": getattr(u, "input_tokens", None),
+                            "output_tokens": getattr(u, "output_tokens",
+                                                     None)}
+        out["ok"] = True
+    except Exception as exc_sdk:
+        try:                                   # no SDK: raw REST fallback
+            import urllib.request
+            req = urllib.request.Request(
+                out["endpoint"],
+                data=json.dumps({
+                    "model": model, "max_tokens": max_tokens,
+                    "messages": [{"role": "user", "content": ask}]}).encode(),
+                headers={"x-api-key": key,
+                         "anthropic-version": "2023-06-01",
+                         "content-type": "application/json"})
+            with urllib.request.urlopen(req, timeout=30) as resp:
+                body = json.loads(resp.read().decode())
+            out["reply"] = "".join(
+                b.get("text", "") for b in body.get("content", [])).strip()
+            out["reported_model"] = body.get("model", model)
+            out["usage"] = body.get("usage")
+            out["ok"] = True
+        except Exception as exc_rest:
+            out["error"] = f"{type(exc_sdk).__name__}: {exc_sdk} " \
+                           f"(REST fallback: {exc_rest})"
+    out["latency_ms"] = int((time.time() - t0) * 1000)
+    return out

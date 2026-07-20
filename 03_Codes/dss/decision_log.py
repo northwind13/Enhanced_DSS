@@ -29,9 +29,9 @@ class DecisionRecord:
     quality: float
     failsafe: bool
     stage: int = 0                       # 0 = rules as-is (accepted)
-    stage_tried: int = 0                 # which stage the RL selected
+    stage_tried: int = 0                 # which stage the controller selected
     stage_detail: str = ""
-    rl_bucket: str = ""
+    ctrl_bucket: str = ""
     j_forecast: float = 0.0
     j_noaction: float = 0.0
     j_threshold: float = 0.0
@@ -61,9 +61,9 @@ class DecisionLog:
         names = {1: "evFIS", 2: "resolution increase", 3: "GenAI"}
         if rec.stage_tried == 0:
             return "orders came from the seed rule base (rules as-is)"
-        line = (f"RL selected stage {rec.stage_tried} "
+        line = (f"stage controller selected stage {rec.stage_tried} "
                 f"[{names[rec.stage_tried]}] "
-                f"(deficit bucket: {rec.rl_bucket or '-'}) \u2192 ")
+                f"(deficit bucket: {rec.ctrl_bucket or '-'}) \u2192 ")
         if rec.stage:
             line += f"ACCEPTED: {rec.stage_detail}"
         else:
@@ -183,8 +183,8 @@ class RunLogger:
 
     def log_cycle(self, cyc: dict) -> None:
         """One JSON object per decision cycle: simulation state,
-        costs, pool, sensor status, forecast, RL choice with its
-        Q-table, the adaptation attempt with every trial and its
+        costs, pool, sensor status, forecast, stage-controller choice with its
+        value table, the adaptation attempt with every trial and its
         reject reason, and the full per-region z/concept/order
         detail. This is the training-grade record."""
         import json

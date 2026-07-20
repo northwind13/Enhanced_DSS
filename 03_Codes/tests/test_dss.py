@@ -630,9 +630,9 @@ def test_genai_package_grows_vocabulary():
     from disaster_phyengine import terrain
     from disaster_phyengine.config import SimConfig
     from disaster_phyengine.core import Simulator
-    store = "/tmp/test_pkg_reg/learned_rules.json"
-    if os.path.exists(store):
-        os.remove(store)
+    import tempfile
+    store = os.path.join(tempfile.mkdtemp(prefix="test_pkg_reg_"),
+                         "learned_rules.json")
     reset_partitions()
     cfg = SimConfig(nx=60, ny=40, cell_size_m=30.0)
     cfg.step_minutes = 1.0
@@ -769,3 +769,48 @@ def test_shift_is_clamped_by_the_neighbouring_core_width():
     applied = REGISTRY.shift_boundary("x", "H", -0.50)
     assert abs(applied + core_M) < 1e-9         # clamped to exactly -core_M
     REGISTRY.reset()
+
+
+def test_coordinator_tightens_gate_on_monitored_regions():
+    """The Global DSS sends back a per-region acceptance gate: an
+    attended region keeps the base eta, a monitored region gets a
+    tightened gate 1 - share*(1 - eta), so weak-priority offensive
+    orders need a higher decision quality before they draw on the
+    shared capacity."""
+    import numpy as np
+    import dss
+    from disaster_phyengine import terrain
+    from disaster_phyengine.config import SimConfig
+    from disaster_phyengine.core import Simulator
+
+    cfg = SimConfig(nx=60, ny=40, cell_size_m=30.0)
+    cfg.step_minutes = 2.0
+    w = terrain.generate_landscape(
+        cfg, seed=5, preset="Rolling hills", n_settlements=4,
+        population_per_settlement=15000)
+    w.fuel.fmoist[:] = 0.10
+    w.meteo.wws[:] = 5.0
+    base, _ = dss.resource_suggestion(w)
+    w.config.cost.capacity_reference = max(
+        100.0, 1.2 * float((base.rcap * base.ravail).sum()))
+    ok = (w.fuel.fload > 0.4) & (w.fuel.ftype != 0)
+    ys, xs = np.where(ok & (np.arange(w.config.nx)[None, :] < 25))
+    w.add_ignition(int(xs[0]), int(ys[0]), step=0, radius=1)
+    sim = Simulator(w)
+    sim.record_states = False
+    eng = dss.DecisionEngine(dss.partition_n(60, 40, 4),
+                             base_pool=base, cycle_min=2.0,
+                             horizon_min=10.0, adapt_on=False)
+    for _ in range(8):
+        sim.step(resource_override=eng.maybe_decide(sim))
+    g = eng.last_global
+    assert g is not None and "thresholds" in g
+    eta = eng.eta
+    for name, sh in g["shares"].items():
+        want = 1.0 - sh * (1.0 - eta)
+        assert abs(g["thresholds"][name] - want) < 5e-3
+    # at least one region is monitored (fire sits in one corner) and
+    # its gate is strictly tighter than the base gate
+    mon = [n for n in g["shares"] if n not in g["attended"]]
+    assert mon
+    assert all(g["thresholds"][n] > eta + 1e-6 for n in mon)

@@ -1,7 +1,7 @@
 """The Layer 4 decision engine: rules -> evaluate -> adapt -> apply.
 
 One DecisionEngine instance owns the runtime rule base, the per-region
-gating state, the RL stage controller and the decision log. Once per
+gating state, the value-based stage controller and the decision log. Once per
 DECISION CYCLE it produces the composed resource override that the
 simulation then holds until the next cycle:
 
@@ -12,9 +12,10 @@ simulation then holds until the next cycle:
      tempo attenuated (the coordinator, not the local agent, owns this)
   3. the composed candidate is forecast on a shadow copy; if the
      satisficing test J <= J_TH passes it is applied as-is; otherwise
-     the RL controller picks ONE adaptation stage (evFIS / resolution /
-     generative) for this cycle, keeps it only if the forecast improves,
-     and the controller is rewarded with the realized cost reduction.
+     the stage controller (associative search) picks ONE adaptation
+     stage (evFIS / resolution / generative) for this cycle, keeps it
+     only if the forecast improves, and the controller is rewarded with
+     the realized cost reduction.
 
 Everything is written to the DecisionLog for the backward trace and the
 counterfactual replay of the analysis view.
@@ -34,7 +35,7 @@ from .actions import decision_to_resources
 from .evaluate import (candidate_vs_noaction, quality_Q,
                        graduated_failsafe, forecast_cost,
                        physical_cost)
-from .adapt import (make_runtime_rules, RLController, stage1_evfis,
+from .adapt import (make_runtime_rules, StageController, stage1_evfis,
                     stage2_resolution, stage3_generative, AdaptOutcome)
 from .decision_log import DecisionLog, DecisionRecord
 
@@ -45,18 +46,22 @@ class DecisionEngine:
                  cycle_steps: int = 3, horizon_steps: int = 12,
                  evfis_step: float = 0.05, adapt_on: bool = True,
                  evfis_on: bool = True,
-                 genai_on: bool = False, rl_eps: float = 0.10,
-                 rl_lr: float = 0.05, attention_thr: float = 0.35,
+                 genai_on: bool = False, ctrl_eps: float = 0.10,
+                 ctrl_lr: float = 0.05, attention_thr: float = 0.35,
                  min_gain: float = 0.05, run_logger=None,
                  cycle_min: float | None = None,
                  horizon_min: float | None = None,
                  seed_profile: str = "full",
-                 learned_store: str | None = None):
+                 learned_store: str | None = None,
+                 revision_budget: int = 3):
         self.regions = list(regions)
         self.base_pool = base_pool
         self.network = network
         self.j_threshold = float(j_threshold)
         self.eta = float(eta)
+        # how many times a rejected Stage-3 proposal may return to the
+        # generator with the gate verdict before the stage gives up
+        self.revision_budget = max(0, int(revision_budget))
         self.cycle_steps = max(1, int(cycle_steps))
         self.horizon_steps = max(2, int(horizon_steps))
         # minute-based scheduling wins over step counts when given: a
@@ -69,7 +74,7 @@ class DecisionEngine:
         self.adapt_on = bool(adapt_on)
         self.genai_on = bool(genai_on)
         self.evfis_on = bool(evfis_on)
-        # DECISION MODE: which adaptation stages the RL may pick.
+        # DECISION MODE: which adaptation stages the controller may pick.
         # evFIS covers stage 1 (tuning) and stage 2 (resolution);
         # GenAI is stage 3. Both off = pure fuzzy seed base.
         self.stages_allowed = tuple(
@@ -113,7 +118,7 @@ class DecisionEngine:
         # engine rebuilds are the two lifecycle boundaries)
         from .adapt import reset_partitions
         reset_partitions()
-        self.rl = RLController(eps=rl_eps, lr=rl_lr)
+        self.controller = StageController(eps=ctrl_eps, lr=ctrl_lr)
         # PERFORMANCE THROTTLES (live-run economics, not physics):
         # adaptation trials and the 45-min no-harm re-forecast are the
         # two expensive items of a cycle (each shadow run simulates
@@ -172,9 +177,8 @@ class DecisionEngine:
                                       macros=self.macros)
             cr = crisp(eff)
             q = quality_Q(cr, u, family=self.concept_family)
-            u2, fs = graduated_failsafe(u, q, self.eta)
-            rows[name] = dict(eff=eff, crisp=cr, u=u2,
-                              u_rules=dict(u), q=q, fs=fs,
+            rows[name] = dict(eff=eff, crisp=cr, u=dict(u),
+                              u_rules=dict(u), q=q,
                               trace=[(r.name, w) for r, w in trace
                                      if w > 0.01])
             prios[name] = cr.get("operational_priority", 0.0)
@@ -184,6 +188,20 @@ class DecisionEngine:
                 or prios[name] >= self.attention_thr
             share = 1.0 if att else 0.5 + 0.5 * (
                 prios[name] / max(pmax, 1e-9))
+            # COORDINATED ACCEPTANCE THRESHOLD: the coordinator sends
+            # back a per-region quality gate along with the share. An
+            # attended region keeps the base gate eta; a monitored
+            # region gets a tightened gate (raised toward 1 as its
+            # share falls), so an offensive order in a low-priority
+            # region must justify itself with a higher decision
+            # quality before it draws on the shared capacity. The
+            # life-safety orders stay outside the gate as always.
+            eta_r = 1.0 - share * (1.0 - self.eta)
+            u2, fs = graduated_failsafe(rows[name]["u_rules"],
+                                        rows[name]["q"], eta_r)
+            rows[name]["u"] = u2
+            rows[name]["fs"] = fs
+            rows[name]["eta"] = float(eta_r)
             for k in ("suppression_effort", "resource_deployment"):
                 rows[name]["u"][k] = rows[name]["u"][k] * share
             rows[name]["share"] = float(share)
@@ -204,6 +222,8 @@ class DecisionEngine:
             shares={n: round(float(rows[n]["share"]), 3)
                     for n in rows},
             attended=[n for n in rows if rows[n]["attended"]],
+            thresholds={n: round(float(rows[n]["eta"]), 3)
+                        for n in rows},
             hotspot=(_rank[0] if _rank else None),
             statement=("Global DSS: "
                        + (f"focus on {_rank[0]} "
@@ -243,7 +263,7 @@ class DecisionEngine:
 
     def new_fire(self) -> None:
         """Fire reset: the ENGINE SURVIVES. Everything learned (rules,
-        memberships, RL Q-table) is knowledge, not decision state, and
+        memberships, controller value table) is knowledge, not decision state, and
         stays; only the per-run transients are dropped so the next
         fire starts with a clean decision slate."""
         self.last_override = None
@@ -267,7 +287,7 @@ class DecisionEngine:
         """A simulator rewind must take the DSS with it: the standing
         orders, the no-harm cache, the gating priors and every log
         entry AFTER the rewind point are decision state and roll
-        back; learned rules and the RL table are knowledge and stay
+        back; learned rules and the controller value table are knowledge and stay
         (they persist across fires too)."""
         k = int(step)
         self.last_override = None
@@ -357,7 +377,7 @@ class DecisionEngine:
             if _gap:
                 deficit = max(deficit, 0.05,
                               min(0.3, _growth / 50.0))
-            bucket = self.rl.bucket(deficit, gap=_gap)
+            bucket = self.controller.bucket(deficit, gap=_gap)
             _menu = self.stages_allowed
             if _gap and not _deficit_on and not _spread:
                 # a void cannot be tuned: only the rule-creating
@@ -365,8 +385,8 @@ class DecisionEngine:
                 _menu = (tuple(x for x in self.stages_allowed
                                if x in (2, 3))
                          or self.stages_allowed)
-            stage = self.rl.select(deficit, stages=_menu,
-                                    gap=_gap)
+            stage = self.controller.select(deficit, stages=_menu,
+                                            gap=_gap)
             hot = max(rows, key=lambda n: rows[n]["crisp"].get(
                 "operational_priority", 0.0))
             if stage == 1:
@@ -387,7 +407,7 @@ class DecisionEngine:
             _rw = -outcome.dJ
             if outcome.accepted and (outcome.info or {}).get("package"):
                 _rw -= 0.02      # G5: vocabulary growth costs margin
-            self.rl.update(deficit, stage, reward=_rw, gap=_gap)
+            self.controller.update(deficit, stage, reward=_rw, gap=_gap)
             if outcome.accepted and self.learned_store:
                 from .persist import save_learned
                 try:
@@ -478,7 +498,7 @@ class DecisionEngine:
                 stage=int(outcome.stage if outcome.accepted else 0),
                 stage_tried=int(stage),
                 stage_detail=outcome.detail,
-                rl_bucket=bucket,
+                ctrl_bucket=bucket,
                 j_forecast=float(j_c), j_noaction=float(j_0),
                 j_threshold=float(self.j_threshold),
                 coord_share=float(rows[name]["share"]),
@@ -519,10 +539,10 @@ class DecisionEngine:
                           j_noaction=float(j_0),
                           j_threshold=float(self.j_threshold),
                           satisficing_bound=float(need)),
-            rl=dict(selected_stage=int(stage), bucket=bucket,
-                    eps=float(self.rl.eps),
-                    q_table={f"{b}/s{st_}": round(v, 4)
-                             for (b, st_), v in self.rl.q.items()}),
+            stage_controller=dict(selected_stage=int(stage), bucket=bucket,
+                    eps=float(self.controller.eps),
+                    value_table={f"{b}/s{st_}": round(v, 4)
+                             for (b, st_), v in self.controller.q.items()}),
             no_harm_withheld=bool(getattr(self, "last_withheld",
                                           False)),
             adaptation=dict(stage=int(outcome.stage),

@@ -5,7 +5,7 @@ Design
 ------
 One map, ONE persistent decision engine, a SEQUENCE of fire episodes:
 after every episode the fire is reset but the engine keeps everything
-it has learned (rules, memberships, RL Q-table). Each episode ignites
+it has learned (rules, memberships, controller value table). Each episode ignites
 a different spot, so the engine visits new situation cells and the
 growth stages get material to work on.
 

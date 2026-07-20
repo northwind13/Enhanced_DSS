@@ -29,9 +29,9 @@ from .evaluate import (clone_sim, forecast_cost, candidate_vs_noaction,
 from .persist import (save_learned, load_learned, load_parts,
                       merge_learned,
                       prune_learned, wipe_learned)
-from .adapt import (make_runtime_rules, RLController, AdaptOutcome,
+from .adapt import (make_runtime_rules, StageController, AdaptOutcome,
                     stage1_evfis, stage2_resolution, stage3_generative,
-                    genai_status)
+                    genai_status, genai_config, genai_probe)
 from .decision_log import DecisionLog, DecisionRecord, RunLogger
 from .loop import DecisionEngine, counterfactual
 
@@ -51,12 +51,13 @@ __all__ = ["Region", "partition", "partition_n", "ten_features",
            "pool_efficiency",
            "clone_sim", "forecast_cost", "candidate_vs_noaction",
            "quality_Q", "graduated_failsafe", "CONCEPT_FAMILY",
-           "make_runtime_rules", "RLController", "AdaptOutcome",
+           "make_runtime_rules", "StageController", "AdaptOutcome",
            "save_learned", "load_learned", "load_parts", "merge_learned",
            "prune_learned", "wipe_learned",
            "DecisionLog", "DecisionRecord", "RunLogger", "genai_status",
+           "genai_config", "genai_probe",
            "DecisionEngine",
            "counterfactual"]
 
 # bumped on every dss change; checked by the app freshness gate
-DSS_BUILD = 56
+DSS_BUILD = 58

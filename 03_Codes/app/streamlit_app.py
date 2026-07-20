@@ -181,7 +181,7 @@ def _restore_snapshot() -> None:
 def _reset_dss_state(drop_engine: bool = False) -> None:
     """A fire reset clears the DECISION state (gating priors, feature
     histories, per-run transients) but the engine SURVIVES: learned
-    rules, membership moves and the RL Q-table are knowledge, not
+    rules, membership moves and the controller value table are knowledge, not
     decisions, and persist across fires. drop_engine=True (map
     regeneration) discards the engine too."""
     for _k in list(st.session_state.keys()):
@@ -300,7 +300,7 @@ def legend_html(horizontal: bool = False) -> str:
 import disaster_phyengine as _dpe
 import dss as _dss_pkg
 _EXPECTED_ENGINE_BUILD = 35
-_EXPECTED_DSS_BUILD = 56
+_EXPECTED_DSS_BUILD = 58
 if (getattr(_dpe, "ENGINE_BUILD", 0) != _EXPECTED_ENGINE_BUILD
         or getattr(_dss_pkg, "DSS_BUILD", 0) != _EXPECTED_DSS_BUILD):
     st.error(
@@ -632,8 +632,8 @@ def _step_sim(n: int = 1):
                      bool(_sv0("dss_genai_on", True)),
                      bool(_sv0("dss_evfis_on", True)),
                      float(_sv0("dss_evfis_step", 0.05)),
-                     float(_sv0("dss_rl_eps", 0.10)),
-                     float(_sv0("dss_rl_lr", 0.05)),
+                     float(_sv0("dss_ctrl_eps", 0.10)),
+                     float(_sv0("dss_ctrl_lr", 0.05)),
                      float(_sv0("dss_attn_thr", 0.35)),
                      float(_sv0("dss_min_gain", 0.05)),
                      str(_sv0("dss_seed_profile", "full")),)
@@ -653,7 +653,7 @@ def _step_sim(n: int = 1):
                     cycle_min=_esig[2], horizon_min=_esig[3],
                     evfis_step=_esig[9], adapt_on=_esig[6],
                     genai_on=_esig[7], evfis_on=_esig[8],
-                    rl_eps=_esig[10], rl_lr=_esig[11],
+                    ctrl_eps=_esig[10], ctrl_lr=_esig[11],
                     attention_thr=_esig[12], min_gain=_esig[13],
                     seed_profile=_esig[14],
                     learned_store=_os_rl.path.join(
@@ -672,7 +672,7 @@ def _step_sim(n: int = 1):
                             eta=_esig[5], adapt=_esig[6],
                             genai=_esig[7], evfis=_esig[8],
                             evfis_step=_esig[9],
-                            rl_eps=_esig[10], rl_lr=_esig[11],
+                            ctrl_eps=_esig[10], ctrl_lr=_esig[11],
                             attn=_esig[12], min_gain=_esig[13],
                             seed_profile=_esig[14]),
                         weather=dict(
@@ -711,13 +711,13 @@ def _step_sim(n: int = 1):
                         and st.session_state.get("dss_engine_map")
                         == st.session_state.get("map_version")):
                     # a SETTINGS change rebuilds the engine, but the
-                    # learned knowledge survives: rules and the RL
-                    # Q-table transplant (membership moves live in
+                    # learned knowledge survives: rules and the controller
+                    # value table transplant (membership moves live in
                     # the global registry, which the new engine
                     # resets; the tuned consequents ride along in
                     # the rules)
                     _eng.rules = _eng_prev.rules
-                    _eng.rl.q = _eng_prev.rl.q
+                    _eng.controller.q = _eng_prev.controller.q
                 st.session_state["dss_engine"] = _eng
                 st.session_state["dss_engine_sig"] = _esig
                 st.session_state["dss_engine_map"] = \
@@ -1663,21 +1663,21 @@ def page_simulation():
                 value=bool(_sv("dss_evfis_on", True)),
                 help="Stage \u2460 tunes memberships/consequents, "
                      "stage \u2461 instantiates a finer rule cell. "
-                     "OFF removes both from the RL's menu."))
+                     "OFF removes both from the controller's menu."))
             st.session_state["dss_genai_on2"] = bool(_md2.toggle(
                 "GenAI proposals (stage \u2462)",
                 value=bool(_sv("dss_genai_on2",
                                _sv("dss_genai_on", True))),
                 help="Stage \u2462 asks the generative proposer for "
                      "a brand-new rule (4 admission gates). OFF "
-                     "removes it from the RL's menu."))
+                     "removes it from the controller's menu."))
             st.session_state["dss_genai_on"] =                 st.session_state["dss_genai_on2"]
             st.caption("Mode now: " + (
                 "Fuzzy only \u2014 the seed rule base decides, no "
                 "adaptation" if not (
                     st.session_state["dss_evfis_on"]
                     or st.session_state["dss_genai_on"])
-                else "evFIS + GenAI \u2014 RL picks among stages "
+                else "evFIS + GenAI \u2014 the stage controller picks among stages "
                      "\u2460\u2461\u2462" if (
                     st.session_state["dss_evfis_on"]
                     and st.session_state["dss_genai_on"])
@@ -1729,21 +1729,54 @@ def page_simulation():
                 "Proposal temperature", 0.0, 1.0,
                 float(_sv("dss_genai_temp", 0.3)), 0.05,
                 disabled=not st.session_state["dss_genai_on"]))
-            st.caption("Stage \u2462 proposer right now: "
-                       f"**{_dss.genai_status()}**")
-            st.markdown("**RL \u2014 stage controller**")
-            st.session_state["dss_rl_eps"] = float(st.slider(
+            # --- GenAI status: is stage 3 genuinely wired to Claude? ---
+            _gcfg = _dss.genai_config()
+            if _gcfg["key_present"]:
+                st.success(
+                    f"GenAI link: **Claude via API** \u2014 model "
+                    f"`{_gcfg['model']}`, key `{_gcfg['key_masked']}`, "
+                    f"transport {_gcfg['transport']}.")
+            else:
+                st.warning(
+                    "GenAI link: **inactive** \u2014 no "
+                    "`ANTHROPIC_API_KEY` in the environment, so stage "
+                    "\u2462 is skipped (stages \u2460\u2461 still run). "
+                    "Set the key and restart to enable Claude.")
+            if st.button("Test Claude connection",
+                         help="Sends ONE real, live request to the "
+                              "configured model and shows Claude's own "
+                              "reply \u2014 proof the generative stage "
+                              "is wired to the API, not mocked."):
+                with st.spinner("Calling Claude over the API\u2026"):
+                    _pr = _dss.genai_probe()
+                if _pr["ok"]:
+                    _u = _pr.get("usage") or {}
+                    st.success(
+                        f"Live reply from Claude in {_pr['latency_ms']} ms "
+                        f"(model `{_pr['reported_model']}`, "
+                        f"tokens in/out "
+                        f"{_u.get('input_tokens', '?')}/"
+                        f"{_u.get('output_tokens', '?')}):")
+                    st.code(_pr["reply"] or "(empty)", language=None)
+                    st.caption(
+                        "This text was generated by Claude just now over "
+                        f"{_pr['endpoint']} \u2014 the same path stage "
+                        "\u2462 uses to propose rules.")
+                else:
+                    st.error(f"No live link: {_pr['error']}")
+            st.markdown("**Stage controller \u2014 associative search**")
+            st.session_state["dss_ctrl_eps"] = float(st.slider(
                 "$\\epsilon$ \u2014 exploration", 0.0, 1.0,
-                float(_sv("dss_rl_eps", 0.10)), 0.01,
+                float(_sv("dss_ctrl_eps", 0.10)), 0.01,
                 help="Probability of trying a non-greedy adaptation "
                      "stage; reward = realized cost reduction."))
-            st.session_state["dss_rl_lr"] = float(st.slider(
+            st.session_state["dss_ctrl_lr"] = float(st.slider(
                 "Learning rate", 0.001, 0.5,
-                float(_sv("dss_rl_lr", 0.05)), 0.001, format="%.3f"))
-            with st.expander("How the learning works \u2014 RL \u00b7 "
+                float(_sv("dss_ctrl_lr", 0.05)), 0.001, format="%.3f"))
+            with st.expander("How the learning works \u2014 controller \u00b7 "
                              "evFIS \u00b7 GenAI, and what persists"):
                 st.markdown(
-                    "**RL (stage controller)** is an "
+                    "**Stage controller (associative search)** is an "
                     "$\\epsilon$-greedy contextual bandit. State = "
                     "the cost-deficit bucket (low / mid / high), "
                     "actions = the enabled adaptation stages, reward "
@@ -1751,7 +1784,7 @@ def page_simulation():
                     "chosen stage. It is NOT pre-trained: it learns "
                     "online during the run, every untried "
                     "(bucket, stage) pair is tried once before "
-                    "greedy takes over, and the Q-table is written "
+                    "greedy takes over, and the value table is written "
                     "to the run log (cycles.jsonl) every cycle.\n\n"
                     "**evFIS (stages \u2460\u2461)** modifies the "
                     "ENGINE's own copy of the rule base: consequent "
@@ -1763,8 +1796,9 @@ def page_simulation():
                     "rule from the live concept situation \u2014 "
                     "with ANTHROPIC_API_KEY set the proposal comes "
                     "from Claude via the API (see the status line "
-                    "above), otherwise from a deterministic "
-                    "template. Admitted rules (gates G1-G4) join "
+                    "above); a reachable model is required, so "
+                    "without one the stage is skipped and logged, "
+                    "never faked. Admitted rules (gates G1-G4) join "
                     "the runtime base with a G prefix.\n\n"
                     "**Lifecycle**: everything learned lives in the "
                     "running engine and its logs. A rebuilt engine "
@@ -1775,17 +1809,17 @@ def page_simulation():
                          help="Drops the adaptation-born rules "
                               "(A*/G*), restores every consequent "
                               "and membership to the thesis tables "
-                              "(D.3 / E.1) and clears the RL "
-                              "Q-table."):
+                              "(D.3 / E.1) and clears the controller "
+                              "value table."):
                 from dss.adapt import reset_partitions as _rsp
                 _rsp()
                 _eng_rs = st.session_state.get("dss_engine")
                 if _eng_rs is not None:
                     _eng_rs.rules = _dss.make_runtime_rules()
-                    _eng_rs.rl.q.clear()
+                    _eng_rs.controller.q.clear()
                 st.toast("Seed state restored: Table D.3 "
                          "memberships, Table E.1 rules, empty "
-                         "Q-table.")
+                         "value table.")
                 st.rerun()
             st.divider()
             st.markdown("**Candidate intervention \u2014 rule base "
@@ -1827,6 +1861,12 @@ def page_simulation():
                            "offensive tempo and the budget "
                            "concentration. Every cycle is logged to "
                            "global.csv and cycles.jsonl.")
+                if _glbT.get("thresholds"):
+                    st.caption("Acceptance gate \u03b7 per region "
+                               "(monitored regions carry a tighter "
+                               "gate): " + ", ".join(
+                                   f"{n}: {v:.2f}" for n, v in
+                                   _glbT["thresholds"].items()))
             else:
                 st.caption("No global decision yet \u2014 enable "
                            "'Apply decisions' and step; the Global "
@@ -1920,8 +1960,8 @@ def page_simulation():
             if _rb1.button("Reset (keep the strongest)",
                            key="rules_reset",
                            help="Restores Table D.3 memberships and "
-                                "the seed rules, clears the RL "
-                                "Q-table, and PRUNES the persistent "
+                                "the seed rules, clears the controller "
+                                "value table, and PRUNES the persistent "
                                 "learned store to its 10 strongest "
                                 "rules (strength = accumulated fired "
                                 "weight of applied decisions). The "
@@ -1940,7 +1980,7 @@ def page_simulation():
                         _engRs.rules, _store_p,
                         profile=str(_sv("dss_seed_profile",
                                         "full")))
-                    _engRs.rl.q.clear()
+                    _engRs.controller.q.clear()
                 st.toast(f"Reset: seeds restored, the {_nkeep} "
                          "strongest learned rules survive.")
                 st.rerun()
@@ -1959,7 +1999,7 @@ def page_simulation():
                 if _engRw is not None:
                     _engRw.rules = _dss.make_runtime_rules(
                         str(_sv("dss_seed_profile", "full")))
-                    _engRw.rl.q.clear()
+                    _engRw.controller.q.clear()
                 st.toast("Learned store wiped; pure seed profile.")
                 st.rerun()
             _engR = st.session_state.get("dss_engine")
@@ -2060,8 +2100,7 @@ def page_simulation():
                        + (", ".join(_newM) or "none yet")
                        + " \u2014 vocabulary packages (new object + "
                        "a rule using it, gates G2/G2b/G3/G4/G5) come "
-                       "from the LIVE Claude proposer only; the "
-                       "offline template never proposes them. Set "
+                       "from the LIVE Claude proposer only. Set "
                        "ANTHROPIC_API_KEY to enable.")
             st.caption(f"Linguistic catalog: {_catN:,} antecedent "
                        "cells over the five decision concepts "
@@ -2129,7 +2168,7 @@ def page_simulation():
                                       "'Run to end': the engine and "
                                       "the rng are deterministic, so "
                                       "the run reproduces itself "
-                                      "(template/off GenAI; live "
+                                      "(when GenAI is off; live "
                                       "Claude proposals are not "
                                       "deterministic)."):
                         _rd = _os_rp.path.join(_logroot, _rsel_rp)
@@ -2152,8 +2191,8 @@ def page_simulation():
                                 ("genai", "dss_genai_on"),
                                 ("evfis", "dss_evfis_on"),
                                 ("evfis_step", "dss_evfis_step"),
-                                ("rl_eps", "dss_rl_eps"),
-                                ("rl_lr", "dss_rl_lr"),
+                                ("ctrl_eps", "dss_ctrl_eps"),
+                                ("ctrl_lr", "dss_ctrl_lr"),
                                 ("attn", "dss_attn_thr"),
                                 ("min_gain", "dss_min_gain")):
                             if _mk in _me:
@@ -2182,9 +2221,9 @@ def page_simulation():
                            f"runtime rules: {len(_eng4.rules)} "
                            f"(adaptation-born: "
                            f"{sum(1 for r in _eng4.rules if r.name[0] in 'AG')})"
-                           f" \u00b7 RL Q: " + ", ".join(
+                           f" \u00b7 controller values: " + ", ".join(
                                f"{k[0]}/s{k[1]}={v:.2f}"
-                               for k, v in sorted(_eng4.rl.q.items())))
+                               for k, v in sorted(_eng4.controller.q.items())))
                 _ksel = st.selectbox("Cycle (step)", list(reversed(_cyc)),
                                      key="dlog_k")
                 _recs = _eng4.log.at(int(_ksel))
@@ -2274,9 +2313,9 @@ def page_simulation():
                         + ("(the decision helps)" if _gain0 > 1e-4
                            else "(no measurable gain at this "
                                 "horizon)"))
-                    _rl0 = _cy["rl"]
+                    _rl0 = _cy["stage_controller"]
                     st.caption(
-                        "RL \u00b7 " + (
+                        "Stage controller \u00b7 " + (
                             f"selected adaptation stage "
                             f"{_rl0['selected_stage']} (deficit "
                             f"bucket {_rl0['bucket']}, "
@@ -2285,7 +2324,7 @@ def page_simulation():
                             "no stage selected (the seed rule base "
                             "satisficed)") + " \u00b7 Q: "
                         + (", ".join(f"{k}={v}" for k, v in
-                                     _rl0["q_table"].items())
+                                     _rl0["value_table"].items())
                            or "empty"))
                     _gd0 = _cy.get("global_dss")
                     if _gd0:
