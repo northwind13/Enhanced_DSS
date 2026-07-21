@@ -90,6 +90,55 @@ def validate_run(sim, obs_mask: np.ndarray) -> Dict[str, float]:
     return rep
 
 
+def _spearman(x: np.ndarray, y: np.ndarray) -> float:
+    """Spearman rank correlation without a SciPy dependency."""
+    def _rank(a):
+        order = np.argsort(a, kind="mergesort")
+        r = np.empty(len(a), dtype=float)
+        r[order] = np.arange(len(a), dtype=float)
+        return r
+    if len(x) < 3:
+        return float("nan")
+    rx, ry = _rank(x), _rank(y)
+    if rx.std() == 0 or ry.std() == 0:
+        return float("nan")
+    return float(np.corrcoef(rx, ry)[0, 1])
+
+
+def arrival_agreement(sim_first_step: np.ndarray, obs_arrival_h: np.ndarray,
+                      step_minutes: float) -> Dict[str, float]:
+    """Rate-of-spread validation: does the simulated fire front reach each
+    place at about the time the satellite first saw fire there?
+
+    sim_first_step : per-cell step at which the cell first burned (< 0 = it
+                     never burned), i.e. Simulator.first_ignition_step.
+    obs_arrival_h  : per-cell observed first-detection time in hours since the
+                     first detection (NaN where nothing was observed).
+
+    Scored only over cells that BOTH the satellite saw burn AND the model
+    burned. Returns the mean absolute arrival-time error (hours), the
+    Spearman rank correlation of the arrival ORDER (robust to the satellite
+    overpass gaps), and the number of matched cells."""
+    sim_first_step = np.asarray(sim_first_step)
+    obs_arrival_h = np.asarray(obs_arrival_h, dtype=float)
+    both = (sim_first_step >= 0) & np.isfinite(obs_arrival_h)
+    n = int(both.sum())
+    if n < 3:
+        return {"arrival_mae_h": float("nan"), "arrival_rho": float("nan"),
+                "arrival_n": n, "arrival_obs_levels": 0}
+    sim_h = sim_first_step[both].astype(float) * (float(step_minutes) / 60.0)
+    obs_h = obs_arrival_h[both]
+    mae = float(np.mean(np.abs(sim_h - obs_h)))
+    rho = _spearman(sim_h, obs_h)
+    # how many DISTINCT observed detection times contribute (satellite
+    # overpasses cluster many cells at the same timestamp). Rounding to
+    # 0.5 h merges within-overpass detections; few levels => the rank
+    # correlation is dominated by ties and is not meaningful.
+    levels = int(np.unique(np.round(obs_h * 2.0) / 2.0).size)
+    return {"arrival_mae_h": mae, "arrival_rho": rho, "arrival_n": n,
+            "arrival_obs_levels": levels}
+
+
 # --------------------------------------------------------------------- CORINE
 # CORINE Land Cover level-3 codes -> internal fuel classes, for Turkish /
 # European case studies (CLC codes, see Copernicus land monitoring service).

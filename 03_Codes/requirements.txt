@@ -6,6 +6,8 @@ streamlit>=1.30
 matplotlib>=3.6
 plotly>=5.0
 pillow>=9.0
+# Word (.docx) export of the validation report
+python-docx>=0.8.11
 # mouse-driven map editing (paint forests, drop assets and ignitions)
 streamlit-drawable-canvas>=0.9.3
 

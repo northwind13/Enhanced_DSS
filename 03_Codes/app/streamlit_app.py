@@ -4113,22 +4113,24 @@ def page_validation():
             "ESA WorldCover 2021 (AWS), ERA5 hourly via open-meteo, FIRMS "
             "VIIRS archive. Everything is fetched automatically and cached "
             "per case.")
-    with st.expander("Metrics \u2014 definitions and published targets"):
+    with st.expander("Validation criteria \u2014 definitions"):
         st.markdown(
-            "$A$ = simulated burned area, $B$ = observed burned area.\n\n"
-            "| Metric | Definition | Published reference |\n"
+            "$A$ = simulated burn, $B$ = observed burn. A free-spread "
+            "model (no suppression) is validated on FRONT PROPAGATION, not "
+            "final area.\n\n"
+            "| Criterion | Definition | Checks |\n"
             "|---|---|---|\n"
-            r"| Sorensen-Dice | $2\lvert A\cap B\rvert\,/\,(\lvert A\rvert+\lvert B\rvert)$ | $0.7$\u2013$0.9$ calibrated (Cell2Fire); $0.5$\u2013$0.7$ uncalibrated |"
+            r"| Coverage (POD) | $\lvert A\cap B\rvert\,/\,\lvert B\rvert$ | fraction of the observed burn reproduced (target $>0.7$) |"
             "\n"
-            r"| Jaccard / IoU | $\lvert A\cap B\rvert\,/\,\lvert A\cup B\rvert$ | $>0.5$ good agreement |"
+            r"| Front position error | mean / p90 of $\overline{d}(\partial A,\partial B)$ (m) | how far the simulated front is from the observed front |"
             "\n"
-            r"| Hit rate (POD) | $\lvert A\cap B\rvert\,/\,\lvert B\rvert$ | $>0.7$ |"
-            "\n"
-            r"| False alarm ratio | $\lvert A\setminus B\rvert\,/\,\lvert A\rvert$ | $<0.3$ (perimeter truth) |"
-            "\n"
-            r"| Area bias | $\lvert A\rvert\,/\,\lvert B\rvert$ | $0.8$\u2013$1.2$ (perimeter truth) |"
-            "\n"
-            r"| Front error | $\overline{d}(\partial A,\partial B)$ \u2014 mean edge-to-edge distance | $1$\u2013$3$ cells |")
+            "| Arrival-time agreement | mean abs. difference of simulated "
+            "vs FIRMS first-detection time (h) and Spearman $\\rho$ of the "
+            "arrival order | the rate-of-spread (propagation) test |\n\n"
+            "Area-overlap scores (Dice, Jaccard, false alarm, area bias) "
+            "are omitted: a free run overpredicts a suppressed real fire. "
+            "Upload an official EFFIS/EMS perimeter for referee-grade area "
+            "metrics.")
     with st.expander("Referee protocol \u2014 how to report these results"):
         st.markdown(
             "1. **Calibration/validation split**: tune free parameters on "
@@ -4184,21 +4186,60 @@ def page_validation():
                    "\u2014 press Run, no key required.")
     if cached_truth and not key:
         key = "cached"   # never used: the FIRMS file is read from cache
-    seeds = int(c3.number_input("Seeds", 1, 10, 3,
-                                help="Ember spotting is stochastic; the "
-                                     "score is reported as mean over seeds."))
+    seeds = int(c3.number_input(
+        "Seeds", 1, 12, 5,
+        help="Ember spotting is stochastic, so each criterion is reported "
+             "as mean +/- sd over this many seeds. 5 is a good default "
+             "(3 minimum for a spread, 8-10 for final thesis numbers)."))
     c4, c5, c6 = st.columns(3)
     cell = float(c4.number_input("Cell size (m)", 30.0, 200.0, 90.0, 10.0,
                                  help="90 m matches the satellite truth "
                                       "resolution and keeps the run fast."))
-    hours = float(c5.number_input("Hours to simulate", 6.0, 120.0,
-                                  float(av.CASES[case_id]["hours"]), 6.0,
-                                  help="Documented duration of the main "
-                                       "fire run."))
-    stepm = float(c6.number_input("Step length (min)", 10.0, 60.0, 30.0,
-                                  10.0))
+    hours = float(c5.number_input("Time window (h)", 1.0, 120.0,
+                                  float(av.CASES[case_id]["hours"]), 1.0,
+                                  help="The time window that bounds BOTH the "
+                                       "observed footprint (only what was seen "
+                                       "burning by this hour) AND the "
+                                       "simulation. Lower it to compare an "
+                                       "earlier phase; the observed (blue) "
+                                       "area shrinks with it."))
+    stepm = float(c6.number_input(
+        "Step length (min)", 10.0, 60.0, 30.0, 5.0,
+        help="Temporal resolution of the spread. 30 min matches the hourly "
+             "ERA5 weather and keeps runs fast; 15 min is finer. Do not "
+             "exceed 60 min (the weather is hourly)."))
+    stop_mode = st.selectbox(
+        "Stopping rule (when does the simulation end?)",
+        ["Match observed area (recommended)",
+         "Fixed hours"],
+        help="Both use the time window above for the observed footprint. "
+             "'Match observed area' stops as soon as the simulated burn "
+             "reaches the observed area OR the time window elapses, "
+             "whichever comes first, so the shapes are compared at a "
+             "comparable extent (the suppression-driven size difference "
+             "cancels). 'Fixed hours' always runs the whole window and lets "
+             "the free burn overpredict.")
+    # a wind-direction offset can be adopted from the ensemble table below
+    # (the "use this wind" button) and applied to the next run; apply the
+    # pending pick BEFORE the widgets are created so it takes effect
+    st.session_state.setdefault("val_wind_offset", 0.0)
+    st.session_state.setdefault("val_wens", False)
+    if st.session_state.get("_val_adopt_offset") is not None:
+        st.session_state["val_wind_offset"] = float(
+            st.session_state.pop("_val_adopt_offset"))
+        st.session_state["val_wens"] = False    # clean, ensemble-off rerun
+    c7, c8 = st.columns([1, 2])
+    wind_offset = float(c7.number_input(
+        "Wind-direction offset (deg)", -180.0, 180.0, step=15.0,
+        key="val_wind_offset",
+        help="Rotate the reanalysis wind direction by this angle for THIS "
+             "run. Run the ensemble first, then adopt the best-matching "
+             "member below and run again (ensemble off) to lock that wind."))
+    if abs(wind_offset) > 1e-6:
+        c8.caption(f"This run rotates the reanalysis wind by "
+                   f"{wind_offset:+.0f}\u00b0.")
     wens = st.checkbox(
-        "Wind-direction uncertainty ensemble (8 extra runs)", value=False,
+        "Wind-direction uncertainty ensemble (8 extra runs)", key="val_wens",
         help="Gridded reanalysis winds miss local channeling and the "
              "fire's own convection \u2014 the dominant input uncertainty. "
              "This reruns the hindcast with the wind rotated over the full "
@@ -4257,9 +4298,19 @@ def page_validation():
                 _ign_cells = []
                 if key:
                     st.write("3/4 fire truth \u2014 NASA FIRMS detections")
-                    pts = av._download_firms(case, key, args.cache)
-                    fmask, first, _ign_cells = av._firms_mask_and_ignition(
-                        case, pts, nx, ny, lons, lats, cell)
+                    # download on the documented window (fetches all pts)
+                    _case_ign = dict(case)
+                    _case_ign["hours"] = float(av.CASES[case_id]["hours"])
+                    pts = av._download_firms(_case_ign, key, args.cache)
+                    # OBSERVED footprint bounded by the TIME WINDOW the user
+                    # picked: the detections seen burning within [t0, t0 + T].
+                    # _firms_mask_and_ignition windows the detections by
+                    # case["hours"] and morphologically closes them, so the
+                    # blue mask is a FILLED footprint that grows with T_max.
+                    case["hours"] = float(hours)
+                    fmask, first, _ign_cells = \
+                        av._firms_mask_and_ignition(
+                            case, pts, nx, ny, lons, lats, cell)
                     if first is not None:
                         # align the weather series with the ignition hour
                         case["t0_hour"] = first[4].hour
@@ -4340,12 +4391,56 @@ def page_validation():
                 except Exception:
                     pass
 
+            _pts = locals().get("pts")
+            _obs_arr = None
+            if _pts and first is not None and fmask is not None:
+                _obs_arr = av.firms_arrival_hours(case, _pts, nx, ny, cell,
+                                                  fmask, first[4])
+            # observed arrival window = time span of the observed detections
+            # (last minus first). The arrival-time error is judged against
+            # THIS real fire duration, not the sim's (possibly short) run.
+            _obs_window = None
+            if _obs_arr is not None and np.isfinite(_obs_arr).any():
+                _obs_window = float(_obs_arr[np.isfinite(_obs_arr)].max())
+            # STOPPING RULE: keep the suppression-free run from overgrowing
+            # the suppressed real fire (see the selectbox)
+            # Match observed area: stop when the sim reaches the (windowed)
+            # observed area OR the time window elapses, whichever first.
+            # Fixed hours: run the whole window (stop_area = None).
+            _stop_area = None
+            if stop_mode.startswith("Match observed area"):
+                _stop_area = float(np.asarray(obs, dtype=bool).sum())
             n_total = int(round(case["hours"] * 60.0 / stepm))
+            weather_run = weather
+            if abs(wind_offset) > 1e-6:
+                weather_run = dict(weather)
+                weather_run["wind_direction_10m"] = [
+                    (d + wind_offset) % 360.0
+                    for d in weather["wind_direction_10m"]]
+                st.write(f"wind-direction offset {wind_offset:+.0f}° "
+                         "applied to this run")
             runs, shape = av.run_case(case, args, dem, (dlons, dlats),
-                                      wc, (wlons, wlats), weather, obs,
+                                      wc, (wlons, wlats), weather_run, obs,
                                       ign, progress_cb=_cb,
                                       frame_cb=_frame,
-                                      frame_every=max(1, n_total // 24))
+                                      frame_every=max(1, n_total // 24),
+                                      obs_arrival=_obs_arr,
+                                      stop_area=_stop_area)
+            # representative wind for the on-map arrow: mean DOWNWIND
+            # direction over the simulated window (where the wind pushes the
+            # fire). ERA5 gives the "from" direction; downwind = fire heading.
+            _wtoward = None
+            try:
+                _wd = weather_run["wind_direction_10m"]
+                _h0w = int(case.get("t0_hour", 0))
+                _hi = min(len(_wd), _h0w + max(1, int(round(case["hours"]))))
+                _ang = [np.radians((270.0 - float(_wd[h])) % 360.0)
+                        for h in range(_h0w, max(_h0w + 1, _hi))]
+                _u = float(np.mean([np.cos(a) for a in _ang]))
+                _v = float(np.mean([np.sin(a) for a in _ang]))
+                _wtoward = float(np.degrees(np.arctan2(_v, _u)) % 360.0)
+            except Exception:
+                _wtoward = None
             ens = None
             if wens:
                 bar.progress(0.0, text="wind ensemble \u2026")
@@ -4358,7 +4453,7 @@ def page_validation():
                     case, args, dem, (dlons, dlats), wc, (wlons, wlats),
                     weather, obs, ign,
                     offsets=[-135, -90, -45, 0, 45, 90, 135, 180],
-                    progress_cb=_ecb)
+                    progress_cb=_ecb, stop_area=_stop_area)
                 ens = [{"offset": m["offset_deg"], **m["rep"]}
                        for m in members]
             bar.empty()
@@ -4370,12 +4465,12 @@ def page_validation():
                 import numpy as _np2
                 from PIL import Image as _Img
                 import disaster_phyengine as _da2
-                _keys = ["jaccard", "dice", "hit_rate", "false_alarm",
-                         "area_bias", "mean_m", "p90_m"]
-                _summary = {k: {"mean": float(_np2.mean(
-                                    [r[0][k] for r in runs])),
-                                "sd": float(_np2.std(
-                                    [r[0][k] for r in runs]))}
+                _keys = ["hit_rate", "mean_m", "p90_m",
+                         "arrival_mae_h", "arrival_rho"]
+                _summary = {k: {"mean": float(_np2.nanmean(
+                                    [r[0].get(k, _np2.nan) for r in runs])),
+                                "sd": float(_np2.nanstd(
+                                    [r[0].get(k, _np2.nan) for r in runs]))}
                             for k in _keys}
                 _json.dump({
                     "case_id": case_id, "case": {k: v for k, v in
@@ -4383,6 +4478,7 @@ def page_validation():
                     "settings": {"cell_m": cell, "step_minutes": stepm,
                                  "hours": hours, "seeds": seeds,
                                  "wind_ensemble": bool(wens),
+                                 "wind_offset_deg": wind_offset,
                                  "truth": ("perimeter" if up is not None
                                            else "firms")},
                     "engine_version": getattr(_da2, "__version__", "?"),
@@ -4394,7 +4490,7 @@ def page_validation():
                 }, open(os.path.join(_rdir, "report.json"), "w"), indent=2)
                 with open(os.path.join(_rdir, "run_log.txt"), "w") as _fh:
                     _fh.write("\n".join(log_lines))
-                _best = max(runs, key=lambda r: r[0]["dice"])[1]
+                _best = max(runs, key=lambda r: r[0]["hit_rate"])[1]
                 _img = base0.copy()
                 _img[obs] = (58, 110, 220)
                 _img[_best & obs] = (46, 160, 67)
@@ -4414,9 +4510,12 @@ def page_validation():
                                       if code == 10 else fid)
             st.session_state["val_result"] = dict(
                 runs=[r[0] for r in runs],
-                best=max(runs, key=lambda r: r[0]["dice"])[1],
-                obs=obs, shape=shape, case=case["label"],
+                best=max(runs, key=lambda r: r[0]["hit_rate"])[1],
+                obs=obs, shape=shape, case=case["label"], cell=cell,
                 base=av._basemap(ftype, demg), ign=ign,
+                wind_offset=wind_offset, obs_window_h=_obs_window,
+                wind_toward_deg=_wtoward, stop_rule=stop_mode,
+                seeds=seeds, cap_hours=hours,
                 truth="perimeter" if up is not None else "firms")
         except Exception as exc:
             st.error(f"Validation failed: {exc}")
@@ -4426,66 +4525,146 @@ def page_validation():
     if res:
         st.markdown(f"#### Result \u2014 {res['case']}")
         import numpy as _np
-        keys = [("dice", "Dice"), ("jaccard", "Jaccard"),
-                ("hit_rate", "Hit rate"), ("false_alarm", "False alarm"),
-                ("area_bias", "Area bias"), ("mean_m", "Front err (m)")]
-        cols = st.columns(len(keys))
-        for c, (k, lab) in zip(cols, keys):
-            vals = [r[k] for r in res["runs"]]
-            c.metric(lab, f"{_np.mean(vals):.3f}",
-                     delta=f"\u00b1{_np.std(vals):.3f}",
-                     delta_color="off")
-        # plain-language reading of the numbers
-        _m = {k: float(_np.mean([r[k] for r in res["runs"]]))
-              for k in ("dice", "jaccard", "hit_rate", "false_alarm",
-                        "area_bias", "mean_m")}
-        _hr, _ab, _fe = _m["hit_rate"], _m["area_bias"], _m["mean_m"]
-        _v = []
-        _v.append(f"**Coverage** \u2014 the simulation reproduced "
-                  f"**{_hr:.0%}** of the area that was observed to burn"
-                  + (" \u2014 strong." if _hr >= 0.7 else
-                     " \u2014 moderate." if _hr >= 0.4 else
-                     " \u2014 weak: the spread direction or speed misses "
-                     "a large part of the real fire."))
-        if _ab >= 1:
-            _v.append(f"**Size** \u2014 the simulated burn is "
-                      f"**{_ab:.1f}\u00d7** the observed area. Values well "
-                      "above 1 are expected against satellite truth: the "
-                      "real fire was actively suppressed while the "
-                      "simulation runs free, and detections undersample "
-                      "the burned interior.")
-        else:
-            _v.append(f"**Size** \u2014 the simulated burn is only "
-                      f"**{_ab:.1f}\u00d7** the observed area: the model "
-                      "underspreads on this case.")
-        _v.append(f"**Front position** \u2014 on average the simulated "
-                  f"fire edge sits **{_fe/1000:.1f} km** from the observed "
-                  "edge"
-                  + (" \u2014 good for a landscape-scale hindcast."
-                     if _fe < 2000 else
-                     " \u2014 fair; direction is close but the run "
-                     "length differs." if _fe < 5000 else
-                     " \u2014 large; check wind input and window."))
-        _v.append(f"**Overlap (Dice {_m['dice']:.2f})** \u2014 the single "
-                  "headline score; against an official perimeter 0.5+ is "
-                  "publishable for an uncalibrated model.")
-        st.markdown("**What do these numbers say?**")
-        for _line in _v:
-            st.markdown("- " + _line)
-        if res.get("truth") == "firms":
-            st.caption("Truth = satellite detections: they undersample the "
-                       "burned interior and the real fire was actively "
-                       "SUPPRESSED while the simulation runs free, so the "
-                       "primary scores here are **hit rate** and the front "
-                       "error; false alarm and area bias only become "
-                       "meaningful against an official EFFIS/EMS perimeter "
-                       "(upload one above). Reference: Sorensen-Dice "
-                       "0.5\u20130.7 is typical for uncalibrated "
-                       "semi-empirical models (see Metrics above).")
-        else:
-            st.caption("Reference: Sorensen-Dice 0.5\u20130.7 is typical "
-                       "for uncalibrated semi-empirical models, 0.7+ after "
-                       "calibration on a separate fire (see Metrics above).")
+        # exact settings that produced THIS result, so two runs can be
+        # compared at a glance (only these change the outcome; the engine is
+        # deterministic and a longer run is a superset of a shorter one)
+        _woff = float(res.get("wind_offset", 0.0) or 0.0)
+        _shr = res.get("runs", [{}])
+        _sh0 = float(_np.mean([r.get("stop_hours", float("nan"))
+                               for r in _shr])) if _shr else float("nan")
+        _Bcells0 = int(_np.asarray(res.get("obs"), dtype=bool).sum()) \
+            if res.get("obs") is not None else 0
+        st.info(
+            f"**Run settings** \u2014 cell **{float(res.get('cell', 0)):.0f} m** \u00b7 "
+            f"wind offset **{_woff:+.0f}\u00b0** \u00b7 stopping "
+            f"**{res.get('stop_rule', '?')}** \u00b7 stopped at "
+            f"**{_sh0:.1f} h** (cap {float(res.get('cap_hours', 0)):.0f} h) \u00b7 "
+            f"seeds **{int(res.get('seeds', 0))}** \u00b7 |B| **{_Bcells0}** cells. "
+            "If two runs differ, one of THESE changed (most often the wind "
+            "offset, which can linger from an earlier ensemble-adopt). The "
+            "max-hours cap alone cannot move or reshape the burn; the engine "
+            "is deterministic and a longer run is a superset of a shorter "
+            "one.")
+
+        def _cm(k):
+            vs = [r.get(k, float("nan")) for r in res["runs"]]
+            vs = [v for v in vs if v == v]
+            return (float(_np.mean(vs)) if vs else float("nan"),
+                    float(_np.std(vs)) if vs else float("nan"))
+
+        def _fmtv(k, p):
+            mv, sv = _cm(k)
+            return "n/a" if mv != mv else f"{mv:.{p}f} \u00b1 {sv:.{p}f}"
+        _sh = _cm("stop_hours")[0]
+        if _sh == _sh:
+            st.caption(f"Simulation stopped at ~{_sh:.1f} h per the stopping "
+                       "rule, so the fronts are scored at a comparable "
+                       "extent and the run always terminates.")
+        # normalization context: fire equivalent radius and effective time
+        _obsm = _np.asarray(res["obs"], dtype=bool)
+        _cellm = float(res.get("cell", 90.0))
+        _Bc = float(_obsm.sum())
+        _R = ((_Bc * _cellm * _cellm / 3.141592653589793) ** 0.5
+              if _Bc > 0 else 1.0)
+        # arrival error is judged against the OBSERVED fire duration (span of
+        # the satellite detections), not the sim's own run length; this is a
+        # per-case, physically meaningful reference for every case
+        _T = res.get("obs_window_h")
+        if not (_T and _T == _T and _T > 0):
+            _T = _sh if (_sh == _sh and _sh > 0) else 24.0
+
+        def _clip01(x):
+            return max(0.0, min(1.0, float(x)))
+
+        def _assess(key):
+            mv, _sv = _cm(key)
+            if mv != mv:
+                return ("n/a", None, "n/a", "")
+            if key == "hit_rate":
+                pct = 100 * _clip01(mv); tgt = "\u2265 0.70"
+                vd = ("\u2713 pass" if mv >= 0.7 else
+                      "~ partial" if mv >= 0.4 else "\u2717 fail")
+            elif key == "mean_m":
+                pct = 100 * _clip01(1 - mv / _R); tgt = f"\u2264 {0.25*_R:.0f} m"
+                vd = ("\u2713 pass" if mv <= 0.25*_R else
+                      "~ partial" if mv <= 0.5*_R else "\u2717 fail")
+            elif key == "p90_m":
+                pct = 100 * _clip01(1 - mv / _R); tgt = f"\u2264 {0.5*_R:.0f} m"
+                vd = ("\u2713 pass" if mv <= 0.5*_R else
+                      "~ partial" if mv <= _R else "\u2717 fail")
+            elif key == "arrival_mae_h":
+                pct = 100 * _clip01(1 - mv / _T); tgt = f"\u2264 {0.25*_T:.1f} h"
+                vd = ("\u2713 pass" if mv <= 0.25*_T else
+                      "~ partial" if mv <= 0.5*_T else "\u2717 fail")
+            elif key == "arrival_rho":
+                # the observed detection times are satellite-overpass gated;
+                # with few distinct time levels the rank correlation is
+                # dominated by ties and is not meaningful, so mark it n/a and
+                # keep it OUT of the overall score
+                _lv = _cm("arrival_obs_levels")[0]
+                if _lv != _lv or _lv < 5:
+                    return ("n/a", None, "n/a (overpass-limited)",
+                            "\u2265 0.60")
+                pct = 100 * _clip01(mv); tgt = "\u2265 0.60"
+                vd = ("\u2713 pass" if mv >= 0.6 else
+                      "~ partial" if mv >= 0.3 else "\u2717 fail")
+            elif key == "arrival_n":
+                pct = 100 * _clip01(mv / 50.0); tgt = "\u2265 30 cells"
+                vd = ("\u2713 pass" if mv >= 30 else
+                      "~ partial" if mv >= 10 else "\u2717 fail")
+            else:
+                pct = 0.0; tgt = ""; vd = "n/a"
+            return (f"{pct:.0f}%", pct, vd, tgt)
+        _CR = [
+            ("hit_rate", "Coverage (POD)", 3, "|A\u2229B| / |B|",
+             "fraction of the observed burn reproduced"),
+            ("mean_m", "Front error, mean (m)", 0, "mean d(\u2202A,\u2202B)",
+             "average front-to-front distance"),
+            ("p90_m", "Front error, p90 (m)", 0, "P90 d(\u2202A,\u2202B)",
+             "90th-percentile front distance"),
+            ("arrival_mae_h", "Arrival MAE (h)", 2, "mean |t_sim \u2212 t_obs|",
+             "arrival-time error over shared cells"),
+        ]
+        _left, _right, _pcts = [], [], []
+        for _key, _lab, _pr, _eqn, _meas in _CR:
+            _score_s, _pct, _vd, _tgt = _assess(_key)
+            if _pct is not None:
+                _pcts.append(_pct)
+            _left.append({"Criterion": _lab,
+                          "Value (mean \u00b1 sd)": _fmtv(_key, _pr),
+                          "Score": _score_s, "Verdict": _vd})
+            _right.append({"Criterion": _lab, "Equation": _eqn,
+                           "What it measures": _meas, "Target": _tgt})
+        _overall = (sum(_pcts) / len(_pcts)) if _pcts else float("nan")
+        # accumulate this case's Table 5.5 row so an export can hold all four
+        # scenarios together (keyed by case, so a re-run updates its own row)
+        _acell = float(res.get("cell", 0.0)) ** 2
+        st.session_state.setdefault("val_rows", {})
+        st.session_state["val_rows"][str(res.get("case", ""))] = {
+            "POD": _cm("hit_rate")[0], "mean_m": _cm("mean_m")[0],
+            "p90_m": _cm("p90_m")[0], "MAE": _cm("arrival_mae_h")[0],
+            "R": _R, "T": _T, "A_cell": _acell,
+            "cell": float(res.get("cell", 0.0))}
+        st.markdown("**Success metrics** \u2014 normalized score = agreement with "
+                    "the target (100% is ideal), pass / partial / fail per "
+                    "criterion")
+        _lc, _rc = st.columns([1.15, 1])
+        _lc.table(_left)
+        _rc.table(_right)
+        if _overall == _overall:
+            _ov = ("SUCCESS" if _overall >= 70 else
+                   "PARTIAL" if _overall >= 45 else "WEAK")
+            st.markdown(f"**Overall validation score: {_overall:.0f}% "
+                        f"({_ov})** \u2014 mean of the four normalized criteria.")
+        st.caption("Normalization: coverage and \u03c1 are already 0..1; the front "
+                   f"errors are scored against the fire equivalent radius "
+                   f"R = {_R:.0f} m (\u221a(|B|\u00b7cell\u00b2/\u03c0)); the arrival MAE against "
+                   f"the OBSERVED fire duration T = {_T:.1f} h (span of the "
+                   "satellite detections), so the timing error is judged "
+                   "relative to how long the real fire actually spread. "
+                   "Suppression-free model: validated on front propagation, "
+                   "not final area (Dice/Jaccard/FAR/area-bias omitted; "
+                   "upload an EFFIS/EMS perimeter for area metrics).")
         nx, ny = res["shape"]
         img = (res["base"].copy() if res.get("base") is not None
                else _np.zeros((ny, nx, 3), dtype=_np.uint8) + 24)
@@ -4500,36 +4679,421 @@ def page_validation():
             rr = max(2, nx // 150)
             img[max(0, gy - rr):gy + rr + 1,
                 max(0, gx - rr):gx + rr + 1] = (255, 235, 60)
-        st.image(img, use_container_width=True,
-                 caption="Agreement map on the real terrain \u2014 green: "
-                         "correctly predicted burn, red: simulated only, "
-                         "blue: observed only, yellow: ignition")
+        # keep this case's agreement map so the export can embed the PNG of
+        # EVERY scenario run so far, not just the current one
+        st.session_state.setdefault("val_imgs", {})
+        st.session_state["val_imgs"][str(res.get("case", ""))] = img.copy()
+        # suggested wind-direction offset to steer the sim toward the
+        # OBSERVED spread: rotate the wind by (observed heading - simulated
+        # heading), both measured from the ignition to the burn centroid
+        _sugg = None
+        try:
+            _obsm2 = _np.asarray(res["obs"], dtype=bool)
+            _simm2 = _np.asarray(res["best"], dtype=bool)
+            _i0s = (res["ign"][0] if isinstance(res.get("ign"), list)
+                    else res.get("ign"))
+            if _i0s is not None and _obsm2.any() and _simm2.any():
+                _gx0, _gy0 = float(_i0s[0]), float(_i0s[1])
+                _oy, _ox = _np.where(_obsm2)
+                _sy, _sx = _np.where(_simm2)
+
+                def _brg2(cx, cy):
+                    _e = cx - _gx0
+                    _n = -(cy - _gy0)          # image row grows south
+                    return _np.degrees(_np.arctan2(_e, _n)) % 360.0
+                _ob = _brg2(_ox.mean(), _oy.mean())
+                _sb = _brg2(_sx.mean(), _sy.mean())
+                # residual heading gap of THIS run, plus the offset already
+                # applied, gives the ABSOLUTE offset to set (so it converges
+                # instead of oscillating around the leftover gap)
+                _applied = float(res.get("wind_offset", 0.0) or 0.0)
+                _gap = ((_ob - _sb + 180.0) % 360.0) - 180.0
+                _sugg = ((_applied + _gap + 180.0) % 360.0) - 180.0
+        except Exception:
+            _sugg = None
+            _gap = 0.0
+        # wind direction (mean over the run) shown as a compact line ABOVE
+        # the map, so the map itself stays clean
+        _wt = res.get("wind_toward_deg")
+        if _wt is not None and _wt == _wt:
+            _brg = (90.0 - float(_wt)) % 360.0
+            _pts8 = ["N", "NE", "E", "SE", "S", "SW", "W", "NW"]
+            _gly8 = ["↑", "↗", "→", "↘", "↓", "↙", "←", "↖"]
+            _bi = int((_brg + 22.5) // 45) % 8
+            _msg = (f"**Mean wind over the run:** {_gly8[_bi]} toward "
+                    f"**{_pts8[_bi]}** (bearing {_brg:.0f}°, downwind). The "
+                    "spread also feels upslope, so the burn direction can "
+                    "differ from the raw wind.")
+            if _sugg is not None and abs(_gap) >= 8:
+                _msg += (f"  \n**Set the wind-direction offset to about "
+                         f"{_sugg:+.0f}°** to steer the sim toward the "
+                         f"observed spread (current residual gap "
+                         f"{_gap:+.0f}°). It may take one more pass since "
+                         "slope also steers the fire; the wind ensemble is "
+                         "the reliable optimizer.")
+            elif _sugg is not None:
+                _msg += ("  \nHeading matches the observed spread "
+                         "(residual gap under 8°).")
+            st.markdown(_msg)
+        # interactive agreement map: its OWN zoom/pan (scroll + toolbar),
+        # independent of the browser zoom, on a fixed-height canvas
+        try:
+            import plotly.graph_objects as _go
+            _figm = _go.Figure(_go.Image(z=img))
+            _figm.update_xaxes(visible=False,
+                               scaleanchor="y", constrain="domain")
+            _figm.update_yaxes(visible=False)
+            _figm.update_layout(height=640, dragmode="pan",
+                                margin=dict(l=0, r=0, t=6, b=0))
+            st.plotly_chart(_figm, use_container_width=True,
+                            config={"scrollZoom": True,
+                                    "displayModeBar": True,
+                                    "displaylogo": False})
+        except Exception:
+            st.image(img, use_container_width=True)
+        st.caption("Agreement map on the real terrain \u2014 green: correctly "
+                   "predicted burn, red: simulated only, blue: observed only, "
+                   "yellow: ignition. Scroll or use the toolbar to zoom and "
+                   "pan; double-click resets.")
+        # --- Export: a Word report (Table 5.5 + computation) + map PNG ---
+        st.markdown("**Export for the thesis** \u2014 a Word report (Table 5.5 for "
+                    "all cases run so far, plus the R / A_cell / % / target "
+                    "computation for this case) and the agreement map as PNG")
+        _accum = st.session_state.get("val_rows", {})
+        _ec1, _ec2 = st.columns([2, 1])
+        _ec1.caption("Table 5.5 currently holds: "
+                     + (", ".join(_accum.keys()) if _accum else "(none yet)")
+                     + f"  ({len(_accum)}/4 scenarios). Run each case once, "
+                     "then export; the table and the per-case maps accumulate.")
+        if _ec2.button("Clear accumulated table"):
+            # wipe EVERYTHING: the accumulated Table 5.5 rows + per-case maps,
+            # and the current run so nothing lingers in the view or the export
+            for _k in ("val_rows", "val_imgs", "val_result", "val_log",
+                       "val_ens", "val_wens", "val_adopt_pick"):
+                st.session_state.pop(_k, None)
+            st.rerun()
+        if st.button("Export to Word + PNG", type="primary"):
+            try:
+                _dbytes, _pbytes, _odir = _make_validation_report(
+                    res, _left, _right, _overall, _R, _T, img,
+                    st.session_state.get("val_rows", {}),
+                    st.session_state.get("val_imgs", {}))
+                st.success(f"Saved to {os.path.relpath(_odir)}")
+                st.download_button("\u2b07 Download Word report (.docx)", _dbytes,
+                                   file_name="validation_report.docx")
+                if _pbytes:
+                    st.download_button("\u2b07 Download agreement map (.png)",
+                                       _pbytes, file_name="agreement_map.png")
+            except Exception as _exc:
+                st.error(f"Export failed: {_exc}")
         if st.session_state.get("val_log"):
             with st.expander("Run log \u2014 what happened, step by step"):
                 st.code("\n".join(st.session_state["val_log"]),
                         language=None)
         _ens = st.session_state.get("val_ens")
         if _ens:
-            st.markdown("**Wind-direction uncertainty ensemble** \u2014 "
-                        "same fire, wind rotated:")
-            rows = ["| rotation | Dice | Hit rate | Front err (km) |",
-                    "|---|---|---|---|"]
+            st.markdown("**Wind-direction ensemble** - same fire, wind "
+                        "rotated; ranked by coverage (POD):")
+            _best_e = max(_ens, key=lambda x: x["hit_rate"])
+            rows = ["| rotation | Coverage (POD) | Front err (km) |",
+                    "|---|---|---|"]
             for m in sorted(_ens, key=lambda m: m["offset"]):
-                mark = " **\u2190 best**" if m is max(
-                    _ens, key=lambda x: x["dice"]) else ""
+                mark = " **\u2190 best**" if m is _best_e else ""
                 rows.append(f"| {m['offset']:+.0f}\u00b0 | "
-                            f"{m['dice']:.3f} | {m['hit_rate']:.3f} | "
+                            f"{m['hit_rate']:.3f} | "
                             f"{m['mean_m']/1000:.1f}{mark} |")
             st.markdown("\n".join(rows))
-            bestm = max(_ens, key=lambda x: x["dice"])
-            st.caption(f"Best member at {bestm['offset']:+.0f}\u00b0 "
-                       f"(Dice {bestm['dice']:.2f} vs "
-                       f"{[m for m in _ens if m['offset']==0][0]['dice']:.2f} "
+            _zero = [m for m in _ens if m["offset"] == 0]
+            _z = _zero[0]["hit_rate"] if _zero else float("nan")
+            st.caption(f"Best member at {_best_e['offset']:+.0f}\u00b0 "
+                       f"(coverage {_best_e['hit_rate']:.2f} vs {_z:.2f} "
                        "with the raw reanalysis wind). A large gain from "
                        "rotation means the case is limited by the INPUT "
                        "wind (terrain channeling, fire convection), not by "
-                       "the spread model \u2014 report it as input "
-                       "sensitivity.")
+                       "the spread model; report it as input sensitivity.")
+            # --- adopt a wind offset and rerun without the ensemble ---
+            _offs = sorted({m["offset"] for m in _ens})
+            _dmap = {m["offset"]: m["hit_rate"] for m in _ens}
+            _ca, _cb = st.columns([1.5, 1])
+            _pick = _ca.selectbox(
+                "Adopt a wind offset for a clean (ensemble-off) rerun",
+                _offs, index=_offs.index(_best_e["offset"]),
+                format_func=lambda o: f"{o:+.0f}\u00b0  (POD {_dmap[o]:.3f})",
+                key="val_adopt_pick")
+            _cb.write("")
+            if _cb.button("Use this wind \u2192 rerun", type="primary"):
+                st.session_state["_val_adopt_offset"] = float(_pick)
+                st.rerun()
+            st.caption("Adopting sets the wind-direction offset field above "
+                       "and turns the ensemble off. Then press "
+                       "**Run validation** to score that single wind against "
+                       "the truth.")
+
+
+def _make_validation_report(res, left, right, overall, R, T, img,
+                            all_rows=None, all_imgs=None):
+    """Build a Word report (Table 5.5 row + detailed R/%/target computation +
+    the agreement map of EVERY case run so far) and a PNG of the map, always
+    in the same format. Returns (docx_bytes, png_bytes, out_dir)."""
+    import datetime as _dt
+    import numpy as _np2
+    from docx import Document
+    from docx.shared import Pt, Inches
+    from docx.enum.text import WD_ALIGN_PARAGRAPH
+    from PIL import Image as _PILImg
+
+    def _agg(k):
+        vs = [r.get(k, float("nan")) for r in res["runs"]]
+        vs = [v for v in vs if v == v]
+        return (float(_np2.mean(vs)) if vs else float("nan"),
+                float(_np2.std(vs)) if vs else float("nan"))
+
+    def _f(v, p):
+        return "n/a" if (v != v) else f"{v:.{p}f}"
+
+    stamp = _dt.datetime.now().strftime("%Y%m%d-%H%M%S")
+    root = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
+    _slug = "".join(c for c in str(res.get("case", "case"))
+                    if c.isalnum() or c in "-_")[:40]
+    out_dir = os.path.join(root, "validation", "runs",
+                           f"export_{_slug}_{stamp}")
+    os.makedirs(out_dir, exist_ok=True)
+
+    png_path = os.path.join(out_dir, "agreement_map.png")
+    try:
+        _PILImg.fromarray(img).save(png_path)
+    except Exception:
+        png_path = None
+
+    d = Document()
+    d.styles["Normal"].font.name = "Times New Roman"
+    d.styles["Normal"].font.size = Pt(11)
+    d.add_heading(f"Simulation Core Validation: {res.get('case', '')}", 1)
+
+    _woff = float(res.get("wind_offset", 0.0) or 0.0)
+    _sh = _agg("stop_hours")[0]
+    _Bc = int(_np2.asarray(res.get("obs"), dtype=bool).sum()) \
+        if res.get("obs") is not None else 0
+    d.add_paragraph(
+        f"Run settings: cell {float(res.get('cell', 0)):.0f} m, time window "
+        f"{float(res.get('cap_hours', 0)):.0f} h, wind offset {_woff:+.0f} deg, "
+        f"stopping {res.get('stop_rule', '?')}, stopped at {_sh:.1f} h, seeds "
+        f"{int(res.get('seeds', 0))}, |B| {_Bc} cells, R {R:.0f} m, T {T:.1f} h "
+        f"(exported {stamp}).")
+
+    # ---- Table 5.5 (all cases run so far, paste into the thesis table) ----
+    d.add_heading("Table 5.5 (paste into the thesis)", 2)
+    # accumulate the current case into the row set so a single run still works
+    _acell_now = float(res.get("cell", 0.0)) ** 2
+    rows = dict(all_rows or {})
+    rows.setdefault(str(res.get("case", "")), {
+        "POD": _agg("hit_rate")[0], "mean_m": _agg("mean_m")[0],
+        "p90_m": _agg("p90_m")[0], "MAE": _agg("arrival_mae_h")[0],
+        "R": R, "T": T, "A_cell": _acell_now,
+        "cell": float(res.get("cell", 0.0))})
+    _order = list(rows.keys())
+    t5 = d.add_table(rows=1 + len(_order) + 1, cols=6); t5.style = "Table Grid"
+    for i, x in enumerate(["Real Sce. (Table 5.4)", "cell (m)", "POD (-)",
+                           "d_Front mean (m)", "d_90 (m)", "MAE (h)"]):
+        c = t5.rows[0].cells[i]; c.text = ""
+        c.paragraphs[0].add_run(x).bold = True
+    for ri, ck in enumerate(_order, start=1):
+        rd = rows[ck]
+        vals = [ck, _f(rd.get("cell", float("nan")), 0),
+                _f(rd.get("POD", float("nan")), 3),
+                _f(rd.get("mean_m", float("nan")), 0),
+                _f(rd.get("p90_m", float("nan")), 0),
+                _f(rd.get("MAE", float("nan")), 2)]
+        for i, x in enumerate(vals):
+            t5.rows[ri].cells[i].text = str(x)
+    sc = t5.rows[-1].cells
+    sc[0].text = ""; sc[0].paragraphs[0].add_run("Success Criteria").bold = True
+    for i, x in enumerate(["-", ">= 0.70", "<= 0.25 R", "<= 0.50 R",
+                           "<= 0.25 T"], start=1):
+        sc[i].text = x
+    d.add_paragraph("The front and arrival targets are relative to the "
+                    "per-case R and T listed below, since these differ by "
+                    "case.").italic = True
+
+    # ---- per-case normalization constants ----
+    d.add_heading("Per-case normalization (R, T, A_cell)", 2)
+    nt = d.add_table(rows=1 + len(_order), cols=6); nt.style = "Table Grid"
+    for i, x in enumerate(["Real Sce.", "cell (m)", "A_cell (m^2)", "R (m)",
+                           "0.25 R / 0.50 R (m)", "T (h)  /  0.25 T (h)"]):
+        c = nt.rows[0].cells[i]; c.text = ""
+        c.paragraphs[0].add_run(x).bold = True
+    for ri, ck in enumerate(_order, start=1):
+        rd = rows[ck]; _Rc = rd.get("R", 0.0); _Tc = rd.get("T", 0.0)
+        _ac = rd.get("A_cell", 0.0); _cl = rd.get("cell", 0.0)
+        vals = [ck, f"{_cl:.0f}", f"{_ac:.0f}", f"{_Rc:.0f}",
+                f"{0.25*_Rc:.0f} / {0.50*_Rc:.0f}",
+                f"{_Tc:.1f} / {0.25*_Tc:.1f}"]
+        for i, x in enumerate(vals):
+            nt.rows[ri].cells[i].text = str(x)
+
+    # ---- detailed computation for EVERY case run so far ----
+    def _clip01(v):
+        return 0.0 if v < 0 else 1.0 if v > 1 else v
+
+    def _detail_rows(rd):
+        """(Criterion, Value, Normalization, Score, Target, Verdict) list for
+        one case, computed from its stored POD / front / MAE and R / T."""
+        _Rc = float(rd.get("R", 0.0)) or float("nan")
+        _Tc = float(rd.get("T", 0.0)) or float("nan")
+        pod = rd.get("POD", float("nan"))
+        fm = rd.get("mean_m", float("nan"))
+        f9 = rd.get("p90_m", float("nan"))
+        mae = rd.get("MAE", float("nan"))
+        out = []
+        # Coverage (POD)
+        _s = 100 * _clip01(pod) if pod == pod else float("nan")
+        _v = ("pass" if pod >= 0.70 else "partial" if pod >= 0.50 else "fail") \
+            if pod == pod else "n/a"
+        out.append(("Coverage (POD)", _f(pod, 3), "value (already 0..1)",
+                    _f(_s, 0) + "%" if _s == _s else "n/a", ">= 0.70", _v))
+        # Front mean
+        _s = 100 * _clip01(1 - fm / _Rc) if (fm == fm and _Rc == _Rc) \
+            else float("nan")
+        _v = ("pass" if fm <= 0.25 * _Rc else "partial" if fm <= 0.50 * _Rc
+              else "fail") if (fm == fm and _Rc == _Rc) else "n/a"
+        out.append(("Front error, mean (m)", _f(fm, 0), "1 - value / R",
+                    _f(_s, 0) + "%" if _s == _s else "n/a",
+                    f"<= 0.25 R = {0.25*_Rc:.0f} m" if _Rc == _Rc else "n/a",
+                    _v))
+        # Front p90
+        _s = 100 * _clip01(1 - f9 / _Rc) if (f9 == f9 and _Rc == _Rc) \
+            else float("nan")
+        _v = ("pass" if f9 <= 0.50 * _Rc else "partial" if f9 <= _Rc
+              else "fail") if (f9 == f9 and _Rc == _Rc) else "n/a"
+        out.append(("Front error, p90 (m)", _f(f9, 0), "1 - value / R",
+                    _f(_s, 0) + "%" if _s == _s else "n/a",
+                    f"<= 0.50 R = {0.50*_Rc:.0f} m" if _Rc == _Rc else "n/a",
+                    _v))
+        # Arrival MAE
+        _s = 100 * _clip01(1 - mae / _Tc) if (mae == mae and _Tc == _Tc) \
+            else float("nan")
+        _v = ("pass" if mae <= 0.25 * _Tc else "partial" if mae <= 0.50 * _Tc
+              else "fail") if (mae == mae and _Tc == _Tc) else "n/a"
+        out.append(("Arrival MAE (h)", _f(mae, 2), "1 - value / T",
+                    _f(_s, 0) + "%" if _s == _s else "n/a",
+                    f"<= 0.25 T = {0.25*_Tc:.1f} h" if _Tc == _Tc else "n/a",
+                    _v))
+        return out
+
+    for ck in _order:
+        rd = rows[ck]
+        _Rc = float(rd.get("R", 0.0)); _Tc = float(rd.get("T", 0.0))
+        _ac = float(rd.get("A_cell", 0.0)); _cl = float(rd.get("cell", 0.0))
+        d.add_heading(f"Detailed computation: {ck}", 2)
+        p = d.add_paragraph()
+        p.add_run(
+            "A_cell = cell area = (cell size)^2 = "
+            f"{_ac:.0f} m^2 (cell = {_cl:.0f} m). "
+            f"R = sqrt(|B| * A_cell / pi) = {_Rc:.0f} m is the equivalent "
+            "radius of the observed burned area. "
+            f"T = {_Tc:.1f} h is the observed fire duration (span of the "
+            "satellite detections). Coverage is already in [0, 1]; front "
+            "errors are scored as 1 - value/R; the arrival error as "
+            "1 - value/T.").italic = True
+        drows = _detail_rows(rd)
+        dt = d.add_table(rows=1 + len(drows), cols=6); dt.style = "Table Grid"
+        for i, x in enumerate(["Criterion", "Value", "Normalization",
+                               "Score", "Target", "Verdict"]):
+            c = dt.rows[0].cells[i]; c.text = ""
+            c.paragraphs[0].add_run(x).bold = True
+        _scores = []
+        for ri, row6 in enumerate(drows, start=1):
+            for i, x in enumerate(row6):
+                dt.rows[ri].cells[i].text = str(x)
+            try:
+                _scores.append(float(str(row6[3]).rstrip("%")))
+            except ValueError:
+                pass
+        if _scores:
+            d.add_paragraph(
+                f"Overall validation score: {sum(_scores)/len(_scores):.0f}% "
+                "(mean of the four normalized criteria).")
+
+    # ---- basis of the acceptance targets ----
+    d.add_heading("Basis of the acceptance targets", 2)
+    bt = d.add_table(rows=1, cols=3); bt.style = "Table Grid"
+    for i, x in enumerate(["Criterion", "Target", "Basis"]):
+        c = bt.rows[0].cells[i]; c.text = ""
+        c.paragraphs[0].add_run(x).bold = True
+    _basis = [
+        ("Coverage (POD)", ">= 0.70",
+         "Literature level for good agreement between simulated and observed "
+         "fire footprints: FARSITE reached a Sorensen coefficient of 0.70 with "
+         "improved fuel inputs (Price et al., 2022); calibrated cell-based "
+         "models reach 0.7-0.9 and uncalibrated semi-empirical models 0.5-0.7 "
+         "(Pais et al., 2021). The POD/Sorensen index set follows Filippi et "
+         "al. (2014)."),
+        ("Front error, mean (m)", f"<= 0.25 R = {0.25*R:.0f} m",
+         "Acceptance threshold adopted in this study: the mean front lies "
+         "within a quarter of the fire equivalent radius R, so the criterion "
+         "is scale aware. Front position error in metres itself is a standard "
+         "FARSITE-style output (Finney, 1998)."),
+        ("Front error, p90 (m)", f"<= 0.50 R = {0.50*R:.0f} m",
+         "Acceptance threshold adopted in this study: the worst-matching "
+         "tenth of the front lies within half of R."),
+        ("Arrival MAE (h)", f"<= 0.25 T = {0.25*T:.1f} h",
+         "Acceptance threshold adopted in this study: the arrival-time error "
+         "is within a quarter of the observed fire duration T (scale aware)."),
+    ]
+    for cr, tg, bs in _basis:
+        cells = bt.add_row().cells
+        cells[0].text = cr; cells[1].text = tg; cells[2].text = bs
+
+    d.add_heading("References", 3)
+    for _r in [
+        "Filippi, J.-B., Mallet, V., & Nader, B. (2014). Representation and "
+        "evaluation of wildfire propagation simulations. International Journal "
+        "of Wildland Fire, 23(1), 46-57.",
+        "Finney, M. A. (1998). FARSITE: Fire Area Simulator, model development "
+        "and evaluation. USDA Forest Service, RMRS-RP-4.",
+        "Pais, C., Carrasco, J., Martell, D. L., Weintraub, A., & Woodruff, "
+        "D. L. (2021). Cell2Fire: a cell-based forest fire growth model to "
+        "support strategic landscape management planning. Frontiers in Forests "
+        "and Global Change, 4, 692706.",
+        "Price, S., et al. (2022). Modeling of fire spread in sagebrush "
+        "steppe using FARSITE: an approach to improving input data and "
+        "simulation accuracy. Fire Ecology, 18, 22.",
+    ]:
+        _p = d.add_paragraph(_r)
+        _p.paragraph_format.left_indent = Pt(18)
+        _p.paragraph_format.first_line_indent = Pt(-18)
+
+    # ---- figures: the agreement map of EVERY case run so far ----
+    # build the image set: the accumulated per-case maps, and always the
+    # current one (so a single run still exports its map).
+    _imgs = dict(all_imgs or {})
+    _imgs.setdefault(str(res.get("case", "")), img)
+    d.add_heading("Agreement maps", 2)
+    d.add_paragraph(
+        "Green: correctly predicted burn, Red: simulated only, Blue: "
+        "observed only, Yellow: ignition.").italic = True
+    _fno = 0
+    for _ck, _im in _imgs.items():
+        if _im is None:
+            continue
+        _fno += 1
+        _cslug = "".join(c for c in str(_ck) if c.isalnum() or c in "-_")[:40]
+        _fp = os.path.join(out_dir, f"agreement_map_{_cslug or _fno}.png")
+        try:
+            _PILImg.fromarray(_np2.asarray(_im)).save(_fp)
+        except Exception:
+            continue
+        d.add_heading(str(_ck), 3)
+        d.add_picture(_fp, width=Inches(5.6))
+        cap = d.add_paragraph()
+        cap.add_run(f"Figure 5.{_fno} Agreement map for {_ck}.").italic = True
+
+    docx_path = os.path.join(out_dir, "validation_report.docx")
+    d.save(docx_path)
+    with open(docx_path, "rb") as fh:
+        docx_bytes = fh.read()
+    png_bytes = open(png_path, "rb").read() if png_path else b""
+    return docx_bytes, png_bytes, out_dir
 
 
 PAGES = {"Simulation": page_simulation, "Map editor": page_editor,

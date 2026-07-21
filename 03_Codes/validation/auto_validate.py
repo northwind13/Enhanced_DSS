@@ -374,13 +374,44 @@ def _firms_mask_and_ignition(case, pts, nx, ny, lons, lats, cell_m):
     return main, first, ign_cells
 
 
+def firms_arrival_hours(case, pts, nx, ny, cell, main_mask, t0):
+    """Per-cell observed first-detection time (hours since t0), NaN where
+    nothing was observed. Used for the arrival-time (rate-of-spread)
+    validation. Only detections inside the main cluster are kept."""
+    import datetime as dt
+    out = np.full((ny, nx), np.nan, dtype=float)
+    if not pts or t0 is None:
+        return out
+    mx = 111320.0 * math.cos(math.radians(0.5 * (case["south"]
+                                                 + case["north"])))
+    my = 110540.0
+
+    def _ts(p):
+        hhmm = int(p[3])
+        return dt.datetime.fromisoformat(p[2]) + dt.timedelta(
+            hours=hhmm // 100, minutes=hhmm % 100)
+
+    for p in pts:
+        gx = int((p[0] - case["west"]) * mx / cell)
+        gy = int((case["north"] - p[1]) * my / cell)
+        if not (0 <= gx < nx and 0 <= gy < ny) or not main_mask[gy, gx]:
+            continue
+        th = (_ts(p) - t0).total_seconds() / 3600.0
+        if th < 0:
+            continue
+        if np.isnan(out[gy, gx]) or th < out[gy, gx]:
+            out[gy, gx] = th
+    return out
+
+
 # ------------------------------------------------------------------ hindcast
 def _met_to_math_toward(met_from_deg):
     return math.radians((270.0 - met_from_deg) % 360.0)
 
 
 def run_case(case, args, dem, dem_ll, wc, wc_ll, weather, obs_mask,
-             ignition, progress_cb=None, frame_cb=None, frame_every=8):
+             ignition, progress_cb=None, frame_cb=None, frame_every=8,
+             obs_arrival=None, stop_area=None):
     cell = args.cell
     nx, ny, lons, lats = _grid(case, cell)
     cfg = SimConfig(nx=nx, ny=ny, cell_size_m=cell,
@@ -417,6 +448,7 @@ def run_case(case, args, dem, dem_ll, wc, wc_ll, weather, obs_mask,
         wr.config.rng_seed = seed
         sim = Simulator(wr)
         sim.record_states = False
+        done = n_steps
         for k in range(n_steps):
             h = min(h0 + int(k * args.step_minutes // 60), len(ws) - 1)
             wr.meteo.wws[:] = float(ws[h])
@@ -433,13 +465,26 @@ def run_case(case, args, dem, dem_ll, wc, wc_ll, weather, obs_mask,
                 frame_cb(k + 1, n_steps, sim.ever_burned,
                          float(ws[min(h0 + int(k * args.step_minutes // 60),
                                       len(ws) - 1)]))
+            # AREA-MATCHED STOPPING: a suppression-free run overgrows a
+            # suppressed real fire, so (when asked) stop once the simulated
+            # burn reaches the observed area and score the fronts at a
+            # comparable extent. Guarantees the run terminates.
+            if (stop_area is not None
+                    and float(sim.ever_burned.sum()) >= float(stop_area)):
+                done = k + 1
+                break
         rep = compare_masks(sim.ever_burned, obs_mask)
         rep.update(front_distance_errors(sim.ever_burned, obs_mask, cell))
+        if obs_arrival is not None:
+            from disaster_phyengine.validation import arrival_agreement
+            rep.update(arrival_agreement(sim.first_ignition_step,
+                                         obs_arrival, args.step_minutes))
+        rep["stop_hours"] = done * args.step_minutes / 60.0
         runs.append((rep, sim.ever_burned.copy()))
-        print(f"  seed {seed}: dice={rep['dice']:.3f} "
-              f"jaccard={rep['jaccard']:.3f} hit={rep['hit_rate']:.3f} "
-              f"FAR={rep['false_alarm']:.3f} bias={rep['area_bias']:.2f} "
-              f"front={rep['mean_m']:.0f} m")
+        print(f"  seed {seed}: coverage(POD)={rep['hit_rate']:.3f} "
+              f"front={rep['mean_m']:.0f} m "
+              f"arrival_MAE={rep.get('arrival_mae_h', float('nan')):.1f} h "
+              f"stop={rep['stop_hours']:.1f} h")
     return runs, (nx, ny)
 
 
@@ -460,7 +505,7 @@ def _basemap(ftype, dem):
 
 def run_wind_ensemble(case, args, dem, dem_ll, wc, wc_ll, weather,
                       obs_mask, ignition, offsets, progress_cb=None,
-                      frame_cb=None):
+                      frame_cb=None, stop_area=None):
     """Input-uncertainty ensemble: rerun the hindcast with the wind
     direction rotated by fixed offsets (deg). Gridded reanalysis winds are
     the dominant input uncertainty for fire hindcasts (local channeling and
@@ -481,12 +526,12 @@ def run_wind_ensemble(case, args, dem, dem_ll, wc, wc_ll, weather,
 
         runs, shape = run_case(case, a2, dem, dem_ll, wc, wc_ll, w2,
                                obs_mask, ignition, progress_cb=_pcb,
-                               frame_cb=None)
+                               frame_cb=None, stop_area=stop_area)
         rep, mask = runs[0]
         members.append({"offset_deg": off, "rep": rep, "mask": mask})
-        print(f"  offset {off:+4.0f} deg: dice={rep['dice']:.3f} "
-              f"hit={rep['hit_rate']:.3f} front={rep['mean_m']:.0f} m")
-    members.sort(key=lambda m: -m["rep"]["dice"])
+        print(f"  offset {off:+4.0f} deg: coverage={rep['hit_rate']:.3f} "
+              f"front={rep['mean_m']:.0f} m")
+    members.sort(key=lambda m: -m["rep"]["hit_rate"])
     return members, shape
 
 
