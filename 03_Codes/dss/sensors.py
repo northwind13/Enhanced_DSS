@@ -1,14 +1,14 @@
 """Sensor network: the observation side of the DSS.
 
 Implements the observation model of the DSS (see System Description
-Sec. 11). The observed state components are the
+). The observed state components are the
 state vector channels j in {B, F, I, tau}; fuel moisture and weather
 come from the meteorological service and static maps (terrain, fuel type,
 values, own resources) are known priors.
 
 Per-component observation confidence (min-aggregation of
-four independent degradation factors), cell confidence (Eq. 69) and the
-bounded disturbance (Eqs. 67, 70):
+four independent degradation factors), cell confidence and the
+bounded disturbance:
 
     conf_{j,k}^i(x,y) = min( theta_{j,k}^i(x,y),          observability
                              rho_k^i(x,y),                 coverage density
@@ -54,26 +54,36 @@ CHANNELS = ("burning", "fload", "intensity", "tau")
 #         every source reads once per simulation minute, the
 #         software's minimum step, so no source lags the sim),
 #         latency (min), observed channels, bounded noise amplitude eps_bar
+# SENSOR_CATALOG is the SINGLE source of truth for the observation network:
+# label, coverage radius (m; None = whole map), revisit/latency, observed
+# channels, noise, AND the map/legend color. The Add dropdown, the sensor
+# list, the map glyph and the legend all read from here so they stay
+# consistent.
 SENSOR_CATALOG: Dict[str, dict] = {
     "satellite": dict(radius_m=None, revisit_min=1.0, latency_min=20.0,
                       channels=("burning", "intensity"), eps=0.05,
+                      color=(170, 120, 255),
                       label="Satellite imagery (whole map)"),
     "aerial": dict(radius_m=2500.0, revisit_min=1.0, latency_min=2.0,
                    channels=("burning", "intensity"), eps=0.03,
+                   color=(0, 220, 255),
                    label="UAV / aerial thermal recon (2.5 km)"),
     "ground_camera": dict(radius_m=4000.0, revisit_min=1.0,
                           latency_min=1.0,
                           channels=("burning", "intensity"), eps=0.06,
+                          color=(255, 255, 255),
                           label="Fixed lookout camera (smoke/flame, 4 km)"),
     "in_situ": dict(radius_m=1500.0, revisit_min=1.0, latency_min=0.0,
                     channels=("fload",), eps=0.02,
+                    color=(255, 220, 0),
                     label="Environmental ground sensors (fuel, 1.5 km)"),
     "field_report": dict(radius_m=1000.0, revisit_min=1.0,
                          latency_min=10.0, channels=("burning", "tau"),
-                         eps=0.10,
+                         eps=0.10, color=(255, 150, 60),
                          label="First-responder field data (1 km)"),
     "public_report": dict(radius_m=1200.0, revisit_min=1.0,
                           latency_min=15.0, channels=("burning",), eps=0.20,
+                          color=(255, 105, 180),
                           label="Public reports / calls (1.2 km)"),
 }
 
@@ -90,9 +100,21 @@ class Sensor:
     x: int
     y: int
     name: str = ""
+    # optional per-sensor overrides (None = use the catalog default). The
+    # coverage radius applies only where the kind has a finite range (a
+    # satellite stays whole-map); the latency delays THIS sensor's reports.
+    radius_m: float = None
+    latency_min: float = None
 
     def spec(self) -> dict:
-        return SENSOR_CATALOG[self.kind]
+        base = dict(SENSOR_CATALOG[self.kind])
+        # a whole-map kind (radius_m None in the catalog) stays whole-map;
+        # a ranged kind may override its radius and every kind its latency
+        if self.radius_m is not None and base.get("radius_m") is not None:
+            base["radius_m"] = float(self.radius_m)
+        if self.latency_min is not None:
+            base["latency_min"] = float(max(0.0, self.latency_min))
+        return base
 
 
 @dataclass
@@ -204,7 +226,7 @@ class SensorNetwork:
             vals = {}
             for ch in spec["channels"]:
                 true = np.asarray(self._true_field(sim, ch), dtype=float)
-                # bounded disturbance, |eps| <= (1 - conf) * eps_bar (Eq. 70)
+ # bounded disturbance, |eps| <= (1 - conf) * eps_bar
                 conf = self.conf_channel(ch)
                 amp = spec["eps"] * (1.0 - conf)
                 noise = amp * (2.0 * self._rng.random(true.shape) - 1.0)
@@ -257,12 +279,12 @@ class SensorNetwork:
         """conf_k(x,y) = min_j conf_{j,k}(x,y).
 
         This conservative minimum is the MODEL value used for gating and
-        for the disturbance bound (Eq. 70)."""
+ for the disturbance bound."""
         return np.minimum.reduce([self.conf_channel(ch) for ch in CHANNELS])
 
     def region_conf(self, region) -> float:
         """Region-level DISPLAY scalar: mean over components of the mean
-        channel confidence in the region. The Eq. 69 minimum stays the
+ channel confidence in the region. The9 minimum stays the
         cell-level model value (conf_cell); a component with no source at
         all (e.g. tau without field reports) would otherwise pin every
         region to zero and hide all information the sensors do deliver."""

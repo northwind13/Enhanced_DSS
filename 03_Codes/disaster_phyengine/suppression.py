@@ -1,4 +1,4 @@
-"""Suppression to fuel reduction mapping (Appendix B, Eq. 130 to 135).
+"""Suppression to fuel reduction mapping (,).
 
     F_red = alpha_s * eta_cap * eta_avail * eta_reach * eta_eff             (130)
     eta_cap   = R_cap / R_cap_max                                          (131)
@@ -6,7 +6,7 @@
     eta_reach = exp(-beta_t * R_time) * G_access                           (133)
     eta_eff   = R_eff / (1 + gamma_I * I)                                  (134)
 
-The combined raw reduction is given explicitly by Eq. 135. The mapping converts
+The combined raw reduction is given explicitly by. The mapping converts
 operational capability and reachability into a normalized fuel reduction effect
 that the transition operator subtracts from the available fuel mass.
 """
@@ -21,7 +21,7 @@ from .config import SuppressionParams
 def fuel_reduction(resource, topo, intensity: np.ndarray,
                    params: SuppressionParams,
                    air_scale=1.0) -> np.ndarray:
-    """Compute the per cell suppression driven fuel reduction F_red (Eq. 135).
+    """Compute the per cell suppression driven fuel reduction F_red.
 
     air_scale (scalar or field, [0, 1]) derates the AERIAL share for
     weather: strong wind grounds the aircraft. Where the resource layer

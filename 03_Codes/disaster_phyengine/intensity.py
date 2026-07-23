@@ -1,9 +1,9 @@
-"""Fire intensity proxy evolution (Appendix C, Eq. 136 to 137).
+"""Fire intensity proxy evolution (,).
 
-Normalized drivers (Eq. 136):
+Normalized drivers:
     F = Fload / Fload_max,  W = Wws / Wws_max,  S = tan(Gslope) / tan(Gslope_max)
 
-Intensity update (Eq. 137):
+Intensity update:
     I_{k+1} = B_{k+1} * tanh(beta * F + gamma_w * W + gamma_s * S)
 
 The proxy is a bounded combustion strength indicator in [0, 1]. It does not feed
@@ -20,7 +20,7 @@ from .config import IntensityParams
 
 def fire_intensity(burning_next: np.ndarray, fload: np.ndarray, topo, meteo,
                    params: IntensityParams) -> np.ndarray:
-    """Compute the next intensity proxy field I_{k+1} (Eq. 137)."""
+    """Compute the next intensity proxy field I_{k+1}."""
     f_norm = np.clip(fload / max(params.fload_max, 1e-6), 0.0, 1.0)
     w_norm = np.clip(meteo.wws / max(params.wws_max, 1e-6), 0.0, 1.0)
     denom = np.tan(params.slope_max_rad) if params.slope_max_rad > 0 else 1.0

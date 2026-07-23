@@ -1,12 +1,12 @@
-"""Layer 3: the four-level concept hierarchy (Eqs. 40-42: mapping sets, aggregation, gating).
+"""Layer 3: the four-level concept hierarchy (: mapping sets, aggregation, gating).
 
 Concept activations are five-term vectors formed by weighted aggregation:
 at the base level over the term memberships of the assigned features, at
 every higher level over the activations of the contributing concepts one
-level below, with nonnegative weights summing to one per concept (Eq. 41).
+level below, with nonnegative weights summing to one per concept.
 Raw activations are never consumed directly: every activation is gated by
 its concept-level confidence (the weakest feature confidence among its
-inputs) and blended with a persistence-carried prior (Eq. 42):
+inputs) and blended with a persistence-carried prior:
 
     a_eff = gamma * a_obs + (1 - gamma) * rho * a_eff_prev
 
@@ -95,7 +95,7 @@ def _feature_inputs(features: Dict[str, float]) -> Dict[str, np.ndarray]:
 def infer_concepts(features: Dict[str, float],
                    hierarchy: Dict | None = None
                    ) -> Dict[str, np.ndarray]:
-    """Observed activations a_obs (Eq. 41): five-term vector per concept.
+    """Observed activations a_obs: five-term vector per concept.
 
     hierarchy: an ENGINE-LOCAL hierarchy (the base one possibly grown
     by admitted concept packages); defaults to the thesis base."""
@@ -108,7 +108,15 @@ def infer_concepts(features: Dict[str, float],
                 continue
             v = np.zeros(len(TERMS))
             for src, w in inputs:
-                v += w * (act[src] if src in act else vecs[src])
+                # src must be a feature OR an already-computed lower-level
+                # concept. An admitted concept package can reference a name
+                # that is neither (e.g. a same/higher-level concept, or a
+                # typo); treat it as a zero contribution instead of crashing
+                # the whole engine.
+                if src in act:
+                    v += w * act[src]
+                elif src in vecs:
+                    v += w * vecs[src]
             act[name] = np.clip(v, 0.0, 1.0)
     return act
 
@@ -140,7 +148,7 @@ def concept_gates(feature_conf: Dict[str, float],
 
 
 class GatedConcepts:
-    """Keeps the persistence prior and applies the gate of Eq. 42."""
+    """Keeps the persistence prior and applies the gate of."""
 
     def __init__(self, rho: float = RHO_PERSIST):
         self.rho = float(rho)

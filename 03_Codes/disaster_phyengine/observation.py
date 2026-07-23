@@ -1,14 +1,14 @@
-"""Observation interface O_k = h(S_k, eps_k) (Section 4.5, Eq. 56).
+"""Observation interface O_k = h(S_k, eps_k) (,).
 
 The Decision Support System never reads the authoritative state directly. It
 reasons on observable quantities produced by an observation function that
 projects the state and injects epistemic uncertainty at the observation stage
 only. This module provides that read only boundary: it copies the four state
 fields and optionally adds bounded noise. It never mutates S_k, preserving the
-state immutability principle of Section 4.1.
+state immutability principle of
 
 This is the Simulation Core side of the interface. The full region specific
-observation model with per component observability weights (Eq. 84 to 91) lives
+observation model with per component observability weights lives
 in the DSS implementation (Chapters 5 to 6) and can build on this function.
 """
 

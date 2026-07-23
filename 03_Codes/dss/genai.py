@@ -15,11 +15,9 @@ override it (Explainability & Governance layer). If the SDK or an API key is
 missing, the functions degrade gracefully (return ``None``) so the DSS keeps
 running without generative help.
 
-Setup:
-    pip install anthropic
-    # set the key in the environment (never hard-code it):
-    #   Windows:  setx ANTHROPIC_API_KEY "sk-ant-..."
-    #   bash:     export ANTHROPIC_API_KEY=sk-ant-...
+Setup (Claude Code subscription, no API key):
+    #   install Claude Code, then run:  claude
+    #   inside it type:  /login   (choose your Pro/Max plan, not the console)
 
 Wiring example:
     from dss import genai
@@ -56,36 +54,6 @@ class ProposalContext:
         default_factory=lambda: list(INTERVENTIONS))
 
 
-def _rule_tool() -> dict:
-    return {
-        "name": "propose_rule",
-        "description": "Propose exactly ONE new fuzzy decision rule.",
-        "input_schema": {
-            "type": "object",
-            "properties": {
-                "antecedent": {
-                    "type": "object",
-                    "description": "decision concept -> fuzzy term that fires "
-                                   "the rule (use a subset of the concepts).",
-                    "properties": {c: {"type": "string", "enum": list(TERMS)}
-                                   for c in DECISION_CONCEPTS},
-                },
-                "consequent": {
-                    "type": "object",
-                    "description": "intervention -> fuzzy term (its intensity).",
-                    "properties": {i: {"type": "string", "enum": list(TERMS)}
-                                   for i in INTERVENTIONS},
-                },
-                "rationale": {
-                    "type": "string",
-                    "description": "One sentence: why this lowers the cost.",
-                },
-            },
-            "required": ["antecedent", "consequent", "rationale"],
-        },
-    }
-
-
 _SYSTEM = (
     "You are the generative proposer inside a wildfire decision-support "
     "system. You do NOT act: you only draft ONE candidate fuzzy rule that a "
@@ -97,25 +65,80 @@ _SYSTEM = (
 )
 
 
+def _cli_available() -> bool:
+    """True if the Claude Code command-line tool is on PATH. This path uses
+    the user's Claude subscription (Pro/Max/Team) via `claude -p`, so no
+    ANTHROPIC_API_KEY is needed."""
+    import shutil
+    return shutil.which("claude") is not None
+
+
+def transport_mode() -> str:
+    """Which proposer transport stage 3 will use: 'cli' (Claude Code on the
+    user's subscription) or 'none'. Stage 3 runs only through Claude Code;
+    there is no API-key path."""
+    return "cli" if _cli_available() else "none"
+
+
 def available() -> bool:
-    """True if the Claude SDK and an API key are both present."""
-    if not os.environ.get("ANTHROPIC_API_KEY"):
-        return False
+    """True if stage 3 can reach a model, i.e. the Claude Code CLI is present
+    (it runs on the user's subscription)."""
+    return _cli_available()
+
+
+def _propose_via_cli(ctx: "ProposalContext", user: str,
+                     model: Optional[str] = None,
+                     timeout: float = 120.0) -> Optional[Rule]:
+    """Ask the Claude Code CLI (`claude -p`) for one rule, using the user's
+    Claude subscription instead of an API key. Returns a Rule or None."""
+    import json
+    import re
+    import subprocess
+    if not _cli_available():
+        return None
+    prompt = (
+        _SYSTEM + "\n\n" + user + "\n\n"
+        "Return ONLY a JSON object (no prose, no code fence) with keys: "
+        '"antecedent" (an object mapping a subset of the decision concepts '
+        'to a fuzzy term), "consequent" (an object mapping a subset of the '
+        'interventions to a fuzzy term), and "rationale" (one sentence). '
+        "Every fuzzy term must be one of VL, L, M, H, VH.")
+    cmd = ["claude", "-p", prompt, "--output-format", "json"]
+    if model:
+        cmd += ["--model", model]
     try:
-        import anthropic  # noqa: F401
-        return True
-    except ImportError:
-        return False
+        res = subprocess.run(cmd, capture_output=True, text=True,
+                             timeout=timeout)
+    except Exception:
+        return None
+    if res.returncode != 0 or not res.stdout.strip():
+        return None
+    # `--output-format json` wraps the reply: {"type":"result",
+    # "result":"...text...", ...}. Fall back to the raw text otherwise.
+    inner = res.stdout
+    try:
+        wrap = json.loads(res.stdout)
+        if isinstance(wrap, dict) and "result" in wrap:
+            inner = wrap["result"]
+    except Exception:
+        pass
+    m = re.search(r"\{.*\}", inner, re.S)          # first JSON object
+    if not m:
+        return None
+    try:
+        payload = json.loads(m.group(0))
+    except Exception:
+        return None
+    return _to_rule(payload, ctx)
 
 
 def propose_rule(ctx: ProposalContext,
                  model: str = DEFAULT_MODEL,
                  max_tokens: int = 800) -> Optional[Rule]:
-    """Ask Claude for one candidate rule. Returns a ``Rule`` or ``None``."""
-    if not available():
+    """Ask Claude for one candidate rule via the Claude Code CLI (`claude -p`)
+    on the user's subscription. Returns a ``Rule`` or ``None``."""
+    if not _cli_available():
         return None
-    import anthropic
-    client = anthropic.Anthropic()                # reads ANTHROPIC_API_KEY
     user = (
         "Current decision situation (values normalized 0..1 unless noted):\n"
         f"- decision concept activations: {ctx.concept_activations}\n"
@@ -127,23 +150,10 @@ def propose_rule(ctx: ProposalContext,
         f"- decision concepts: {list(DECISION_CONCEPTS)}\n"
         f"- available interventions: {ctx.available_interventions}\n"
         f"- fuzzy terms: {list(TERMS)}\n\n"
-        "Propose ONE new rule (via the propose_rule tool) that would lower "
-        "the residual cost without over-committing resources."
+        "Propose ONE new rule that would lower the residual cost without "
+        "over-committing resources."
     )
-    try:
-        msg = client.messages.create(
-            model=model, max_tokens=max_tokens, system=_SYSTEM,
-            tools=[_rule_tool()],
-            tool_choice={"type": "tool", "name": "propose_rule"},
-            messages=[{"role": "user", "content": user}],
-        )
-    except Exception:                             # network / auth / quota
-        return None
-    for block in msg.content:
-        if getattr(block, "type", None) == "tool_use" \
-                and block.name == "propose_rule":
-            return _to_rule(dict(block.input), ctx)
-    return None
+    return _propose_via_cli(ctx, user, model=os.environ.get("DSS_GENAI_MODEL"))
 
 
 def _to_rule(payload: dict, ctx: ProposalContext) -> Optional[Rule]:

@@ -561,19 +561,23 @@ def generate_landscape(config: SimConfig | None = None,
         thr = np.quantile(elev_norm, np.clip(water_level, 0.0, 0.3))
         ftype[elev_norm <= thr] = WATER
 
-    # coastline: sea along the eastern edge with a wavy boundary
+    # coastline: sea along the eastern edge with a wavy, indented boundary.
     if coast:
-        # descend the land toward the sea on the east/southeast, then flood the
-        # sea inland below a sea level. The shoreline then follows the terrain,
-        # producing an indented coast with bays, peninsulas and offshore
-        # islands (an Aegean / Marmara-like shore) rather than a straight cliff.
+        # A "sea potential" that RISES toward the east/south edge decides the
+        # shore, not the raw elevation: multiplying the terrain down (the old
+        # way) left inland valleys lower than the coast, so the sea never
+        # reached the east. A wavy noise term indents the shoreline and low
+        # coastal land extends the sea inland as bays; a fixed quantile
+        # guarantees a real sea forms whatever the relief. _flood_sea then
+        # keeps only the body connected to the border (no inland puddles).
         yy = np.arange(ny)[:, None]
         xx = np.arange(nx)[None, :]
-        tilt = (0.7 * (xx / max(nx - 1, 1)) + 0.3 * (yy / max(ny - 1, 1))) ** 1.2
-        elev = elev * (1.0 - 0.85 * tilt)
-        elev_norm = (elev - elev.min()) / max(elev.max() - elev.min(), 1e-9)
-        below = elev_norm < 0.12
-        sea = _flood_sea(below)
+        ramp = 0.72 * (xx / max(nx - 1, 1)) + 0.28 * (yy / max(ny - 1, 1))
+        wob = 0.12 * (fractal_noise(ny, nx, rng, octaves=4,
+                                    persistence=0.5) - 0.5)
+        sea_pot = ramp + wob - 0.25 * elev_norm
+        sea_level = float(np.quantile(sea_pot, 0.70))    # ~30% of map is sea
+        sea = _flood_sea(sea_pot > sea_level)
         ftype[sea] = WATER
         elev[sea] = 0.0
         elev_norm = (elev - elev.min()) / max(elev.max() - elev.min(), 1e-9)

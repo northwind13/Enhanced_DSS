@@ -1,9 +1,9 @@
 """Simulation Core: the discrete time state transition operator Phi.
 
 This module implements the DisasterAware hybrid fire spread model,
-combining burning status evolution (Eq. 43 to 48), fuel mass evolution
-(Eq. 49 to 50, 68 to 69), fire intensity evolution (Eq. 51, 136 to 137) and
-ignition time evolution (Eq. 52) into a single coupled update:
+combining burning status evolution, fuel mass evolution
+, fire intensity evolution and
+ignition time evolution into a single coupled update:
 
     S_{k+1} = Phi(S_k, F_in,k)
 
@@ -69,7 +69,7 @@ class Simulator:
         # step index at which each cell first ignited (-1 = never), for the
         # time-to-burn propagation layer (Kose et al., 3D wildfire viz)
         self.first_ignition_step = np.full(world.shape, -1, dtype=int)
-        # ignition influence buildup A_k (Eq. 45): time-integrated neighbour
+        # ignition influence buildup A_k: time-integrated neighbour
         # influence; a cell ignites when the buildup crosses theta_ign
         self.ign_buildup = np.zeros(world.shape, dtype=float)
         self.history: List[StepDiagnostics] = []
@@ -206,7 +206,7 @@ class Simulator:
         """Advance the state by one time step applying Phi.
 
         One step represents cfg.step_minutes of real time. Per-step rates are
-        calibrated at a 30 min reference (System Description Sec. 9): with
+        calibrated at a 30 min reference: with
         s = step_minutes / 30 the engine runs ceil(s) internal substeps of
         scale s / ceil(s), so long steps advance the front by up to ~s cells
         while 30 min steps reproduce the reference equations exactly.
@@ -334,13 +334,13 @@ class Simulator:
             Fload = s.fload
             I = s.intensity
 
-            # 1. rate of spread and propagation influence (Eq. 123, 46),
+            # 1. rate of spread and propagation influence,
             #    scaled to the substep length
             ros = ros_ref * sub
             psi = propagation_influence(B, ros, weff_wd, cfg.spread,
                                         wws=weff_ws, weights=dir_w)
 
-            # 2. burning status update (Eq. 43 to 45): the influence builds
+            # 2. burning status update: the influence builds
             #    up over time (with a small leak) and the cell ignites when
             #    the buildup crosses theta_ign; external ignition is
             #    injected on the first substep only
@@ -395,7 +395,7 @@ class Simulator:
                                          < m_ext[ty, tx] - 1e-9))
                             B_next[ty[fuelok], tx[fuelok]] = 1.0
 
-            # 3. fuel mass update (Eq. 49, 129 to 135), substep compounded
+            # 3. fuel mass update, substep compounded
             f_burn = np.clip(self._b_base * (1.0 - fuel.fmoist), 0.0, 1.0)
             _fb_ref = f_burn                     # reference-step scale
             if sub != 1.0:
@@ -411,7 +411,7 @@ class Simulator:
                                        cfg.suppression, air_scale=_airs)
             # suppression KNOCKDOWN: crews put flames out, they do not
             # only remove fuel. A burning cell is quenched when the
-            # suppression PRESSURE (the eta product of Eq. 130, without
+            # suppression PRESSURE (the eta product of, without
             # the fuel-removal gain alpha_s) exceeds the knockdown
             # threshold scaled by how fiercely the cell burns relative
             # to a calm 0.10/step reference. Running heads in cured
@@ -521,7 +521,7 @@ class Simulator:
             f_red = np.minimum(f_red_raw, Fload)
             Fload_next = np.maximum(0.0, Fload - combustion - f_red)
 
-            # 4. fire intensity update (Eq. 137); uses current fuel (Eq. 51)
+            # 4. fire intensity update; uses current fuel 
             I_next = fire_intensity(B_next, Fload, topo, meteo, cfg.intensity)
 
             # commit the substep; burning cells carry no buildup
@@ -533,7 +533,7 @@ class Simulator:
             comb_tot += combustion
             red_tot += f_red
 
-        # 5. ignition time update (Eq. 52), once per outer step
+        # 5. ignition time update, once per outer step
         cont = (s.burning > 0.5) & (B_start > 0.5)
         s.tau = np.where(cont, s.tau + cfg.dt, 0.0)
         s.step += 1

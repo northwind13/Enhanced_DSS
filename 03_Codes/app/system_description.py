@@ -165,24 +165,24 @@ def _sec_0(ctx):
     _eq(r"\mathcal{F}_{in,k}=\{\,U_{Meteo,k},\;U_{Geo},\;U_{Fuel,k},\;"
         r"U_{Ign,k},\;U_{DSS,k}\,\}",
         [r"$\mathcal{F}_{in,k}$ — the physical input set consumed by the "
-         r"transition operator $\Phi$ (Part II, Sec. 2)"])
+         r"transition operator $\Phi$ (Part II,)"])
     _eq(r"\mathcal{F}_{DSS,k}=\{\,U_{Val,k},\;U_{Res,k}\,\}",
         [r"$\mathcal{F}_{DSS,k}$ — the decisional context: values at risk "
          r"and the available resource pool. It informs the DSS but never "
          r"enters the fire physics"])
     _eq(r"\mathcal{O}_k(x,y)=h\big(S_k(x,y),\,\epsilon_k\big)",
         [r"$\mathcal{O}_k$ — the observation the DSS reasons on (Part III, "
-         r"Sec. 11); $h$ projects the state, $\epsilon_k$ is bounded "
+         r"); $h$ projects the state, $\epsilon_k$ is bounded "
          r"observation noise"])
     _eq(r"U_{DSS,k}(x,y)=\pi_{DSS}\big(\mathcal{O}_k(x,y),\,"
         r"\mathcal{F}_{DSS,k}\big)",
-        [r"$\pi_{DSS}$ — the decision policy (Part III, Sec. 12): it maps "
+        [r"$\pi_{DSS}$ — the decision policy (Part III,): it maps "
          r"observations and decisional context to the resource allocation "
          r"$U_{DSS,k}$, which re-enters the simulator as an input"])
     st.caption(
         "Time advances as $t_{sim}=k\\,\\Delta t_{sim}$; the global state "
         "is the collection $S_k(x,y)=\\{s_{c,k}\\}_{c\\in G}$ with "
-        "$c\\equiv(x,y)$ (Sec. 3).")
+        "$c\\equiv(x,y)$.")
 
 
 def _sec_1(ctx):
@@ -218,7 +218,7 @@ def _sec_1(ctx):
             f"(one step \u2248 {getattr(cfg, 'step_minutes', 30):g} min real "
             "time, set in the Simulation page) |")
     st.caption("The step length actively rescales the per-step dynamics; "
-               "see Sec. 9, note 8 for the exact scaling law.")
+               "see, note 8 for the exact scaling law.")
 
 
 def _sec_2(ctx):
@@ -249,10 +249,10 @@ def _sec_2(ctx):
         "|---|---|---|---|---|\n"
         "| $W_{temp,k}$ | Air temperature | spatio-temporal | °C | Drives fuel drying; enters the optional equilibrium moisture model |\n"
         "| $W_{rh,k}$ | Relative humidity | spatio-temporal | % (0–100) | Drives fuel drying; enters the optional equilibrium moisture model |\n"
-        "| $W_{ws,k}$ | Wind speed | spatio-temporal | m/s | Amplifies rate of spread (Sec. 5) and fire intensity (Sec. 7) |\n"
-        "| $W_{wd,k}$ | Wind direction | spatio-temporal | rad | Direction the wind blows **toward** (math convention, $0$ = +x, counter-clockwise positive); sets the axis of anisotropic spread (Sec. 4) |\n"
+        "| $W_{ws,k}$ | Wind speed | spatio-temporal | m/s | Amplifies rate of spread and fire intensity |\n"
+        "| $W_{wd,k}$ | Wind direction | spatio-temporal | rad | Direction the wind blows **toward** (math convention, $0$ = +x, counter-clockwise positive); sets the axis of anisotropic spread |\n"
         "| $W_{gust,k}$ | Wind gust speed | spatio-temporal | m/s | Exogenous stochastic forcing channel; not used by the deterministic core equations |\n"
-        "| $W_{prec,k}$ | Precipitation | spatio-temporal | mm/h | Stops ember spotting above 1 mm/h and drives fuel moisture toward extinction (Sec. 9, note 13) |")
+        "| $W_{prec,k}$ | Precipitation | spatio-temporal | mm/h | Stops ember spotting above 1 mm/h and drives fuel moisture toward extinction (, note 13) |")
     st.caption(
         "Only wind speed and wind direction enter the transition equations "
         "directly. Temperature, humidity, gust and precipitation act "
@@ -267,9 +267,9 @@ def _sec_2(ctx):
         "| Symbol | Field | Type | Unit | Role in the model |\n"
         "|---|---|---|---|---|\n"
         "| $G_{elev}$ | Elevation | static | m | Source for slope/aspect derivation; context for visualization and GIS import |\n"
-        "| $G_{slope}$ | Terrain slope | static | rad | Accelerates uphill spread (Sec. 5) and raises intensity (Sec. 7) |\n"
-        "| $G_{aspect}$ | Slope orientation (aspect) | static | rad | Interacts with wind direction in the spread rate (Sec. 5) |\n"
-        "| $G_{access}$ | Accessibility index | static | – , $[0,1]$ | Gates suppression reachability (Sec. 6); $1$ = fully accessible, $0$ = unreachable |")
+        "| $G_{slope}$ | Terrain slope | static | rad | Accelerates uphill spread and raises intensity |\n"
+        "| $G_{aspect}$ | Slope orientation (aspect) | static | rad | Interacts with wind direction in the spread rate |\n"
+        "| $G_{access}$ | Accessibility index | static | –, $[0,1]$ | Gates suppression reachability; $1$ = fully accessible, $0$ = unreachable |")
 
     # ---- 2.3 fuel
     st.markdown("#### 2.3 Fuel — $U_{Fuel,k}$")
@@ -278,11 +278,11 @@ def _sec_2(ctx):
     _table(
         "| Symbol | Field | Type | Unit | Role in the model |\n"
         "|---|---|---|---|---|\n"
-        "| $F_{type}$ | Fuel class | static | – (categorical id) | Selects the per class parameters $r_{base}, m_{ext}, a_w, a_s, a_{asp}, b_{base}$ (Tables in Sec. 5–6) |\n"
+        "| $F_{type}$ | Fuel class | static | – (categorical id) | Selects the per class parameters $r_{base}, m_{ext}, a_w, a_s, a_{asp}, b_{base}$ (Tables in–6) |\n"
         "| $F_{load,0}$ | Initial fuel load | initial condition | – , normalized $[0,1]$ | Initializes the dynamic state $F_{load,k}$; $1$ corresponds to a reference dry biomass of about 2 kg/m² |\n"
-        "| $F_{moist,k}$ | Surface fuel moisture | spatio-temporal | – , mass fraction $[0,1]$ | Damps spread rate (Sec. 5) and combustion fraction (Sec. 6) |")
+        "| $F_{moist,k}$ | Surface fuel moisture | spatio-temporal | –, mass fraction $[0,1]$ | Damps spread rate and combustion fraction |")
     st.caption(
-        "The fuel load itself is part of the *state* (Sec. 3); only its "
+        "The fuel load itself is part of the *state*; only its "
         "initial value is an external input. Moisture is a static exogenous "
         "field by default; an optional mode recomputes it each step from "
         "temperature and humidity (Simard equilibrium moisture).")
@@ -297,7 +297,7 @@ def _sec_2(ctx):
     st.caption(
         "Ignition injection is an external *trigger*, not a state: it starts "
         "a fire but does not describe its strength. If the cell has no fuel, "
-        "the injection has no lasting effect (Sec. 4).")
+        "the injection has no lasting effect.")
 
     # ---- 2.5 values
     st.markdown("#### 2.5 Values at risk — $U_{Val}$ (decisional context)")
@@ -345,7 +345,7 @@ def _sec_2(ctx):
         "resources are available, *how effective* they are and *how long* "
         "they need to arrive. Everything else in the model is physics; the "
         "DSS influences the fire exclusively through "
-        "$U_{DSS,k} \\rightarrow F_{red,k}$ (Sec. 6) and never overwrites "
+        "$U_{DSS,k} \\rightarrow F_{red,k}$ and never overwrites "
         "the fire state directly.")
     st.caption(
         "Distinguish $U_{Res,k}$ from $U_{DSS,k}$: $U_{Res,k}$ is the "
@@ -379,7 +379,7 @@ def _sec_3(ctx):
     _eq(r"S_{k+1}=\Phi\big(S_k,\;\mathcal{F}_{in,k}\big)",
         [r"$\Phi$ — the transition operator: the four update rules of "
          r"Sections 4, 6, 7 and 8 applied to all cells at once",
-         r"$\mathcal{F}_{in,k}$ — the external input set of Section 2"],
+         r"$\mathcal{F}_{in,k}$ — the external input set of"],
         note="Φ itself is deterministic. Randomness can only enter through "
              "the exogenous inputs (e.g. gust fluctuations), never through "
              "the update rules.")
@@ -396,7 +396,7 @@ def _sec_4(ctx):
         r"\;I_{Ign,k}(x,y)\cdot H(x,y)\,\Big\}",
         [r"$B_{k+1}^{pers}$ — persistence term, defined below",
          r"$B_{k+1}^{prop}$ — neighbour propagation term, defined below",
-         r"$I_{Ign,k}$ — external ignition injection (Sec. 2.4)",
+         r"$I_{Ign,k}$ — external ignition injection ",
          r"$H(x,y)=\mathbb{1}\big[F_{load,k}(x,y)>\epsilon_{fuel}\big]$ — the "
          r"fuel availability gate: no mechanism can ignite a cell that holds "
          r"no combustible fuel"])
@@ -449,7 +449,7 @@ def _sec_4(ctx):
          r"$B_k(i,j)$ — only burning neighbours contribute (the factor is "
          r"$0$ for non-burning ones)",
          r"$R_{spread,k}(i,j)$ — rate of spread of the **burning neighbour** "
-         r"(cells per step, Sec. 5): a fast-burning neighbour pushes more "
+         r"(cells per step,): a fast-burning neighbour pushes more "
          r"influence",
          r"$g_{dir,k}^{(i,j)\to(x,y)}$ — directional wind weight of the "
          r"specific neighbour-to-cell geometry, defined next",
@@ -467,7 +467,7 @@ def _sec_4(ctx):
          r"$\max\{0,\cdot\}$ — clipping: a neighbour strictly downwind of "
          r"the target contributes nothing (no upwind spread through this "
          r"term; upwind creep can still occur via the isotropic blend at "
-         r"low wind, see Sec. 9)"])
+         r"low wind, see)"])
     st.markdown(
         "The eight geometric angles are fixed by the grid (direction *from* "
         "the neighbour *to* the target):")
@@ -480,7 +480,7 @@ def _sec_4(ctx):
         "directly to the west gives $g_{dir}=\\cos(0-0)=1$ (full weight); a "
         "diagonal neighbour gives $\\cos(\\pi/4)\\approx0.71$; a neighbour "
         "to the east gives $\\cos(\\pi)=-1 \\to 0$ (clipped).")
-    st.markdown("**Activation defaults (Eq. 44–45):**")
+    st.markdown("**Activation defaults:**")
     _table(
         "| Parameter | Symbol | Unit | Default | Current |\n"
         "|---|---|---|---|---|\n"
@@ -510,7 +510,7 @@ def _sec_5(ctx):
                 "beyond the extinction moisture:")
     _eq(r"g_{moist,k}(x,y)=\max\Big\{0,\;1-\frac{F_{moist,k}(x,y)}"
         r"{m_{ext}(F_{type}(x,y))}\Big\}",
-        [r"$F_{moist,k}$ — surface fuel moisture (mass fraction, Sec. 2.3)",
+        [r"$F_{moist,k}$ — surface fuel moisture (mass fraction,)",
          r"$m_{ext}(F_{type})$ — extinction moisture threshold of the fuel "
          r"class (mass fraction, table below). "
          r"$F_{moist}\ge m_{ext}\Rightarrow g_{moist}=0$: no spread"])
@@ -529,7 +529,7 @@ def _sec_5(ctx):
                 "spread accelerates uphill:")
     _eq(r"g_{slope}(x,y)=1+a_s\big(F_{type}(x,y)\big)\cdot"
         r"\tan\!\big(G_{slope}(x,y)\big)",
-        [r"$G_{slope}$ — terrain slope (rad, Sec. 2.2); in the code the "
+        [r"$G_{slope}$ — terrain slope (rad,); in the code the "
          r"slope is clipped to $\pm1.4$ rad so $\tan(\cdot)$ stays finite, "
          rf"and the whole factor is bounded to $[0, {sp.slope_gain_max:g}]$ "
          r"(real slope response saturates; unbounded $\tan$ explodes on "
@@ -540,7 +540,7 @@ def _sec_5(ctx):
                 "with wind direction:")
     _eq(r"g_{aspect,k}(x,y)=1+a_{asp}\big(F_{type}(x,y)\big)\cdot"
         r"\cos\!\big(G_{aspect}(x,y)-W_{wd,k}(x,y)\big)",
-        [r"$G_{aspect}$ — slope orientation (rad, Sec. 2.2)",
+        [r"$G_{aspect}$ — slope orientation (rad,)",
          r"$W_{wd,k}$ — wind direction (rad)",
          r"$a_{asp}(F_{type})$ — aspect sensitivity of the fuel class "
          r"(dimensionless, table below). Aligned wind and aspect "
@@ -552,12 +552,12 @@ def _sec_5(ctx):
         "1 cell/step = 1 m/min, so the numbers are metric no-wind spread "
         "rates; $m_{ext}$ as mass fraction; $a_w$, $a_s$, $a_{asp}$ "
         "dimensionless sensitivities; $b_{base}$ as fraction of fuel "
-        "consumed per step (Sec. 6); $e$ as economic value per cell unit "
-        "(Sec. 14). Values are calibrated to the fire-behaviour literature: "
+        "consumed per step; $e$ as economic value per cell unit "
+        ". Values are calibrated to the fire-behaviour literature: "
         "the Anderson (1982) fuel models (grass FM1/FM3, shrub FM5/FM6, "
         "long-needle litter FM9, compact hardwood litter FM8), Scott & "
         "Burgan (2005) and the Rothermel (1972) spread model. With the wind "
-        "factor of Sec. 5(b) the benchmark head-fire rates are reproduced: "
+        "factor of(b) the benchmark head-fire rates are reproduced: "
         "grass tens of m/min, shrub 5\u201310, pine litter 2\u20134, "
         "hardwood litter below 1.")
     rows = ["| id | Fuel class | $r_{base}$ | $m_{ext}$ | $a_w$ | $a_s$ | "
@@ -571,7 +571,7 @@ def _sec_5(ctx):
     st.caption(
         "Columns $r_{base}, m_{ext}, a_w, a_s, a_{asp}$ form Table "
         "A.1; $b_{base}$ is Table B.1; $e$ feeds the cost model "
-        "(Sec. 14). Classes with $r_{base}=0$ (non_fuel, water) can never "
+        ". Classes with $r_{base}=0$ (non_fuel, water) can never "
         "propagate fire; they act as natural firebreaks. The whole table "
         "is editable in the **Parameters** page (Fuel classes).")
 
@@ -599,7 +599,7 @@ def _sec_6(ctx):
     _eq(r"F_{burn,k}(x,y)=\min\Big\{1,\;b_{base}\big(F_{type}(x,y)\big)\cdot"
         r"\big(1-F_{moist,k}(x,y)\big)\Big\}",
         [r"$b_{base}(F_{type})$ — baseline combustion coefficient of the "
-         r"fuel class, in fraction of fuel per step (Table in Sec. 5): "
+         r"fuel class, in fraction of fuel per step (Table in): "
          r"grass burns off fast (0.25/step), hardwood slowly (0.05/step)",
          r"$(1-F_{moist,k})$ — linear moisture damping: fully wet fuel "
          r"($F_{moist}=1$) does not burn, dry fuel burns at the baseline rate",
@@ -633,7 +633,7 @@ def _sec_6(ctx):
          r"$\ln 2/\beta_t\approx 23$ min, matching initial-attack "
          r"response curves. E.g. $\beta_t=0.03$, $R_{time}=30$ min: "
          r"$e^{-0.9}\approx0.41$",
-         r"$G_{access}\in[0,1]$ — static accessibility (Sec. 2.2)"])
+         r"$G_{access}\in[0,1]$ — static accessibility "])
     _eq(r"\eta_{eff,k}(x,y)=\frac{R_{eff,k}(x,y)}{1+\gamma_I\,I_k(x,y)}",
         [r"effectiveness factor — nominal efficiency, degraded by the "
          r"**current** fire intensity: intense fires resist suppression",
@@ -662,7 +662,7 @@ def _sec_6(ctx):
         "⇒ effect decays smoothly to zero; poor access ⇒ proportional "
         "reduction; intense fire ⇒ diminishing returns. Suppression removes "
         "fuel — it never switches $B_k$ off directly. Extinction then "
-        "follows physically through the persistence condition of Sec. 4. "
+        "follows physically through the persistence condition of "
         "All three coefficients are adjustable in the **Parameters** page "
         "(Suppression effectiveness).")
 
@@ -672,7 +672,7 @@ def _sec_7(ctx):
     st.markdown(
         "The intensity proxy is a bounded indicator of combustion strength "
         "in $[0,1]$. It does not model temperature or heat flux; it exists "
-        "to (i) make intense fires resist suppression (Sec. 6), (ii) rank "
+        "to (i) make intense fires resist suppression, (ii) rank "
         "risk, and (iii) feed the decision layer. It is built from three "
         "normalized drivers:")
     _eq(r"\tilde F_k(x,y)=\min\Big\{1,\frac{F_{load,k}(x,y)}{F_{max}}\Big\},"
@@ -756,7 +756,7 @@ def _sec_9(ctx):
         f"$w_{{aniso}}={sp.aniso_wind_full:g}$ m/s and "
         f"$f_{{back}}={getattr(sp, 'back_frac', 0.10):g}$. At zero wind the "
         "spread is isotropic (fuel and slope driven); at full wind the "
-        "head fire uses the wind-aligned weight of Sec. 4 while flanking "
+        "head fire uses the wind-aligned weight of while flanking "
         "and backing spread continue at the floor $f_{back}$ — backing "
         "fires run at roughly 5\u201315% of the head fire rate "
         "(Rothermel 1972; Cheney & Sullivan, Grassfires 2008).\n"
@@ -765,7 +765,7 @@ def _sec_9(ctx):
         "numerical blow-up near vertical terrain.\n"
         "5. **Optional elliptical kernel** "
         f"(currently {'on' if sp.elliptical else 'off'}). When enabled, the "
-        "directional weight of Sec. 4 is replaced by the wind-elongated "
+        "directional weight of is replaced by the wind-elongated "
         "ellipse used by Cell2Fire/FARSITE: "
         "$g_{dir}^{ell}=\\dfrac{1-e}{1-e\\cos\\Delta}$ with "
         "$\\Delta = W_{wd}-\\theta_{(i,j)\\to(x,y)}$, eccentricity "
@@ -889,7 +889,7 @@ def _sec_10(ctx):
         "in single steps ($n_{sub}=1$); note $W_{ws}=6\\ge w_{aniso}=6$, "
         "so the wind-aligned weight applies (head direction, "
         "$g_{dir}=1$).")
-    st.markdown("**Step 1 — rate of spread at the burning source (Sec. 5):**")
+    st.markdown("**Step 1 — rate of spread at the burning source:**")
     st.latex(r"g_{moist}=1-\tfrac{0.08}{0.30}=0.7333,\qquad "
              r"g_{wind}=1+4\tanh(\tfrac{6}{10})=1+4\times0.5370=3.1482")
     st.latex(r"g_{slope}=1+1.8\tan(0.1)=1+1.8\times0.1003=1.1806,\qquad "
@@ -897,7 +897,7 @@ def _sec_10(ctx):
     st.latex(r"R_{spread}=0.30\times0.7333\times3.1482\times1.1806"
              r"\times1.150=0.9403\ \text{cells/step}"
              r"\;(=0.94\ \text{m/min at the 30 m / 30 min reference})")
-    st.markdown("**Step 2 — influence buildup at the target (Sec. 4):** only "
+    st.markdown("**Step 2 — influence buildup at the target:** only "
                 "$C_{src}$ burns; it sits west, so $\\theta=0$ and "
                 "$g_{dir}=\\max\\{0,\\cos(0-0)\\}=1$ (non-diagonal, "
                 "no $\\sqrt2$ correction):")
@@ -913,7 +913,7 @@ def _sec_10(ctx):
                 "source receives only the flank/backing floor "
                 "$f_{back}=0.1$ of the influence and ignites an order of "
                 "magnitude later.)")
-    st.markdown("**Step 3 — fuel update at the burning source (Sec. 6),** "
+    st.markdown("**Step 3 — fuel update at the burning source,** "
                 "with a suppression assignment $R_{cap}=0.5$, "
                 "$R_{avail}=1$, $R_{eff}=0.8$, $R_{time}=5$ min, "
                 "$G_{access}=1$, and current intensity $I_k=0.4$:")
@@ -925,13 +925,13 @@ def _sec_10(ctx):
              r"=0.0383")
     st.latex(r"F_{load,k+1}=\max\{0,\;1.0-1\times0.0736\times1.0"
              r"-0.0383\}=0.8881")
-    st.markdown("**Step 4 — intensity of the newly ignited target (Sec. 7),** "
+    st.markdown("**Step 4 — intensity of the newly ignited target,** "
                 "using its current fuel $F_{load,k}=1.0$:")
     st.latex(r"\tilde F=1.0,\quad \tilde W=\tfrac{6}{20}=0.300,\quad "
              r"\tilde S=\tfrac{\tan 0.1}{\tan(\pi/4)}=0.1003")
     st.latex(r"I_{k+1}=1\times\tanh\!\big(2\,(1.0+0.5\times0.300"
              r"+0.3\times0.1003)\big)=\tanh(2.3602)=0.9823")
-    st.markdown("**Step 5 — ignition clocks (Sec. 8):** the target is newly "
+    st.markdown("**Step 5 — ignition clocks:** the target is newly "
                 "ignited ($B_k=0\\to B_{k+1}=1$) so "
                 "$\\tau_{k+1}(C_{tgt})=0$; the source keeps burning so "
                 "$\\tau_{k+1}(C_{src})=\\tau_k+\\Delta t$.")
@@ -1027,9 +1027,9 @@ def _sec_11(ctx):
         "Every component keeps its **last observed field** and its data "
         "age $\\Delta t_{rep}$. The per-component observation confidence "
         "aggregates four independent degradation factors by the "
-        "conservative minimum (Eq. 68), the cell-level confidence is the "
-        "weakest component (Eq. 69), and the bounded disturbance shrinks "
-        "with confidence (Eqs. 67, 70):")
+        "conservative minimum, the cell-level confidence is the "
+        "weakest component, and the bounded disturbance shrinks "
+        "with confidence:")
     _eq(r"conf_{j,k}^{i}(x,y)=\min\Big\{\,\theta_{j,k}^{i}(x,y),\;"
         r"\rho_{k}^{i}(x,y),\;e^{-\lambda_{conf}\,\Delta t_{rep,k}^{i}"
         r"(x,y)},\;\gamma_{k}^{i}\,\Big\}",
@@ -1054,7 +1054,7 @@ def _sec_11(ctx):
         r"\big|\epsilon_{j,k}^{i}(x,y)\big|\le "
         r"\big(1-conf_{j,k}^{i}(x,y)\big)\,\bar\epsilon_{j}^{i}",
         [r"cell confidence = weakest component (conservative principle, "
-         r"Eq. 69) — the model value that bounds the disturbance; the "
+         r") — the model value that bounds the disturbance; the "
          r"region-level scalar DISPLAYED next to each agent is the "
          r"component-mean over its cells $\Omega_i$ (a component with "
          r"no source at all would otherwise pin the display to zero)",
@@ -1075,16 +1075,16 @@ def _sec_12(ctx):
         r"\mathcal{F}_{DSS,k}=\{U_{Val,k},\,U_{Res,k}\}",
         [r"$\pi_{DSS}$ — the decision policy (rule based, optimization "
          r"based, or learned); its output is the four-field allocation of "
-         r"Sec. 2.6",
-         r"$U_{Val,k}$ — values at risk (Sec. 2.5): *what to protect*",
+         r"",
+         r"$U_{Val,k}$ — values at risk: *what to protect*",
          r"$U_{Res,k}$ — the external resource pool: *what exists to "
          r"deploy* (capacities, positions, availabilities)"])
     st.markdown("The full causal chain of an intervention is:")
     _eq(r"U_{DSS,k}=\big[R_{cap,k},R_{avail,k},R_{eff,k},R_{time,k}\big]"
-        r"\;\xrightarrow{\text{Sec. 6}}\;F_{red,k}"
-        r"\;\xrightarrow{\text{Sec. 6}}\;F_{load,k+1}"
-        r"\;\xrightarrow{\text{Sec. 4}}\;B_{k+m}"
-        r"\;\xrightarrow{\text{Sec. 7}}\;I_{k+m}")
+        r"\;\xrightarrow{\text{}}\;F_{red,k}"
+        r"\;\xrightarrow{\text{}}\;F_{load,k+1}"
+        r"\;\xrightarrow{\text{}}\;B_{k+m}"
+        r"\;\xrightarrow{\text{}}\;I_{k+m}")
     st.markdown(
         "- The DSS sets the four resource fields; the suppression mapping "
         "turns them into a fuel reduction $F_{red,k}$.\n"
@@ -1117,7 +1117,7 @@ def _sec_13(ctx):
         "| Public warning | Alerts to the affected public | intervention urgency | decision output; affects the delay term of the cost |")
     st.caption(
         "Fixing this vocabulary keeps the action space finite and "
-        "interpretable: every rule consequent and every cost term (Sec. 14) "
+        "interpretable: every rule consequent and every cost term "
         "has a concrete referent. The first four types act physically "
         "through $U_{DSS,k}$; the last two act on exposure and timing and "
         "are scored by the cost function.")
@@ -1177,7 +1177,7 @@ def _sec_14(ctx):
         r"{\sum_{(x,y)\in G}\big(V_{bld}(x,y)+V_{crit}(x,y)\big)}",
         [r"asset value lost divided by the **total exposed asset value**; "
          r"$V_{bld}$ is building footprint and $V_{crit}$ the critical "
-         r"facility index (Sec. 2.5), both in $[0,1]$",
+         r"facility index, both in $[0,1]$",
          r"structures and infrastructure are priced in this single term; "
          r"burned area (Term 1) prices land only, so no value is counted "
          r"twice"])
@@ -1190,7 +1190,7 @@ def _sec_14(ctx):
          rf"currently {cp.population_at_risk_fraction:g} (used for the raw "
          r"casualty display)",
          rf"$H$ — scenario horizon, currently {cp.horizon_steps:g} steps",
-         r"an effective evacuation (Sec. 13) lowers $E_k$; beyond its "
+         r"an effective evacuation lowers $E_k$; beyond its "
          rf"weight, a candidate whose exposure exceeds a hard ceiling "
          rf"({cp.population_ceiling:g}) is rejected at the acceptance gate"])
     st.markdown("**Term 4 — response cost $J^{resp}$** (committed resources):")
@@ -1316,7 +1316,7 @@ def _sec_15(ctx):
          r"protection, while a low-quality decision is prevented from "
          r"acting at full strength"])
     st.caption(
-        "Together, Sec. 14 and Sec. 15 close the loop: the cost drives the "
+        "Together, and close the loop: the cost drives the "
         "*search* for better decisions (accept only $\\Delta J<0$), the "
         "quality gate governs the *application* of the chosen one.")
 
@@ -1326,77 +1326,77 @@ def _sec_16(ctx):
     _table(
         "| Symbol | Meaning | Unit / Range | Defined in |\n"
         "|---|---|---|---|\n"
-        "| $G,\\ (x,y)$ | Grid domain, cell index | – | Sec. 1 |\n"
-        "| $k,\\ \\Delta t,\\ \\Delta x$ | Step index, step length, cell size | –, time, m | Sec. 1 |\n"
-        "| $\\Theta_{UI}$ | User interaction operator | – | Sec. 0 |\n"
-        "| $\\mathcal{F}_{in,k}$ | Physical input set | – | Sec. 0, 2 |\n"
-        "| $\\mathcal{F}_{DSS,k}$ | Decisional context set | – | Sec. 0, 12 |\n"
-        "| $W_{temp,k}, W_{rh,k}$ | Air temperature, relative humidity | °C, % | Sec. 2.1 |\n"
-        "| $W_{ws,k}, W_{wd,k}$ | Wind speed, wind direction | m/s, rad | Sec. 2.1 |\n"
-        "| $W_{gust,k}, W_{prec,k}$ | Wind gust, precipitation | m/s, mm/h | Sec. 2.1 |\n"
-        "| $G_{elev}, G_{slope}, G_{aspect}$ | Elevation, slope, aspect | m, rad, rad | Sec. 2.2 |\n"
-        "| $G_{access}$ | Accessibility index | $[0,1]$ | Sec. 2.2 |\n"
-        "| $F_{type}$ | Fuel class id | categorical | Sec. 2.3 |\n"
-        "| $F_{load,k}$ | Fuel load (state) | $[0,1]$ norm. | Sec. 2.3, 3, 6 |\n"
-        "| $F_{moist,k}$ | Fuel moisture | mass fraction | Sec. 2.3 |\n"
-        "| $I_{Ign,k}$ | Ignition injection | $\\{0,1\\}$ | Sec. 2.4 |\n"
-        "| $V_{bld}, V_{crit}, V_{pop}, V_{evac}, V_{prio}$ | Values at risk, priority score | see Sec. 2.5 | Sec. 2.5 |\n"
-        "| $w_{bld}, w_{crit}, w_{pop}, w_{evac}$ | Priority weights (sum = 1) | – | Sec. 2.5 |\n"
-        "| $R_{cap,k}, R_{avail,k}, R_{eff,k}, R_{time,k}$ | DSS resource fields | see Sec. 2.6 | Sec. 2.6 |\n"
-        "| $U_{Res,k}$ | External resource pool | – | Sec. 2.6, 12 |\n"
-        "| $s_k, S_k$ | Local / global state | – | Sec. 3 |\n"
-        "| $B_k$ | Burning status (state) | $\\{0,1\\}$ | Sec. 3, 4 |\n"
-        "| $I_k$ | Fire intensity proxy (state) | $[0,1]$ | Sec. 3, 7 |\n"
-        "| $\\tau_k$ | Time since ignition (state) | time | Sec. 3, 8 |\n"
-        "| $\\Phi$ | Transition operator | – | Sec. 3 |\n"
-        "| $\\mathbb{1}[\\cdot]$ | Indicator function | $\\{0,1\\}$ | Sec. 4 |\n"
-        "| $\\epsilon_{fuel}$ | Extinction fuel threshold | norm. fuel | Sec. 4 |\n"
-        "| $\\Psi_k$ | Propagation influence | cells/step | Sec. 4 |\n"
-        "| $\\Theta_{ign}$ | Ignition threshold | cells/step | Sec. 4 |\n"
-        "| $N^8(x,y)$ | 8-connected neighbourhood | – | Sec. 4 |\n"
-        "| $g_{dir}, \\theta_{(i,j)\\to(x,y)}$ | Directional weight, geometry angle | $[0,1]$, rad | Sec. 4 |\n"
-        "| $A_k$ (buildup) | Ignition influence buildup | \u215b cell-widths | Sec. 4 |\n"
-        "| $\\lambda$ | Buildup leak | fraction/step | Sec. 4 |\n"
-        "| $f_{back}$ | Flank/backing floor of $g_{dir}$ | – | Sec. 9 |\n"
-        "| $k_{slope},\\ \\vec u_{eff}$ | Slope-equivalent wind, effective vector | m/s, – | Sec. 9 |\n"
-        "| $g_{slope}^{max}$ | Slope factor cap | – | Sec. 5 |\n"
-        "| $s,\\ n_{sub}$ | Step-length scale, substep count | –, – | Sec. 9 |\n"
-        "| $LB,\\ e$ | Ellipse length/breadth, eccentricity | –, – | Sec. 9 |\n"
-        "| $p_{spot}, d_{spot}$ | Spotting probability, distance | –, cells | Sec. 9 |\n"
-        "| $R_{spread,k}$ | Rate of spread | cells/step | Sec. 5 |\n"
-        "| $r_{base}$ | Base spread rate (per fuel class) | cells/step | Sec. 5 |\n"
-        "| $g_{moist}, g_{wind}, g_{slope}, g_{aspect}$ | Spread modifiers | – | Sec. 5 |\n"
-        "| $m_{ext}$ | Extinction moisture (per fuel class) | mass fraction | Sec. 5 |\n"
-        "| $a_w, a_s, a_{asp}$ | Wind / slope / aspect sensitivity | – | Sec. 5 |\n"
-        "| $w_0$ | Wind saturation scale | m/s | Sec. 5 |\n"
-        "| $e(F_{type})$ | Economic value of fuel class | currency/cell unit | Sec. 5, 14 |\n"
-        "| $F_{burn,k}$ | Combustion fraction per step | $[0,1]$ | Sec. 6 |\n"
-        "| $b_{base}$ | Baseline combustion coefficient | fraction/step | Sec. 6 |\n"
-        "| $F_{red,k}$ | Suppression fuel reduction | $[0,1]$ | Sec. 6 |\n"
-        "| $\\alpha_s$ | Global suppression gain | fraction/step | Sec. 6 |\n"
-        "| $\\eta_{cap}, \\eta_{avail}, \\eta_{reach}, \\eta_{eff}$ | Suppression factors | $[0,1]$ | Sec. 6 |\n"
-        "| $R_{cap,max}$ | Reference max capacity | as $R_{cap}$ | Sec. 6 |\n"
-        "| $\\beta_t$ | Travel-time decay rate | 1/time | Sec. 6 |\n"
-        "| $\\gamma_I$ | Intensity resistance | – | Sec. 6 |\n"
-        "| $\\tilde F, \\tilde W, \\tilde S$ | Normalized fuel / wind / slope | $[0,1]$ | Sec. 7 |\n"
-        "| $F_{max}, W_{ref}, S_{max}$ | Normalization references | norm., m/s, rad | Sec. 7 |\n"
-        "| $\\beta, \\gamma_W, \\gamma_S$ | Intensity gain and weights | – | Sec. 7 |\n"
-        "| $\\mathcal{O}_k,\\ h,\\ \\epsilon_k$ | Observation, obs. function, obs. noise | – | Sec. 11 |\n"
-        "| $r_s, T_s, \\ell_s, \\bar\\epsilon_j$ | Sensor footprint, revisit, latency, disturbance bound | m, min, min, – | Sec. 11 |\n"
-        "| $\\theta_{j,k}^{i},\\ \\rho_k^i,\\ \\gamma_k^i$ | Observability weight, coverage density, source reliability | $[0,1]$ | Sec. 11 |\n"
-        "| $conf_{j,k}^{i},\\ \\lambda_{conf},\\ \\Delta t_{rep}$ | Observation confidence (Eq. 68–69), freshness decay, data age | $[0,1]$, 1/min, min | Sec. 11 |\n"
-        "| $\\pi_{DSS}$ | Decision policy | – | Sec. 12 |\n"
-        "| $A_k$ (burned mask) | Cumulative burned mask | $\\{0,1\\}$ | Sec. 14 |\n"
-        "| $M_{cons,k}, M_{supp,k}$ | Cumulative consumed / suppressed fuel | norm. fuel | Sec. 14 |\n"
-        "| $a_{ha}, a_{km^2}$ | Cell area conversions | ha, km² | Sec. 14 |\n"
-        "| $J_k,\\ J^{burn},J^{val},J^{inf},J^{pop},J^{sup},J^{del}$ | Total cost and its six terms | currency | Sec. 14 |\n"
-        "| $w_1,\\dots,w_6$ | Cost term weights | – | Sec. 14 |\n"
-        "| $c_{ha}, c_{bld}, c_{crit}, c_{sup}$ | Unit costs | currency | Sec. 14 |\n"
-        "| $\\lambda_{for}, \\lambda_{loss}$ | Forest multiplier, loss fraction | – | Sec. 14 |\n"
-        "| $P^{exp}, N^{cas}, \\rho_{risk}, v_L$ | Exposure, casualties, risk fraction, VSL | persons, persons, –, currency | Sec. 14 |\n"
-        "| $\\bar t^{\\,resp}$ | Capacity-weighted mean response time | time | Sec. 14 |\n"
-        "| $H,\\ U_{base},\\ \\Delta J$ | Rollout horizon, baseline, cost gain | steps, –, currency | Sec. 14 |\n"
-        "| $Q_k, q_j, \\omega_j, \\eta$ | Quality score, components, weights, threshold | $[0,1]$ | Sec. 15 |")
+        "| $G,\\ (x,y)$ | Grid domain, cell index | – | |\n"
+        "| $k,\\ \\Delta t,\\ \\Delta x$ | Step index, step length, cell size | –, time, m | |\n"
+        "| $\\Theta_{UI}$ | User interaction operator | – | |\n"
+        "| $\\mathcal{F}_{in,k}$ | Physical input set | – |, 2 |\n"
+        "| $\\mathcal{F}_{DSS,k}$ | Decisional context set | – |, 12 |\n"
+        "| $W_{temp,k}, W_{rh,k}$ | Air temperature, relative humidity | °C, % | |\n"
+        "| $W_{ws,k}, W_{wd,k}$ | Wind speed, wind direction | m/s, rad | |\n"
+        "| $W_{gust,k}, W_{prec,k}$ | Wind gust, precipitation | m/s, mm/h | |\n"
+        "| $G_{elev}, G_{slope}, G_{aspect}$ | Elevation, slope, aspect | m, rad, rad | |\n"
+        "| $G_{access}$ | Accessibility index | $[0,1]$ | |\n"
+        "| $F_{type}$ | Fuel class id | categorical | |\n"
+        "| $F_{load,k}$ | Fuel load (state) | $[0,1]$ norm. |, 3, 6 |\n"
+        "| $F_{moist,k}$ | Fuel moisture | mass fraction | |\n"
+        "| $I_{Ign,k}$ | Ignition injection | $\\{0,1\\}$ | |\n"
+        "| $V_{bld}, V_{crit}, V_{pop}, V_{evac}, V_{prio}$ | Values at risk, priority score | see | |\n"
+        "| $w_{bld}, w_{crit}, w_{pop}, w_{evac}$ | Priority weights (sum = 1) | – | |\n"
+        "| $R_{cap,k}, R_{avail,k}, R_{eff,k}, R_{time,k}$ | DSS resource fields | see | |\n"
+        "| $U_{Res,k}$ | External resource pool | – |, 12 |\n"
+        "| $s_k, S_k$ | Local / global state | – | |\n"
+        "| $B_k$ | Burning status (state) | $\\{0,1\\}$ |, 4 |\n"
+        "| $I_k$ | Fire intensity proxy (state) | $[0,1]$ |, 7 |\n"
+        "| $\\tau_k$ | Time since ignition (state) | time |, 8 |\n"
+        "| $\\Phi$ | Transition operator | – | |\n"
+        "| $\\mathbb{1}[\\cdot]$ | Indicator function | $\\{0,1\\}$ | |\n"
+        "| $\\epsilon_{fuel}$ | Extinction fuel threshold | norm. fuel | |\n"
+        "| $\\Psi_k$ | Propagation influence | cells/step | |\n"
+        "| $\\Theta_{ign}$ | Ignition threshold | cells/step | |\n"
+        "| $N^8(x,y)$ | 8-connected neighbourhood | – | |\n"
+        "| $g_{dir}, \\theta_{(i,j)\\to(x,y)}$ | Directional weight, geometry angle | $[0,1]$, rad | |\n"
+        "| $A_k$ (buildup) | Ignition influence buildup | \u215b cell-widths | |\n"
+        "| $\\lambda$ | Buildup leak | fraction/step | |\n"
+        "| $f_{back}$ | Flank/backing floor of $g_{dir}$ | – | |\n"
+        "| $k_{slope},\\ \\vec u_{eff}$ | Slope-equivalent wind, effective vector | m/s, – | |\n"
+        "| $g_{slope}^{max}$ | Slope factor cap | – | |\n"
+        "| $s,\\ n_{sub}$ | Step-length scale, substep count | –, – | |\n"
+        "| $LB,\\ e$ | Ellipse length/breadth, eccentricity | –, – | |\n"
+        "| $p_{spot}, d_{spot}$ | Spotting probability, distance | –, cells | |\n"
+        "| $R_{spread,k}$ | Rate of spread | cells/step | |\n"
+        "| $r_{base}$ | Base spread rate (per fuel class) | cells/step | |\n"
+        "| $g_{moist}, g_{wind}, g_{slope}, g_{aspect}$ | Spread modifiers | – | |\n"
+        "| $m_{ext}$ | Extinction moisture (per fuel class) | mass fraction | |\n"
+        "| $a_w, a_s, a_{asp}$ | Wind / slope / aspect sensitivity | – | |\n"
+        "| $w_0$ | Wind saturation scale | m/s | |\n"
+        "| $e(F_{type})$ | Economic value of fuel class | currency/cell unit |, 14 |\n"
+        "| $F_{burn,k}$ | Combustion fraction per step | $[0,1]$ | |\n"
+        "| $b_{base}$ | Baseline combustion coefficient | fraction/step | |\n"
+        "| $F_{red,k}$ | Suppression fuel reduction | $[0,1]$ | |\n"
+        "| $\\alpha_s$ | Global suppression gain | fraction/step | |\n"
+        "| $\\eta_{cap}, \\eta_{avail}, \\eta_{reach}, \\eta_{eff}$ | Suppression factors | $[0,1]$ | |\n"
+        "| $R_{cap,max}$ | Reference max capacity | as $R_{cap}$ | |\n"
+        "| $\\beta_t$ | Travel-time decay rate | 1/time | |\n"
+        "| $\\gamma_I$ | Intensity resistance | – | |\n"
+        "| $\\tilde F, \\tilde W, \\tilde S$ | Normalized fuel / wind / slope | $[0,1]$ | |\n"
+        "| $F_{max}, W_{ref}, S_{max}$ | Normalization references | norm., m/s, rad | |\n"
+        "| $\\beta, \\gamma_W, \\gamma_S$ | Intensity gain and weights | – | |\n"
+        "| $\\mathcal{O}_k,\\ h,\\ \\epsilon_k$ | Observation, obs. function, obs. noise | – | |\n"
+        "| $r_s, T_s, \\ell_s, \\bar\\epsilon_j$ | Sensor footprint, revisit, latency, disturbance bound | m, min, min, – | |\n"
+        "| $\\theta_{j,k}^{i},\\ \\rho_k^i,\\ \\gamma_k^i$ | Observability weight, coverage density, source reliability | $[0,1]$ | |\n"
+        "| $conf_{j,k}^{i},\\ \\lambda_{conf},\\ \\Delta t_{rep}$ | Observation confidence, freshness decay, data age | $[0,1]$, 1/min, min | |\n"
+        "| $\\pi_{DSS}$ | Decision policy | – | |\n"
+        "| $A_k$ (burned mask) | Cumulative burned mask | $\\{0,1\\}$ | |\n"
+        "| $M_{cons,k}, M_{supp,k}$ | Cumulative consumed / suppressed fuel | norm. fuel | |\n"
+        "| $a_{ha}, a_{km^2}$ | Cell area conversions | ha, km² | |\n"
+        "| $J_k,\\ J^{burn},J^{val},J^{inf},J^{pop},J^{sup},J^{del}$ | Total cost and its six terms | currency | |\n"
+        "| $w_1,\\dots,w_6$ | Cost term weights | – | |\n"
+        "| $c_{ha}, c_{bld}, c_{crit}, c_{sup}$ | Unit costs | currency | |\n"
+        "| $\\lambda_{for}, \\lambda_{loss}$ | Forest multiplier, loss fraction | – | |\n"
+        "| $P^{exp}, N^{cas}, \\rho_{risk}, v_L$ | Exposure, casualties, risk fraction, VSL | persons, persons, –, currency | |\n"
+        "| $\\bar t^{\\,resp}$ | Capacity-weighted mean response time | time | |\n"
+        "| $H,\\ U_{base},\\ \\Delta J$ | Rollout horizon, baseline, cost gain | steps, –, currency | |\n"
+        "| $Q_k, q_j, \\omega_j, \\eta$ | Quality score, components, weights, threshold | $[0,1]$ | |")
 
 
 SECTIONS = [
@@ -1470,8 +1470,8 @@ def render():
         "that observes the fire and allocates suppression resources. This page "
         "describes both, plus the **cost function** that scores every decision. "
         "All equations are given in explicit, hand computable form; the "
-        "default parameter tables are in Sec. 4 (thresholds), Sec. 5 (Table "
-        "A.1 + B.1), Sec. 6 (Table B.2), Sec. 7 (Table C.1) and Sec. 14.4 "
+        "default parameter tables are in (thresholds), (Table "
+        "A.1 + B.1), (Table B.2), (Table C.1) and "
         "(cost model), and every value is adjustable in the Parameters page.")
 
     # --- search bar + expand/collapse controls

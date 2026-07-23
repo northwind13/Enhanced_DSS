@@ -1,4 +1,4 @@
-"""Layer 4 rule base: the representative decision rules of Appendix D.
+"""Layer 4 rule base: the representative decision rules of.
 
 Antecedents are written over the gated activations of the five decision
 concepts (five linguistic terms each). Consequents are NUMERIC
@@ -19,7 +19,7 @@ stays below the coverage floor alpha_min is flagged as a coverage gap
 
 The base is SPARSE and evolving: the antecedent space holds 5^5 = 3125
 combinations, only situation-activated rules are ever instantiated.
-R13 and R14 of Appendix D illustrate ADAPTATION-BORN rules (evFIS-tuned
+R13 and R14 of illustrate ADAPTATION-BORN rules (evFIS-tuned
 shoulder, GenAI-admitted rule); they arrive with the evolution loop and
 are catalogued here with their provenance, inactive until then.
 """
@@ -259,6 +259,11 @@ def evaluate_rules(concepts: Dict[str, np.ndarray],
     rules = SEED_RULES if rules is None else rules
     num = {i: 0.0 for i in INTERVENTIONS}
     den = {i: 0.0 for i in INTERVENTIONS}
+    # macro interventions expand to base channels for the PHYSICS, but we also
+    # track their OWN firing intensity so the UI can show a learned macro as a
+    # first-class intervention (its own row / legend), removable on wipe
+    num_m: Dict[str, float] = {}
+    den_m: Dict[str, float] = {}
     fx: List[Tuple[tuple, float]] = []
     trace = []
     w_max = 0.0
@@ -279,6 +284,8 @@ def evaluate_rules(concepts: Dict[str, np.ndarray],
                 # containment + suppression ahead of the front); it
                 # expands here, so the physics only ever sees the
                 # six base channels
+                num_m[interv] = num_m.get(interv, 0.0) + w * float(v)
+                den_m[interv] = den_m.get(interv, 0.0) + w
                 for bi, bw in macros[interv]["composition"]:
                     num[bi] += w * float(v) * float(bw)
                     den[bi] += w * float(bw)
@@ -308,4 +315,9 @@ def evaluate_rules(concepts: Dict[str, np.ndarray],
         elif e[0] == "withdraw_offensive":
             for iv in OFFENSIVE:
                 out[iv] = out[iv] * (1.0 - w)
+    # expose each fired MACRO's own intensity as an extra key (the effects
+    # above only touch the six base channels, so macros are untouched); the
+    # physics reads the base channels, the UI can read these
+    for _mn in num_m:
+        out[_mn] = num_m[_mn] / max(den_m[_mn], 1.0)
     return {i: float(np.clip(v, 0.0, 1.0)) for i, v in out.items()}, trace

@@ -1,9 +1,9 @@
-"""Interaction and scenario control operator (Section 4.2.4, Eq. 53 to 54).
+"""Interaction and scenario control operator (,).
 
 The user interaction operator Theta_UI applies admissible, bounded modifications
 to the external input set and the decision context set without ever touching the
 authoritative state S_k (state immutability, Remark 4.1). Each admissible
-transformation follows Table 4.1.
+transformation follows
 
 This module provides a thin, traceable API that the dashboard calls so that every
 operator action is expressed as an input level transformation.

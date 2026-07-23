@@ -1,4 +1,4 @@
-"""Decision cost model (Sec. 2.5.2, Table 2.4).
+"""Decision cost model (,).
 
 Five terms, each an ACTUAL quantity divided by a scenario reference so
 it lands in [0, 1]; J is their weighted mean. The formulas:

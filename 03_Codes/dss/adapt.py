@@ -1,4 +1,4 @@
-"""Staged adaptation of the rule base (Layer 4, Figure 4.1 loop).
+"""Staged adaptation of the rule base.
 
 The stages engage ONLY when the satisficing test fails (forecast J above
 J_TH); which stage is tried is chosen by a small value-based stage
@@ -9,13 +9,13 @@ whose reward is the realized cost reduction:
                        trapezoid parameters of the antecedent terms of
                        the deficient rules and of their consequent
                        intensities; a trial is KEPT only if the shadow
-                       forecast cost decreases (thesis Eq. 46)
+ forecast cost decreases
   stage 2  resolution  a NEW rule is instantiated at the antecedent cell
                        of the current situation (dominant terms of the
                        decision concepts), consequents seeded from the
                        concept demands; the sparse base grows on demand
-  stage 3  generative  a rule proposed by Claude (Anthropic API, model
-                       from DSS_GENAI_MODEL, key from ANTHROPIC_API_KEY).
+  stage 3  generative  a rule proposed by Claude through Claude Code on the
+                       user's subscription (`claude -p`; no API key).
                        A reachable model is REQUIRED: there is no offline
                        stand-in; if none is reachable the stage is skipped
                        and logged. A proposal is admitted only through the
@@ -48,11 +48,11 @@ def make_runtime_rules(profile: str = "full") -> List[Rule]:
     the module-level catalog).
 
     profile selects HOW MUCH doctrine the run starts with:
-      "full"    - the whole Table E.1 base (40 seeds + examples)
+ "full" - the whole base (40 seeds + examples)
       "core"    - the doctrine block R1-R22 only (no backbone): the
                   adaptation stages must rebuild the rest
       "minimal" - per intervention family only the SINGLE strongest
-                  seed (5 rules with the current Table E.1: one seed
+ seed (5 rules with the current: one seed
                   answers two families): the system starts nearly
                   naked and must LEARN its rule base by trial
                   (stages 2/3)
@@ -334,51 +334,54 @@ _GENAI_SCHEMA = ("Return ONLY a JSON object: {\"antecedents\": "
                  "physics, no new features.")
 
 
-def _genai_propose(situation: str) -> Optional[dict]:
-    """One rule proposal from Claude. Returns None when no model is
-    reachable (no key, SDK/REST failure, or unparseable reply)."""
-    key = os.environ.get("ANTHROPIC_API_KEY")
-    model = os.environ.get("DSS_GENAI_MODEL", "claude-sonnet-4-5")
-    if not key:
+def _genai_propose_cli(prompt: str, timeout: float = 120.0) -> Optional[dict]:
+    """One rule proposal via the Claude Code CLI (`claude -p`), i.e. on the
+    user's Claude subscription, no API key. Returns the parsed dict or None.
+
+    Reachability is decided by ACTUALLY invoking `claude` (same path the Test
+    Claude connection button uses), not shutil.which: on Windows a `.cmd`
+    shim can be runnable by subprocess yet invisible to which, which used to
+    make stage 3 look unreachable even though the model answered fine."""
+    import subprocess
+    cmd = ["claude", "-p", prompt, "--output-format", "json"]
+    _m = os.environ.get("DSS_GENAI_MODEL")
+    if _m:
+        cmd += ["--model", _m]
+    try:
+        res = subprocess.run(cmd, capture_output=True, text=True,
+                             timeout=timeout)
+    except Exception:
         return None
+    if res.returncode != 0 or not res.stdout.strip():
+        return None
+    inner = res.stdout
+    try:                                   # unwrap {"result": "...text..."}
+        wrap = json.loads(res.stdout)
+        if isinstance(wrap, dict) and "result" in wrap:
+            inner = str(wrap["result"])
+    except Exception:
+        pass
+    try:
+        i, j = inner.find("{"), inner.rfind("}")
+        return json.loads(inner[i:j + 1])
+    except Exception:
+        return None
+
+
+def _genai_propose(situation: str) -> Optional[dict]:
+    """One rule proposal from Claude via the Claude Code CLI (`claude -p`) on
+    the user's subscription. Returns None when the `claude` command is not
+    available/logged in or the reply is unparseable."""
     prompt = ("You are the rule proposer of a wildfire decision "
               "support system. Situation:\n" + situation + "\n"
               + _GENAI_SCHEMA)
-    try:
-        import anthropic
-        client = anthropic.Anthropic(api_key=key)
-        msg = client.messages.create(
-            model=model, max_tokens=300,
-            messages=[{"role": "user", "content": prompt}])
-        txt = "".join(b.text for b in msg.content
-                      if getattr(b, "type", "") == "text")
-    except Exception:
-        try:                       # no sdk installed: plain REST call
-            import urllib.request
-            req = urllib.request.Request(
-                "https://api.anthropic.com/v1/messages",
-                data=json.dumps({
-                    "model": model, "max_tokens": 300,
-                    "messages": [{"role": "user",
-                                  "content": prompt}]}).encode(),
-                headers={"x-api-key": key,
-                         "anthropic-version": "2023-06-01",
-                         "content-type": "application/json"})
-            with urllib.request.urlopen(req, timeout=30) as resp:
-                body = json.loads(resp.read().decode())
-            txt = "".join(b.get("text", "")
-                          for b in body.get("content", []))
-        except Exception:
-            return None
-    try:
-        i, j = txt.find("{"), txt.rfind("}")
-        return json.loads(txt[i:j + 1])
-    except Exception:
-        return None
+    return _genai_propose_cli(prompt)
 
 
-G5_MARGIN = 1e-3     # a vocabulary-growing package must clear this on both
-                     # reseeded rollouts (the vocabulary margin delta_v)
+G5_MARGIN = 1e-4     # a vocabulary-growing package must clear this on both
+                     # reseeded rollouts (the vocabulary margin delta_v). Kept
+                     # small so a genuinely-helpful new concept / composite
+                     # intervention is actually admitted, not gated out.
 G2B_COS = 0.95       # structural redundancy bound for new concepts (G2b)
 
 
@@ -417,6 +420,16 @@ def _validate_package(prop: dict, engine) -> Optional[str]:
             tot += wv
         nc["inputs"] = [[str(a), float(b) / tot] for a, b in ins]
         nc["name"] = name
+        # the new intermediate concept must sit ABOVE every concept it reads,
+        # so infer_concepts (which sweeps levels 1..4) computes it AFTER its
+        # dependencies. Features are level 0; a concept input pins the floor.
+        _inlv = [engine.hierarchy[a][0] for a, _b in nc["inputs"]
+                 if a in engine.hierarchy]
+        _reqlv = (max(_inlv) + 1) if _inlv else 2
+        if _reqlv > 4:
+            return ("G2 package (concept inputs sit too high in the "
+                    "hierarchy; use features or lower-level concepts)")
+        nc["_level_num"] = int(_reqlv)
         if lvl == "decision":
             fam = nc.get("family")
             if fam not in INTERVENTIONS:
@@ -464,7 +477,10 @@ def _install_package(prop: dict, engine) -> dict:
     nc = prop.get("new_concept")
     ni = prop.get("new_intervention")
     if nc:
-        lvl = 3 if nc.get("level") == "decision" else 2
+        # placed strictly above its concept inputs (computed in
+        # _validate_package) so the hierarchy resolves in dependency order
+        lvl = (3 if nc.get("level") == "decision"
+               else int(nc.get("_level_num", 2)))
         engine.hierarchy[nc["name"]] = (
             lvl, [(a, b) for a, b in nc["inputs"]])
         undo["concept"] = nc["name"]
@@ -578,7 +594,15 @@ def stage3_generative(build_override, sim, rules: List[Rule],
     if coverage_gap:
         situation += (f"\nThe base is nearly silent here (max "
                       f"fired weight {cov_w:.2f}): propose ONE rule "
-                      "that ANSWERS this situation.")
+                      "that ANSWERS this situation. If the five decision "
+                      "concepts and six base interventions cannot cleanly "
+                      "express the RIGHT response for this situation, PREFER "
+                      "a PACKAGE: add ONE new intermediate concept (a weighted "
+                      "mix of existing features/concepts that names what "
+                      "matters here) OR ONE composite intervention (a weighted "
+                      "mix of base channels), and write the rule USING that "
+                      "new object. Grow the vocabulary when it genuinely helps "
+                      "answer the void.")
     situation += ("\nDo NOT re-issue an existing rule's antecedent "
                   "cell with different numbers (that is the tuning "
                   "stage's job); pick an UNCOVERED situation cell.")
@@ -601,7 +625,7 @@ def stage3_generative(build_override, sim, rules: List[Rule],
         return AdaptOutcome(
             3, False,
             "generative stage requires a reachable model; none available "
-            "(set ANTHROPIC_API_KEY / DSS_GENAI_MODEL)",
+            "(install Claude Code and run `/login` on your Pro/Max plan)",
             info=dict(source="none", reason="model unreachable"))
     err = _g1_g2(prop, engine=engine)
     while err and len(_revisions) < _budget:
@@ -706,19 +730,18 @@ def stage3_generative(build_override, sim, rules: List[Rule],
         return AdaptOutcome(3, False,
                             f"rejected at G5 package margin ({src})",
                             info=info)
-    _tol = 1e-4 if coverage_gap else -1e-6
-    if j1a <= j0a + _tol and j1b <= j0b + _tol and (
-            coverage_gap or (j1a < j0a - 1e-6 and j1b < j0b - 1e-6)):
-        info["gates"]["verdict"] = ("admitted (coverage gap, "
-                                    "non-inferior)"
-                                    if coverage_gap
-                                    and not j1a < j0a - 1e-6
-                                    else "admitted")
+    # STRICT admission: a generated rule must ACTUALLY improve the physical
+    # forecast on BOTH reseeded rollouts (G3 + G4), even for a coverage void.
+    # (Earlier a void-filling rule was admitted when merely non-inferior; it
+    # grew the base without lowering cost, which was confusing. Now GenAI
+    # earns each rule by improving the outcome.)
+    if j1a < j0a - 1e-6 and j1b < j0b - 1e-6:
+        info["gates"]["verdict"] = "admitted (improves G3 + G4)"
         return AdaptOutcome(3, True, f"{name}: {newr.text()}",
                             dJ=j1a - j0c, info=info)
     rules.pop()
     which = "G3" if j1a >= j0a - 1e-6 else "G4 A/B"
-    info["gates"]["verdict"] = f"rejected at {which}"
+    info["gates"]["verdict"] = f"rejected at {which} (no improvement)"
     return AdaptOutcome(3, False, f"rejected at {which} ({src})",
                         info=info)
 
@@ -777,109 +800,107 @@ class StageController:
 
 
 def reset_partitions() -> None:
-    """Return every variable's partition to the Table D.3 default,
+    """Return every variable's partition to the default,
     DROPPING inserted terms as well."""
     REGISTRY.reset()
 
 
 def genai_status() -> str:
     """Which proposer stage 3 will use right now."""
-    key = os.environ.get("ANTHROPIC_API_KEY")
-    model = os.environ.get("DSS_GENAI_MODEL", "claude-sonnet-4-5")
-    return (f"Claude via API ({model})" if key
-            else "generative disabled: no model reachable "
-                 "(set ANTHROPIC_API_KEY)")
+    try:
+        from . import genai as _g
+        mode = _g.transport_mode()
+    except Exception:
+        mode = "none"
+    if mode == "cli":
+        return "Claude Code CLI (your subscription)"
+    return ("generative disabled: the `claude` command is not available "
+            "(install Claude Code and run `/login` on your Pro/Max plan)")
 
 
 def genai_config() -> dict:
     """Static view of the generative wiring WITHOUT touching the network.
 
-    Reports whether a key is present (masked, never the value), the model
-    that stage 3 would call, and how the transport would be made (SDK vs
-    raw REST). Cheap: safe to render on every frame."""
-    key = os.environ.get("ANTHROPIC_API_KEY")
-    model = os.environ.get("DSS_GENAI_MODEL", "claude-sonnet-4-5")
+    Stage 3 runs only through Claude Code on the user's subscription; there
+    is no API-key path. Cheap: safe to render on every frame."""
+    model = os.environ.get("DSS_GENAI_MODEL", "")
     try:
-        import anthropic  # noqa: F401
-        transport = "anthropic SDK"
-        sdk = True
+        from . import genai as _g
+        mode = _g.transport_mode()
     except Exception:
-        transport = "REST (urllib, no SDK)"
-        sdk = False
-    masked = ""
-    if key:
-        masked = (key[:7] + "…" + key[-4:]) if len(key) > 12 \
-            else "set"
+        mode = "none"
+    if mode == "cli":
+        transport = "Claude Code CLI (your subscription)"
+        endpoint = "claude -p"
+    else:
+        transport = "none"
+        endpoint = ""
     return {
-        "key_present": bool(key),
-        "key_masked": masked,
-        "model": model,
-        "endpoint": "https://api.anthropic.com/v1/messages",
+        "mode": mode,
+        "model": model or "(subscription default)",
+        "endpoint": endpoint,
         "transport": transport,
-        "sdk": sdk,
-        "reachable": bool(key),
+        "reachable": mode != "none",
     }
 
 
 def genai_probe(max_tokens: int = 64) -> dict:
-    """Make ONE real, live call to Claude and return the proof.
-
-    This is not a mock. It reads ANTHROPIC_API_KEY from the environment,
-    sends a tiny message to the configured model over the same transport
-    stage 3 uses, and returns Claude's OWN reply text together with the
-    round-trip latency, the reported model id and the token usage. Any
-    failure (missing key, auth, network, quota) is returned as a plain
-    error string so the app can show exactly why the generative stage is
-    or is not live."""
+    """Make ONE real, live call to Claude via the Claude Code CLI and return
+    the proof. This is not a mock: it runs `claude -p` on the user's
+    subscription and returns Claude's OWN reply text plus the round-trip
+    latency. Any failure (claude missing, not logged in, billing) is returned
+    as a plain error string so the app shows exactly why stage 3 is or is not
+    live."""
     import time
     cfg = genai_config()
     out = dict(cfg)
     out.update({"ok": False, "reply": "", "latency_ms": None,
                 "reported_model": "", "usage": None, "error": ""})
-    key = os.environ.get("ANTHROPIC_API_KEY")
-    if not key:
-        out["error"] = "no ANTHROPIC_API_KEY in the environment"
-        return out
     model = out["model"]
     ask = ("Reply with exactly this line and nothing else: "
            "DisasterAware GenAI link is live.")
+    if out.get("mode") != "cli":
+        out["error"] = ("the `claude` command is not available; install "
+                        "Claude Code and run `/login` on your Pro/Max plan")
+        return out
+    import subprocess
     t0 = time.time()
     try:
-        import anthropic
-        client = anthropic.Anthropic(api_key=key)
-        msg = client.messages.create(
-            model=model, max_tokens=max_tokens,
-            messages=[{"role": "user", "content": ask}])
-        out["reply"] = "".join(
-            b.text for b in msg.content
-            if getattr(b, "type", "") == "text").strip()
-        out["reported_model"] = getattr(msg, "model", model)
-        u = getattr(msg, "usage", None)
-        if u is not None:
-            out["usage"] = {"input_tokens": getattr(u, "input_tokens", None),
-                            "output_tokens": getattr(u, "output_tokens",
-                                                     None)}
-        out["ok"] = True
-    except Exception as exc_sdk:
-        try:                                   # no SDK: raw REST fallback
-            import urllib.request
-            req = urllib.request.Request(
-                out["endpoint"],
-                data=json.dumps({
-                    "model": model, "max_tokens": max_tokens,
-                    "messages": [{"role": "user", "content": ask}]}).encode(),
-                headers={"x-api-key": key,
-                         "anthropic-version": "2023-06-01",
-                         "content-type": "application/json"})
-            with urllib.request.urlopen(req, timeout=30) as resp:
-                body = json.loads(resp.read().decode())
-            out["reply"] = "".join(
-                b.get("text", "") for b in body.get("content", [])).strip()
-            out["reported_model"] = body.get("model", model)
-            out["usage"] = body.get("usage")
+        cmd = ["claude", "-p", ask, "--output-format", "json"]
+        if os.environ.get("DSS_GENAI_MODEL"):
+            cmd += ["--model", os.environ["DSS_GENAI_MODEL"]]
+        res = subprocess.run(cmd, capture_output=True, text=True,
+                             timeout=120)
+        reply = res.stdout.strip()
+        _is_err = res.returncode != 0
+        try:
+            wrap = json.loads(res.stdout)
+            if isinstance(wrap, dict):
+                reply = str(wrap.get("result", reply)).strip()
+                # `claude -p --output-format json` flags failures with
+                # is_error / subtype even at exit code 0 (e.g. a billing or
+                # auth problem), so surface that as the error
+                if wrap.get("is_error") or (
+                        wrap.get("subtype")
+                        and wrap.get("subtype") != "success"):
+                    _is_err = True
+                _mu = wrap.get("modelUsage")
+                out["reported_model"] = (next(iter(_mu), model)
+                                         if _mu else model)
+                out["usage"] = wrap.get("usage")
+        except Exception:
+            pass
+        if _is_err:
+            out["error"] = ((res.stderr or reply
+                             or f"claude CLI returned {res.returncode}")
+                            .strip()[:400])
+        else:
+            out["reply"] = reply
+            out["reported_model"] = out["reported_model"] or model
             out["ok"] = True
-        except Exception as exc_rest:
-            out["error"] = f"{type(exc_sdk).__name__}: {exc_sdk} " \
-                           f"(REST fallback: {exc_rest})"
+    except FileNotFoundError:
+        out["error"] = "the `claude` command was not found on PATH"
+    except Exception as exc:
+        out["error"] = f"{type(exc).__name__}: {exc}"
     out["latency_ms"] = int((time.time() - t0) * 1000)
     return out

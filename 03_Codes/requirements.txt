@@ -8,6 +8,8 @@ plotly>=5.0
 pillow>=9.0
 # Word (.docx) export of the validation report
 python-docx>=0.8.11
+# Generative-AI stage 3 runs on the user's Claude subscription via the Claude
+# Code CLI (`claude -p`); install Claude Code separately, no Python package.
 # mouse-driven map editing (paint forests, drop assets and ignitions)
 streamlit-drawable-canvas>=0.9.3
 

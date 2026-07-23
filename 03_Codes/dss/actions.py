@@ -12,7 +12,7 @@ Decision execution: each Local DSS turns its six intervention
 intensities into the region's slice of the decision allocation U_DSS
 (the same four fields), and the composed layer enters the simulation as
 sim.step(resource_override=...). Nothing else touches the physics: the
-suppression mapping (Eq. 130) converts the fields into a fuel reduction,
+suppression mapping converts the fields into a fuel reduction,
 exactly as for a human-issued allocation.
 
     suppression_effort   -> R_cap on the active fire cells of the region
@@ -30,6 +30,26 @@ from typing import Dict, List, Tuple
 import numpy as np
 
 
+# Canonical resource-unit vocabulary: the SINGLE source of truth for the
+# kinds of suppression resource that can be staged. The Add dropdown, the
+# staged-pool list, the legend and the map glyph all key off this so the
+# names and icons stay consistent.
+RESOURCE_KINDS: Dict[str, dict] = {
+    "depot":         dict(label="Ground depot", short="depot", aerial=False,
+                          cap=0.8, radius=5, t_disp=10.0, addable=True),
+    "helibase":      dict(label="Helibase (aerial)", short="helibase",
+                          aerial=True, cap=0.6, radius=12, t_disp=6.0,
+                          addable=True),
+    "road_corridor": dict(label="Road corridor", short="road corridor",
+                          aerial=False, cap=0.4, radius=0, t_disp=10.0,
+                          addable=False),
+}
+
+
+def resource_kind_label(kind: str) -> str:
+    return RESOURCE_KINDS.get(kind, {}).get("label", str(kind))
+
+
 def _dilate(mask: np.ndarray, r: int) -> np.ndarray:
     out = mask.copy()
     for _ in range(int(max(0, r))):
@@ -42,9 +62,15 @@ def _dilate(mask: np.ndarray, r: int) -> np.ndarray:
     return out
 
 
-def suggest_resource_items(world, efficiency_target=None
+def suggest_resource_items(world, efficiency_target=None, density=1.0
                            ) -> Tuple[List[dict], List[str]]:
     """Itemized baseline pool: one editable row per staged asset.
+
+    density: multiplies the staged capacity (R_cap) of every unit, i.e. how
+    much suppression capacity sits on the map (the eta_cap = R_cap/R_cap_max
+    term). 1.0 = nominal; <1 = a sparse, under-resourced pool that
+    is ALLOWED to fail; >1 = a dense pool. This is separate from the
+    effectiveness target (which adds aerial units to close reach gaps).
 
     Items: {"kind": "depot", x, y, radius, cap, label} for every
     settlement / critical facility site, plus one {"kind":
@@ -52,22 +78,50 @@ def suggest_resource_items(world, efficiency_target=None
     The rows are meant to be listed, edited and deleted in the UI, then
     rasterized by build_resource_layer."""
     items: List[dict] = []
+    _d = float(np.clip(density, 0.1, 3.0))
     _cellm = float(getattr(world.config, "cell_size_m", 30.0))
     # a depot serves ~150 m of ground around its station regardless of
     # the grid: the radius is METER-based and converted to cells
     _rsrv = max(3, int(round(150.0 / max(_cellm, 1e-6))))
+    # GROUND DEPOTS come ONLY from actual firefighting infrastructure (fire
+    # stations), NOT from every building/facility. A hospital, school or
+    # government office is a VALUE AT RISK to protect, not a fire brigade;
+    # conflating the two gave every town a dozen fire depots. If the map has
+    # no fire station, one fallback base is staged at the town centre so the
+    # pool is not empty.
+    _depot_cands = []
+    _town_fallback = None
     for a in getattr(world, "assets", []):
-        if getattr(a, "kind", "") in ("building", "critical"):
-            items.append(dict(kind="depot", x=int(a.x), y=int(a.y),
-                              radius=max(_rsrv,
-                                         int(getattr(a, "radius", 2))
-                                         + 2),
-                              cap=0.8, avail=1.0, t_disp=10.0,
-                              label=str(getattr(a, "name", "site"))))
+        nm = str(getattr(a, "name", "")).lower()
+        kind = getattr(a, "kind", "")
+        is_station = ("fire" in nm and ("station" in nm or "brigade" in nm)) \
+            or "fire_station" in nm
+        if is_station:
+            _depot_cands.append(dict(
+                kind="depot", x=int(a.x), y=int(a.y),
+                radius=max(_rsrv, int(getattr(a, "radius", 2)) + 2),
+                cap=round(0.8 * _d, 3), avail=1.0, t_disp=10.0,
+                label=str(getattr(a, "name", "fire station"))))
+        elif kind == "building" and _town_fallback is None:
+            _town_fallback = a         # the town centre (first building)
+    if not _depot_cands and _town_fallback is not None:
+        a = _town_fallback
+        _depot_cands.append(dict(
+            kind="depot", x=int(a.x), y=int(a.y),
+            radius=max(_rsrv, int(getattr(a, "radius", 2)) + 2),
+            cap=round(0.8 * _d, 3), avail=1.0, t_disp=10.0,
+            label="town base (no fire station on the map)"))
+    # SAFETY CAP: firefighting capacity is an operational resource; keep the
+    # depot count bounded on asset-heavy maps.
+    _MAX_DEPOTS = 12
+    if len(_depot_cands) > _MAX_DEPOTS:
+        _depot_cands.sort(key=lambda d: -float(d["radius"]))
+        _depot_cands = _depot_cands[:_MAX_DEPOTS]
+    items.extend(_depot_cands)
     if getattr(world, "roads", None) is not None \
             and np.asarray(world.roads).any():
-        items.append(dict(kind="road_corridor", cap=0.4, avail=1.0,
-                          label="road corridor"))
+        items.append(dict(kind="road_corridor", cap=round(0.4 * _d, 3),
+                          avail=1.0, label="road corridor"))
     # one AERIAL unit by default: interventions are not road-bound.
     # The helibase serves a wide radius; within it the aerial share
     # substitutes for road access (derated by wind in the engine).
@@ -79,12 +133,14 @@ def suggest_resource_items(world, efficiency_target=None
             _hx, _hy = int(a.x), int(a.y)
             break
     items.append(dict(kind="helibase", x=_hx, y=_hy, radius=_hr,
-                      cap=0.6, avail=1.0, t_disp=6.0,
+                      cap=round(0.6 * _d, 3), avail=1.0, t_disp=6.0,
                       label="helibase (aerial)"))
     lines = [
         f"R_cap: staged at {sum(1 for i in items if i['kind'] == 'depot')} "
-        "settlement/facility depots (0.8 rcap_max each) and along the "
-        "road corridor (0.4 rcap_max)",
+        "fire-station depot(s) (0.8 rcap_max each; a town base is used only "
+        "if no fire station exists) plus the road corridor (0.4) and "
+        "helibase(s). Hospitals, schools, etc. are protected VALUES, not "
+        "depots.",
         "R_avail: 1 wherever capacity is staged (nothing committed yet)",
         "R_eff: terrain access field G_access (workability of the ground)",
         "R_time: 10 min dispatch + 2 min per off-road cell from the "
@@ -343,7 +399,7 @@ def decision_to_resources(world, burning, regions_intensities, base=None,
     region_orders = []
     at_fire_all = _dilate(fire, 2)
     # the containment band sits WELL ahead of the front: fuel must be
-    # cleared before the fire arrives, and Eq. 130 clears a cell over
+ # cleared before the fire arrives, and30 clears a cell over
     # multiple reference steps, so ordering at the last moment is useless
     band_all = _dilate(fire, 10) & ~_dilate(fire, 4)
     # ... and it is DUG IN THE SPREAD DIRECTION: the line goes where

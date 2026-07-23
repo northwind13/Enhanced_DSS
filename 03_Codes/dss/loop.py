@@ -53,7 +53,8 @@ class DecisionEngine:
                  horizon_min: float | None = None,
                  seed_profile: str = "full",
                  learned_store: str | None = None,
-                 revision_budget: int = 3):
+                 revision_budget: int = 3,
+                 use_evfis: bool = True, use_genai: bool = True):
         self.regions = list(regions)
         self.base_pool = base_pool
         self.network = network
@@ -72,8 +73,19 @@ class DecisionEngine:
                             else float(horizon_min))
         self.evfis_step = float(evfis_step)
         self.adapt_on = bool(adapt_on)
+        # LIVE modules: whether the adaptation stages RUN during the sim
         self.genai_on = bool(genai_on)
         self.evfis_on = bool(evfis_on)
+        # LOAD flags: whether the PRE-LEARNED rules of each stage are brought
+        # in from the store (independent of whether the live module runs)
+        self.use_evfis = bool(use_evfis)
+        self.use_genai = bool(use_genai)
+        # set once GenAI proves unproductive this run (unreachable, or its
+        # proposals keep getting rejected): stage 3 is then retired so the
+        # controller stops spending the scarce adaptation budget on it and
+        # evFIS (stages 1/2) reclaims those cycles
+        self._genai_dead = False
+        self._genai_fails = 0
         # DECISION MODE: which adaptation stages the controller may pick.
         # evFIS covers stage 1 (tuning) and stage 2 (resolution);
         # GenAI is stage 3. Both off = pure fuzzy seed base.
@@ -108,16 +120,22 @@ class DecisionEngine:
         self.concept_family = _copy.deepcopy(dict(_BASE_CF))
         self.macros: dict = {}
         self.learned_store = learned_store
-        if learned_store:
-            from .persist import merge_learned
-            merge_learned(self.rules, learned_store,
-                          profile=self.seed_profile, engine=self)
-        # a NEW engine starts from the thesis seed state: the global
-        # membership registry is returned to Table D.3 (evFIS moves
-        # it in place during a run; 'Reset learned adaptations' and
-        # engine rebuilds are the two lifecycle boundaries)
+        # a NEW engine starts from the pristine thesis membership registry;
+        # reset FIRST, then the store's stage-2 term inserts are re-applied
+        # by merge_learned ONLY when evFIS is loaded (order matters: a reset
+        # AFTER the merge used to wipe the just-loaded inserts)
         from .adapt import reset_partitions
         reset_partitions()
+        if learned_store:
+            from .persist import merge_learned
+            # the toggles gate WHICH pre-learned rules are USED: evFIS off ->
+            # stage 1/2 (tuned seeds, A# rules, term inserts) are NOT loaded;
+            # GenAI off -> stage 3 (G# rules, generated concepts, macros) are
+            # NOT loaded. Both off = pure seed base.
+            merge_learned(self.rules, learned_store,
+                          profile=self.seed_profile, engine=self,
+                          use_evfis=self.use_evfis,
+                          use_genai=self.use_genai)
         self.controller = StageController(eps=ctrl_eps, lr=ctrl_lr)
         # PERFORMANCE THROTTLES (live-run economics, not physics):
         # adaptation trials and the 45-min no-harm re-forecast are the
@@ -236,16 +254,28 @@ class DecisionEngine:
                            for n in _rank)))
         return rows, pairs
 
+    def _observed_burning(self, sim):
+        """The fire the DSS may ACT on: only what the sensor network actually
+        observes. With no coverage over the fire the fused observation is
+        empty there, so the DSS cannot dispatch suppression to a fire it has
+        not detected (matching the partial-observation design). Without a
+        network at all, the true state is used (full observability)."""
+        net = self.network
+        _obs = getattr(net, "obs", None) if net is not None else None
+        if _obs is not None and "burning" in _obs:
+            return np.asarray(_obs["burning"]) > 0.5
+        return sim.state.burning > 0.5
+
     def _override(self, sim, pairs, keep_actions=False):
         world = sim.world
+        _burn = self._observed_burning(sim)
         if keep_actions:
             ov, acts = decision_to_resources(
-                world, sim.state.burning > 0.5, pairs, self.base_pool,
+                world, _burn, pairs, self.base_pool,
                 return_actions=True)
             self.last_actions = acts
             return ov
-        return decision_to_resources(world, sim.state.burning > 0.5,
-                                     pairs, self.base_pool)
+        return decision_to_resources(world, _burn, pairs, self.base_pool)
 
     # ------------------------------------------------------------ public
     def maybe_decide(self, sim):
@@ -271,6 +301,9 @@ class DecisionEngine:
         self.last_actions = None
         self._nh_last = None
         self._adapt_last_min = None
+        # GenAI retirement is PER FIRE: a fresh fire gives stage 3 a new chance
+        self._genai_dead = False
+        self._genai_fails = 0
         for g in self.gaters.values():
             g.prev = {}
             g.step = None
@@ -280,6 +313,9 @@ class DecisionEngine:
                 save_learned(self.rules, self.learned_store,
                              profile=self.seed_profile,
                              engine=self)
+                if getattr(self, "run_logger", None) is not None:
+                    self.run_logger.save_rules(
+                        self.rules, self.seed_profile, self)
             except Exception:
                 pass
 
@@ -297,6 +333,8 @@ class DecisionEngine:
         self._nh_last = None
         self._adapt_last_min = None
         self._prev_ever = None
+        self._genai_dead = False
+        self._genai_fails = 0
         for g in self.gaters.values():
             g.prev = {}
             g.step = None
@@ -316,6 +354,12 @@ class DecisionEngine:
 
         rows, pairs = self._decide_regions(sim, ctx, rules=self.rules)
         ov = self._override(sim, pairs, keep_actions=True)
+        # regions where a GenAI-generated rule (G#) fired this cycle, so the
+        # map can flag the generated orders distinctly from the base ones
+        self.last_genai_regions = {
+            name for name, row in rows.items()
+            if any(str(rn).startswith("G") and w > 0.05
+                   for rn, w in row.get("trace", []))}
         rep_c = forecast_cost(sim, ov, self.horizon_steps,
                               horizon_min=self.horizon_min)
         rep_0 = forecast_cost(sim, None, self.horizon_steps,
@@ -349,7 +393,11 @@ class DecisionEngine:
             _r_s.strength = float(getattr(_r_s, "strength", 0.0)
                                   + _w_s)
         _fire_on = bool((sim.state.burning > 0.5).any())
-        _gap = _fire_on and _covw < 0.45
+        # a coverage VOID: a live fire on which no rule speaks louder than a
+        # whisper (max fired weight < 0.45). There is nothing to TUNE here, so
+        # only the rule-CREATING stages (2/3) can answer it.
+        _void = _fire_on and _covw < 0.45
+        _gap = _void
         # SPREAD TRIGGER: the mission is a fire that does NOT spread.
         # If ever_burned grew since the last decision even though the
         # orders were applied, satisficing on J alone is NOT enough:
@@ -379,48 +427,87 @@ class DecisionEngine:
                               min(0.3, _growth / 50.0))
             bucket = self.controller.bucket(deficit, gap=_gap)
             _menu = self.stages_allowed
-            if _gap and not _deficit_on and not _spread:
-                # a void cannot be tuned: only the rule-creating
-                # stages can answer it
+            if _void:
+                # a coverage void cannot be TUNED (no rule fires there): only
+                # the rule-creating stages (2/3) answer it. This stops stage 1
+                # from being picked and rejected on an empty cell while stage 2
+                # (resolution) starves.
                 _menu = (tuple(x for x in self.stages_allowed
                                if x in (2, 3))
                          or self.stages_allowed)
-            stage = self.controller.select(deficit, stages=_menu,
-                                            gap=_gap)
+            # GenAI (stage 3) is dropped only once it has PROVEN unproductive
+            # this run (unreachable model, or repeated rejections) via
+            # _genai_dead. Reachability is judged by actually calling `claude`
+            # in stage 3 (same path as the Test button), NOT by shutil.which,
+            # which on Windows can miss a runnable `.cmd` shim and wrongly
+            # skip stage 3 even when the model answers fine.
+            if 3 in _menu and self._genai_dead:
+                _menu = tuple(s for s in _menu if s != 3)
             hot = max(rows, key=lambda n: rows[n]["crisp"].get(
                 "operational_priority", 0.0))
-            if stage == 1:
-                outcome = stage1_evfis(build, sim, self.rules, fired_all,
-                                       self.horizon_steps,
-                                       step_size=self.evfis_step)
-            elif stage == 2:
-                outcome = stage2_resolution(
-                    build, sim, self.rules, rows[hot]["eff"],
-                    rows[hot]["crisp"], self.horizon_steps,
-                    coverage_gap=_gap, cov_w=_covw)
+            if not _menu:
+                outcome = AdaptOutcome(
+                    0, False,
+                    "no runnable adaptation stage (GenAI unreachable and "
+                    "evFIS off)")
             else:
-                outcome = stage3_generative(
-                    build, sim, self.rules, rows[hot]["eff"],
-                    rows[hot]["crisp"], self.horizon_steps,
-                    coverage_gap=_gap, cov_w=_covw, engine=self)
-            outcome.stage = stage
-            _rw = -outcome.dJ
-            if outcome.accepted and (outcome.info or {}).get("package"):
-                _rw -= 0.02      # G5: vocabulary growth costs margin
-            self.controller.update(deficit, stage, reward=_rw, gap=_gap)
-            if outcome.accepted and self.learned_store:
-                from .persist import save_learned
-                try:
-                    save_learned(self.rules, self.learned_store,
-                             profile=self.seed_profile,
-                             engine=self)
-                except Exception:
-                    pass
-            if not outcome.accepted:
-                outcome.detail = (outcome.detail + " | "
-                                  if outcome.detail else "") + (
-                    "seed-base decision stands, its orders are "
-                    "applied")
+                stage = self.controller.select(deficit, stages=_menu,
+                                                gap=_gap)
+                if stage == 1:
+                    outcome = stage1_evfis(build, sim, self.rules,
+                                           fired_all, self.horizon_steps,
+                                           step_size=self.evfis_step)
+                elif stage == 2:
+                    outcome = stage2_resolution(
+                        build, sim, self.rules, rows[hot]["eff"],
+                        rows[hot]["crisp"], self.horizon_steps,
+                        coverage_gap=_gap, cov_w=_covw)
+                else:
+                    outcome = stage3_generative(
+                        build, sim, self.rules, rows[hot]["eff"],
+                        rows[hot]["crisp"], self.horizon_steps,
+                        coverage_gap=_gap, cov_w=_covw, engine=self)
+                    # retire stage 3 for the rest of this run when GenAI is
+                    # UNPRODUCTIVE: unreachable, or two proposals in a row got
+                    # rejected. GenAI is expensive (a live model call) and each
+                    # failed attempt steals a cycle from the productive evFIS
+                    # tuning, so a stubbornly-rejected GenAI drags the whole
+                    # run below evFIS-only.
+                    if (outcome.info or {}).get("reason") \
+                            == "model unreachable":
+                        self._genai_dead = True
+                    elif outcome.accepted:
+                        self._genai_fails = 0
+                    else:
+                        self._genai_fails += 1
+                        if self._genai_fails >= 2:
+                            self._genai_dead = True
+                outcome.stage = stage
+                _rw = -outcome.dJ
+                # a REJECTED attempt wasted a cycle: give it a small negative
+                # reward so the controller does not stay stuck on a stage that
+                # keeps failing (which was starving stage 2 / stage 3)
+                if not outcome.accepted:
+                    _rw = min(_rw, -0.004)
+                if outcome.accepted and (outcome.info or {}).get("package"):
+                    _rw -= 0.02      # G5: vocabulary growth costs margin
+                self.controller.update(deficit, stage, reward=_rw, gap=_gap)
+                if outcome.accepted and self.learned_store:
+                    from .persist import save_learned
+                    try:
+                        save_learned(self.rules, self.learned_store,
+                                 profile=self.seed_profile,
+                                 engine=self)
+                        if getattr(self, "run_logger", None) is not None:
+                            self.run_logger.save_rules(
+                                self.rules, self.seed_profile, self)
+                    except Exception:
+                        pass
+                if not outcome.accepted:
+                    outcome.detail = (outcome.detail + " | "
+                                      if outcome.detail else "") + (
+                        "seed-base decision stands, its orders are "
+                        "applied")
             if outcome.accepted:
                 rows, pairs = self._decide_regions(sim, ctx,
                                                    rules=self.rules)
@@ -587,6 +674,9 @@ class DecisionEngine:
                 save_learned(self.rules, self.learned_store,
                              profile=self.seed_profile,
                              engine=self)
+                if getattr(self, "run_logger", None) is not None:
+                    self.run_logger.save_rules(
+                        self.rules, self.seed_profile, self)
             except Exception:
                 pass
         return ov

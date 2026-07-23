@@ -216,14 +216,20 @@ def render_pil(world, sim=None, scale: int = 8, show_fire: bool = True,
 
     # asset markers: recognizable icons
     if show_assets:
+        _lbl_boxes = []          # drawn label rectangles, for de-cluttering
         for a in world.assets:
+            # the evacuation route is a routing hint for the E intervention,
+            # not a value asset; it is no longer drawn as an asset marker
+            if a.kind == "evac_route":
+                continue
             style = _ASSET_STYLE.get(a.kind, {"color": (255, 255, 0)})
             base = style["color"]
             cx, cy = a.x * scale + scale // 2, a.y * scale + scale // 2
-            if getattr(a, "radius", 0) and a.radius > 0:
-                fr = a.radius * scale
-                draw.ellipse([cx - fr, cy - fr, cx + fr, cy + fr],
-                             fill=base + (55,), outline=base + (150,), width=1)
+            # NOTE: no translucent extent circle is drawn for assets any
+            # more. Those halos looked like coverage / resource rings in a
+            # town; assets now show only their point icon (house / facility
+            # square / population dots). Value still comes from the value
+            # layers, not from a drawn ring.
             r = max(7, int(scale * 1.1))
             black = (0, 0, 0, 255)
             if a.kind == "building":
@@ -255,10 +261,24 @@ def render_pil(world, sim=None, scale: int = 8, show_fire: bool = True,
                 draw.polygon([(cx - r // 2, cy - r // 2), (cx + r // 2, cy), (cx - r // 2, cy + r // 2)], fill=(255, 255, 255, 255))
             else:
                 draw.ellipse([cx - r, cy - r, cx + r, cy + r], fill=base + (255,), outline=black, width=1)
-            if show_labels and getattr(a, "name", ""):
+            # labels only for named NON-population assets (population sits on
+            # the same spot as its building, so it would double every label),
+            # and only when the label box does not collide with one already
+            # drawn: this keeps a dense town from turning into a wall of
+            # overlapping text.
+            if (show_labels and getattr(a, "name", "")
+                    and a.kind != "population"):
                 tx0 = cx + r + 3
-                draw.rectangle([tx0 - 1, cy - 7, tx0 + 6 * len(str(a.name)) + 1, cy + 6], fill=(0, 0, 0, 120))
-                draw.text((tx0, cy - 6), str(a.name), fill=(255, 255, 255, 255))
+                _bx = [tx0 - 1, cy - 7,
+                       tx0 + 6 * len(str(a.name)) + 1, cy + 6]
+                _hit = any(not (_bx[2] < ob[0] or _bx[0] > ob[2]
+                                or _bx[3] < ob[1] or _bx[1] > ob[3])
+                           for ob in _lbl_boxes)
+                if not _hit:
+                    draw.rectangle(_bx, fill=(0, 0, 0, 120))
+                    draw.text((tx0, cy - 6), str(a.name),
+                              fill=(255, 255, 255, 255))
+                    _lbl_boxes.append(_bx)
 
     # all DSS agent regions: thin borders + small labels. Entries may carry
     # a 6th element (attended flag): the coordinator's attended regions are
@@ -300,14 +320,19 @@ def render_pil(world, sim=None, scale: int = 8, show_fire: bool = True,
                       fill=(255, 230, 120, 255))
 
     # DSS sensors: every family has its OWN color, glyph and a FILLED
-    # coverage footprint, so the sensing geometry is readable at a
-    # glance. Labels carry the full family name.
-    SENSOR_COLORS = {"satellite": (170, 120, 255),
-                     "aerial": (0, 220, 255),
-                     "ground_camera": (255, 255, 255),
-                     "in_situ": (255, 220, 0),
-                     "field_report": (255, 150, 60),
-                     "public_report": (255, 105, 180)}
+    # coverage footprint. Colors come from the single source of truth
+    # (dss.sensors.SENSOR_CATALOG) so the map and the legend never drift.
+    try:
+        from dss.sensors import SENSOR_CATALOG as _SCAT
+        SENSOR_COLORS = {k: tuple(v.get("color", (120, 200, 255)))
+                         for k, v in _SCAT.items()}
+    except Exception:
+        SENSOR_COLORS = {"satellite": (170, 120, 255),
+                         "aerial": (0, 220, 255),
+                         "ground_camera": (255, 255, 255),
+                         "in_situ": (255, 220, 0),
+                         "field_report": (255, 150, 60),
+                         "public_report": (255, 105, 180)}
     if sensors:
         _sat_i = 0
         for sx_, sy_, r_c, kind, lab in sensors:
@@ -372,12 +397,18 @@ def render_pil(world, sim=None, scale: int = 8, show_fire: bool = True,
     if actions:
         cont = actions.get("cont")
         if cont is not None:
+            # containment order = the SAME brown diagonal dozer strokes as the
+            # dug fuel break it produces, so order and result read identically
             ys_, xs_ = np.where(cont)
             for yy_, xx_ in zip(ys_.tolist(), xs_.tolist()):
-                draw.rectangle([xx_ * scale + 1, yy_ * scale + 1,
-                                (xx_ + 1) * scale - 2,
-                                (yy_ + 1) * scale - 2],
-                               outline=(70, 40, 10, 255), width=2)
+                _x0c, _y0c = xx_ * scale, yy_ * scale
+                _qc = max(2, scale // 4)
+                draw.line([_x0c + 1, _y0c + scale - _qc,
+                           _x0c + scale - _qc, _y0c + 1],
+                          fill=(110, 70, 30, 255), width=2)
+                draw.line([_x0c + _qc, _y0c + scale - 1,
+                           _x0c + scale - 1, _y0c + _qc],
+                          fill=(110, 70, 30, 255), width=2)
         supp = actions.get("supp")
         if supp is not None:
             ys_, xs_ = np.where(supp)
@@ -406,26 +437,17 @@ def render_pil(world, sim=None, scale: int = 8, show_fire: bool = True,
             if max(u.values()) <= 0.05:
                 continue
             x0_, y0_, x1_, y1_ = ro["box"]
-            bx = x0_ * scale + 4
-            by = y0_ * scale + 4
-            chips = [("S", u["suppression_effort"], (40, 120, 255)),
-                     ("D", u["resource_deployment"], (200, 200, 200)),
-                     ("C", u["containment_line"], (150, 90, 30)),
-                     ("P", u["asset_protection"], (40, 220, 90)),
-                     ("E", u["evacuation"], (255, 140, 0)),
-                     ("W", u["public_warning"], (255, 220, 0))]
-            txt = " ".join(f"{c}{v:.1f}" for c, v, _ in chips
-                           if v > 0.05)
-            tw = 7 * len(txt) + 8
-            draw.rectangle([bx - 2, by - 2, bx + tw, by + 12],
-                           fill=(0, 0, 0, 150))
-            ox = bx + 2
-            for c, v, col in chips:
-                if v <= 0.05:
-                    continue
-                lab = f"{c}{v:.1f} "
-                draw.text((ox, by), lab, fill=(*col, 255))
-                ox += 7 * len(lab)
+            # GenAI-generated order marker: a magenta "G" badge on the
+            # region where a G# (generative) rule fired this cycle, so the
+            # generated orders read distinctly from the base ones.
+            if ro.get("name") in (actions.get("genai_regions") or set()):
+                _gcx = (x0_ + x1_) * scale // 2
+                _gcy = (y0_ + y1_) * scale // 2
+                draw.ellipse([_gcx - 8, _gcy - 8, _gcx + 8, _gcy + 8],
+                             fill=(192, 0, 255, 210), outline=(0, 0, 0, 220),
+                             width=1)
+                draw.text((_gcx - 4, _gcy - 6), "G",
+                          fill=(255, 255, 255, 255))
             # evacuation: arrow + E at every populated asset inside
             if u["evacuation"] > 0.3 and getattr(world, "assets", None):
                 for a in world.assets:
@@ -454,35 +476,65 @@ def render_pil(world, sim=None, scale: int = 8, show_fire: bool = True,
                 draw.text((tx_ + 4, ty_ + 2), "!",
                           fill=(0, 0, 0, 255))
 
-    # DSS allocation overlay: cells receiving ordered capacity glow cyan
+    # DSS allocation overlay (D = resource deployment): the STAGED capacity
+    # ahead of the front glows a faint cyan. Burning / burned cells are
+    # skipped (they already read as fire + the blue suppression dots), and
+    # only cells carrying a meaningful share of the peak are drawn, so the
+    # map is no longer washed blue.
     if alloc is not None:
         al = np.asarray(alloc, dtype=float)
         mx = float(al.max())
         if mx > 1e-9:
-            ys_, xs_ = np.where(al > 0.02 * mx)
+            _busy = None
+            if sim is not None:
+                try:
+                    _busy = (np.asarray(sim.state.burning) > 0.5) \
+                        | np.asarray(sim.ever_burned)
+                except Exception:
+                    _busy = np.asarray(sim.state.burning) > 0.5
+            ys_, xs_ = np.where(al > 0.25 * mx)
             for yy_, xx_ in zip(ys_.tolist(), xs_.tolist()):
-                a_ = int(60 + 130 * min(1.0, al[yy_, xx_] / mx))
+                if _busy is not None and _busy[yy_, xx_]:
+                    continue
+                a_ = int(35 + 80 * min(1.0, al[yy_, xx_] / mx))
                 draw.rectangle([xx_ * scale, yy_ * scale,
                                 (xx_ + 1) * scale - 1,
                                 (yy_ + 1) * scale - 1],
-                               outline=None, fill=(0, 230, 255, a_))
+                               outline=None, fill=(0, 210, 255, a_))
 
-    # resource depots: house marker + capacity ring (staged pool)
+    # resource units: GROUND depot = green house marker; HELIBASE (aerial)
+    # = cyan circle with an "H", so the two kinds read differently on the map
+    # and match their own legend entries. Both carry the red service ring.
     if depots:
         for dx_, dy_, r_c, cap_, lab in depots:
             cx, cy = dx_ * scale + scale // 2, dy_ * scale + scale // 2
+            _is_heli = "heli" in str(lab).lower()
             if r_c:
                 rr = int(r_c * scale)
                 draw.ellipse([cx - rr, cy - rr, cx + rr, cy + rr],
                              fill=(255, 80, 80, 28),
                              outline=(255, 100, 100, 190), width=2)
-            draw.rectangle([cx - 5, cy - 2, cx + 5, cy + 6],
-                           fill=(60, 200, 120, 240),
-                           outline=(0, 0, 0, 200))
-            draw.polygon([(cx - 6, cy - 2), (cx, cy - 8), (cx + 6, cy - 2)],
-                         fill=(60, 200, 120, 240), outline=(0, 0, 0, 200))
-            draw.text((cx + 8, cy - 6), str(lab),
-                      fill=(150, 255, 190, 230))
+            if _is_heli:
+                draw.ellipse([cx - 7, cy - 7, cx + 7, cy + 7],
+                             fill=(0, 190, 235, 240), outline=(0, 0, 0, 210),
+                             width=1)
+                draw.line([cx - 3, cy - 4, cx - 3, cy + 4],
+                          fill=(0, 0, 0, 230), width=2)
+                draw.line([cx + 3, cy - 4, cx + 3, cy + 4],
+                          fill=(0, 0, 0, 230), width=2)
+                draw.line([cx - 3, cy, cx + 3, cy], fill=(0, 0, 0, 230),
+                          width=2)
+                draw.text((cx + 9, cy - 6), str(lab),
+                          fill=(150, 230, 255, 230))
+            else:
+                draw.rectangle([cx - 5, cy - 2, cx + 5, cy + 6],
+                               fill=(60, 200, 120, 240),
+                               outline=(0, 0, 0, 200))
+                draw.polygon([(cx - 6, cy - 2), (cx, cy - 8),
+                              (cx + 6, cy - 2)],
+                             fill=(60, 200, 120, 240), outline=(0, 0, 0, 200))
+                draw.text((cx + 8, cy - 6), str(lab),
+                          fill=(150, 255, 190, 230))
 
     # clock badge (top left)
     if clock_text:
@@ -560,23 +612,7 @@ def render_pil(world, sim=None, scale: int = 8, show_fire: bool = True,
             draw.rectangle([px * scale, py * scale,
                             px * scale + scale, py * scale + scale],
                            outline=(255, 60, 40, 255), width=max(1, scale // 4))
-    # spread direction arrows at the active front (wind aligned)
-    if show_spread_arrows and _sim is not None:
-        act = _sim.state.burning > 0.5
-        ys, xs = np.where(act)
-        if xs.size:
-            stride = max(1, xs.size // 60)
-            for py, px in zip(ys[::stride], xs[::stride]):
-                wd = float(world.meteo.wwd[py, px])
-                cx, cy = px * scale + scale // 2, py * scale + scale // 2
-                L = scale * 2.0
-                ex, ey = cx + L * np.cos(wd), cy - L * np.sin(wd)
-                draw.line([cx, cy, ex, ey], fill=(30, 30, 30, 230), width=2)
-                ang = np.arctan2(ey - cy, ex - cx)
-                for da in (2.6, -2.6):
-                    draw.line([ex, ey, ex - 5 * np.cos(ang + da),
-                               ey - 5 * np.sin(ang + da)],
-                              fill=(30, 30, 30, 230), width=2)
+    # (spread-direction arrows removed: not drawn on the map or the legend)
     return img
 
 
@@ -591,14 +627,18 @@ def _hex(rgb01):
     return f"#{r:02x}{g:02x}{b:02x}"
 
 
-def legend_entries():
+def legend_entries(macros=None):
     """Categorized legend as (group, label, hex_color, glyph).
 
     glyph = how the item appears ON THE MAP: "sq" filled square,
     "dot" filled circle, "ring" open circle, "box" open square,
     "tri" triangle, or a literal text badge. The dashboard renders
     the glyph in the item's color, so the legend shows the actual
-    icon vocabulary of the map."""
+    icon vocabulary of the map.
+
+    macros: optional {name: {...}} of GenAI-created MACRO interventions
+    (stage 3 vocabulary packages). Each is added under its own group so
+    the operator sees the new decisions the generative stage introduced."""
     out = []
     for i, m in FUEL_MODELS.items():
         label = {"non_fuel": "bare ground / rock", "water": "water",
@@ -609,53 +649,91 @@ def legend_entries():
         out.append(("Land cover", label, _hex(_FUEL_COLORS[i]), "sq"))
     out.append(("Fire", "active fire", _hex((0.98, 0.35, 0.06)), "sq"))
     out.append(("Fire", "burned scar", _hex((0.16, 0.13, 0.12)), "sq"))
-    out.append(("Fire", "fire perimeter", "#ffffff", "ring"))
-    out.append(("DSS orders", "dug fuel break (fuel removed, "
-                "icon strokes)", "#6e461e", "box"))
-    out.append(("Infrastructure", "road / access",
+    # perimeter is drawn as RED cell outlines (not a white ring)
+    out.append(("Fire", "fire perimeter", "#ff3c28", "box"))
+    # Assets & infrastructure (merged): things on the map that carry value
+    # and/or provide access. road/access is its own layer; the facilities
+    # (power, water, transport, telecom, hospital, ...) are critical-facility
+    # markers, named on the map; buildings and population carry structure /
+    # life value. The evacuation route is NOT here (it is a DSS intervention).
+    out.append(("Assets", "road / access",
                 _hex((0.82, 0.78, 0.66)), "sq"))
-    asset_labels = {"building": "building", "critical": "critical facility",
-                    "population": "population", "evac_route": "evacuation route"}
+    asset_labels = {"building": "building",
+                    "critical": "critical facility (power, water, transport, "
+                                "telecom, hospital, ...)",
+                    "population": "population"}
     for kind, lab in asset_labels.items():
         c = _ASSET_STYLE[kind]["color"]
-        out.append(("Assets", lab, f"#{c[0]:02x}{c[1]:02x}{c[2]:02x}", "sq"))
-    out.append(("Markers", "ignition point", "#a200de", "dot"))
-    out.append(("Markers", "wind arrow (blows toward)", "#c83c1e", "tri"))
-    # ---- DSS orders: the intervention icon vocabulary ----
-    out.append(("DSS orders", "suppression (water on engaged cells)",
-                "#2878ff", "dot"))
-    out.append(("DSS orders", "containment line (cut squares)",
-                "#46280a", "box"))
-    out.append(("DSS orders", "asset protection (shield rings)",
+        # population is drawn as a filled circle, the others as squares
+        _gl = "dot" if kind == "population" else "sq"
+        out.append(("Assets", lab,
+                    f"#{c[0]:02x}{c[1]:02x}{c[2]:02x}", _gl))
+    out.append(("Markers", "ignition point (ring + cross)", "#a200de", "ring"))
+    # the on-map wind arrow is white (the red compass is a separate widget)
+    out.append(("Markers", "wind arrow (blows toward)", "#ffffff", "tri"))
+    # ---- DSS orders: the intervention icon vocabulary (all six base
+    # interventions S D C P E W, in order) ----
+    out.append(("DSS orders (base)", "S — suppression effort "
+                "(water on engaged cells)", "#2878ff", "dot"))
+    out.append(("DSS orders (base)", "D — resource deployment "
+                "(staged capacity, cyan glow)", "#00e6ff", "sq"))
+    # C (containment) and its physical footprint (the dug fuel break) are the
+    # SAME operation, so they share ONE entry and ONE map glyph: brown diagonal
+    # dozer strokes. The order and the dug result are drawn identically.
+    out.append(("DSS orders (base)",
+                "C — containment line / dug fuel break (diagonal strokes)",
+                "#6e461e", "diag"))
+    out.append(("DSS orders (base)", "P — asset protection (shield rings)",
                 "#28dc5a", "ring"))
-    out.append(("DSS orders", "evacuation (arrow + EVAC at people)",
+    out.append(("DSS orders (base)", "E — evacuation (arrow + EVAC at people)",
                 "#ff8c00", "tri"))
-    out.append(("DSS orders", "public warning (region corner)",
+    out.append(("DSS orders (base)", "W — public warning (region corner)",
                 "#ffdc00", "tri"))
-    out.append(("DSS orders", "allocation glow (ordered capacity)",
-                "#00e6ff", "sq"))
-    out.append(("DSS orders", "region order badge S D C P E W",
-                "#bbbbbb", "S0.8"))
-    # ---- sensors: family colors match the map glyphs ----
-    _sens_lab = [("satellite", "satellite (map-corner badge)",
-                  (170, 120, 255)),
-                 ("aerial", "aerial drone", (0, 220, 255)),
-                 ("ground_camera", "ground camera", (255, 255, 255)),
-                 ("in_situ", "in-situ probe", (255, 220, 0)),
-                 ("field_report", "field team", (255, 150, 60)),
-                 ("public_report", "public reports", (255, 105, 180))]
-    for _k, lab, c in _sens_lab:
-        out.append(("Sensors (+ coverage fill)", lab,
-                    f"#{c[0]:02x}{c[1]:02x}{c[2]:02x}", "dot"))
-    # ---- resources ----
-    out.append(("Resources", "depot marker (staged unit)",
+    # ---- GenAI (stage 3) GENERATED interventions: a SECOND type of DSS
+    # order. Each macro the generative stage introduces gets its own entry;
+    # the group is always shown so it is clear where generated orders appear.
+    _macro_names = list((macros or {}).keys())
+    if _macro_names:
+        for _mn in _macro_names:
+            _lab = str(_mn).replace("_", " ")
+            out.append(("DSS orders (GenAI-generated)",
+                        f"{_lab} — new intervention by GenAI", "#c000ff",
+                        "dot"))
+    else:
+        out.append(("DSS orders (GenAI-generated)",
+                    "none yet — interventions the generative stage creates "
+                    "appear here", "#c000ff", "dot"))
+    # ---- sensors: label, color AND range all from the single source of
+    # truth (dss.sensors.SENSOR_CATALOG), so the legend can never drift from
+    # the Add dropdown or the map glyphs ----
+    try:
+        from dss.sensors import SENSOR_CATALOG as _SCATl
+        for _k, _sp in _SCATl.items():
+            _c = tuple(_sp.get("color", (120, 200, 255)))
+            _rm = _sp.get("radius_m")
+            _rng = ("whole map" if _rm is None
+                    else f"{_rm / 1000.0:.1f} km range")
+            out.append(("Sensors (+ coverage fill)",
+                        f"{_sp.get('label', _k)} — {_rng}",
+                        f"#{_c[0]:02x}{_c[1]:02x}{_c[2]:02x}", "dot"))
+    except Exception:
+        pass
+    # ---- resources (kinds match dss.RESOURCE_KINDS) ----
+    # two PLACEABLE units (Add dropdown) + two derived elements:
+    out.append(("Resources", "ground depot — placeable (green house)",
                 "#3cc878", "sq"))
-    out.append(("Resources", "service / station area (ring + fill)",
-                "#ff6464", "ring"))
-    out.append(("Resources", "helibase = a depot row with map-wide "
-                "aerial reach", "#ff6464", "ring"))
-    out.append(("Agents", "Local DSS region boundary + label",
-                "#e6e6e6", "box"))
+    out.append(("Resources", "helibase / aerial — placeable (cyan H, "
+                "map-wide reach)", "#00bee6", "dot"))
+    out.append(("Resources", "service radius — the ring drawn AROUND each "
+                "unit (not a separate type)", "#ff6464", "ring"))
+    out.append(("Resources", "road corridor — AUTO thin capacity along "
+                "roads (not addable)", _hex((0.82, 0.78, 0.66)), "sq"))
+    # region outlines: yellow = normal/attended, grey = monitored (ignored),
+    # orange filled = the coordinator's focused hotspot this cycle
+    out.append(("Agents", "DSS region boundary + label", "#ffd228", "box"))
+    out.append(("Agents", "focused (attended) region", "#ff7828", "box"))
+    out.append(("Agents", "monitored region (not attended)", "#b4b4b4",
+                "box"))
     return out
 
 
@@ -845,7 +923,15 @@ def map_figure_2d(world, sim=None, scale: int = 6, **flags):
     uirev = str(flags.pop("uirevision", "keep"))
     pil = render_pil(world, sim=sim, scale=scale, show_labels=True, **flags)
     arr = np.asarray(pil)
-    fig = go.Figure(go.Image(z=arr))
+    # map the raster onto GRID CELL coordinates (dx = dy = 1/scale) so the
+    # axes and the hover read the same x,y the user types when placing a
+    # sensor/asset (cells), NOT pixels (pixel = cell * scale, which made a
+    # sensor at cell 400 hover as 1600).
+    _sc = max(float(scale), 1e-6)
+    fig = go.Figure(go.Image(z=arr, x0=0.5 / _sc, dx=1.0 / _sc,
+                             y0=0.5 / _sc, dy=1.0 / _sc,
+                             hovertemplate="x=%{x:.0f}, y=%{y:.0f}"
+                                           "<extra></extra>"))
     # IMPORTANT: no explicit axis ranges. With a constant uirevision the
     # user's zoom/pan survives every step; re-setting ranges on every
     # rebuild would fight the preserved UI state and snap the view back.

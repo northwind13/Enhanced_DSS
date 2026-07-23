@@ -2,16 +2,16 @@
 
 All physical and numerical parameters of the simulator are collected here as
 dataclasses so that a scenario can be configured, serialized and tuned from a
-single place. The values follow the formulation given in Chapter 4 and the
+single place. The values follow the formulation given in and the
 DisasterAware spread model.
 
 Symbol map (math -> code):
-    r_base   = r_base(Ftype)        Appendix A, Table A.1 (Eq. 123)
-    m_ext    = m_ext(Ftype)         extinction moisture (Eq. 124)
-    a_w      = a_w(Ftype)           wind sensitivity (Eq. 126)
-    a_s      = a_s(Ftype)           slope sensitivity (Eq. 127)
-    a_asp    = a_asp(Ftype)         aspect sensitivity (Eq. 128)
-    b_base   = b_base(Ftype)        baseline combustion coefficient (Eq. 129)
+    r_base = r_base(Ftype), Table A.1 
+    m_ext = m_ext(Ftype) extinction moisture 
+    a_w = a_w(Ftype) wind sensitivity 
+    a_s = a_s(Ftype) slope sensitivity 
+    a_asp = a_asp(Ftype) aspect sensitivity 
+    b_base = b_base(Ftype) baseline combustion coefficient 
 """
 
 from __future__ import annotations
@@ -71,9 +71,9 @@ FUEL_NAME_TO_ID: Dict[str, int] = {m.name: i for i, m in FUEL_MODELS.items()}
 class SpreadParams:
     """Parameters of the Rothermel type rate of spread and propagation rule."""
 
-    w0: float = 10.0                # reference wind speed in the tanh saturation (Eq. 126)
+    w0: float = 10.0 # reference wind speed in the tanh saturation 
     theta_ign: float = 0.125        # ignition threshold on the accumulated influence
-                                    # buildup (Eq. 45). 1/8 cancels the neighbourhood
+                                    # buildup. 1/8 cancels the neighbourhood
                                     # normalization, so a front driven by one aligned
                                     # neighbour advances at exactly R_spread.
     buildup_leak: float = 0.05      # influence buildup leak per reference step:
@@ -123,28 +123,28 @@ class SpreadParams:
 
 @dataclass
 class SuppressionParams:
-    """Suppression to fuel reduction mapping (Appendix B, Eq. 130 to 135)."""
+    """Suppression to fuel reduction mapping (,)."""
 
-    alpha_s: float = 0.20           # global suppression gain (Eq. 130, range 0.01 to 0.30)
-    beta_t: float = 0.03            # travel time decay per minute (Eq. 133):
+    alpha_s: float = 0.20 # global suppression gain (, range 0.01 to 0.30)
+    beta_t: float = 0.03 # travel time decay per minute:
                                     # effectiveness halves after ~23 min delay,
                                     # matching initial-attack response curves
-    gamma_I: float = 2.0            # intensity resistance factor (Eq. 134)
+    gamma_I: float = 2.0 # intensity resistance factor 
     wet_gain: float = 2.0           # suppression wets the fuel: moisture
                                     # relaxes toward 0.35 at pressure x
                                     # this gain (0 disables wetting)
     knockdown_ratio: float = 0.15   # a burning cell is quenched when the
                                     # suppression pressure (eta product of
-                                    # Eq. 130 without alpha_s) exceeds this
+                                    # without alpha_s) exceeds this
                                     # threshold scaled by the cell's burn
                                     # fierceness (f_burn / 0.10 per step);
                                     # 0 disables knockdown
-    rcap_max: float = 1.0           # reference maximum suppression capacity (Eq. 131)
+    rcap_max: float = 1.0 # reference maximum suppression capacity 
 
 
 @dataclass
 class IntensityParams:
-    """Fire intensity proxy parameters (Appendix C, Eq. 136 to 137)."""
+    """Fire intensity proxy parameters (,)."""
 
     beta: float = 2.0               # global intensity gain (Table C)
     gamma_w: float = 0.5            # wind weighting coefficient
@@ -159,7 +159,7 @@ class IntensityParams:
 
 @dataclass
 class ValueWeights:
-    """Protection priority aggregation weights (Eq. 55)."""
+    """Protection priority aggregation weights."""
 
     w_bld: float = 0.20
     w_crit: float = 0.40
@@ -176,7 +176,7 @@ class ValueWeights:
 
 @dataclass
 class CostParams:
-    """Decision cost parameters (Sec. 2.5.2, Table 2.4).
+    """Decision cost parameters (,).
 
     The decision cost follows the cost-plus-loss principle as a weighted sum
     of five terms, each normalized to [0, 1] against a scenario reference
@@ -223,7 +223,7 @@ class SimConfig:
     step_minutes: float = 1.0       # real time represented by one step, in
                                     # minutes. The dynamics are calibrated at a
                                     # 30 min reference and rescaled to this
-                                    # length (core.py, SD Sec. 9 note 8).
+                                    # length (core.py, SD note 8).
     max_steps: int = 500            # safety cap for headless runs
     rng_seed: int = 42              # seed for any stochastic forcing
 

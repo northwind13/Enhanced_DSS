@@ -1,4 +1,4 @@
-"""Rate of spread and directional propagation (Appendix A, Eq. 123 to 128, 46, 48).
+"""Rate of spread and directional propagation (,).
 
 The rate of spread mapping is a semi empirical Rothermel type formulation:
 
@@ -8,9 +8,9 @@ The rate of spread mapping is a semi empirical Rothermel type formulation:
     g_slope  = 1 + a_s(Ftype) * tan(Gslope)                               (127)
     g_aspect = 1 + a_asp(Ftype) * cos(Gaspect - Wwd)                      (128)
 
-Propagation influence accumulated at a target cell (Eq. 46) is a wind aligned
+Propagation influence accumulated at a target cell is a wind aligned
 weighted sum over the 8 connected neighbourhood, with directional weights
-(Eq. 48):
+:
 
     g_dir = max(0, cos(Wwd - theta_(i,j -> x,y)))
 """
@@ -68,7 +68,7 @@ def _fuel_param(ftype: np.ndarray, attr: str) -> np.ndarray:
 
 
 def rate_of_spread(fuel, topo, meteo, params: SpreadParams) -> np.ndarray:
-    """Compute the per cell rate of spread field R_spread (Eq. 123)."""
+    """Compute the per cell rate of spread field R_spread."""
     ftype = fuel.ftype
     r_base = _fuel_param(ftype, "r_base")
     m_ext = _fuel_param(ftype, "m_ext")
@@ -76,20 +76,20 @@ def rate_of_spread(fuel, topo, meteo, params: SpreadParams) -> np.ndarray:
     a_s = _fuel_param(ftype, "a_s")
     a_asp = _fuel_param(ftype, "a_asp")
 
-    # moisture damping (Eq. 124 to 125): zero spread at or above extinction moisture
+    # moisture damping: zero spread at or above extinction moisture
     with np.errstate(divide="ignore", invalid="ignore"):
         g_moist = np.where(m_ext > 0, 1.0 - fuel.fmoist / m_ext, 0.0)
     g_moist = np.clip(g_moist, 0.0, 1.0)
 
-    # wind enhancement (Eq. 126)
+    # wind enhancement 
     g_wind = 1.0 + a_w * np.tanh(meteo.wws / max(params.w0, 1e-6))
 
-    # slope enhancement (Eq. 127); slope clipped to keep tan() finite
+    # slope enhancement; slope clipped to keep tan finite
     slope = np.clip(topo.slope, -params.slope_clip_rad, params.slope_clip_rad)
     g_slope = 1.0 + a_s * np.tan(slope)
     g_slope = np.clip(g_slope, 0.0, getattr(params, "slope_gain_max", 3.0))
 
-    # aspect alignment with wind (Eq. 128)
+    # aspect alignment with wind 
     g_aspect = 1.0 + a_asp * np.cos(topo.aspect - meteo.wwd)
     g_aspect = np.maximum(g_aspect, 0.0)
 
@@ -146,7 +146,7 @@ def directional_weights(wwd: np.ndarray, params: SpreadParams,
 def propagation_influence(burning: np.ndarray, ros: np.ndarray,
                           wwd: np.ndarray, params: SpreadParams,
                           wws: np.ndarray = None, weights=None) -> np.ndarray:
-    """Accumulated wind aligned propagation influence Psi (Eq. 46, 48).
+    """Accumulated wind aligned propagation influence Psi.
 
     Default uses the cosine directional weight g_dir = max(0, cos(Wwd - theta)).
     When params.elliptical is True, an optional Cell2Fire/FARSITE style wind

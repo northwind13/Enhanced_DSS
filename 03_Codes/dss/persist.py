@@ -27,9 +27,15 @@ def _read_store(path: str) -> dict:
     except Exception:
         return {"profiles": {}}
     if "profiles" not in d:
-        # legacy flat store: adopt it as the "full" lineage
-        d = {"profiles": {"full": {"born": d.get("born", []),
-                                   "tuned": d.get("tuned", {})}}}
+        # legacy flat store -> the single SHARED lineage
+        d = {"profiles": {"shared": {"born": d.get("born", []),
+                                     "tuned": d.get("tuned", {})}}}
+    # learned rules are now SHARED across seed profiles: if an older
+    # per-profile store exists without a "shared" section, adopt the
+    # "full" lineage (the main one) so prior learning is not lost.
+    if "shared" not in d["profiles"] and d["profiles"]:
+        d["profiles"]["shared"] = d["profiles"].get(
+            "full", next(iter(d["profiles"].values())))
     return d
 
 
@@ -82,7 +88,7 @@ def save_learned(rules: List[Rule], path: str,
                                      v["composition"]])
                 for k, v in engine.macros.items()}
     d = _read_store(path)
-    d["profiles"][str(profile or "full")] = dict(born=born,
+    d["profiles"]["shared"] = dict(born=born,
                                                  tuned=tuned,
                                                  parts=parts,
                                                  **vocab)
@@ -92,25 +98,33 @@ def save_learned(rules: List[Rule], path: str,
 
 
 def load_learned(path: str, profile: str = "full"):
-    sec = _read_store(path)["profiles"].get(str(profile or "full"),
+    sec = _read_store(path)["profiles"].get("shared",
                                             {})
     return sec.get("born", []), sec.get("tuned", {})
 
 
 def load_parts(path: str, profile: str = "full") -> dict:
-    sec = _read_store(path)["profiles"].get(str(profile or "full"),
+    sec = _read_store(path)["profiles"].get("shared",
                                             {})
     return sec.get("parts", {})
 
 
 def merge_learned(rules: List[Rule], path: str,
-                  profile: str = "full", engine=None) -> int:
+                  profile: str = "full", engine=None,
+                  use_evfis: bool = True, use_genai: bool = True) -> int:
     """Apply the PROFILE's lineage to a fresh seed base IN PLACE;
-    returns how many born rules were appended."""
+    returns how many born rules were appended.
+
+    use_evfis / use_genai gate WHICH pre-learned rules are actually loaded:
+      stage 1/2 (evFIS): tuned seed consequents, term inserts, A# rules
+      stage 3 (GenAI):   G# rules, generated concepts, macro interventions
+    Turning a stage off means the DSS runs WITHOUT those learned rules (the
+    generated concepts / interventions simply are not brought in)."""
     born, tuned = load_learned(path, profile)
-    if engine is not None:
+    if engine is not None and use_genai:
+        # generated vocabulary (concepts + macro interventions) is stage 3
         sec = _read_store(path)["profiles"].get(
-            str(profile or "full"), {})
+            "shared", {})
         for cn, cd in (sec.get("concepts") or {}).items():
             engine.hierarchy[cn] = (
                 int(cd.get("level", 2)),
@@ -125,23 +139,31 @@ def merge_learned(rules: List[Rule], path: str,
                 composition=[(a, float(b)) for a, b in
                              md.get("composition", [])])
     from .fuzzy import REGISTRY
-    for var, diff in (load_parts(path, profile) or {}).items():
-        for t, abcd in diff.items():
-            try:
-                REGISTRY.set_term(var, t, abcd)
-            except Exception:
-                pass
-    for r in rules:
-        if r.name in tuned:
-            r.consequents = [(i, float(v)) for i, v in tuned[r.name]]
-            r.note = (r.note + " | " if r.note else "") + \
-                "evFIS: restored from the learned store"
+    if use_evfis:
+        # term inserts (stage 2 resolution) and consequent tunes (stage 1)
+        for var, diff in (load_parts(path, profile) or {}).items():
+            for t, abcd in diff.items():
+                try:
+                    REGISTRY.set_term(var, t, abcd)
+                except Exception:
+                    pass
+        for r in rules:
+            if r.name in tuned:
+                r.consequents = [(i, float(v)) for i, v in tuned[r.name]]
+                r.note = (r.note + " | " if r.note else "") + \
+                    "evFIS: restored from the learned store"
     def covered(ants):
         aset = set(ants)
         return any(rr.active and aset.issubset(set(rr.antecedents))
                    for rr in rules)
     n = 0
     for b in sorted(born, key=lambda x: -float(x.get("strength", 0))):
+        _st = str(b.get("name", ""))[:1]
+        # A# rules are evFIS stage-2 resolution; G# rules are GenAI stage 3
+        if _st == "A" and not use_evfis:
+            continue
+        if _st == "G" and not use_genai:
+            continue
         ants = [tuple(a) for a in b["antecedents"]]
         if covered(ants):
             continue
@@ -159,27 +181,26 @@ def prune_learned(path: str, keep: int = 10,
     """Keep only the strongest `keep` born rules of the profile's
     lineage; returns survivors."""
     d = _read_store(path)
-    sec = d["profiles"].get(str(profile or "full"), {})
+    sec = d["profiles"].get("shared", {})
     born = sorted(sec.get("born", []),
                   key=lambda x: -float(x.get("strength", 0.0)))
     sec["born"] = born[:max(0, int(keep))]
-    d["profiles"][str(profile or "full")] = sec
+    d["profiles"]["shared"] = sec
     with open(path, "w", encoding="utf-8") as f:
         json.dump(d, f, indent=1)
     return len(sec["born"])
 
 
 def wipe_learned(path: str, profile: str | None = None) -> None:
-    """profile=None wipes the whole file; otherwise only that
-    lineage."""
-    if profile is None:
-        try:
-            os.remove(path)
-        except OSError:
-            pass
-        return
+    """Learned rules are now SHARED across profiles; this wipes the whole
+    store (the profile argument is kept for call compatibility)."""
+    try:
+        os.remove(path)
+    except OSError:
+        pass
+    return
     d = _read_store(path)
-    d["profiles"].pop(str(profile), None)
+    d["profiles"].pop("shared", None)
     try:
         with open(path, "w", encoding="utf-8") as f:
             json.dump(d, f, indent=1)

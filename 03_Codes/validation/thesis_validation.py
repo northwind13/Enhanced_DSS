@@ -1,12 +1,12 @@
-"""Batch hindcast that produces the Chapter 5 validation deliverables.
+"""Batch hindcast that produces the validation deliverables.
 
 Runs the four documented Turkish fires (Manavgat 2021, Marmaris 2021,
 Milas-Kemerkoy 2021, Canakkale-Kayadere 2023) through the same blind
 hindcast pipeline as ``auto_validate.py`` and assembles, in one pass, the
 exact objects the thesis reports:
 
-    Table 5.4  case configuration and the simulated DURATION per case
-    Table 5.5  agreement metrics per case (mean +/- sd over seeds)
+    Table 5.4 case configuration and the simulated DURATION per case
+    Table 5.5 agreement metrics per case (mean +/- sd over seeds)
     Figure 5.2 agreement maps (green correct burn, red overprediction,
                blue missed burn)
     Figure 5.3 simulated versus observed burned-area growth over time
@@ -516,7 +516,7 @@ def run_thesis_validation(firms_key: str = "", cell: float = 90.0,
                           wind_ensemble: bool = True,
                           out_root: Optional[str] = None,
                           progress: Optional[Callable] = None) -> Dict:
-    """Run the four cases and assemble the Chapter 5 deliverables.
+    """Run the four cases and assemble the deliverables.
 
     ``progress(case_idx, n_cases, frac, message)`` is called throughout.
     Returns a dict with the two tables, the two figure paths, the per-case

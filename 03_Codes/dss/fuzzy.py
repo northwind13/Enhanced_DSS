@@ -2,7 +2,7 @@
 
 The partition follows the design established in the background chapter
 (Figure 2.3): five terms VL, L, M, H, VH on a normalized [0, 1] universe,
-with the (a, b, c, d) parameters of thesis Table D.3 (Appendix D), the
+with the (a, b, c, d) parameters of thesis Table D.3, the
 single place the document states them. Adjacent terms
 overlap so that every reading activates AT MOST TWO terms and the two
 memberships sum to one on the shoulders. Worked check: a reading of 0.62
@@ -34,7 +34,7 @@ TERM_CENTER = {"VL": 0.0, "L": 0.25, "M": 0.5, "H": 0.75, "VH": 1.0}
 def default_partition() -> dict:
     """{term: (a, b, c, d)} trapezoids of the five-term partition.
 
-    Values follow Table D.3 (Appendix D) with ONE correction. The
+    Values follow Table D.3 with ONE correction. The
     published "very high" row reads (0.70, 0.85, 1.00, 1.00), which does
     not share "high"'s descending edge (0.75, 0.90) and therefore breaks
     the Ruspini invariant: sum_t mu_t climbs to 1.333 on x in [0.70,
@@ -137,9 +137,15 @@ class PartitionRegistry:
         the existing term cores. Grows the linguistic catalog of this
         variable (5 -> 6 -> ...); returns the new term's name."""
         part = dict(self.get(var))
+        x = float(np.clip(x, 0.0, 1.0))
+        # REUSE an existing inserted term when the reading already falls in its
+        # support: without this the catalog fills with identical duplicate
+        # terms (X1, X2, ... all centered on the same value)
+        for t, abcd in part.items():
+            if t.startswith("X") and abcd[0] <= x <= abcd[3]:
+                return t
         n = sum(1 for t in part if t.startswith("X")) + 1
         name = f"X{n}"
-        x = float(np.clip(x, 0.0, 1.0))
         a = max(0.0, x - 0.12)
         b = max(a, x - 0.05)
         c = min(1.0, x + 0.05)

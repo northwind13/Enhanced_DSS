@@ -1,13 +1,13 @@
 """External data layers that drive the simulation.
 
 These containers instantiate the external input structure
-and the external data sources of Section 4.3:
+and the external data sources of:
 
-    MeteoLayer     -> U_Meteo,k   (Table 4.2)
-    TopoLayer      -> U_Geo       (Table 4.3)
-    FuelLayer      -> U_Fuel,k    (Table 4.4)
-    ValueLayer     -> U_Val,k     (Table 4.5)  decisional context
-    ResourceLayer  -> U_Res,k / U_DSS,k (Table 4.6)  decisional context
+    MeteoLayer -> U_Meteo,k 
+    TopoLayer -> U_Geo 
+    FuelLayer -> U_Fuel,k 
+    ValueLayer -> U_Val,k decisional context
+    ResourceLayer -> U_Res,k / U_DSS,k decisional context
 
 Every field is stored as a 2D array of shape (ny, nx) using the convention
 array[y, x]. Helper builders allow a field to be created either as a uniform
@@ -38,7 +38,7 @@ def as_field(ny: int, nx: int, value) -> np.ndarray:
 
 @dataclass
 class MeteoLayer:
-    """Spatio temporal atmospheric drivers (Table 4.2)."""
+    """Spatio temporal atmospheric drivers."""
 
     temp: np.ndarray        # air temperature, deg C
     rh: np.ndarray          # relative humidity, percent
@@ -59,7 +59,7 @@ class MeteoLayer:
 
 @dataclass
 class TopoLayer:
-    """Static terrain layer (Table 4.3)."""
+    """Static terrain layer."""
 
     elev: np.ndarray        # elevation, m
     slope: np.ndarray       # slope, rad
@@ -76,7 +76,7 @@ class TopoLayer:
 
 @dataclass
 class FuelLayer:
-    """Combustible material layer (Table 4.4).
+    """Combustible material layer.
 
     ftype holds integer fuel class ids referencing config.FUEL_MODELS.
     fload is the available fuel mass normalized to [0, 1]; fload0 stores the
@@ -104,7 +104,7 @@ class FuelLayer:
 
 @dataclass
 class ValueLayer:
-    """Values at risk layer (Table 4.5). Inputs are spatial and static during a
+    """Values at risk layer. Inputs are spatial and static during a
     short horizon run; the aggregated priority V_prio is recomputed on demand.
     """
 
@@ -121,7 +121,7 @@ class ValueLayer:
         )
 
     def priority(self, weights) -> np.ndarray:
-        """Protection priority score V_prio (Eq. 55) as a normalized weighted sum."""
+        """Protection priority score V_prio as a normalized weighted sum."""
         w = weights.normalized()
         vpop_n = _minmax(self.vpop)
         # evacuation distance is inverted: closer to a route means higher priority
@@ -135,7 +135,7 @@ class ValueLayer:
 
 @dataclass
 class ResourceLayer:
-    """Operational suppression resource layer (Table 4.6).
+    """Operational suppression resource layer.
 
     These fields feed both the suppression mapping (as U_DSS,k) and the
     decisional context (as U_Res,k). When no decision support system is active,

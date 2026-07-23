@@ -1,4 +1,4 @@
-"""Wildfire state representation (Eq. 41, 61).
+"""Wildfire state representation.
 
 The authoritative state is the per cell vector s = (B, Fload, I, tau):
 

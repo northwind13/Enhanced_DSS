@@ -23,7 +23,7 @@ from .rules import (Rule, SEED_RULES, INTERVENTIONS, INTERVENTION_LABEL,
                     evaluate_rules, ALPHA_MIN)
 from .actions import (resource_suggestion, decision_to_resources,
                       suggest_resource_items, build_resource_layer,
-                      pool_efficiency)
+                      pool_efficiency, RESOURCE_KINDS, resource_kind_label)
 from .evaluate import (clone_sim, forecast_cost, candidate_vs_noaction,
                        quality_Q, graduated_failsafe, CONCEPT_FAMILY)
 from .persist import (save_learned, load_learned, load_parts,
@@ -48,7 +48,7 @@ __all__ = ["Region", "partition", "partition_n", "ten_features",
            "INTERVENTION_LABEL", "evaluate_rules", "ALPHA_MIN",
            "resource_suggestion", "decision_to_resources",
            "suggest_resource_items", "build_resource_layer",
-           "pool_efficiency",
+           "pool_efficiency", "RESOURCE_KINDS", "resource_kind_label",
            "clone_sim", "forecast_cost", "candidate_vs_noaction",
            "quality_Q", "graduated_failsafe", "CONCEPT_FAMILY",
            "make_runtime_rules", "StageController", "AdaptOutcome",

@@ -142,6 +142,16 @@ class RunLogger:
         with open(os.path.join(self.dir, "meta.json"), "w") as fh:
             json.dump(meta, fh, indent=1, default=str)
 
+    def save_rules(self, rules, profile="full", engine=None) -> None:
+        """Per-run SNAPSHOT of the rule base (learned delta + vocabulary), in
+        the same format as the shared learned store. With meta.json's
+        seed_profile it lets a loaded run rebuild EXACTLY the rules that were
+        active: seed profile + this run's learned rules."""
+        import os
+        from .persist import save_learned
+        save_learned(rules, os.path.join(self.dir, "rules.json"),
+                     profile=profile, engine=engine)
+
     def log_step(self, sim, rep=None, override=None) -> None:
         import numpy as np
         s = sim.state

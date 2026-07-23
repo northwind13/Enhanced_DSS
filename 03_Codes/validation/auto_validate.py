@@ -101,14 +101,32 @@ def _sample(arr, a_lons, a_lats, lons, lats):
     return arr[np.ix_(yi, xi)]
 
 
-def build_real_world(bbox, cell_m, cache_dir, moisture=0.08, tree_fuel=3):
+def build_real_world(bbox, cell_m, cache_dir, moisture=0.08, tree_fuel=3,
+                     add_assets=True, add_roads=True, pop_per_ha=25.0,
+                     add_fire=False, firms_key=None, truth_cache_dir=None,
+                     source_bbox=None):
     """Build a ready-to-simulate World from a real-world bounding box using
     the same open data as the validation pipeline: Copernicus GLO-30 DEM +
     ESA WorldCover fuel. `bbox` needs keys west/south/east/north (deg).
-    Downloads are cached in cache_dir; a cached area builds offline."""
+    Downloads are cached in cache_dir; a cached area builds offline.
+
+    add_assets: derive building + population assets from the WorldCover
+        built-up class, so the real town shows up as protectable assets and
+        the DSS has something to defend (water and forest already come from
+        the fuel map). pop_per_ha is a NOMINAL urban density (persons per
+        hectare of built-up), not a census figure.
+    add_roads: download the road network + key facilities from OpenStreetMap
+        (Overpass) and stamp them as access corridors + critical assets."""
     os.makedirs(cache_dir, exist_ok=True)
-    dem, dlons, dlats = _download_dem(bbox, cache_dir)
-    wc, wlons, wlats = _download_worldcover(bbox, cache_dir)
+    # when this scene is a CROP of a documented case, read the terrain / fuel /
+    # roads for the FULL case from its cache (source_bbox + truth_cache_dir)
+    # and just SAMPLE the crop window out of them: no re-download, no data
+    # lost, the focus is purely a smaller grid over the same rasters.
+    _src_bbox = source_bbox if source_bbox is not None else bbox
+    _src_dir = (truth_cache_dir if (source_bbox is not None and truth_cache_dir)
+                else cache_dir)
+    dem, dlons, dlats = _download_dem(_src_bbox, _src_dir)
+    wc, wlons, wlats = _download_worldcover(_src_bbox, _src_dir)
     nx, ny, lons, lats = _grid(bbox, cell_m)
     cfg = SimConfig(nx=nx, ny=ny, cell_size_m=cell_m)
     w = World.blank(cfg)
@@ -126,7 +144,268 @@ def build_real_world(bbox, cell_m, cache_dir, moisture=0.08, tree_fuel=3):
         fload[sel] = load
     w.fuel = FuelLayer(ftype=ftype, fload=fload,
                        fmoist=np.full((ny, nx), float(moisture)))
+    # real-scale suppression: a wildland fire is not knocked down as fast as
+    # a small painted scenario. Weaken the direct fuel-removal gain, make a
+    # burning cell harder to quench outright, and decay effectiveness faster
+    # with dispatch time. (Synthetic scenarios keep the default params.)
+    from disaster_phyengine.config import SuppressionParams
+    w.config.suppression = SuppressionParams(
+        alpha_s=0.12, beta_t=0.05, gamma_I=2.5,
+        wet_gain=1.5, knockdown_ratio=0.30, rcap_max=1.0)
+    if add_assets:
+        try:
+            _seed_builtup_assets(w, wcg, cell_m, pop_per_ha=pop_per_ha)
+        except Exception as exc:
+            print(f"[assets] built-up seeding skipped: {exc}")
+    if add_roads:
+        try:
+            osm = _download_osm(_src_bbox, _src_dir)
+            _stamp_osm(w, bbox, cell_m, osm)   # stamp onto the crop grid
+        except Exception as exc:
+            print(f"[osm] road download skipped: {exc}")
+    if add_fire:
+        # a cached FIRMS file replays offline without a key; otherwise the
+        # key is needed for the first download (else this raises and is
+        # reported, leaving the rest of the scene intact)
+        try:
+            _seed_real_fire(w, bbox, cell_m, cache_dir, firms_key,
+                            truth_cache_dir=truth_cache_dir)
+        except Exception as exc:
+            print(f"[fire] ignition/wind skipped: {exc}")
     return w
+
+
+def _seed_real_fire(w, case, cell_m, cache_dir, firms_key,
+                    truth_cache_dir=None):
+    """Replay the real fire's start: set the ignition at the FIRMS
+    first-detection front and a uniform driving wind + fuel moisture from
+    ERA5 at the ignition hour. Needs 'start'/'hours' in case and a FIRMS key.
+
+    truth_cache_dir: where the FIRMS / weather truth is cached. When the scene
+    is a CROP of a documented case, this points at the full case cache so the
+    fire truth is read once (no key) and only the detections that fall inside
+    the cropped grid are kept. Defaults to cache_dir.
+    Returns (n_ignition_cells, first)."""
+    if "start" not in case or "hours" not in case:
+        raise RuntimeError("case has no start/hours for the real fire")
+    _tcd = truth_cache_dir or cache_dir
+    nx, ny, lons, lats = _grid(case, cell_m)
+    pts = _download_firms(case, firms_key, _tcd)
+    _mask, first, ign_cells = _firms_mask_and_ignition(
+        case, pts, nx, ny, lons, lats, cell_m)
+    if first is None:
+        raise RuntimeError("no FIRMS detections in the window")
+    cells = ign_cells if ign_cells else [(first[0], first[1])]
+    seen = 0
+    for gx, gy in cells:
+        if 0 <= gx < nx and 0 <= gy < ny:
+            w.add_ignition(int(gx), int(gy), step=0, radius=0)
+            seen += 1
+    # uniform driving wind + moisture from ERA5 at the ignition point / hour
+    iglat = case["north"] - (first[1] + 0.5) * cell_m / 110540.0
+    mx = 111320.0 * math.cos(math.radians(iglat))
+    iglon = case["west"] + (first[0] + 0.5) * cell_m / mx
+    try:
+        wx = _download_weather(case, _tcd, lat=iglat, lon=iglon)
+        ws = wx["wind_speed_10m"]; wd = wx["wind_direction_10m"]
+        tt = wx["temperature_2m"]; rh = wx["relative_humidity_2m"]
+        h = min(int(first[4].hour), len(ws) - 1)
+        w.set_uniform_wind(float(ws[h]), _met_to_math_toward(float(wd[h])))
+        moist = float(np.clip(equilibrium_moisture(
+            np.array([tt[h]]), np.array([rh[h]]))[0], 0.02, 0.35))
+        w.fuel.fmoist[:] = moist
+    except Exception as exc:
+        print(f"[fire] weather skipped: {exc}")
+    return seen, first
+
+
+def firms_footprint_bbox(case, cache_dir, firms_key=None, margin_km=3.0):
+    """Bounding box (west/south/east/north) of the real fire's FIRMS
+    detections within the documented window, padded by margin_km and clamped
+    to the case bbox. Lets the GIS import CROP the huge case rectangle down to
+    just the area the fire actually touched, without losing any fire cell.
+
+    Reads the cached truth (no key needed once cached); returns None when no
+    detections fall in the window."""
+    import datetime as dt
+    pts = _download_firms(case, firms_key or "", cache_dir)
+
+    def _ts(p):
+        hhmm = int(p[3])
+        return dt.datetime.fromisoformat(p[2]) + dt.timedelta(
+            hours=hhmm // 100, minutes=hhmm % 100)
+
+    pts = sorted(pts, key=_ts)
+    t0 = _ts(pts[0]) if pts else None
+    if t0 is None:
+        return None
+    tend = t0 + dt.timedelta(hours=float(case["hours"]))
+    lons = [p[0] for p in pts if _ts(p) <= tend]
+    lats = [p[1] for p in pts if _ts(p) <= tend]
+    if not lons:
+        return None
+    lat0 = 0.5 * (min(lats) + max(lats))
+    dlon = margin_km * 1000.0 / (111320.0 * math.cos(math.radians(lat0)))
+    dlat = margin_km * 1000.0 / 110540.0
+    west = max(case["west"], min(lons) - dlon)
+    east = min(case["east"], max(lons) + dlon)
+    south = max(case["south"], min(lats) - dlat)
+    north = min(case["north"], max(lats) + dlat)
+    out = dict(case)
+    out.update(west=west, south=south, east=east, north=north)
+    return out
+
+
+def _ll_to_cell(bbox, cell_m, lat, lon):
+    """Lon/lat (deg) to grid (col, row) for a case/bbox, matching _grid."""
+    lat0 = 0.5 * (bbox["south"] + bbox["north"])
+    mx = 111320.0 * math.cos(math.radians(lat0))
+    my = 110540.0
+    gx = int((lon - bbox["west"]) * mx / cell_m)
+    gy = int((bbox["north"] - lat) * my / cell_m)
+    return gx, gy
+
+
+def _seed_builtup_assets(w, wcg, cell_m, pop_per_ha=25.0, block_m=750.0,
+                         max_building_assets=8, max_pop_assets=16):
+    """Turn the WorldCover built-up class (code 50) into building and
+    population assets and stamp the value layers.
+
+    The VALUE layers (vbld, vpop) are stamped over EVERY populated block, so
+    the whole town is protected in the cost. But only the LARGEST blocks
+    become discrete building/population Asset objects, because in the DSS a
+    building/critical asset also stages a suppression depot: turning all 100+
+    blocks of a real town into depots would give unlimited firefighting
+    capacity. Firefighting capacity is an operational resource (a few
+    stations + aircraft), it must not scale with the number of houses."""
+    from disaster_phyengine.world import Asset
+    ny, nx = wcg.shape
+    built = (wcg == 50)
+    if not built.any():
+        return 0
+    B = max(4, int(round(block_m / cell_m)))
+    cell_ha = (cell_m * cell_m) / 10000.0
+    dens_km2 = float(pop_per_ha) * 100.0     # persons per km^2 of built-up
+    rad = max(1, B // 2)
+    blocks = []
+    for y0 in range(0, ny, B):
+        for x0 in range(0, nx, B):
+            sub = built[y0:y0 + B, x0:x0 + B]
+            cnt = int(sub.sum())
+            if cnt < max(4, 0.12 * sub.size):
+                continue
+            ys, xs = np.where(sub)
+            gy = y0 + ys
+            gx = x0 + xs
+            cy = int(y0 + ys.mean())
+            cx = int(x0 + xs.mean())
+            frac = cnt / float(sub.size)
+            vbl = float(min(1.0, 0.4 + frac))
+            # stamp the value layers for the whole town (protection value)
+            w.value.vbld[gy, gx] = np.maximum(w.value.vbld[gy, gx], vbl)
+            w.value.vpop[gy, gx] = np.maximum(w.value.vpop[gy, gx], dens_km2)
+            blocks.append((cnt, cx, cy, vbl,
+                           float(cnt * cell_ha * pop_per_ha)))
+    if not blocks:
+        return 0
+    blocks.sort(key=lambda t: -t[0])           # largest built-up first
+    for cnt, cx, cy, vbl, persons in blocks[:max(1, int(max_building_assets))]:
+        w.assets.append(Asset(name=f"builtup_{cx}_{cy}", kind="building",
+                              x=cx, y=cy, radius=rad, value=vbl))
+    for cnt, cx, cy, vbl, persons in blocks[:max(1, int(max_pop_assets))]:
+        w.assets.append(Asset(name=f"pop_{cx}_{cy}", kind="population",
+                              x=cx, y=cy, radius=rad, population=persons))
+    return len(blocks)
+
+
+def _download_osm(case, cache, cache_name="osm.json"):
+    """Road network + key facilities from OpenStreetMap via the Overpass API.
+    Cached as JSON so a downloaded area rebuilds offline. Returns
+    {"roads": [[(lat, lon), ...], ...], "pois": [(lat, lon, kind), ...]}."""
+    import json
+    import requests
+    path = os.path.join(cache, cache_name)
+    if os.path.exists(path):
+        with open(path, encoding="utf-8") as fh:
+            return json.load(fh)
+    s, w_, n, e = (case["south"], case["west"], case["north"], case["east"])
+    hw = "motorway|trunk|primary|secondary|tertiary|unclassified|residential"
+    q = ("[out:json][timeout:120];("
+         f'way["highway"~"{hw}"]({s},{w_},{n},{e});'
+         f'node["amenity"~"hospital|clinic|fire_station|police"]'
+         f'({s},{w_},{n},{e});'
+         f'node["power"~"plant|substation"]({s},{w_},{n},{e});'
+         ");out geom;")
+    data = None
+    for url in ("https://overpass-api.de/api/interpreter",
+                "https://overpass.kumi.systems/api/interpreter"):
+        try:
+            r = requests.post(url, data={"data": q}, timeout=130)
+            if r.ok and r.text.lstrip().startswith("{"):
+                data = r.json()
+                break
+        except Exception:
+            data = None
+    if data is None:
+        raise RuntimeError("Overpass API unreachable")
+    roads, pois = [], []
+    for el in data.get("elements", []):
+        if el.get("type") == "way" and el.get("geometry"):
+            roads.append([(g["lat"], g["lon"]) for g in el["geometry"]])
+        elif el.get("type") == "node" and "lat" in el:
+            tg = el.get("tags", {})
+            am = tg.get("amenity")
+            if am in ("hospital", "clinic"):
+                kind = "hospital"
+            elif am == "fire_station":
+                kind = "fire_station"
+            elif am == "police":
+                kind = "police"
+            elif tg.get("power"):
+                kind = "power"
+            else:
+                kind = "facility"
+            pois.append((el["lat"], el["lon"], kind))
+    out = {"roads": roads, "pois": pois}
+    os.makedirs(cache, exist_ok=True)
+    with open(path, "w", encoding="utf-8") as fh:
+        json.dump(out, fh)
+    return out
+
+
+def _stamp_osm(w, bbox, cell_m, osm):
+    """Rasterize OSM road ways into the road / access layer (fast, no
+    per-cell disk) and add facility nodes as critical assets."""
+    from disaster_phyengine.config import FUEL_NAME_TO_ID
+    from disaster_phyengine.world import Asset
+    ny, nx = w.shape
+    rmask = np.zeros((ny, nx), dtype=bool)
+    for way in osm.get("roads", []):
+        cells = [_ll_to_cell(bbox, cell_m, la, lo) for (la, lo) in way]
+        for (x0, y0), (x1, y1) in zip(cells, cells[1:]):
+            npix = max(abs(x1 - x0), abs(y1 - y0)) + 1
+            xs = np.linspace(x0, x1, npix).round().astype(int)
+            ys = np.linspace(y0, y1, npix).round().astype(int)
+            ok = (xs >= 0) & (xs < nx) & (ys >= 0) & (ys < ny)
+            rmask[ys[ok], xs[ok]] = True
+    if rmask.any():                       # 1-cell dilation for road width
+        d = rmask.copy()
+        d[1:, :] |= rmask[:-1, :]; d[:-1, :] |= rmask[1:, :]
+        d[:, 1:] |= rmask[:, :-1]; d[:, :-1] |= rmask[:, 1:]
+        rmask = d
+        w._ensure_roads()
+        w.roads |= rmask
+        w.topo.access[rmask] = 1.0
+        land = rmask & (w.fuel.ftype != FUEL_NAME_TO_ID["water"])
+        w.fuel.ftype[land] = 0            # paved road is non flammable
+        w.fuel.fload[land] = 0.0
+        w.fuel.fload0[land] = 0.0
+    for (lat, lon, kind) in osm.get("pois", []):
+        gx, gy = _ll_to_cell(bbox, cell_m, lat, lon)
+        if 0 <= gx < nx and 0 <= gy < ny:
+            w.add_asset(Asset(name=f"{kind}_{gx}_{gy}", kind="critical",
+                              x=int(gx), y=int(gy), radius=1, value=1.0))
+    return int(rmask.sum())
 
 
 # ------------------------------------------------------------- downloaders
@@ -234,6 +513,14 @@ def _download_firms(case, key, cache):
             and sum(1 for _ in open(legacy)) > 1):
         os.replace(legacy, path)   # keep a previously downloaded archive
     if not os.path.exists(path):
+        if not key:
+            # nothing cached and no key: cannot fetch. Give a clear reason
+            # instead of firing a keyless request that returns an HTML error.
+            raise RuntimeError(
+                "FIRMS truth is not cached for this case yet and no MAP_KEY "
+                "was given. Enter a free key once "
+                "(https://firms.modaps.eosdis.nasa.gov/api/map_key/); after "
+                "the first run it is cached and no key is needed.")
         bbox = f"{case['west']},{case['south']},{case['east']},{case['north']}"
         d0 = dt.date.fromisoformat(case["start"])
         days = min(10, int(math.ceil(case["hours"] / 24.0)) + 2)
