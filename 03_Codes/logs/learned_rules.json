@@ -24,8 +24,33 @@
        0.5238623850606648
       ]
      ],
-     "note": "adaptation-born: resolution increase (instantiated antecedent cell) | restored from the learned store | restored from the learned store",
-     "strength": 345.28142658478737
+     "note": "adaptation-born: resolution increase (instantiated antecedent cell) | restored from the learned store | restored from the learned store | restored from the learned store",
+     "strength": 383.8725282934185
+    },
+    {
+     "name": "A2",
+     "antecedents": [
+      [
+       "suppression_feasibility",
+       "X1"
+      ],
+      [
+       "asset_exposure_risk",
+       "H"
+      ]
+     ],
+     "consequents": [
+      [
+       "asset_protection",
+       0.5981245103519708
+      ],
+      [
+       "evacuation",
+       0.5224332776729058
+      ]
+     ],
+     "note": "adaptation-born: resolution increase: term X1 inserted into suppression_feasibility at 0.79 (catalog grew) | restored from the learned store | restored from the learned store | restored from the learned store",
+     "strength": 183.08297017583777
     },
     {
      "name": "G2",
@@ -53,33 +78,8 @@
        0.55
       ]
      ],
-     "note": "adaptation-born: generative (claude), gates G1-G4 | restored from the learned store | restored from the learned store | restored from the learned store",
-     "strength": 169.82477595618897
-    },
-    {
-     "name": "A2",
-     "antecedents": [
-      [
-       "suppression_feasibility",
-       "X1"
-      ],
-      [
-       "asset_exposure_risk",
-       "H"
-      ]
-     ],
-     "consequents": [
-      [
-       "asset_protection",
-       0.5981245103519708
-      ],
-      [
-       "evacuation",
-       0.5224332776729058
-      ]
-     ],
-     "note": "adaptation-born: resolution increase: term X1 inserted into suppression_feasibility at 0.79 (catalog grew) | restored from the learned store | restored from the learned store",
-     "strength": 175.36051286805107
+     "note": "adaptation-born: generative (claude), gates G1-G4 | restored from the learned store | restored from the learned store | restored from the learned store | restored from the learned store",
+     "strength": 187.79901350121764
     },
     {
      "name": "G3",
@@ -111,74 +111,8 @@
        0.8
       ]
      ],
-     "note": "adaptation-born: generative (claude), gates G1-G4 | restored from the learned store",
-     "strength": 77.60800550538961
-    },
-    {
-     "name": "G1",
-     "antecedents": [
-      [
-       "asset_exposure_risk",
-       "H"
-      ],
-      [
-       "suppression_feasibility",
-       "VH"
-      ],
-      [
-       "fire_threat_level",
-       "L"
-      ]
-     ],
-     "consequents": [
-      [
-       "asset_protection",
-       0.7
-      ],
-      [
-       "containment_line",
-       0.6
-      ],
-      [
-       "suppression_effort",
-       0.45
-      ]
-     ],
-     "note": "adaptation-born: generative (claude), gates G1-G4 | restored from the learned store | restored from the learned store | restored from the learned store",
-     "strength": 18.628564479385027
-    },
-    {
-     "name": "G4",
-     "antecedents": [
-      [
-       "fire_threat_level",
-       "L"
-      ],
-      [
-       "suppression_feasibility",
-       "VH"
-      ],
-      [
-       "asset_exposure_risk",
-       "M"
-      ]
-     ],
-     "consequents": [
-      [
-       "containment_line",
-       0.6
-      ],
-      [
-       "asset_protection",
-       0.5
-      ],
-      [
-       "suppression_effort",
-       0.4
-      ]
-     ],
-     "note": "adaptation-born: generative (claude), gates G1-G4 | restored from the learned store",
-     "strength": 16.24152119750119
+     "note": "adaptation-born: generative (claude), gates G1-G4 | restored from the learned store | restored from the learned store",
+     "strength": 94.87556967492156
     },
     {
      "name": "G5",
@@ -210,11 +144,117 @@
        0.6
       ]
      ],
+     "note": "adaptation-born: generative (claude), gates G1-G4 | restored from the learned store",
+     "strength": 36.33194681136634
+    },
+    {
+     "name": "G1",
+     "antecedents": [
+      [
+       "asset_exposure_risk",
+       "H"
+      ],
+      [
+       "suppression_feasibility",
+       "VH"
+      ],
+      [
+       "fire_threat_level",
+       "L"
+      ]
+     ],
+     "consequents": [
+      [
+       "asset_protection",
+       0.7
+      ],
+      [
+       "containment_line",
+       0.6
+      ],
+      [
+       "suppression_effort",
+       0.45
+      ]
+     ],
+     "note": "adaptation-born: generative (claude), gates G1-G4 | restored from the learned store | restored from the learned store | restored from the learned store | restored from the learned store",
+     "strength": 31.778155399169982
+    },
+    {
+     "name": "G4",
+     "antecedents": [
+      [
+       "fire_threat_level",
+       "L"
+      ],
+      [
+       "suppression_feasibility",
+       "VH"
+      ],
+      [
+       "asset_exposure_risk",
+       "M"
+      ]
+     ],
+     "consequents": [
+      [
+       "containment_line",
+       0.6
+      ],
+      [
+       "asset_protection",
+       0.5
+      ],
+      [
+       "suppression_effort",
+       0.4
+      ]
+     ],
+     "note": "adaptation-born: generative (claude), gates G1-G4 | restored from the learned store | restored from the learned store",
+     "strength": 31.852172796856802
+    },
+    {
+     "name": "G6",
+     "antecedents": [
+      [
+       "intervention_urgency",
+       "L"
+      ],
+      [
+       "suppression_feasibility",
+       "VH"
+      ],
+      [
+       "asset_exposure_risk",
+       "H"
+      ]
+     ],
+     "consequents": [
+      [
+       "containment_line",
+       0.6
+      ],
+      [
+       "asset_protection",
+       0.6
+      ],
+      [
+       "resource_deployment",
+       0.5
+      ]
+     ],
      "note": "adaptation-born: generative (claude), gates G1-G4",
-     "strength": 19.84187951433173
+     "strength": 7.445159516587527
     }
    ],
-   "tuned": {},
+   "tuned": {
+    "R41": [
+     [
+      "suppression_effort",
+      0.85
+     ]
+    ]
+   },
    "parts": {
     "suppression_feasibility": {
      "X1": [

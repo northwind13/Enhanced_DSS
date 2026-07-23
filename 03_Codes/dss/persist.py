@@ -40,10 +40,17 @@ def _read_store(path: str) -> dict:
 
 
 def save_learned(rules: List[Rule], path: str,
-                 profile: str = "full", engine=None) -> None:
+                 profile: str = "full", engine=None,
+                 use_evfis: bool = True, use_genai: bool = True) -> None:
     """PER-PROFILE lineages: the selected seed profile is THE base;
     what evFIS/GenAI learn on top of it belongs to that lineage and
-    never leaks into another profile's experiment."""
+    never leaks into another profile's experiment.
+
+    use_evfis / use_genai say which stages the engine is actually managing.
+    A stage whose LOAD flag is off is NOT in the engine, so its data must be
+    PRESERVED from the store here instead of being overwritten with the empty
+    engine state (that was silently deleting persisted rules / concepts /
+    macros when a run was done with a use-stage toggle off)."""
     born = [dict(name=r.name,
                  antecedents=[list(a) for a in r.antecedents],
                  consequents=[[i, float(v)] for i, v in r.consequents],
@@ -88,10 +95,28 @@ def save_learned(rules: List[Rule], path: str,
                                      v["composition"]])
                 for k, v in engine.macros.items()}
     d = _read_store(path)
-    d["profiles"]["shared"] = dict(born=born,
-                                                 tuned=tuned,
-                                                 parts=parts,
-                                                 **vocab)
+    _prev = d["profiles"].get("shared", {}) or {}
+    # keep each stage's stored data when that stage's LOAD flag is off (the
+    # engine is not managing it, so overwriting would delete it)
+    _bornA = [b for b in born if str(b.get("name", ""))[:1] == "A"]
+    _bornG = [b for b in born if str(b.get("name", ""))[:1] == "G"]
+    _prevA = [b for b in _prev.get("born", [])
+              if str(b.get("name", ""))[:1] == "A"]
+    _prevG = [b for b in _prev.get("born", [])
+              if str(b.get("name", ""))[:1] == "G"]
+    _shared = dict(
+        born=(_bornA if use_evfis else _prevA)
+        + (_bornG if use_genai else _prevG),
+        tuned=(tuned if use_evfis else _prev.get("tuned", {})),
+        parts=(parts if use_evfis else _prev.get("parts", {})))
+    _concepts = (vocab.get("concepts") if use_genai
+                 else _prev.get("concepts"))
+    _macros = (vocab.get("macros") if use_genai else _prev.get("macros"))
+    if _concepts:
+        _shared["concepts"] = _concepts
+    if _macros:
+        _shared["macros"] = _macros
+    d["profiles"]["shared"] = _shared
     os.makedirs(os.path.dirname(path), exist_ok=True)
     with open(path, "w", encoding="utf-8") as f:
         json.dump(d, f, indent=1)

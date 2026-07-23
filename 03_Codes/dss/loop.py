@@ -312,7 +312,9 @@ class DecisionEngine:
             try:
                 save_learned(self.rules, self.learned_store,
                              profile=self.seed_profile,
-                             engine=self)
+                             engine=self,
+                             use_evfis=self.use_evfis,
+                             use_genai=self.use_genai)
                 if getattr(self, "run_logger", None) is not None:
                     self.run_logger.save_rules(
                         self.rules, self.seed_profile, self)
@@ -497,7 +499,9 @@ class DecisionEngine:
                     try:
                         save_learned(self.rules, self.learned_store,
                                  profile=self.seed_profile,
-                                 engine=self)
+                                 engine=self,
+                                 use_evfis=self.use_evfis,
+                                 use_genai=self.use_genai)
                         if getattr(self, "run_logger", None) is not None:
                             self.run_logger.save_rules(
                                 self.rules, self.seed_profile, self)
@@ -673,7 +677,9 @@ class DecisionEngine:
             try:
                 save_learned(self.rules, self.learned_store,
                              profile=self.seed_profile,
-                             engine=self)
+                             engine=self,
+                             use_evfis=self.use_evfis,
+                             use_genai=self.use_genai)
                 if getattr(self, "run_logger", None) is not None:
                     self.run_logger.save_rules(
                         self.rules, self.seed_profile, self)

@@ -150,7 +150,9 @@ class RunLogger:
         import os
         from .persist import save_learned
         save_learned(rules, os.path.join(self.dir, "rules.json"),
-                     profile=profile, engine=engine)
+                     profile=profile, engine=engine,
+                     use_evfis=bool(getattr(engine, "use_evfis", True)),
+                     use_genai=bool(getattr(engine, "use_genai", True)))
 
     def log_step(self, sim, rep=None, override=None) -> None:
         import numpy as np
