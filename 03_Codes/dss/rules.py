@@ -37,7 +37,46 @@ ALPHA_MIN = 0.05    # coverage floor (thesis Table E.3)
 
 INTERVENTIONS = ("suppression_effort", "resource_deployment",
                  "containment_line", "asset_protection",
-                 "evacuation", "public_warning")
+                 "evacuation", "public_warning",
+                 # ACTUATOR LIBRARY, discoverable but unseeded: these
+                 # two exist in the physics and are announced to the
+                 # generative stage, yet NO seed rule orders them. A
+                 # rule that uses one can only enter through the
+                 # verification gates, so "the system taught itself a
+                 # tactic from the literature" is a measurable event,
+                 # not a claim.
+                 "tactical_burn", "water_drafting",
+                 "retardant_drop")
+# the families of the thesis doctrine (seed rules draw only on these)
+DOCTRINE_INTERVENTIONS = INTERVENTIONS[:6]
+# discoverable-only physical actions (announced to stage 3)
+DISCOVERABLE_INTERVENTIONS = INTERVENTIONS[6:]
+
+# ACTUATOR LIBRARY: one entry per discoverable physical action. The
+# stage-3 prompt is BUILT from this dict, so adding an actuator here
+# (plus its physics in the engine and its placement in the allocator)
+# is the whole integration: every intervention the generative stage
+# produces afterwards can draw on it, and the announcement, the
+# validation vocabulary and the UI labels follow automatically.
+ACTUATOR_LIBRARY = {
+    "tactical_burn": (
+        "a firing crew ignites a strip between the containment band "
+        "and the front so a counter-fire consumes the fuel the head "
+        "fire is running toward. Real fire: in strong wind or near "
+        "assets it can backfire, and the forecast gates will reject "
+        "a reckless order."),
+    "water_drafting": (
+        "engines and helicopters refill from the nearest lake, river "
+        "or sea, raising sustained capacity near water. On a map "
+        "without water it does nothing."),
+    "retardant_drop": (
+        "aircraft coat the fuel ahead of the head fire with "
+        "long-term retardant or soil, so the coated cells resist "
+        "ignition even after the water in them dries. Aerial "
+        "delivery: it does not need road access, but it is a "
+        "finite, expensive pass and only the head sector is "
+        "coated."),
+}
 INTERVENTION_LABEL = {
     "suppression_effort": "suppression effort",
     "resource_deployment": "resource deployment",
@@ -45,6 +84,9 @@ INTERVENTION_LABEL = {
     "asset_protection": "asset protection",
     "evacuation": "evacuation",
     "public_warning": "public warning",
+    "tactical_burn": "tactical burn (counter-fire)",
+    "water_drafting": "water drafting (lake/sea refill)",
+    "retardant_drop": "retardant/soil drop (aerial)",
 }
 # withdrawn on life-safety rules: the DIRECT-ATTACK families only;
 # deployment and protection are support roles and remain
@@ -222,6 +264,14 @@ SEED_RULES: List[Rule] = [
 
 def _membership(var: str, term: str, concepts: Dict[str, np.ndarray],
                 features: Dict[str, float]) -> float:
+    # ">=X": an ORDER-PRESERVING antecedent. A protective rule written
+    # at threat H used to fall silent when the situation escalated to
+    # VH (the H trapezoid closes); with ">=H" the rule reads the max
+    # membership of H and every term above it, so it stays in force as
+    # the situation gets worse, never as it gets better.
+    if term.startswith(">=") and term[2:] in TERMS:
+        return max(_membership(var, t, concepts, features)
+                   for t in TERMS[TERMS.index(term[2:]):])
     if term in TERMS:
         if var in concepts:
             return float(concepts[var][TERMS.index(term)])
@@ -279,6 +329,13 @@ def evaluate_rules(concepts: Dict[str, np.ndarray],
             continue
         for interv, v in r.consequents:
             if macros and interv in macros:
+                # CLAUSE actuator (runtime-defined): no base-channel
+                # composition; its own intensity is exported below and
+                # the allocator interprets the clauses spatially
+                if not (macros[interv].get("composition")):
+                    num_m[interv] = num_m.get(interv, 0.0) + w * float(v)
+                    den_m[interv] = den_m.get(interv, 0.0) + w
+                    continue
                 # MACRO intervention: a learned composition of the
                 # base physical channels (e.g. a backburn pattern =
                 # containment + suppression ahead of the front); it

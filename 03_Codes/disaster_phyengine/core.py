@@ -79,6 +79,10 @@ class Simulator:
         self.exposure_person_steps: float = 0.0
         self.response_capacity_steps: float = 0.0
         self.population_evacuated: float = 0.0
+        # RETARDANT COATING: long-term chemical/soil cover laid by
+        # aerial drops; unlike wetting it does not rinse out with the
+        # moisture model, it decays on its own slow clock
+        self.retard = np.zeros(world.shape, dtype=float)
         self._vpop0 = np.asarray(world.value.vpop,
                                  dtype=float).copy()
         # cumulative simulated time: step lengths may CHANGE mid-run
@@ -120,6 +124,7 @@ class Simulator:
             "tmin": float(self.t_elapsed_min),
             "vpop": self.world.value.vpop.astype(np.float32),
             "nevac": float(self.population_evacuated),
+            "retard": self.retard.astype(np.float32),
         }
 
     def _record_snapshot(self) -> None:
@@ -171,6 +176,8 @@ class Simulator:
         if "vpop" in snap:
             self.world.value.vpop = snap["vpop"].astype(float)
         self.population_evacuated = float(snap.get("nevac", 0.0))
+        if "retard" in snap:
+            self.retard = snap["retard"].astype(float)
         self.t_elapsed_min = float(snap.get(
             "tmin", k * float(getattr(self.cfg, "step_minutes", 30.0))))
         self.history = self.history[:k]
@@ -196,6 +203,7 @@ class Simulator:
         self.exposure_person_steps = 0.0
         self.response_capacity_steps = 0.0
         self.population_evacuated = 0.0
+        self.retard[:] = 0.0
         self.world.value.vpop = self._vpop0.copy()
         self.t_elapsed_min = 0.0
         self._snapshots = {0: self._snapshot()}
@@ -242,6 +250,14 @@ class Simulator:
             _hot[:, 1:] |= _B_e[:, :-1]
             _hot[:, :-1] |= _B_e[:, 1:]
             _rate_e = np.where(_hot, 0.30 * _dtm_e, 0.05 * _dtm_e)
+            # WARNED cells respond faster: a public warning issued
+            # before (or with) the evacuation order primes the
+            # population, roughly doubling the departure tempo at
+            # full warning. The warning alone moves nobody.
+            _rw = getattr(resource, "rwarn", None)
+            if _rw is not None:
+                _rate_e = _rate_e * (1.0 + 1.0 * np.clip(_rw, 0.0,
+                                                         1.0))
             _fracv = np.clip(_rev, 0.0, 1.0) * np.minimum(0.9,
                                                           _rate_e)
             _moved = _vp * _fracv
@@ -324,6 +340,32 @@ class Simulator:
         ign0 = world.ignition_field(s.step)
         if extra_ignition is not None:
             ign0 = np.maximum(ign0, extra_ignition)
+        # TACTICAL BURN (counter-fire): ordered cells are set alight by
+        # the firing crew. A real ignition with the real spread physics
+        # follows, so the burnt-out strip is genuinely burnt on the map
+        # and a badly judged order genuinely backfires; only the
+        # decision layer's forecast gates keep it safe.
+        _rb_ord = getattr(resource, "rburn", None)
+        if _rb_ord is not None and float(np.max(_rb_ord)) > 1e-6:
+            _lit = ((_rb_ord > 0.5) & (s.burning < 0.5)
+                    & (s.fload > 0.05)
+                    & (fuel.fmoist < 0.30))
+            ign0 = np.maximum(ign0, _lit.astype(float))
+        # RETARDANT/SOIL DROP: ordered cells gain coating; the field
+        # decays at ~0.3%/min (hours of protection, not days)
+        _rr_ord = getattr(resource, "rret", None)
+        if _rr_ord is not None and float(np.max(_rr_ord)) > 1e-6:
+            self.retard = np.maximum(self.retard,
+                                     np.clip(_rr_ord, 0.0, 1.0))
+        if float(self.retard.max()) > 1e-6:
+            _dtm_r = float(getattr(cfg, "step_minutes", 30.0))
+            self.retard *= max(0.0, 1.0 - 0.003 * _dtm_r)
+            # the coating behaves like moisture that does NOT dry: the
+            # spread model reads fuel.fmoist, so the coated cells are
+            # floored every step for as long as the coating lasts
+            # (0.45 sits above every fuel's extinction moisture)
+            fuel.fmoist = np.maximum(
+                fuel.fmoist, 0.45 * np.clip(self.retard, 0.0, 1.0))
 
         comb_tot = np.zeros_like(s.fload)
         red_tot = np.zeros_like(s.fload)
@@ -396,7 +438,10 @@ class Simulator:
                             B_next[ty[fuelok], tx[fuelok]] = 1.0
 
             # 3. fuel mass update, substep compounded
-            f_burn = np.clip(self._b_base * (1.0 - fuel.fmoist), 0.0, 1.0)
+            f_burn = np.clip(self._b_base * (1.0 - fuel.fmoist)
+                             * (1.0 - 0.8 * np.clip(self.retard,
+                                                    0.0, 1.0)),
+                             0.0, 1.0)
             _fb_ref = f_burn                     # reference-step scale
             if sub != 1.0:
                 f_burn = 1.0 - (1.0 - f_burn) ** sub

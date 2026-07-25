@@ -1,0 +1,41 @@
+{
+ "start_step": 350,
+ "seq0": 20,
+ "cycles": 1,
+ "satisficing_failed": 1,
+ "tried": 0,
+ "accepted": 0,
+ "rejected": 0,
+ "blocked": {
+  "adaptation master switch off (evFIS and GenAI both off)": 1
+ },
+ "per_stage": {},
+ "gates": {},
+ "reasons": {},
+ "withheld": 0,
+ "dJ_accepted": 0.0,
+ "j_series": [
+  [
+   350,
+   0.1021400694913659,
+   0.08278492225173013,
+   0.07864567613914362
+  ]
+ ],
+ "phys_series": [
+  [
+   350,
+   0.04118917123401428,
+   0.04118917123401428
+  ]
+ ],
+ "persist_failed": 0,
+ "stage_controller": {
+  "low|3": -0.0002,
+  "mid|2": -0.0002,
+  "low|2": -0.0002
+ },
+ "config_id": "DSS1-EV0-GA0-U12:1-U3:1",
+ "seed_profile": "minimal",
+ "persist_errors": []
+}

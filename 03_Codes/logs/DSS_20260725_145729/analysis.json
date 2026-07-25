@@ -1,0 +1,62 @@
+{
+ "start_step": 0,
+ "cycles": 2,
+ "satisficing_failed": 2,
+ "tried": 1,
+ "accepted": 0,
+ "rejected": 1,
+ "blocked": {
+  "cooldown between adaptation trials": 1
+ },
+ "per_stage": {
+  "2": {
+   "tried": 1,
+   "accepted": 0,
+   "dJ": 0.0
+  }
+ },
+ "gates": {},
+ "reasons": {
+  "cell already covered \u2014 an active rule sits on this antecedent cell and the situation is crisp; numeric tuning is stage \u2460 evFIS's job": 1
+ },
+ "withheld": 0,
+ "dJ_accepted": 0.0,
+ "j_series": [
+  [
+   0,
+   0.13745711402623614,
+   0.13745711402623614,
+   0.13058425832492432
+  ],
+  [
+   1,
+   0.14130905511811023,
+   0.14130905511811023,
+   0.13424360236220473
+  ]
+ ],
+ "phys_series": [
+  [
+   0,
+   0.20085362791865427,
+   0.20085362791865427
+  ],
+  [
+   1,
+   0.20085362791865427,
+   0.20085362791865427
+  ]
+ ],
+ "persist_failed": 0,
+ "stage_controller": {
+  "high+gap|2": -0.0007419750000000001,
+  "low|3": -0.0002,
+  "mid+gap|3": -0.0009489584372714124,
+  "high+gap|3": -0.0009298079384292965,
+  "high+gap|1": -0.0005705,
+  "low|2": -0.0002
+ },
+ "config_id": "DSS1-EV1-GA1-U12:1-U3:1",
+ "seed_profile": "minimal",
+ "persist_errors": []
+}

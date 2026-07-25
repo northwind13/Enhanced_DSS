@@ -103,9 +103,10 @@ def _propose_via_cli(ctx: "ProposalContext", user: str,
         'to a fuzzy term), "consequent" (an object mapping a subset of the '
         'interventions to a fuzzy term), and "rationale" (one sentence). '
         "Every fuzzy term must be one of VL, L, M, H, VH.")
-    cmd = ["claude", "-p", prompt, "--output-format", "json"]
+    cmd = ["claude"]
     if model:
         cmd += ["--model", model]
+    cmd += ["-p", prompt, "--output-format", "json"]
     try:
         res = subprocess.run(cmd, capture_output=True, text=True,
                              timeout=timeout)

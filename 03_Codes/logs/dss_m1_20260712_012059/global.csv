@@ -1,6 +1,0 @@
-﻿step;t_min;hotspot;attended;shares;statement
-128;128.0;Agent_1;Agent_1|Agent_2|Agent_3;Agent_1=1.0|Agent_2=1.0|Agent_3=1.0;Global DSS: focus on Agent_1 (priority 0.57), Agent_1 share 1.00, Agent_3 share 1.00, Agent_2 share 1.00
-129;129.0;Agent_1;Agent_1|Agent_2|Agent_3;Agent_1=1.0|Agent_2=1.0|Agent_3=1.0;Global DSS: focus on Agent_1 (priority 0.53), Agent_1 share 1.00, Agent_3 share 1.00, Agent_2 share 1.00
-130;130.0;Agent_1;Agent_1|Agent_2|Agent_3;Agent_1=1.0|Agent_2=1.0|Agent_3=1.0;Global DSS: focus on Agent_1 (priority 0.49), Agent_1 share 1.00, Agent_3 share 1.00, Agent_2 share 1.00
-131;131.0;Agent_1;Agent_1|Agent_2|Agent_3;Agent_1=1.0|Agent_2=1.0|Agent_3=1.0;Global DSS: focus on Agent_1 (priority 0.45), Agent_1 share 1.00, Agent_3 share 1.00, Agent_2 share 1.00
-132;132.0;Agent_1;Agent_1|Agent_2|Agent_3;Agent_1=1.0|Agent_2=1.0|Agent_3=1.0;Global DSS: focus on Agent_1 (priority 0.41), Agent_1 share 1.00, Agent_3 share 1.00, Agent_2 share 1.00

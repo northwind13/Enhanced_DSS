@@ -58,10 +58,31 @@ st.set_page_config(page_title="DisasterAware Simulator", layout="wide")
 st.markdown(
     "<style>section[data-testid='stSidebar']{width:265px!important;"
     "min-width:265px!important}"
-    "section[data-testid='stSidebar'] .stButton>button{padding:0.15rem "
-    "0.4rem}"
     "footer{visibility:hidden;height:0}"
     "[data-testid='stStatusWidget']{visibility:hidden}"
+    # The default toolbar is a full-width band roughly 3.5rem tall and the
+    # content below it carries about 6rem of top padding, so the page opened
+    # with an empty stripe above the first control. The band is shrunk rather
+    # than removed: the ⋮ menu lives in it and is still needed.
+    "header[data-testid='stHeader']{height:2.2rem;background:transparent}"
+    "[data-testid='stToolbar']{height:2.2rem}"
+    ".block-container,[data-testid='stAppViewBlockContainer']"
+    "{padding-top:1.2rem!important}"
+    # the sidebar carries its own top padding, on a different element than
+    # the main area, so trimming only the main one left a band above the
+    # title
+    "section[data-testid='stSidebar'] .block-container,"
+    "[data-testid='stSidebarUserContent'],"
+    "section[data-testid='stSidebar'] > div:first-child"
+    "{padding-top:0!important}"
+    # COMPACT, CAREFULLY. Shrinking the flex gap and zeroing paragraph
+    # margins made captions and buttons overlap: Streamlit lays these out on
+    # a flex column and the gap IS the separation. Only the paddings inside
+    # controls are trimmed, never the spacing between them.
+    "section[data-testid='stSidebar'] .stButton>button"
+    "{padding:0.15rem 0.5rem;font-size:0.88rem}"
+    "section[data-testid='stSidebar'] [data-testid='stVerticalBlockBorder"
+    "Wrapper']{padding:0.3rem 0.5rem}"
     # wide markdown tables (all-agents comparison) scroll sideways inside
     # their panel instead of overflowing the screen
     "[data-testid='stMarkdownContainer'] table{display:block;"
@@ -193,6 +214,608 @@ def _restore_snapshot() -> None:
     _reset_dss_state()
 
 
+def _shared_store_path() -> str:
+    """Kept as the single name every panel asks for the store by; it now
+    resolves to the generated-state file, so no view can end up reading the
+    retired learned_rules.json while the engine reasons from the new one."""
+    return _gstate_path()
+
+
+def _active_store_path() -> str:
+    """The store the DSS ACTUALLY reads: a loaded run's snapshot wins over
+    the shared store."""
+    return (getattr(st.session_state.get("dss_engine"),
+                    "state_path", None)
+            or st.session_state.get("dss_learned_override")
+            or _shared_store_path())
+
+
+def _gstate_path() -> str:
+    """The generated-state store: the single source of truth for everything
+    the adaptation stages produce."""
+    return os.path.join(os.path.dirname(os.path.dirname(
+        os.path.abspath(__file__))), "logs", "dss_generated_state.json")
+
+
+def _read_gstate(path: str | None = None):
+    """The store as a plain dict, read HERE rather than through the dss
+    package. Streamlit re-executes this script on every rerun but keeps
+    imported sub-modules cached, so a view depending on a freshly added
+    dss.* function stays broken until the whole process restarts."""
+    import json as _js
+    p = path or _gstate_path()
+    try:
+        with open(p, encoding="utf-8") as _f:
+            return _js.load(_f)
+    except Exception:
+        return {}
+
+
+def _store_vocab(path: str | None = None):
+    """(concepts, macros) that stage ③ produced, keyed by name."""
+    d = _read_gstate(path)
+    cons = {}
+    for c in d.get("genai_concepts") or []:
+        if c.get("name"):
+            cons[c["name"]] = dict(
+                level=int(c.get("layer", c.get("level", 2))),
+                inputs=[[i.get("name"), float(i.get("weight", 0.0))]
+                        if isinstance(i, dict) else list(i)
+                        for i in (c.get("inputs") or [])])
+    macs = {}
+    for m in d.get("genai_interventions") or []:
+        if m.get("name"):
+            macs[m["name"]] = dict(composition=[
+                [i.get("channel"), float(i.get("weight", 0.0))]
+                if isinstance(i, dict) else list(i)
+                for i in (m.get("composition") or [])])
+    return cons, macs
+
+
+def _rebuild_run_stats(run_dir: str) -> dict:
+    """The same per-run tally the engine keeps, recovered from a run's log.
+
+    A loaded run has no live engine, and an analysis view that goes blank the
+    moment a past run is opened is not much of an analysis. Two log layouts
+    are read: decisions.jsonl (one row per REGION per cycle, current) and the
+    older cycles.jsonl (one row per cycle)."""
+    import json as _js
+    st_ = dict(start_step=None, cycles=0, satisficing_failed=0, tried=0,
+               accepted=0, rejected=0, blocked={}, per_stage={}, gates={},
+               reasons={}, withheld=0, dJ_accepted=0.0, j_series=[])
+
+    def _rows(name):
+        try:
+            return [ln for ln in open(os.path.join(run_dir, name),
+                                      encoding="utf-8").read().splitlines()
+                    if ln.strip()]
+        except OSError:
+            return []
+
+    def _bump(d, k):
+        d[str(k)[:70]] = d.get(str(k)[:70], 0) + 1
+
+    # the log stores the RAW threshold; the engine tests against the
+    # tightened satisficing bound min(J_TH, (1-min_gain) * J_noaction), so it
+    # is recomputed here. Reading the raw value instead reported "the gate
+    # never opened" for runs in which stages plainly ran.
+    _mg = 0.05
+    try:
+        import json as _jm
+        _mg = float((_jm.load(open(os.path.join(run_dir, "meta.json"),
+                                   encoding="utf-8")).get("engine") or {})
+                    .get("min_gain", 0.05))
+    except Exception:
+        pass
+
+    def _bound(j_th, j0):
+        return min(float(j_th or 0.0), (1.0 - _mg) * float(j0 or 0.0)) \
+            if j0 else float(j_th or 0.0)
+
+    lines = _rows("decisions.jsonl")
+    if lines:
+        # per-region rows: one CYCLE is one step, and the adaptation stage is
+        # a property of the cycle, so each step is counted once
+        seen = {}
+        for ln in lines:
+            try:
+                o = _js.loads(ln)
+            except Exception:
+                continue
+            step = int(o.get("step", 0))
+            if step not in seen:
+                seen[step] = o
+            if o.get("failsafe"):
+                seen[step]["_fs"] = True
+        for step in sorted(seen):
+            o = seen[step]
+            jc = o.get("j_forecast")
+            if not isinstance(jc, (int, float)):
+                continue
+            j0 = float(o.get("j_noaction") or 0.0)
+            bd = _bound(o.get("j_threshold"), j0)
+            if st_["start_step"] is None:
+                st_["start_step"] = step
+            st_["cycles"] += 1
+            st_["j_series"].append((step, float(jc), j0, bd))
+            if o.get("_fs") or o.get("failsafe"):
+                st_["withheld"] += 1
+            if jc > bd:
+                st_["satisficing_failed"] += 1
+            stg = o.get("stage_tried") or 0
+            if not stg:
+                continue
+            st_["tried"] += 1
+            ps = st_["per_stage"].setdefault(int(stg),
+                                             dict(tried=0, accepted=0,
+                                                  dJ=0.0))
+            ps["tried"] += 1
+            ok = bool(o.get("stage")) and int(o.get("stage") or 0) == int(stg)
+            if ok:
+                st_["accepted"] += 1
+                ps["accepted"] += 1
+            else:
+                st_["rejected"] += 1
+                _bump(st_["reasons"],
+                      str(o.get("stage_detail") or "rejected").split(" | ")[0])
+            if int(stg) == 3:
+                g = o.get("gates")
+                _bump(st_["gates"],
+                      (g if isinstance(g, str) else
+                       (g or {}).get("verdict") if isinstance(g, dict) else
+                       ("admitted" if ok else "rejected")))
+        return st_
+
+    for ln in _rows("cycles.jsonl"):
+        try:
+            o = _js.loads(ln)
+        except Exception:
+            continue
+        fc = o.get("forecast") or {}
+        jc, j0 = fc.get("j_candidate"), fc.get("j_noaction")
+        bd = fc.get("satisficing_bound", fc.get("j_threshold"))
+        if not isinstance(jc, (int, float)):
+            continue
+        step = int(o.get("step", 0))
+        if st_["start_step"] is None:
+            st_["start_step"] = step
+        st_["cycles"] += 1
+        st_["j_series"].append((step, float(jc), float(j0 or 0.0),
+                                float(bd or 0.0)))
+        if o.get("no_harm_withheld"):
+            st_["withheld"] += 1
+        if isinstance(bd, (int, float)) and jc > bd:
+            st_["satisficing_failed"] += 1
+        ad = o.get("adaptation") or {}
+        stg = ad.get("stage")
+        if not stg:
+            continue
+        st_["tried"] += 1
+        ps = st_["per_stage"].setdefault(int(stg),
+                                         dict(tried=0, accepted=0, dJ=0.0))
+        ps["tried"] += 1
+        if ad.get("accepted"):
+            st_["accepted"] += 1
+            ps["accepted"] += 1
+            ps["dJ"] += float(ad.get("dJ") or 0.0)
+            st_["dJ_accepted"] += float(ad.get("dJ") or 0.0)
+        else:
+            st_["rejected"] += 1
+            _bump(st_["reasons"],
+                  str(ad.get("detail") or "rejected").split(" | ")[0])
+        if int(stg) == 3:
+            _bump(st_["gates"],
+                  ((ad.get("info") or {}).get("gates") or {}).get("verdict")
+                  or (ad.get("info") or {}).get("reason")
+                  or ("admitted" if ad.get("accepted") else "rejected"))
+    return st_
+
+
+def _visible_interventions(engine=None) -> list:
+    """The doctrine families plus only the DISCOVERED actuators.
+
+    The actuator library (tactical_burn, water_drafting, ...) is
+    factory physics that no seed rule orders. Until the generative
+    stage writes a gate-passing rule that uses one, it must not
+    appear in any intervention list or legend: seeing it there read
+    as "generated content the wipe failed to delete"."""
+    import dss as _dssv
+    vis = list(_dssv.rules.DOCTRINE_INTERVENTIONS)
+    used = set()
+    for r in (getattr(engine, "rules", None) or []):
+        if getattr(r, "active", True):
+            for iv, _v in r.consequents:
+                used.add(str(iv))
+    for _mn, _md in (_all_macros(engine) or {}).items():
+        for a, _b in (_md.get("composition") or []):
+            used.add(str(a))
+        for c in (_md.get("clauses") or []):
+            used.add("clauses")
+    for iv in _dssv.rules.DISCOVERABLE_INTERVENTIONS:
+        if iv in used:
+            vis.append(iv)
+    return vis
+
+
+def _all_macros(engine=None) -> dict:
+    """Every generated intervention that should appear in a list or a legend.
+
+    The engine holds them only while one is running and only when stage ③
+    consumption is on. The STORE holds them always, so a macro created in an
+    earlier simulation stayed in the file but vanished from every list, which
+    read as knowledge lost rather than knowledge not currently used."""
+    m = dict(getattr(engine, "macros", {}) or {})
+    if m:
+        return m
+    try:
+        _c, _m = _store_vocab()
+        return dict(_m or {})
+    except Exception:
+        return {}
+
+
+def _mirror(shared: str, wkey: str, default=None) -> None:
+    """Point a mirrored control at the shared setting BEFORE it renders.
+
+    The sidebar and the layer panels expose several of the same settings.
+    Each widget keeps its own state, so two widgets writing one session key
+    fight: the sidebar sets dss_apply=True, the panel toggle then returns its
+    own stale False and writes it back, and the two displays disagree inside
+    a single render. Assigning the widget's key from the shared value first,
+    and copying it back on change, gives the setting ONE source of truth."""
+    if shared not in st.session_state and default is not None:
+        st.session_state[shared] = default
+    if shared in st.session_state:
+        st.session_state[wkey] = st.session_state[shared]
+
+
+def _adopt(shared: str, wkey: str) -> None:
+    """on_change partner of _mirror: the widget the user touched wins."""
+    st.session_state[shared] = st.session_state[wkey]
+
+
+def _genai_model_label() -> str:
+    """Which model stage ③ will actually call.
+
+    "(plan default)" names nothing: the point of the label is to answer
+    "opus, sonnet or haiku?". When the request is left to the plan, the model
+    the last live call was SERVED by is shown instead, because that is the
+    only honest answer available without making another call."""
+    ui = str(st.session_state.get("genai_model_ui", "(plan default)"))
+    if ui and ui != "(plan default)":
+        return ui
+    served = str(st.session_state.get("genai_served_model", "") or "")
+    if served:
+        low = served.lower()
+        for fam in ("opus", "sonnet", "haiku", "fable"):
+            if fam in low:
+                return f"plan default → {fam}"
+        return f"plan default → {served}"
+    return "plan default (untested)"
+
+
+def _all_hierarchy(engine=None) -> dict:
+    """The concept hierarchy a view should reason with: base plus whatever
+    stage ③ has generated.
+
+    Same reason as _all_macros. Without a live engine the generated concepts
+    sit in the store, and a view that reads only the engine silently falls
+    back to the base hierarchy, so a concept created in an earlier simulation
+    stops being computed and stops being shown."""
+    h = getattr(engine, "hierarchy", None)
+    if h:
+        return dict(h)
+    # `dss` is imported panel-locally throughout this file, so it is not a
+    # module-level name here
+    from dss.concepts import HIERARCHY as _BASE_H
+    out = dict(_BASE_H)
+    try:
+        _c, _m = _store_vocab()
+        for name, spec in (_c or {}).items():
+            out[name] = (int(spec.get("level", 2)),
+                         [(a, float(b)) for a, b in spec.get("inputs", [])])
+    except Exception:
+        pass
+    return out
+
+
+_STAGE_NAME = {0: "0 — none tried", 1: "1 — evFIS tuning",
+               2: "2 — resolution", 3: "3 — GenAI"}
+
+
+_STEP_COL_HELP = (
+    "- **cycle** — the row number in this run, 1, 2, 3 ...\n"
+    "- **step / t_min** — the simulation step and the minute of fire time "
+    "it stands for. Steps restart with every fire.\n"
+    "- **agent** — the region the coordinator made the hotspot this cycle. "
+    "The adaptation acts on THAT region's situation. Every agent still "
+    "decides its own orders in the same cycle; those are in **applied** and, "
+    "one row each, in the Decision log.\n"
+    "- **stage** — which adaptation stage the controller picked: 1 evFIS "
+    "tuning, 2 resolution, 3 GenAI, or none when the satisficing test "
+    "already passed.\n"
+    "- **target** — the rule the stage acted on (R7, A1, G9), or the "
+    "variable for a membership change, or the antecedent cell it aimed at "
+    "when it was turned away.\n"
+    "- **change** — what it became: `R26 consequents 0.90→0.85`, a whole "
+    "new rule body, an inserted term.\n"
+    "- **produced** — whether a rule, a concept or an intervention was "
+    "written to the store.\n"
+    "- **G1 … G5** — `+` cleared, `-` stopped here, `·` never reached, "
+    "`n/a` does not apply to this stage.\n"
+    "- **bucket** — the situation class the stage controller learned on: "
+    "`low`, `mid`, `high` is how far the forecast cost sits above the "
+    "satisficing bound, and `+gap` marks a coverage void where no rule "
+    "fires at all.\n"
+    "- **failsafe** — `WITHHELD` means the no-harm guard pulled the "
+    "offensive orders for that whole cycle because the candidate was "
+    "forecast to end worse than doing nothing. Life-safety orders stand.\n"
+    "- **rec_seq** — the store's replay order, filled only when the step "
+    "actually wrote a record. A wipe reverts in reverse rec_seq, a restart "
+    "replays forward.\n"
+    "- **applied** — the orders that actually went out, per agent, after "
+    "the quality gate and the fail-safe had their say.")
+
+_GATE_HELP = (
+    "A stage ③ proposal is admitted only if it clears every gate. The marks "
+    "read: `+` passed, `-` stopped here, `·` not reached, `n/a` not "
+    "applicable to this stage.\n\n"
+    "- **G1 — form.** The reply parses as the required JSON and uses only "
+    "the declared vocabulary: the five decision concepts, the five terms, "
+    "the six base channels.\n"
+    "- **G2 — constraints.** The antecedent cell is not already covered by "
+    "an active rule, the intensities are in range, and any new object is "
+    "well formed (a concept has 1 to 4 inputs and sits above them in the "
+    "hierarchy; a composite names 1 to 3 base channels).\n"
+    "- **G2b — redundancy.** A proposed CONCEPT must not be collinear with "
+    "one that already exists (cosine < 0.95), otherwise the hierarchy grows "
+    "without gaining anything.\n"
+    "- **G3 — first simulation.** The rule must lower the physical forecast "
+    "cost on seed 101: burned area, assets and population at a 45-minute "
+    "basis. Response cost is deliberately excluded, so paying for the fleet "
+    "is allowed but buying a worse fire is not.\n"
+    "- **G4 — second simulation.** The same test on an independent seed "
+    "202. A proposal has to survive both futures, not one lucky one.\n"
+    "- **G5 — growth margin.** A proposal that also creates a concept or an "
+    "intervention must beat no-action by a MARGIN on both seeds, not merely "
+    "tie. An ordinary rule may be admitted for being harmless; a permanent "
+    "addition to the vocabulary has to earn its place.")
+
+STEP_COLS = ["cycle", "step", "t_min", "agent", "stage", "target",
+             "change", "produced", "G1", "G2", "G2b", "G3", "G4",
+             "G5", "verdict", "reason", "dJ", "failsafe", "bucket",
+             "rec_seq", "applied"]
+
+
+def build_step_rows(_cycA, _rsA):
+    """One row per decision cycle: what was decided, what the
+    adaptation tried, which gate stopped it and what was applied.
+
+    Extracted so the narrow panel preview, the modal and the full-width
+    page all show the SAME table instead of three that can drift."""
+    _rows = []
+    _gd = _read_gstate()
+    # SCOPE TO THIS RUN. Step numbers restart with every fire, so
+    # matching records to cycles on the step alone dragged in
+    # records from earlier runs that reached the same step. The
+    # store sequence is global, so seq0 (its value when this run
+    # started) is the cut.
+    _seq0 = _rsA.get("seq0")
+    _byStep = {}
+    for _sec in ("evfis_rule_modifications", "genai_rules",
+                 "genai_concepts", "genai_interventions"):
+        for _r in (_gd.get(_sec) or []):
+            _s = (_r.get("trigger") or {}).get("step")
+            if _s is None:
+                continue
+            if _seq0 is not None and int(
+                    _r.get("seq", 0)) < int(_seq0):
+                continue
+            _byStep.setdefault(int(_s), []).append((_sec, _r))
+    for _c in _cycA:
+        _ad = _c.get("adaptation") or {}
+        _inf = _ad.get("info") or {}
+        _ctl = _c.get("stage_controller") or {}
+        _st = int(_c.get("step", 0))
+        _tried = int(_ad.get("tried") or 0)
+        _ok = bool(_ad.get("accepted"))
+        _g = _gate_marks(_ad)
+        # what this step produced, read from the store records
+        # stamped with this step
+        _prod = []
+        for _sec, _r in _byStep.get(_st, []):
+            if _sec == "genai_concepts":
+                _prod.append(f"concept {_r.get('name')}")
+            elif _sec == "genai_interventions":
+                _prod.append(f"intervention {_r.get('name')}")
+            elif _sec == "genai_rules":
+                _prod.append(f"rule {_r.get('name')}")
+            else:
+                _mt = _r.get("modification_type")
+                if _mt == "rule_add":
+                    _prod.append(
+                        "rule "
+                        + str(((_r.get("after") or {})
+                               .get("rule") or {}).get("name")))
+                elif _mt == "term_insert":
+                    _prod.append(f"term in {_r.get('variable')}")
+                else:
+                    _prod.append("parameter change")
+        _seqs = [int(_r.get("seq", 0))
+                 for _sec, _r in _byStep.get(_st, [])]
+        _gl = _c.get("global_dss") or {}
+        _rows.append(dict(
+            cycle=len(_rows) + 1,
+            rec_seq=(min(_seqs) if _seqs else None),
+            step=_st,
+            agent=(_gl.get("hotspot") or "—"),
+            t_min=round(float(_c.get("t_min", 0.0)), 1),
+            stage=_STAGE_NAME.get(_tried, "0 — none tried"),
+            target=_adapt_target(_ad, _byStep.get(_st, [])),
+            change=_adapt_change(_ad, _byStep.get(_st, [])),
+            produced=", ".join(_prod) or "—",
+            G1=_g["G1"], G2=_g["G2"], G2b=_g["G2b"],
+            G3=_g["G3"], G4=_g["G4"], G5=_g["G5"],
+            verdict=("ACCEPTED" if _ok else
+                     ("rejected" if _tried else "—")),
+            reason=(_ad.get("detail") or "")[:120],
+            dJ=round(float(_ad.get("dJ") or 0.0), 4),
+            failsafe=("WITHHELD"
+                      if _c.get("no_harm_withheld") else "ok"),
+            bucket=_ctl.get("bucket") or "—",
+            applied=_applied_orders(_c)))
+    return _rows
+
+
+def _gate_marks(ad: dict) -> dict:
+    """Per-gate verdict of one adaptation attempt.
+
+    `+` passed, `-` stopped here, `·` never reached, `n/a` not applicable.
+    Stages 1 and 2 do not go through the generative gate chain, so their row
+    says n/a rather than pretending to a pass."""
+    ORDER = ("G1", "G2", "G2b", "G3", "G4", "G5")
+    out = {k: "n/a" for k in ORDER}
+    if int(ad.get("tried") or 0) != 3:
+        return out
+    info = ad.get("info") or {}
+    gates = info.get("gates") or {}
+    det = str(gates.get("verdict") or ad.get("detail") or "")
+    pkg = bool(info.get("package"))
+    # The ENGINE's own verdict decides, not a recomputation here. Deriving
+    # pass/fail from the logged j values used a different tolerance than the
+    # gate itself, which produced rows marked "+" on every gate and still
+    # rejected, contradicting the reason printed beside them.
+    fail = None
+    low = det.lower()
+    # "admitted" wins: the verdict of an accepted package reads "G5 margin
+    # CLEARED", and matching on the word margin alone marked it as a failure
+    if bool(ad.get("accepted")) or low.startswith("admitted"):
+        low = ""
+    if "rejected" in low or "no improvement" in low or "failed" in low:
+        for g in ("G5", "G4", "G3", "G2b", "G2", "G1"):
+            if g.lower() in low:
+                fail = g
+                break
+        if fail is None:
+            fail = "G1"          # died before any named gate
+    if fail is None:
+        # admitted: everything that applies was cleared
+        for k in ORDER:
+            out[k] = "+"
+        if not pkg:
+            out["G2b"] = out["G5"] = "n/a"
+        return out
+    hit = False
+    for k in ORDER:
+        if k == fail:
+            out[k] = "-"
+            hit = True
+        elif not hit:
+            out[k] = "+"
+        else:
+            out[k] = "·"        # never reached
+    if not pkg:
+        # a plain rule never faces the vocabulary gates
+        if out["G2b"] != "-":
+            out["G2b"] = "n/a"
+        if out["G5"] != "-":
+            out["G5"] = "n/a"
+    return out
+
+
+def _adapt_target(ad: dict, recs) -> str:
+    """Which rule or variable the stage acted on."""
+    for _sec, r in recs or []:
+        if _sec == "genai_rules":
+            return str(r.get("name") or "")
+        mt = r.get("modification_type")
+        if mt == "rule_add":
+            return str(((r.get("after") or {}).get("rule") or {}).get("name"))
+        if mt == "consequent_update":
+            return str(r.get("base_rule_id") or "")
+        if mt in ("membership_shift", "term_insert"):
+            return str(r.get("variable") or "")
+    # nothing was stored, so the attempt was REJECTED: name what it aimed at
+    info = ad.get("info") or {}
+    _r = info.get("rule")
+    if isinstance(_r, str) and _r and " " not in _r:
+        return _r                       # stage 1 records the rule name
+    cell = info.get("cell")
+    if cell:
+        return " AND ".join(f"{c[0]}={c[1]}" for c in cell[:2])
+    det = str(ad.get("detail") or "")
+    for tok in det.replace(",", " ").split():
+        if tok[:1] in "RAG" and tok[1:2].isdigit():
+            return tok
+    return "—"
+
+
+def _adapt_change(ad: dict, recs) -> str:
+    """What it turned INTO: the point of the whole view."""
+    for _sec, r in recs or []:
+        mt = r.get("modification_type")
+        aft, bef = r.get("after") or {}, r.get("before") or {}
+        if mt == "consequent_update":
+            o = dict((str(i), float(v))
+                     for i, v in bef.get("consequents", []))
+            n = dict((str(i), float(v))
+                     for i, v in aft.get("consequents", []))
+            d = ", ".join(f"{k} {o.get(k, 0.0):.2f}→{v:.2f}"
+                          for k, v in n.items()
+                          if abs(v - o.get(k, 0.0)) > 1e-9)
+            return d or "no net change"
+        if mt == "term_insert":
+            new = sorted(set(aft.get("partition") or {})
+                         - set(bef.get("partition") or {}))
+            return f"term {', '.join(new)} inserted (catalog grew)"
+        if mt == "membership_shift":
+            return "membership boundary moved"
+        if mt == "rule_add" or _sec == "genai_rules":
+            sp = (aft.get("rule") or {}) if mt == "rule_add" else r
+            ants = " AND ".join(f"{a[0]} is {a[1]}"
+                                for a in sp.get("antecedents", []))
+            cons = ", ".join(f"{i} {float(v):.2f}"
+                             for i, v in sp.get("consequents", []))
+            return f"NEW: IF {ants} THEN {cons}"
+    # rejected: say what was TRIED, so the row still explains itself
+    info = ad.get("info") or {}
+    tr = info.get("trials") or []
+    if tr:
+        _t = tr[0]
+        if _t.get("kind") == "consequent":
+            return (f"tried {_t.get('rule')} consequents "
+                    f"{float(_t.get('delta', 0)):+g}, kept={_t.get('kept')}")
+        if _t.get("kind") == "membership":
+            return (f"tried {_t.get('var')}.{_t.get('term')} "
+                    f"{_t.get('move', 'boundary move')}, "
+                    f"kept={_t.get('kept')}")
+    _r = info.get("rule")
+    if isinstance(_r, str) and " " in _r:
+        return "proposed: " + _r[:90]
+    if info.get("cell"):
+        return "aimed at an already covered cell"
+    return "—"
+
+
+def _applied_orders(cyc: dict) -> str:
+    """The orders that actually went out this cycle, per region."""
+    out = []
+    for name, r in (cyc.get("regions") or {}).items():
+        u = r.get("orders_final") or r.get("orders") or r.get("u") or {}
+        bits = ", ".join(f"{k.split('_')[0]} {float(v):.2f}"
+                         for k, v in u.items() if float(v) > 0.02)
+        if bits:
+            out.append(f"{name}: {bits}")
+    return " | ".join(out) or "none"
+
+
+def _gstate_counts(path: str | None = None) -> dict:
+    d = _read_gstate(path)
+    return {k: len(d.get(k) or []) for k in
+            ("evfis_rule_modifications", "genai_rules",
+             "genai_concepts", "genai_interventions")}
+
+
 def _reset_dss_state(drop_engine: bool = False) -> None:
     """A fire reset clears the DECISION state (gating priors, feature
     histories, per-run transients) but the engine SURVIVES: learned
@@ -209,6 +832,24 @@ def _reset_dss_state(drop_engine: bool = False) -> None:
             st.session_state.pop(_k, None)
     else:
         try:
+            # ONE FIRE = ONE LOG DIRECTORY: rotate the run logger
+            # BEFORE new_fire so the rules snapshot of the fresh fire
+            # lands in the fresh directory; the meta travels along
+            _lgo = getattr(_eng_fr, "run_logger", None)
+            if _lgo is not None:
+                import json as _json_rl
+                import os as _os_lg
+                _root_lg = _os_lg.path.dirname(_lgo.dir)
+                import dss as _dss_lg
+                _lgn = _dss_lg.RunLogger(
+                    _root_lg, tag=getattr(_lgo, "tag", "run"))
+                try:
+                    with open(_os_lg.path.join(_lgo.dir,
+                                               "meta.json")) as _fm:
+                        _lgn.write_meta(_json_rl.load(_fm))
+                except Exception:
+                    pass
+                _eng_fr.run_logger = _lgn
             _eng_fr.new_fire()
         except Exception:
             for _k in ("dss_engine", "dss_engine_sig"):
@@ -228,7 +869,10 @@ _IV_COLOR = {"suppression_effort": "#2878ff",
              "containment_line": "#96501e",
              "asset_protection": "#28dc5a",
              "evacuation": "#ff8c00",
-             "public_warning": "#e6c400"}
+             "public_warning": "#e6c400",
+             "tactical_burn": "#ff5a1e",
+             "water_drafting": "#3caaff",
+             "retardant_drop": "#c85ac8"}
 
 
 def _iv_bar(label: str, value: float, color: str) -> str:
@@ -277,6 +921,30 @@ def _legend_swatch(hexc: str, glyph: str, px: int = 13) -> str:
         return (f"<span style='{base}background:repeating-linear-gradient("
                 f"45deg,{hexc} 0 2px,transparent 2px 4px);"
                 "border:1px solid #5553'></span>")
+    # ---- generated (macro) intervention badges: the swatch mirrors the
+    # SHAPE drawn on the map, so colour is not the only thing telling two
+    # generated interventions apart
+    if glyph == "chip":
+        return ("<span style='display:inline-block;flex:none;"
+                f"width:{px + 7}px;height:{px}px;background:{hexc};"
+                "border:1px solid #333;border-radius:5px'></span>")
+    if glyph == "bars":
+        return ("<span style='display:inline-block;flex:none;"
+                f"width:{px + 7}px;height:{px}px;background:"
+                f"repeating-linear-gradient(180deg,{hexc} 0 "
+                f"{max(2, px // 3)}px,transparent {max(2, px // 3)}px "
+                f"{max(3, px // 2)}px);border:1px solid #333'></span>")
+    _CLIP = {
+        "hex": "polygon(25% 0,75% 0,100% 50%,75% 100%,25% 100%,0 50%)",
+        "diamond": "polygon(50% 0,100% 50%,50% 100%,0 50%)",
+        "pent": "polygon(50% 0,100% 38%,82% 100%,18% 100%,0 38%)",
+        "star": ("polygon(50% 0,61% 35%,98% 35%,68% 57%,79% 91%,"
+                 "50% 70%,21% 91%,32% 57%,2% 35%,39% 35%)"),
+    }
+    if glyph in _CLIP:
+        return (f"<span style='{base}background:{hexc};"
+                f"clip-path:{_CLIP[glyph]};"
+                "filter:drop-shadow(0 0 1px #333)'></span>")
     # literal text badge fallback
     return ("<span style='display:inline-block;flex:none;"
             f"background:#000c;color:{hexc};font-size:0.75em;"
@@ -366,6 +1034,13 @@ def _layer_flags():
 def legend_html(horizontal: bool = False, macros=None) -> str:
     if macros is None:
         macros = getattr(st.session_state.get("dss_engine"), "macros", None)
+    if not macros:
+        # No live engine yet, or one built before the store was read: the
+        # generated interventions are still in the store and belong in the
+        # legend. Reading only the engine made every macro created in an
+        # earlier simulation disappear from the legend on restart, which
+        # looked like the knowledge had been lost.
+        macros = _all_macros(None) or None
     groups = {}
     for grp, lab, hexc, glyph in viz.legend_entries(macros=macros):
         groups.setdefault(grp, []).append((lab, hexc, glyph))
@@ -411,8 +1086,8 @@ def legend_html(horizontal: bool = False, macros=None) -> str:
 # surfaces as confusing TypeErrors deep inside the pages ----
 import disaster_phyengine as _dpe
 import dss as _dss_pkg
-_EXPECTED_ENGINE_BUILD = 35
-_EXPECTED_DSS_BUILD = 58
+_EXPECTED_ENGINE_BUILD = 37
+_EXPECTED_DSS_BUILD = 77
 if (getattr(_dpe, "ENGINE_BUILD", 0) != _EXPECTED_ENGINE_BUILD
         or getattr(_dss_pkg, "DSS_BUILD", 0) != _EXPECTED_DSS_BUILD):
     st.error(
@@ -441,12 +1116,13 @@ if not st.session_state.get("realism_on_migrated"):
     cfg.spread.elliptical = True
     cfg.spread.spotting = True
     st.session_state["realism_on_migrated"] = True
-# the engine's headless safety cap (500) is far too low for interactive use:
-# lift it once; the exact value stays adjustable in Parameters
-if not st.session_state.get("maxsteps_migrated"):
-    if cfg.max_steps <= 500:
-        cfg.max_steps = 100_000
-    st.session_state["maxsteps_migrated"] = True
+# RUN LIMIT: 50 steps by default. It used to be lifted to 100,000 on first
+# load, which made every run effectively unbounded and let a scenario run for
+# minutes before anyone noticed. A short default is the honest starting point
+# for an interactive experiment; raise it in Parameters when a run needs it.
+if not st.session_state.get("maxsteps_default_50"):
+    cfg.max_steps = 50
+    st.session_state["maxsteps_default_50"] = True
 
 
 # ------------------------------------------------------------ canvas parsing
@@ -721,16 +1397,15 @@ def _step_sim(n: int = 1):
     extinction threshold m_ext and the fire stalls or dies out on its own -
     the same mechanism that stops real fires overnight."""
     diag = None
-    # FAST ANIMATION: while "Animate step by step" is latched ON, cap the
-    # per-step internal substeps so a long (e.g. 30 min) step stays smooth
-    # frame to frame. A large step normally runs up to ~200 substeps to keep
-    # the front within one cell per substep; the cap trades a little spread
-    # accuracy for a responsive preview. "Step", "Step X" and "Run to end"
-    # leave the cap OFF and keep full fidelity.
-    _fast_anim = bool(st.session_state.get("anim_on"))
+    # INTEGRATION SUBSTEP CAP: a property of the SCENARIO, not of the button
+    # that advances it. It used to be applied only while "Animate step by
+    # step" was latched on, which made the same scenario come out differently
+    # depending on how it was advanced. Applied uniformly here, so Step,
+    # Step X, Run to end and Animate all integrate identically and a run
+    # reproduces; set it in Parameters (0 = uncapped, full fidelity).
     try:
-        sim._substep_cap = (int(st.session_state.get("anim_substep_cap", 8))
-                            if _fast_anim else None)
+        _cap = int(st.session_state.get("sim_substep_cap", 8))
+        sim._substep_cap = _cap if _cap > 0 else None
     except Exception:
         pass
     for _ in range(int(n)):
@@ -752,7 +1427,15 @@ def _step_sim(n: int = 1):
                      float(_sv0("dss_horizon_min", 30.0)),
                      float(_sv0("dss_jth", 0.35)),
                      float(_sv0("dss_eta", 0.60)),
-                     bool(_sv0("dss_adapt_on", True)),
+                     # DERIVE the master adaptation flag HERE, at the point of
+                     # use. It used to be written as a side effect of
+                     # rendering the Layer 4 Decision panel, so after a wipe
+                     # (which sets it False) it stayed False for as long as
+                     # that panel was not open, and turning "evFIS active" on
+                     # from anywhere else changed nothing: the run came out
+                     # bit-for-bit identical to evFIS off.
+                     bool(_sv0("dss_evfis_on", True)
+                          or _sv0("dss_genai_on", True)),
                      bool(_sv0("dss_genai_on", True)),
                      bool(_sv0("dss_evfis_on", True)),
                      float(_sv0("dss_evfis_step", 0.05)),
@@ -760,7 +1443,7 @@ def _step_sim(n: int = 1):
                      float(_sv0("dss_ctrl_lr", 0.05)),
                      float(_sv0("dss_attn_thr", 0.35)),
                      float(_sv0("dss_min_gain", 0.05)),
-                     str(_sv0("dss_seed_profile", "full")),
+                     str(_sv0("dss_seed_profile", "minimal")),
                      bool(_sv0("dss_use_stage12", True)),
                      bool(_sv0("dss_use_stage3", True)),)
             _eng = st.session_state.get("dss_engine")
@@ -783,12 +1466,14 @@ def _step_sim(n: int = 1):
                     attention_thr=_esig[12], min_gain=_esig[13],
                     seed_profile=_esig[14],
                     use_evfis=_esig[15], use_genai=_esig[16],
-                    learned_store=(
+                    # ONE source of truth. The legacy learned_rules.json is no
+                    # longer passed: while both were live the engine reasoned
+                    # from the generated-state store while the panels read the
+                    # old file, so a view could report "nothing learned" with
+                    # two dozen records sitting in the store.
+                    state_path=(
                         st.session_state.get("dss_learned_override")
-                        or _os_rl.path.join(
-                            _os_rl.path.dirname(_os_rl.path.dirname(
-                                _os_rl.path.abspath(__file__))),
-                            "logs", "learned_rules.json")),
+                        or _gstate_path()),
                     run_logger=_lg)
                 try:
                     _lg.write_meta(dict(
@@ -944,10 +1629,12 @@ def _runend_toggle_cb():
     st.session_state.pop("anim_stop", None)
 
 
-_PAGES = ["Simulation", "Map editor", "Data layers", "Parameters",
+_PAGES = ["Simulation", "Step analysis", "Map editor",
+          "Data layers", "Parameters",
  "GIS import", "Validation", "System Description"]
 _PAGE_ICONS = {"Simulation": "\U0001F525", "Map editor": "✏️", "Data layers": "\U0001F5FA️",
                "Parameters": "⚙️", "Validation": "✅",
+               "Step analysis": "\U0001F50E",
  "GIS import": "\U0001F30D", "System Description": "\U0001F4D8"}
 
 with st.sidebar:
@@ -1007,6 +1694,7 @@ with st.sidebar:
                      help="Clear the fire and the cost series; the map and "
                           "all edits stay."):
             sim.reset(); st.session_state.cost_series = []
+            st.session_state.pop("anim_quiet", None)
             _reset_dss_state()
             st.session_state.pop("dss_net_sig", None)
             st.rerun()
@@ -1018,29 +1706,10 @@ with st.sidebar:
         st.caption("active fire "
                    f"{int((sim.state.burning > 0.5).sum())} cells")
         cfg.max_steps = int(st.number_input(
-            "Run limit — max_steps", 100, 1_000_000,
-            int(cfg.max_steps), 100,
+            "Run limit — max_steps", 20, 1_000_000,
+            int(cfg.max_steps), 10,
             help="Safety stop for 'Run to end' and the animation. The fire "
                  "normally stops on its own when it burns out."))
-        if page == "Simulation" and st.session_state.get("runend_on"):
-            _t0 = time.time()
-            _limit = int(cfg.max_steps)
-            _done = None
-            while sim.state.step < _limit and time.time() - _t0 < 2.5:
-                _d = _step_sim(); _record_costs()
-                if (_d.n_burning == 0 and sim.state.step > 1
-                        and sim.ever_burned.any()
-                        and not any(ev.step >= sim.state.step
-                                    for ev in world.ignitions)):
-                    _done = "fire is out"
-                    break
-            if sim.state.step >= _limit:
-                _done = f"step cap {_limit} reached"
-            if _done:
-                st.session_state["runend_stop"] = True
-                st.toast(f"Run to end stopped at step "
-                         f"{sim.state.step}: {_done}")
-            st.rerun()
         avail = (sim.rewindable_steps
                  if hasattr(sim, "rewindable_steps") else [])
         lo = int(avail[0]) if avail else 0
@@ -1086,23 +1755,232 @@ with st.sidebar:
                                "new wind, moisture or resources."):
                 _do_rewind(int(rnum))
 
+    # --- DSS SETUP card: the three things that must exist before the DSS can
+    # decide anything, each with a light that says whether it is done. The
+    # same actions live deep inside Layer 1 and Layer 2; having them here
+    # means the readiness of a run can be seen and fixed without hunting
+    # through panels. ---
+    with st.container(border=True):
+        st.markdown("**DSS setup**")
+
+        def _lamp(ok: bool) -> str:
+            return "🟢" if ok else "🔴"
+        _mv = st.session_state.get("map_version")
+        _sens = list(st.session_state.get("dss_sensors", []) or [])
+        # same ordering trap as the pool below: dss_network is built later in
+        # page_simulation, so the lamp judges the PLACED SENSORS, which is
+        # what the button actually produces and what the user can see
+        _net_ok = bool(_sens)
+        # judge the STAGED ITEMS, not the rasterized pool. The pool is built
+        # further down in page_simulation, which runs AFTER this sidebar, so
+        # right after the button the lamp read a pool that did not exist yet
+        # and went red until some other click forced one more rerun.
+        _res_ok = (bool(st.session_state.get("dss_res_items"))
+                   and st.session_state.get("dss_res_base_v") == _mv)
+        _dss_ok = bool(st.session_state.get("dss_apply")) and _res_ok
+
+        _c1, _c2 = st.columns([1, 4])
+        _c1.markdown(_lamp(_net_ok))
+        if _c2.button("Suggest sensors", use_container_width=True,
+                      key="side_sugg_net",
+                      help="Layer 1: greedy maximum weighted coverage, the "
+                           "same action as 'Suggest network' in the Layer 1 "
+                           "panel. Red means the agents are blind."):
+            try:
+                # exactly what the Layer 1 button does, same argument and
+                # same session keys, so the two stay in step
+                _covS = int(st.session_state.get("dss_cov_target", 60))
+                _pl, _why = _dss_pkg.suggest_network(
+                    world, coverage_target=float(_covS))
+                st.session_state["dss_sensors"] = _pl
+                st.session_state["dss_suggest_why"] = _why
+                # write the TARGET as well, not only the applied value: the
+                # panel re-suggests whenever the two disagree, and leaving
+                # the target unset let that happen the moment Layer 1 opened
+                st.session_state["dss_cov_target"] = _covS
+                st.session_state["dss_cov_applied"] = _covS
+                st.session_state.pop("dss_net_sig", None)
+                st.rerun()
+            except Exception as _e_sn:
+                st.error(f"Sensor suggestion failed: {_e_sn}")
+
+        _c3, _c4 = st.columns([1, 4])
+        _c3.markdown(_lamp(_res_ok))
+        if _c4.button("Suggest resources", use_container_width=True,
+                      key="side_sugg_res",
+                      help="Layer 1: build the baseline suppression pool "
+                           "from the map's fire stations, roads and "
+                           "helibases. The same action as 'Suggest "
+                           "resources' in the Layer 1 panel."):
+            try:
+                # SAME DEFAULT AS THE LAYER 1 SLIDER (50, not 70). Reading a
+                # different default here staged a pool for a much higher
+                # efficiency target, which is why the map filled with
+                # overlapping helibases; opening Layer 1 then set the slider
+                # to 50, that differed from the applied value, and the panel
+                # silently re-suggested and "fixed" the map. The target is
+                # WRITTEN too, so the slider and the applied value agree and
+                # no re-suggestion is triggered behind the user's back.
+                _effS = int(st.session_state.get("dss_eff_target", 50))
+                _denS = float(st.session_state.get("dss_res_density", 1.0))
+                _its, _rwhy = _dss_pkg.suggest_resource_items(
+                    world, efficiency_target=_effS / 100.0,
+                    density=_denS)
+                st.session_state["dss_res_items"] = _its
+                st.session_state["dss_res_why"] = _rwhy
+                st.session_state["dss_res_base_v"] = _mv
+                st.session_state["dss_eff_target"] = _effS
+                st.session_state["dss_res_density"] = _denS
+                st.session_state["dss_eff_applied"] = _effS
+                st.session_state["dss_dens_applied"] = _denS
+                st.rerun()
+            except Exception as _e_sr:
+                st.error(f"Resource suggestion failed: {_e_sr}")
+
+        _c5, _c6 = st.columns([1, 4])
+        _c5.markdown(_lamp(_dss_ok))
+        _lbl = ("Local DSS: ON" if st.session_state.get("dss_apply")
+                else "Local DSS: OFF")
+        if _c6.button(_lbl, use_container_width=True, key="side_dss_apply",
+                      help="Layer 2 and up: let the local agents observe and "
+                           "issue orders. Needs a resource pool, so the lamp "
+                           "stays red until 'Suggest resources' has run."):
+            st.session_state["dss_apply"] = not bool(
+                st.session_state.get("dss_apply"))
+            st.rerun()
+        # how many local agents the map is split into. The same setting lives
+        # in the Layer 1 panel; it is here too because it decides how many
+        # DSS instances the run has, which is a setup question, not a detail
+        _c7, _c8 = st.columns([1, 4])
+        _c7.markdown("👥")
+        _mirror("dss_n", "side_dss_n", 1)
+        _c8.number_input(
+            "Local DSS agents", 1, 12, step=1, key="side_dss_n",
+            on_change=_adopt, args=("dss_n", "side_dss_n"),
+            help="The map is split into exactly this many regions, one "
+                 "local DSS each, covering every cell. The same setting "
+                 "lives in Layer 1; the two always agree.")
+
+        # Layer 4 settings at a glance: which model stage 3 would call and
+        # whether the generative stage is switched on at all
+        # SAME DEFAULTS AS THE PANEL. The Layer 4 toggles read
+        # _sv("dss_evfis_on", True); reading them here without that default
+        # returned None until that panel had been opened once, so a module
+        # that was plainly switched on showed a red lamp.
+        _gon = bool(st.session_state.get("dss_genai_on", True))
+        _evon = bool(st.session_state.get("dss_evfis_on", True))
+        _dact = bool(st.session_state.get("dss_apply"))
+        try:
+            _greach = _dss_pkg.genai_config().get("mode") == "cli"
+        except Exception:
+            _greach = False
+        # a stage only RUNS when the DSS itself is running, so the master
+        # switch is part of the lamp rather than a separate thing to notice
+        _ev_run = _dact and _evon
+        _ga_run = _dact and _gon and _greach
+
+        _c11, _c12 = st.columns([1, 4])
+        _c11.markdown(_lamp(_ev_run))
+        _c12.markdown("**evFIS ①②**")
+        # the lamp already says it is running; only a red lamp needs a reason
+        if not _ev_run:
+            _c12.caption("DSS active is off" if not _dact
+                         else "evFIS active is off")
+        _c9, _c10 = st.columns([1, 4])
+        _c9.markdown(_lamp(_ga_run))
+        _c10.markdown("**GenAI ③**")
+        # the model is CHOSEN here, not only reported: it is the one stage ③
+        # setting that changes what a run costs in wall time, and hunting for
+        # it inside Layer 4 Settings every time was the wrong place for it
+        _MODELS_SB = ["(plan default)", "opus", "sonnet", "haiku"]
+        _cur_sb = str(st.session_state.get("genai_model_ui",
+                                           "(plan default)"))
+        if _cur_sb not in _MODELS_SB:
+            _cur_sb = "(plan default)"
+        _mirror("genai_model_ui", "side_genai_model", "(plan default)")
+        _pick_sb = _c10.selectbox(
+            "GenAI ③ model", _MODELS_SB, key="side_genai_model",
+            on_change=_adopt, args=("genai_model_ui", "side_genai_model"),
+            help="Which model stage ③ calls. Same setting as the one in "
+                 "Layer 4 Settings; changing it here changes it there. "
+                 "Measured on this transport the wait is roughly 3.4 s of "
+                 "fixed startup plus 7 ms per output token, so the answer "
+                 "LENGTH matters more than the family: opus and sonnet "
+                 "honour the short-JSON instruction, haiku does not and "
+                 "ends up slowest.")
+        if _pick_sb != _cur_sb:
+            if _pick_sb != "(plan default)":
+                os.environ["DSS_GENAI_MODEL"] = _pick_sb
+            else:
+                os.environ.pop("DSS_GENAI_MODEL", None)
+            # PROBE ON CHANGE. Picking a model without checking it leaves the
+            # question the label is meant to answer open, and with "(plan
+            # default)" the served model cannot be known any other way. One
+            # call, a few seconds, and the lamp and the label are truthful.
+            st.session_state["genai_probe_pending"] = True
+            st.rerun()
+        if st.session_state.pop("genai_probe_pending", False):
+            with st.spinner(f"Testing GenAI on `{_pick_sb}`…"):
+                try:
+                    _prS = _dss_pkg.genai_probe()
+                except Exception as _e_pb:
+                    _prS = dict(ok=False, error=str(_e_pb))
+            st.session_state["genai_last_probe"] = _prS
+            if _prS.get("ok"):
+                st.session_state["genai_served_model"] = str(
+                    _prS.get("reported_model") or "")
+                _mmS = dict(st.session_state.get("genai_model_ms", {}))
+                _mmS[_pick_sb] = int(_prS.get("latency_ms") or 0)
+                st.session_state["genai_model_ms"] = _mmS
+        _prL = st.session_state.get("genai_last_probe") or {}
+        # green lamp = running; say the resolved model, and only explain
+        # when the lamp is red
+        _c10.caption(
+            _genai_model_label() if _ga_run else
+            ("DSS active is off" if not _dact else
+             ("GenAI active is off" if not _gon else
+              "`claude` not reachable")))
+        _t1, _t2 = st.columns([1, 4])
+        _t1.markdown("🧪")
+        if _t2.button("Test GenAI", use_container_width=True,
+                      key="side_genai_test",
+                      help="One real call over the same path stage ③ uses, "
+                           "so the latency and the served model are the ones "
+                           "the simulation will see."):
+            st.session_state["genai_probe_pending"] = True
+            st.rerun()
+        if _prL:
+            if _prL.get("ok"):
+                _uL = _prL.get("usage") or {}
+                st.caption(
+                    f"✅ {_prL.get('finished_at', '')} · served "
+                    f"`{_prL.get('reported_model', '?')}` · "
+                    f"{_prL.get('latency_ms', 0)} ms · "
+                    f"{_uL.get('output_tokens', '?')} output tokens")
+            else:
+                st.caption(f"❌ {str(_prL.get('error', ''))[:120]}")
     # --- page navigation (grouped card, below the Simulation card) ---
-    _NAV_GROUPS = [["Simulation"],
+    _NAV_GROUPS = [["Simulation", "Step analysis"],
                    ["Map editor", "GIS import", "Data layers"],
                    ["Parameters", "Validation"],
                    ["System Description"]]
+    # A radio, not a column of buttons. Every page was a full-width button,
+    # which read as eight competing actions instead of one setting with eight
+    # values, and it cost eight rows of height in a panel that is short.
+    _PAGES_FLAT = [p for g in _NAV_GROUPS for p in g]
     with st.container(border=True):
-        for _gi, _grp in enumerate(_NAV_GROUPS):
-            if _gi:
-                st.divider()
-            for _p in _grp:
-                if st.button(f"{_PAGE_ICONS[_p]}  {_p}",
-                             key=f"nav_btn_{_p}",
-                             use_container_width=True,
-                             type=("primary" if page == _p
-                                   else "secondary")):
-                    st.session_state["nav_page"] = _p
-                    st.rerun()
+        # the radio keeps its own state, so a button elsewhere that set
+        # nav_page was overwritten by the radio's stale value on the very
+        # next line and the page never changed
+        _mirror("nav_page", "nav_radio", _PAGES_FLAT[0])
+        _sel_pg = st.radio(
+            "Page", _PAGES_FLAT,
+            format_func=lambda p: f"{_PAGE_ICONS[p]}  {p}",
+            key="nav_radio", on_change=_adopt,
+            args=("nav_page", "nav_radio"), label_visibility="collapsed")
+        if _sel_pg != page:
+            st.session_state["nav_page"] = _sel_pg
+            st.rerun()
 
     st.divider()
 
@@ -1636,8 +2514,14 @@ def page_simulation():
                             _nc = float(f3.number_input(
                                 "$R_{cap}$", 0.0, 1.0, float(_it["cap"]),
                                 0.05, key=f"res_e_c_{_j}"))
+                            # the generator sizes a helibase as
+                            # max(6, min(nx, ny) // 8), which on a big map
+                            # exceeds 20 and crashed this editor. The bound
+                            # follows the map instead of a constant.
+                            _rmaxE = max(20, int(min(cfg.nx, cfg.ny)))
                             _nr = int(f4.number_input(
-                                "r (cells)", 1, 20, int(_it["radius"]),
+                                "r (cells)", 1, _rmaxE,
+                                int(min(_it["radius"], _rmaxE)),
                                 key=f"res_e_r_{_j}"))
                             f5, f6, f7 = st.columns([1.0, 1.0, 0.8])
                             _na = float(f5.number_input(
@@ -1839,6 +2723,12 @@ def page_simulation():
                 _last_mo = st.session_state.get("last_mo")
                 if _last_mo is not None and abs(mo - _last_mo) > 1e-9:
                     world.fuel.fmoist[:] = mo
+                    # the user's setting is the new PRE-FIRE baseline:
+                    # 'Reset fire' must return here, not to the value
+                    # the map generator happened to produce
+                    _simM = st.session_state.get("sim")
+                    if _simM is not None:
+                        _simM._fmoist0 = world.fuel.fmoist.copy()
                 st.session_state["last_mo"] = mo
 
         elif panel == "Layer 3 \u00b7 Concepts":
@@ -1848,6 +2738,57 @@ def page_simulation():
                        "weights $\\omega$; every activation is gated "
                        "by the observation confidence and blended with "
                        "a persistence prior before any rule reads it.")
+            # what the GenAI stage has grown ON TOP of the base hierarchy,
+            # and whether it is ACTIVE in the engine right now
+            _engC = st.session_state.get("dss_engine")
+            _stg3 = bool(st.session_state.get("dss_use_stage3", True))
+            # the hierarchy this panel renders. With a live engine it is the
+            # engine's. WITHOUT one (fresh app start, nothing run yet) the
+            # STORE is the ground truth, so what has already been learned is
+            # visible immediately instead of only after the first run.
+            _hierC = getattr(_engC, "hierarchy", None)
+            _macC = dict(getattr(_engC, "macros", {}) or {})
+            _fromStore = False
+            if _hierC is None:
+                _hierC = dict(_dss.HIERARCHY)
+                if _stg3:
+                    try:
+                        _scv, _smv = _store_vocab()
+                        for _cn0, _cd0 in _scv.items():
+                            _hierC[_cn0] = (
+                                int(_cd0.get("level", 2)),
+                                [(a, float(b))
+                                 for a, b in _cd0.get("inputs", [])])
+                        _macC = {k: dict(composition=[
+                            (a, float(b)) for a, b in
+                            v.get("composition", [])])
+                            for k, v in _smv.items()}
+                        _fromStore = bool(_scv or _smv)
+                    except Exception as _e_voc:
+                        # never swallow this: a silent failure here reads as
+                        # "nothing has been learned", which is a lie
+                        st.warning("Could not read the learned store "
+                                   f"({type(_e_voc).__name__}: {_e_voc}).")
+            _newC3 = [c for c in _hierC if c not in _dss.HIERARCHY]
+            _newM3 = list(_macC)
+            if _newC3 or _newM3:
+                _cbits = ", ".join(f"{c} (L{_hierC[c][0]})"
+                                   for c in _newC3) or "none"
+                st.success("GENERATED VOCABULARY "
+                           + ("in the persistent store, and it will load "
+                              "with the next engine"
+                              if _fromStore else "active in this engine")
+                           + " · concepts: " + _cbits
+                           + " · macro interventions: "
+                           + (", ".join(_newM3) or "none")
+                           + " — marked \U0001F7E9 GenAI in the "
+                           "tables below.")
+            else:
+                st.caption("No generated concept: "
+                           + ("the store holds none yet."
+                              if _stg3 else
+                              "“Use stage ③ rules” is OFF, "
+                              "so stored concepts are not loaded."))
             _regsC = _dss.partition_n(cfg.nx, cfg.ny, int(_sv("dss_n", 1)))
             _namesC = [r.name for r in _regsC] + ["All agents (table)"]
             # default to the all-agents table (the last entry)
@@ -1861,8 +2802,9 @@ def page_simulation():
                     f" {_r.name} |" for _r in _regsC)
                 _sep = "|---|" + "---|" * len(_regsC)
                 _cols = {}
-                _eng_h = getattr(st.session_state.get("dss_engine"),
-                                 "hierarchy", None)
+                # engine hierarchy when a run is live, otherwise the
+                # STORE-backed one built above
+                _eng_h = _hierC
                 for _r in _regsC:
                     _f3 = _dss.ten_features(sim, _r, network=_obsnet,
                                             pool=_pool3)
@@ -1877,10 +2819,14 @@ def page_simulation():
                         _dss.infer_concepts(_f3, hierarchy=_eng_h),
                         _g3, step=int(sim.state.step)))
                 _rows3 = [_head, _sep]
-                for _cn, (_l, _ins3) in (_eng_h
-                                         or _dss.HIERARCHY).items():
+                # level order, so a GENERATED concept sits with the other
+                # concepts of its own level instead of dangling at the end
+                for _cn, (_l, _ins3) in sorted(
+                        (_eng_h or _dss.HIERARCHY).items(),
+                        key=lambda kv: (kv[1][0], kv[0])):
                     _lab = _dss.CONCEPT_LABEL.get(
-                        _cn, _cn.replace("_", " ") + " \U0001F7E9")
+                        _cn, _cn.replace("_", " ")
+                        + " \U0001F7E9 GenAI")
                     if _cn in _dss.DECISION_CONCEPTS:
                         _lab = f"**{_lab}** \u2605"
                     _cells = " | ".join(f"{_cols[_r.name][_cn]:.2f}"
@@ -1897,8 +2843,7 @@ def page_simulation():
                     sim, _regC, network=_obsnet,
                     pool=st.session_state.get("dss_res_base"))
                 _fcC = _dss.feature_confidence(_obsnet, _regC)
-                _eng_hC = getattr(st.session_state.get("dss_engine"),
-                                  "hierarchy", None)
+                _eng_hC = _hierC
                 _gamC = _dss.concept_gates(_fcC, hierarchy=_eng_hC)
                 _gkey = f"l3_gate_{_regC.name}"
                 _gater = st.session_state.get(_gkey)
@@ -1923,7 +2868,8 @@ def page_simulation():
                             continue
                         _dec = _cn in _dss.DECISION_CONCEPTS
                         _lab = _dss.CONCEPT_LABEL.get(
-                            _cn, _cn.replace("_", " ") + " \U0001F7E9")
+                            _cn, _cn.replace("_", " ")
+                            + " \U0001F7E9 GenAI")
                         if _dec:
                             _lab = f"{_lab} \u2605"
                         st.progress(min(1.0, _crE[_cn]),
@@ -1937,11 +2883,14 @@ def page_simulation():
                 _fn = dict(_dss.FEATURE_NAME)
                 _fn["access_road_status_inv"] = \
                     "access / road status (inverted)"
-                for _cn, (_l, _ins) in _dss.HIERARCHY.items():
+                _eng_hM = _hierC or _dss.HIERARCHY
+                for _cn, (_l, _ins) in _eng_hM.items():
                     _parts = " + ".join(
                         f"{_fn.get(_src, _dss.CONCEPT_LABEL.get(_src, _src))}"
                         f" ({_w:.2f})" for _src, _w in _ins)
-                    st.caption(f"L{_l} **{_dss.CONCEPT_LABEL[_cn]}** "
+                    _clab = _dss.CONCEPT_LABEL.get(
+                        _cn, _cn.replace("_", " ") + " \U0001F7E9")
+                    st.caption(f"L{_l} **{_clab}** "
                                f"\u2190 {_parts}")
         elif panel == "Layer 4 \u00b7 Decision":
             st.caption("Layer 4 \u2014 decision space (evolution). "
@@ -1950,50 +2899,59 @@ def page_simulation():
                        "layer.")
             st.markdown("**DSS mode**")
             # master switch: DSS active vs no DSS (fire runs free)
-            st.session_state["dss_apply"] = bool(st.toggle(
-                "DSS active",
-                value=bool(_sv("dss_apply", False)),
+            _mirror("dss_apply", "l4_dss_apply", False)
+            st.toggle(
+                "DSS active", key="l4_dss_apply",
+                on_change=_adopt, args=("dss_apply", "l4_dss_apply"),
                 help="ON: the DSS decides and its orders enter the "
                      "simulation. OFF: no DSS — the fire runs free "
-                     "(baseline for comparison)."))
-            _active = st.session_state["dss_apply"]
+                     "(baseline for comparison).")
+            _active = bool(st.session_state.get("dss_apply"))
             # (1) LOAD: which pre-learned rules are brought in from the store
             st.caption("Use pre-learned rules (loaded from the store, act "
                        "like seeds):")
             _u1, _u2 = st.columns(2)
-            st.session_state["dss_use_stage12"] = bool(_u1.toggle(
-                "Use stage ①② rules", value=bool(_sv("dss_use_stage12", True)),
+            _mirror("dss_use_stage12", "l4_use12", True)
+            _u1.toggle(
+                "Use stage ①② rules", key="l4_use12",
+                on_change=_adopt, args=("dss_use_stage12", "l4_use12"),
                 disabled=not _active,
                 help="Load the previously-learned stage 1/2 rules (tuned "
                      "seeds, A# resolution rules, term inserts) from the "
                      "store. They are used like seeds. This does NOT by "
                      "itself run live evFIS. OFF: only the seed base (the "
-                     "rules stay in the store, not deleted)."))
-            st.session_state["dss_use_stage3"] = bool(_u2.toggle(
-                "Use stage ③ rules", value=bool(_sv("dss_use_stage3", True)),
+                     "rules stay in the store, not deleted).")
+            _mirror("dss_use_stage3", "l4_use3", True)
+            _u2.toggle(
+                "Use stage ③ rules", key="l4_use3",
+                on_change=_adopt, args=("dss_use_stage3", "l4_use3"),
                 disabled=not _active,
                 help="Load the previously-generated stage 3 rules + concepts "
                      "+ macro interventions from the store. This does NOT by "
                      "itself run live GenAI. OFF: the generated rules / "
                      "concepts / interventions are not used (kept in the "
-                     "store)."))
+                     "store).")
             # (2) MODULES: which adaptation stages RUN LIVE during the sim
             st.caption("Run modules live (keep adapting / generating during "
                        "the run):")
             _m1, _m2 = st.columns(2)
-            st.session_state["dss_evfis_on"] = bool(_m1.toggle(
-                "evFIS active", value=bool(_sv("dss_evfis_on", True)),
+            _mirror("dss_evfis_on", "l4_evfis_on", True)
+            _m1.toggle(
+                "evFIS active", key="l4_evfis_on",
+                on_change=_adopt, args=("dss_evfis_on", "l4_evfis_on"),
                 disabled=not _active,
                 help="Run stage 1/2 adaptation live: tune "
                      "memberships/consequents (①) and instantiate new A# "
                      "rules (②). OFF: no live tuning — the DSS runs fuzzy on "
-                     "the loaded rules."))
-            st.session_state["dss_genai_on"] = bool(_m2.toggle(
-                "GenAI active", value=bool(_sv("dss_genai_on", True)),
+                     "the loaded rules.")
+            _mirror("dss_genai_on", "l4_genai_on", True)
+            _m2.toggle(
+                "GenAI active", key="l4_genai_on",
+                on_change=_adopt, args=("dss_genai_on", "l4_genai_on"),
                 disabled=not _active,
                 help="Run stage 3 live: Claude proposes new G# rules and, "
                      "when needed, new concepts / interventions. OFF: no live "
-                     "generation."))
+                     "generation.")
             st.session_state["dss_genai_on2"] = \
                 st.session_state["dss_genai_on"]
             st.session_state["dss_adapt_on"] = bool(
@@ -2007,7 +2965,7 @@ def page_simulation():
             _sp_opts = {"40 rules (full)": "full",
                         "core (22 rules)": "core",
                         "minimal (5 rules)": "minimal"}
-            _sp_cur = str(_sv("dss_seed_profile", "full"))
+            _sp_cur = str(_sv("dss_seed_profile", "minimal"))
             _sp_idx = next((i for i, v in enumerate(_sp_opts.values())
                             if v == _sp_cur), 0)
             _sp_sel = st.selectbox("Seed rule base", list(_sp_opts),
@@ -2024,7 +2982,7 @@ def page_simulation():
             # one-line summary of the resulting DSS configuration
             _prof_lbl = {"full": "40", "core": "22 core",
                          "minimal": "5 minimal"}.get(
-                             str(_sv("dss_seed_profile", "full")), "?")
+                             str(_sv("dss_seed_profile", "minimal")), "?")
             if not _active:
                 st.markdown("**DSS configuration: No DSS** — the fire runs "
                             "free.")
@@ -2050,10 +3008,17 @@ def page_simulation():
                     # count ONLY rules genuinely loaded from the store this
                     # build (R41/R42 seed examples carry an evFIS note but are
                     # NOT store-loaded, so they must not count)
-                    _nlrn = sum(
-                        1 for r in _engD.rules
-                        if "restored from the learned store"
-                        in (getattr(r, "note", "") or ""))
+                    # the resolver TAGS every rule it brought back from the
+                    # store, so the count is read off that tag. It used to
+                    # match a note string the resolver no longer writes,
+                    # which pinned this number at 0 no matter what loaded.
+                    _nlrn = sum(1 for r in _engD.rules
+                                if getattr(r, "from_store", None))
+                    _n2 = sum(1 for r in _engD.rules
+                              if getattr(r, "from_store", None) == "stage2")
+                    _n3 = sum(1 for r in _engD.rules
+                              if getattr(r, "from_store", None) == "stage3")
+                    _ntun = int(getattr(_engD, "applied_mods", 0) or 0)
                     _uev = getattr(_engD, "use_evfis", "?")
                     _ugn = getattr(_engD, "use_genai", "?")
                     _mismatch = (_uev != _u12) or (_ugn != _u3)
@@ -2062,9 +3027,30 @@ def page_simulation():
                         f"evFIS_active={getattr(_engD, 'evfis_on', '?')}, "
                         f"GenAI_active={getattr(_engD, 'genai_on', '?')} · "
                         f"learned rules currently in the engine: {_nlrn}"
+                        + (f" (stage ② {_n2}, stage ③ {_n3})" if _nlrn else "")
+                        + f", tunings applied: {_ntun}"
                         + ("  ⚠ MISMATCH with the toggles — restart the "
                            "dashboard (stale engine in memory)"
                            if _mismatch else ""))
+                    # spec: an unresolved dependency in the store is a
+                    # visible warning, never a silent drop
+                    _wD = list(getattr(_engD, "resolve_warnings", None)
+                               or [])
+                    if _wD:
+                        # ONE BOX, ONE CAUSE. Five records skipped for the
+                        # same reason is one finding, not five, so the record
+                        # id is stripped and identical causes are counted.
+                        import re as _re_wD
+                        _gD = {}
+                        for _w in _wD:
+                            _k = _re_wD.sub(r"^\S+?_\d+:\s*", "", _w)
+                            _gD[_k] = _gD.get(_k, 0) + 1
+                        st.warning(
+                            "Records that could not be brought in:\n"
+                            + "\n".join(
+                                f"- {_k}" + (f"  ({_c} records)"
+                                             if _c > 1 else "")
+                                for _k, _c in _gD.items()))
             if (st.session_state["dss_apply"]
                     and st.session_state.get("dss_res_base") is None):
                 _rit_fix = st.session_state.get("dss_res_items")
@@ -2088,7 +3074,10 @@ def page_simulation():
             _names4 = [r.name for r in _regs4]
             _eng4r = st.session_state.get("dss_engine")
 
-            _eng_hX = getattr(_eng4r, "hierarchy", None)
+            # base + whatever stage 3 generated, from the store when no
+            # engine is running, so the candidate view computes the same
+            # concepts the DSS would
+            _eng_hX = _all_hierarchy(_eng4r)
 
             def _cand_for(_regX):
                 _fX = _dss.ten_features(sim, _regX, network=_obsnet)
@@ -2164,8 +3153,8 @@ def page_simulation():
                     f" {n} |" for n in _names4)
                 _sep4 = "|---|" + "---|" * len(_names4)
                 _rows4 = [_head4, _sep4]
-                _macros4 = list(getattr(_eng4r, "macros", {}) or {})
-                for _iv in list(_dss.INTERVENTIONS) + _macros4:
+                _macros4 = list(_all_macros(_eng4r))
+                for _iv in _visible_interventions(_eng4r) + _macros4:
                     _cells4 = " | ".join(
                         f"{_res4[n][0].get(_iv, 0.0):.2f}" for n in _names4)
                     _isM4 = _iv in _macros4
@@ -2191,13 +3180,14 @@ def page_simulation():
             else:
                 _reg4 = _regs4[_names4.index(_sel4)]
                 _u4, _tr4 = _cand_for(_reg4)
-                _mac4b = list(getattr(_eng4r, "macros", {}) or {})
+                _mac4b = list(_all_macros(_eng4r))
                 st.markdown("".join(
                     _iv_bar(_dss.INTERVENTION_LABEL.get(_iv)
                             or _iv.replace('_', ' ') + " (GenAI macro)",
                             _u4.get(_iv, 0.0),
                             _IV_COLOR.get(_iv, "#c000ff"))
-                    for _iv in list(_dss.INTERVENTIONS) + _mac4b),
+                    for _iv in _visible_interventions(_eng4r)
+                    + _mac4b),
                     unsafe_allow_html=True)
                 _fired = [(r, w) for r, w in _tr4 if w > 0.01]
                 with st.expander(f"Fired rules ({len(_fired)}) \u2014 "
@@ -2210,36 +3200,30 @@ def page_simulation():
 
         elif panel == "Layer 4 Settings":
             st.caption("Tuning coefficients for the Layer 4 decision loop: cadence, forecasting, the adaptation stages and the stage controller.")
-            # ---- protection priority weights (V_prio) ----
-            with st.container(border=True):
-                st.markdown("**Protection priority weights** $V_{prio}$")
-                st.caption("How the DSS values what to protect. Dimensionless "
-                           "weights, renormalized to sum to 1. A decision "
-                           "input, not a fire-behaviour parameter.")
-                _vw = sim.cfg.value_weights
-                _va, _vb = st.columns(2)
-                _vw.w_crit = _va.number_input(
-                    "$w_{crit}$ — critical facility", 0.0, 1.0,
-                    float(_vw.w_crit), 0.05, key="vw_crit")
-                _vw.w_pop = _vb.number_input(
-                    "$w_{pop}$ — population", 0.0, 1.0,
-                    float(_vw.w_pop), 0.05, key="vw_pop")
-                _vw.w_bld = _va.number_input(
-                    "$w_{bld}$ — building", 0.0, 1.0,
-                    float(_vw.w_bld), 0.05, key="vw_bld")
-                _vw.w_evac = _vb.number_input(
-                    "$w_{evac}$ — evacuation", 0.0, 1.0,
-                    float(_vw.w_evac), 0.05, key="vw_evac")
-                _vsum = _vw.w_crit + _vw.w_pop + _vw.w_bld + _vw.w_evac
-                if _vsum > 1e-9:
-                    _vs = _pct_to_100([_vw.w_crit, _vw.w_pop, _vw.w_bld,
-                                       _vw.w_evac])
-                    st.caption(f"Normalized shares (sum 100%): critical "
-                               f"{_vs[0]}% · population {_vs[1]}% · building "
-                               f"{_vs[2]}% · evacuation {_vs[3]}%")
-                else:
-                    st.warning("All weights are zero — set at least one "
-                               "above 0.")
+            st.caption("Protection priority weights ($V_{prio}$) live on "
+                       "the Cost panel, beside the loss weights: both "
+                       "express the same operational value judgment.")
+            # TICK-AWARE RECOMMENDATION: the decision cycle cannot be
+            # finer than the simulation tick T (decisions land on step
+            # boundaries), and the horizon is meaningful in TICKS, not
+            # minutes: 1 tick per cycle and 15 ticks of lookahead
+            # reproduce the approved (1, 30) pairing at T <= 2 and
+            # scale with a coarser clock. When T changes, the two
+            # fields are set to the recommendation; they stay freely
+            # editable afterwards.
+            _T_now = float(getattr(cfg, "step_minutes", 1.0))
+            _cyc_rec = float(min(240.0, max(1.0, _T_now)))
+            _hor_rec = float(min(480.0, max(30.0, 15.0 * _T_now)))
+            if float(st.session_state.get("_dss_reco_T", -1.0)) \
+                    != _T_now:
+                st.session_state["_dss_reco_T"] = _T_now
+                st.session_state["dss_cycle_min"] = _cyc_rec
+                st.session_state["dss_horizon_min"] = _hor_rec
+            st.caption(f"Tick T = {_T_now:g} min \u2192 recommended: "
+                       f"decision cycle {_cyc_rec:g} min (1 tick), "
+                       f"forecast horizon {_hor_rec:g} min "
+                       f"(\u2248 {_hor_rec / _T_now:.0f} ticks). Set "
+                       "on tick change; adjust freely below.")
             dc1, dc2, dc3 = st.columns(3)
             st.session_state["dss_cycle_min"] = float(dc1.number_input(
                 "Decision cycle (min)", 1.0, 240.0,
@@ -2327,17 +3311,55 @@ def page_simulation():
             # version strings are not always recognised and `claude` then
             # silently falls back to its default model.
             _MODELS = ["(plan default)", "opus", "sonnet", "haiku"]
+            # SPEED MATTERS HERE, not only quality: stage 3 runs inside the
+            # decision cycle, which runs inside the animation frame, so the
+            # model's latency is a pause the operator sees on every call.
+            # Measured on THIS transport, not the usual family ordering. The
+            # wait is set by how much the model writes, and opus and sonnet
+            # obey "minified JSON only" while haiku keeps writing prose
+            # around it, which makes the nominally fastest model the slowest
+            # one here.
+            _MSPEED = {
+                "(plan default)": "whatever your plan serves",
+                "opus": "fastest here — answers in ~22 tokens",
+                "sonnet": "fast here — answers in ~16 tokens",
+                "haiku": "slowest here — ignores the brevity rule, ~290 tok",
+            }
+            _mtimes = dict(st.session_state.get("genai_model_ms", {}))
+
+            def _mlabel(m):
+                _t = _mtimes.get(m)
+                return (f"{m} — {_MSPEED[m]}"
+                        + (f" · measured {_t / 1000:.1f} s" if _t else ""))
             _cur_m = st.session_state.get("genai_model_ui", "(plan default)")
             if _cur_m not in _MODELS:
                 _cur_m = "(plan default)"
+            _mirror("genai_model_ui", "l4_genai_model", "(plan default)")
             _mdl = st.selectbox(
-                "Model", _MODELS, index=_MODELS.index(_cur_m),
+                "Model", _MODELS, key="l4_genai_model",
+                on_change=_adopt, args=("genai_model_ui", "l4_genai_model"),
+                format_func=_mlabel,
                 disabled=not _genai_on,
                 help="Which model `claude` uses for stage 3 (Claude Code "
                      "aliases). '(plan default)' lets your Pro/Max plan "
                      "decide. Note: your plan may downgrade `claude -p` to a "
                      "smaller model when limits are hit.")
-            st.session_state["genai_model_ui"] = _mdl
+            st.caption(
+                "Measured on this transport the call costs about "
+                "**3.4 s of fixed startup plus ~7 ms per output token**, so "
+                "the wait is set by how MUCH the model writes rather than by "
+                "which model writes it. That inverts the usual ordering "
+                "here: opus and sonnet honour the 'minified JSON only' "
+                "instruction and come back in ~3.3 s and ~3.7 s, while "
+                "haiku keeps writing prose around the JSON (~290 tokens "
+                "that are discarded unread) and takes ~5.3 s. The smallest "
+                "model is currently the slowest one for this job."
+                + f" Each stage ③ call blocks the simulation until it "
+                  f"answers, capped at {_dss.genai_timeout():.0f} s "
+                  "(`DSS_GENAI_TIMEOUT` raises it for batch runs)."
+                + ("" if _mtimes else
+                   " Press 'Test Claude connection' to record what each "
+                   "model actually costs on this machine."))
             if _mdl and _mdl != "(plan default)":
                 os.environ["DSS_GENAI_MODEL"] = _mdl.strip()
             else:
@@ -2364,16 +3386,61 @@ def page_simulation():
                 with st.spinner("Calling Claude\u2026"):
                     _pr = _dss.genai_probe()
                 if _pr["ok"]:
+                    # remember what THIS machine measured for THIS model, so
+                    # the selector shows real latency instead of only the
+                    # documented ordering
+                    _mm = dict(st.session_state.get("genai_model_ms", {}))
+                    _mm[_mdl] = int(_pr.get("latency_ms") or 0)
+                    st.session_state["genai_model_ms"] = _mm
+                    # remember what the plan actually SERVED, so the sidebar
+                    # can name the model even when the request said
+                    # "(plan default)"
+                    st.session_state["genai_served_model"] = str(
+                        _pr.get("reported_model") or "")
                     _u = _pr.get("usage") or {}
                     _req_m = _pr.get("model") or "(subscription default)"
                     _act_m = _pr.get("reported_model") or "?"
+                    _ot = _u.get("output_tokens")
                     st.success(
-                        f"Live reply from Claude in {_pr['latency_ms']} ms "
-                        f"(requested `{_req_m}`, served `{_act_m}`, "
-                        f"tokens in/out "
+                        f"Live reply from Claude at "
+                        f"**{_pr.get('finished_at', '?')}** in "
+                        f"{_pr['latency_ms']} ms "
+                        f"(sent {_pr.get('started_at', '?')}, requested "
+                        f"`{_req_m}`, served `{_act_m}`, tokens in/out "
                         f"{_u.get('input_tokens', '?')}/"
-                        f"{_u.get('output_tokens', '?')}):")
+                        f"{_ot if _ot is not None else '?'}):")
+                    if isinstance(_ot, int):
+                        # the length of the answer is the part of the wait
+                        # this project controls, so it is called out
+                        st.caption(
+                            f"About {3400 + 7 * _ot:.0f} ms of this is "
+                            "explained by the fixed startup plus the answer "
+                            f"length ({_ot} output tokens). "
+                            + ("The model kept it short, which is what the "
+                               "schema asks for." if _ot < 60 else
+                               "The model wrote well past the JSON it was "
+                               "asked for; every one of those tokens is "
+                               "discarded unread and still costs about "
+                               "7 ms."))
                     st.code(_pr["reply"] or "(empty)", language=None)
+                    # a single `claude -p` run can bill several models: the
+                    # one that answered plus a small helper doing internal
+                    # bookkeeping. Show the breakdown so "served X" is
+                    # verifiable instead of having to be trusted.
+                    _mus = _pr.get("model_usage") or {}
+                    if len(_mus) > 1:
+                        st.caption(
+                            "Models billed by this one call: "
+                            + ", ".join(
+                                f"`{k}` {v.get('out_tokens', 0)} tok / "
+                                f"${v.get('cost', 0.0):.4f}"
+                                for k, v in sorted(
+                                    _mus.items(),
+                                    key=lambda kv: -kv[1].get("cost", 0.0)))
+                            + " — the one matching the call's usage block "
+                              "served the request; the rest are Claude "
+                              "Code's internal helpers, which can emit MORE "
+                              "tokens than the answer itself.")
                     # the plan can serve a smaller model than requested
                     if (_req_m not in ("(subscription default)", "", None)
                             and _act_m
@@ -2388,6 +3455,13 @@ def page_simulation():
                             "rate-limited or is not part of your plan. To "
                             "force a model, run `claude` interactively and set "
                             "it there, or use a plan that includes it.")
+                    with st.expander("Raw `claude` JSON \u2014 what the "
+                                     "CLI actually reported"):
+                        st.caption("Command: `"
+                                   + str(_pr.get("cmd") or "claude ...")
+                                   + "`")
+                        st.code(_pr.get("raw") or "(none)",
+                                language="json")
                     st.caption(
                         "This text was generated by Claude just now over "
                         f"{_pr['endpoint']} \u2014 the same path stage "
@@ -2447,8 +3521,11 @@ def page_simulation():
             # VIEW-ONLY on this tab: picking a profile here just shows that
             # profile's seeds for inspection; it does NOT change the running
             # DSS. The operational seed base is set under Layer 4 Decision.
-            _pcur_r = str(_sv("rules_view_profile",
-                              _sv("dss_seed_profile", "full")))
+            # this VIEW opens on minimal: the 5-rule base is the one worth
+            # inspecting rule by rule, and it is where the generated records
+            # are easiest to tell apart from the seeds. The operational
+            # profile under Layer 4 Decision is untouched by this.
+            _pcur_r = str(_sv("rules_view_profile", "minimal"))
             _pidx = [i for i, v in enumerate(_profs.values())
                      if v == _pcur_r]
             _psel = st.selectbox(
@@ -2461,21 +3538,48 @@ def page_simulation():
             st.session_state["rules_view_profile"] = _profs[_psel]
             st.caption("Display only \u2014 the DSS runs the seed base set under "
                        "Layer 4 Decision "
-                       f"(**{_sv('dss_seed_profile', 'full')}**).")
+                       f"(**{_sv('dss_seed_profile', 'minimal')}**).")
             import os as _os_st
-            _shared_store = _os_st.path.join(_os_st.path.dirname(
-                _os_st.path.dirname(_os_st.path.abspath(__file__))),
-                "logs", "learned_rules.json")
+            _shared_store = _shared_store_path()
             # the store the DSS ACTUALLY uses (a loaded run's rules.json wins),
             # so display + reset/wipe operate on the SAME file the engine reads
             _eng_store = st.session_state.get("dss_engine")
-            _store_p = (getattr(_eng_store, "learned_store", None)
+            _store_p = (getattr(_eng_store, "state_path", None)
                         or st.session_state.get("dss_learned_override")
                         or _shared_store)
+            _gcnt = _gstate_counts(_store_p)
             st.caption(f"Active store the DSS reads: `{_os_st.path.basename(_os_st.path.dirname(_store_p))}/"
                        f"{_os_st.path.basename(_store_p)}`"
                        + (" (a loaded run's snapshot)"
                           if _store_p != _shared_store else " (shared)"))
+            # the counters come from the SAME file the engine resolves from,
+            # so a panel can no longer report an empty store while the engine
+            # is reasoning with records
+            _gd = _read_gstate(_store_p)
+            _gflags = _gd.get("runtime_flags") or {}
+            st.caption(
+                "Generated records · evFIS modifications: "
+                f"**{_gcnt['evfis_rule_modifications']}** · GenAI rules: "
+                f"**{_gcnt['genai_rules']}** · concepts: "
+                f"**{_gcnt['genai_concepts']}** · interventions: "
+                f"**{_gcnt['genai_interventions']}**"
+                + (f" · config `{_dss.config_id(_gflags)}`"
+                   if _gflags else ""))
+            _warns = list(getattr(_eng_store, "resolve_warnings", []) or [])
+            if _warns:
+                # collapse repeats: five records tuning the same missing rule
+                # is ONE finding, printed five times only adds noise
+                import re as _re_w
+                _grp = {}
+                for _w in _warns:
+                    _k = _re_w.sub(r"^\S+?_\d+:\s*", "", _w)
+                    _grp[_k] = _grp.get(_k, 0) + 1
+                st.warning(
+                    "Records that could not be brought in:\n"
+                    + "\n".join(
+                        f"- {'' if n == 1 else f'{n}× '}{k}"
+                        for k, n in sorted(_grp.items(),
+                                           key=lambda kv: -kv[1])[:6]))
             _keepN = int(st.number_input(
                 "keep N strongest learned rules", 0, 500, 10, 1,
                 key="rules_keepn",
@@ -2493,9 +3597,29 @@ def page_simulation():
                                 "persistent store. Natural-selection reset."):
                 from dss.adapt import reset_partitions as _rspR
                 _rspR()
-                _nkeep = _dss.prune_learned(
-                    _store_p, keep=_keepN,
-                    profile=str(_sv("dss_seed_profile", "full")))
+                # prune the GENERATED store: keep the N strongest rule-adding
+                # records and every parameter modification, drop the rest.
+                # A modification has no strength of its own, so only the
+                # records that introduced a rule are ranked.
+                _gs = _dss.GeneratedState.load(_store_p)
+                _mods = _gs.records("evfis_rule_modifications")
+                _adds = [r for r in _mods
+                         if r.get("modification_type") == "rule_add"]
+                _rest = [r for r in _mods
+                         if r.get("modification_type") != "rule_add"]
+                _adds.sort(key=lambda r: -float(
+                    ((r.get("after") or {}).get("rule") or {})
+                    .get("strength", 0.0)))
+                _keep = _adds[:max(0, _keepN)]
+                _gs.data["evfis_rule_modifications"] = sorted(
+                    _rest + _keep, key=lambda r: int(r.get("seq", 0)))
+                _grules = _gs.records("genai_rules")
+                _grules.sort(key=lambda r: -float(r.get("strength", 0.0)))
+                _gs.data["genai_rules"] = sorted(
+                    _grules[:max(0, _keepN)],
+                    key=lambda r: int(r.get("seq", 0)))
+                _gs.save()
+                _nkeep = len(_keep) + len(_gs.data["genai_rules"])
                 # drop the engine so it REBUILDS from the pruned store with the
                 # CURRENT use-stage toggles (a manual re-merge here ignored the
                 # toggles and reloaded everything)
@@ -2505,18 +3629,34 @@ def page_simulation():
                 st.rerun()
             if _rb2.button("Wipe learned store",
                            key="rules_wipe",
-                           help="Deletes logs/learned_rules.json and "
-                                "returns to the pure seed profile "
-                                "\u2014 the clean-room start for a "
-                                "new convergence experiment."):
+                           help="Clears every generated record (evFIS "
+                                "modifications, GenAI rules, concepts and "
+                                "interventions) and returns to the pure "
+                                "seed profile. A backup is kept beside the "
+                                "store. The baseline rule sets and the six "
+                                "base interventions are never deleted, only "
+                                "returned to factory value."):
                 from dss.adapt import reset_partitions as _rspW
                 _rspW()
-                _dss.wipe_learned(
-                    _store_p,
-                    profile=str(_sv("dss_seed_profile", "full")))
+                try:
+                    _wc = _dss.GeneratedState.load(_store_p).wipe()
+                except Exception as _e_w:
+                    _wc = {}
+                    st.error(f"The store could not be wiped: {_e_w}")
+                # spec: a wipe turns the PRODUCTION toggles off so the
+                # clean state is not re-dirtied within seconds; the
+                # use-stage (consumption) toggles and DSS active stay
+                st.session_state["dss_evfis_on"] = False
+                st.session_state["dss_genai_on"] = False
+                st.session_state["dss_adapt_on"] = False
                 # rebuild the engine from the (now empty) store
                 _reset_dss_state(drop_engine=True)
-                st.toast("Learned store wiped; pure seed profile.")
+                st.toast("Wiped "
+                         + ", ".join(f"{v} {k.replace('_', ' ')}"
+                                     for k, v in (_wc or {}).items() if v)
+                         + " (backup kept); production toggles off, "
+                           "pure seed profile."
+                         if _wc else "Nothing to wipe; the store was empty.")
                 st.rerun()
             _engR = st.session_state.get("dss_engine")
             import os as _os_rs
@@ -2528,13 +3668,17 @@ def page_simulation():
                 # still show the persistent store merged into the seed
                 # profile, respecting the SAME use-stage toggles the engine
                 # would, otherwise the learned rules LOOK wrong
-                _rlist = _dss.make_runtime_rules(
-                    str(_sv("dss_seed_profile", "full")))
-                _dss.merge_learned(
-                    _rlist, _store_v,
-                    profile=str(_sv("dss_seed_profile", "full")),
-                    use_evfis=bool(_sv("dss_use_stage12", True)),
-                    use_genai=bool(_sv("dss_use_stage3", True)))
+                from dss.adapt import reset_partitions as _rspD
+                from dss.fuzzy import REGISTRY as _REGD
+                _gsD = _dss.GeneratedState.load(
+                    _store_v, active_rule_set=str(
+                        _sv("dss_seed_profile", "minimal")))
+                _gsD.set_flags(
+                    active_rule_set=str(_sv("dss_seed_profile", "minimal")),
+                    use_stage12_rules=bool(_sv("dss_use_stage12", True)),
+                    use_stage3_rules=bool(_sv("dss_use_stage3", True)))
+                _rlist = _dss.resolve_active_set(
+                    _gsD, _dss.make_runtime_rules, _REGD, _rspD).rules
                 st.caption("No engine running yet \u2014 showing "
                            "the seed profile MERGED with the "
                            "persistent learned store. Enable "
@@ -2542,7 +3686,7 @@ def page_simulation():
                            "starts from exactly this base.")
             _bornN, _tunedN = _dss.load_learned(
                 _store_v,
-                profile=str(_sv("dss_seed_profile", "full")))
+                profile=str(_sv("dss_seed_profile", "minimal")))
             if _os_rs.path.exists(_store_v):
                 import time as _t_rs
                 _mt = _t_rs.strftime(
@@ -2561,9 +3705,26 @@ def page_simulation():
             else:
                 st.caption("Persistent store: not created yet "
                            "(first accepted adaptation or decision "
-                           "cycle writes logs/learned_rules.json).")
+                           "cycle writes logs/dss_generated_state.json).")
+
+            # PROVENANCE BY VALUE, NOT BY WORDING. R41 and R42 ship in the
+            # doctrine catalog as worked examples of what an adapted rule
+            # looks like, so their notes say "evFIS" and "GenAI" even though
+            # they are pristine baseline. Classifying on the note text made
+            # them read as learned modifications that had survived a wipe.
+            _pristineO = {_r.name: tuple((str(i), round(float(v), 4))
+                                         for i, v in _r.consequents)
+                          for _r in _dss.make_runtime_rules(
+                              str(_sv("dss_seed_profile", "minimal")))}
 
             def _origin_of(_r):
+                _p = _pristineO.get(_r.name)
+                _cur = tuple((str(i), round(float(v), 4))
+                             for i, v in _r.consequents)
+                if _p is not None and _cur == _p:
+                    # in the catalog and unchanged: baseline, whatever the
+                    # note happens to describe
+                    return 0, "\U0001F7E6 seed"
                 if _r.name.startswith("G"):
                     return 3, "\U0001F7E9 GenAI (stage \u2462)"
                 if _r.name.startswith("A"):
@@ -2579,7 +3740,7 @@ def page_simulation():
             # never edits this table.
             _seedsPure = _dss.make_runtime_rules(
                 str(_sv("rules_view_profile",
-                        _sv("dss_seed_profile", "full"))))
+                        _sv("dss_seed_profile", "minimal"))))
             st.markdown(f"**Seed rules (never deleted) — "
                         f"{len(_seedsPure)} in this profile (view)**")
             _tblR = [dict(
@@ -2600,7 +3761,7 @@ def page_simulation():
             # classify against the OPERATIONAL profile (what the engine runs),
             # not the view profile, so the learned table is always correct
             _seedsOp = _dss.make_runtime_rules(
-                str(_sv("dss_seed_profile", "full")))
+                str(_sv("dss_seed_profile", "minimal")))
             _seed_sig = {r.name: tuple((str(i), round(float(v), 4))
                                        for i, v in r.consequents)
                          for r in _seedsOp}
@@ -2616,106 +3777,168 @@ def page_simulation():
             # (A#) and stage ③ GenAI (G#). Kept SEPARATE from the seeds. They
             # persist in the store and the DSS applies them like seeds even in
             # Fuzzy-only mode (evFIS / GenAI off), until wiped.
+            # ---- VIEWER, NOT A MIRROR OF THE ACTIVE SET ----
+            # This table used to be derived from the rules the engine is
+            # currently reasoning with, so turning a consumption toggle off
+            # emptied it and the accumulated knowledge looked lost. It reads
+            # the STORE instead: everything ever produced is listed, and the
+            # "in use" column says whether the current toggles admit it.
+            _gdR = _read_gstate(_store_p)
+            _active_names = {r.name for r in _rlist}
+            _recs = []
+
+            def _fmt_cons(_cs):
+                return ", ".join(f"{i} {float(v):.2f}" for i, v in _cs)
+
+            def _fmt_rule(_sp):
+                return ("IF " + " AND ".join(f"{v} is {t}" for v, t
+                                             in _sp.get("antecedents", []))
+                        + " THEN " + _fmt_cons(_sp.get("consequents", [])))
+            for _m in sorted(_gdR.get("evfis_rule_modifications") or [],
+                             key=lambda r: int(r.get("seq", 0))):
+                _mt = _m.get("modification_type")
+                _aft = _m.get("after") or {}
+                _bef = _m.get("before") or {}
+                _stp = (_m.get("trigger") or {}).get("step")
+                if _mt == "rule_add":
+                    # stage 2 CREATES rules: it instantiates the antecedent
+                    # cell of a situation no active rule answered
+                    _sp = _aft.get("rule") or {}
+                    _nm = _sp.get("name", _m.get("id"))
+                    _recs.append(dict(
+                        stage="2 — resolution", rule=_nm,
+                        description=(
+                            "NEW RULE. No active rule covered the situation, "
+                            "so the cell was instantiated: " + _fmt_rule(_sp)
+                            + ". The consequents are seeded from what the "
+                            "dominant concepts demanded."),
+                        strength=round(float(_sp.get("strength", 0.0)), 1),
+                        step=_stp,
+                        in_use=("yes" if _nm in _active_names
+                                else "no — stage ①② consumption off"),
+                        seq=int(_m.get("seq", 0))))
+                elif _mt == "consequent_update":
+                    _ob = dict((str(i), float(v))
+                               for i, v in _bef.get("consequents", []))
+                    _an = dict((str(i), float(v))
+                               for i, v in _aft.get("consequents", []))
+                    _delta = ", ".join(
+                        f"{k} {_ob.get(k, 0.0):.2f} → {v:.2f}"
+                        for k, v in _an.items()
+                        if abs(v - _ob.get(k, 0.0)) > 1e-9) or "no net change"
+                    _recs.append(dict(
+                        stage="1 — evFIS tuning", rule=_m.get("base_rule_id",
+                                                              "?"),
+                        description=(
+                            "MODIFICATION of an existing rule, not a new one. "
+                            "Ordered intensities retuned: " + _delta
+                            + ". Kept because the physical forecast improved."),
+                        strength=0.0, step=_stp,
+                        in_use=("yes" if bool(_sv("dss_use_stage12", True))
+                                else "no — stage ①② consumption off"),
+                        seq=int(_m.get("seq", 0))))
+                else:
+                    _vv = _m.get("variable", "?")
+                    _new = sorted(set(_aft.get("partition") or {})
+                                  - set(_bef.get("partition") or {}))
+                    if _new:
+                        _recs.append(dict(
+                            stage="2 — resolution", rule=_vv,
+                            description=(
+                                "NEW TERM " + ", ".join(_new)
+                                + f" inserted into the partition of {_vv}. "
+                                "No existing label described the situation "
+                                "well enough, so the variable gained "
+                                "resolution and the antecedent catalog grew "
+                                "with it."),
+                            strength=0.0, step=_stp,
+                            in_use=("yes" if bool(_sv("dss_use_stage12", True))
+                                    else "no — stage ①② consumption off"),
+                            seq=int(_m.get("seq", 0))))
+                    else:
+                        _recs.append(dict(
+                            stage="1 — evFIS tuning", rule=_vv,
+                            description=(
+                                "MODIFICATION of the membership functions of "
+                                f"{_vv}: the shared boundary between two "
+                                "neighbouring terms was moved. Both move "
+                                "together, so the partition still sums to one "
+                                "everywhere."),
+                            strength=0.0, step=_stp,
+                            in_use=("yes" if bool(_sv("dss_use_stage12", True))
+                                    else "no — stage ①② consumption off"),
+                            seq=int(_m.get("seq", 0))))
+            for _g in sorted(_gdR.get("genai_rules") or [],
+                             key=lambda r: int(r.get("seq", 0))):
+                _nm = _g.get("name", _g.get("id"))
+                _ants = " AND ".join(
+                    (f"{a[0]} is {a[1]}" if not isinstance(a, dict)
+                     else f"{a.get('concept')} is {a.get('term')}")
+                    for a in _g.get("antecedents", _g.get("antecedent", [])))
+                _cons = ", ".join(
+                    (f"{c[0]} {float(c[1]):.2f}" if not isinstance(c, dict)
+                     else f"{c.get('channel')} {float(c.get('value', 0)):.2f}")
+                    for c in _g.get("consequents", _g.get("consequent", [])))
+                _dep = _g.get("depends_on_concepts") or []
+                _recs.append(dict(
+                    stage="3 — GenAI", rule=_nm,
+                    description=(
+                        "NEW RULE proposed by Claude and admitted through the "
+                        f"gates: IF {_ants} THEN {_cons}."
+                        + (" Depends on the generated concept(s) "
+                           + ", ".join(_dep) + "." if _dep else "")),
+                    strength=round(float(_g.get("strength", 0.0)), 1),
+                    step=(_g.get("trigger") or {}).get("step"),
+                    in_use=("yes" if _nm in _active_names
+                            else "no — stage ③ consumption off"),
+                    seq=int(_g.get("seq", 0))))
+            st.markdown("**Generated knowledge in the store (stage ①②③) — "
+                        f"{len(_recs)} record(s)**")
+            st.caption(
+                "Everything the adaptation stages have ever produced, "
+                "whatever the toggles currently say. The store is the "
+                "record; the toggles only decide what the DSS is allowed to "
+                "reason with right now, which is what the 'in use' column "
+                "reports. Records survive until 'Wipe learned store'.")
+            _perr = list(getattr(_engR, "persist_errors", []) or [])
+            if _perr:
+                st.error(
+                    f"{len(_perr)} accepted adaptation(s) could NOT be "
+                    "written to the store, so they are missing from this "
+                    "table even though the Analysis tab counted them:\n"
+                    + "\n".join(f"- {e}" for e in _perr[:5]))
+            if _recs:
+                _cols_g = ["stage", "rule", "description", "step",
+                           "in_use", "strength", "seq"]
+                st.dataframe([{k: r.get(k) for k in _cols_g} for r in _recs],
+                             use_container_width=True, height=280,
+                             column_order=_cols_g)
+                st.caption(
+                    "Which stage does what: **stage ①** only MODIFIES what "
+                    "already exists (ordered intensities, membership "
+                    "boundaries). **Stage ②** creates rules and inserts terms "
+                    "when the base is silent rather than wrong. **Stage ③** "
+                    "creates rules and may also propose a new concept or a "
+                    "composite intervention. So a new rule comes from ② or "
+                    "③, never from ①.")
+                st.caption(
+                    "step = the simulation step the record was produced at. "
+                    "seq = the global replay order: a wipe reverts records in "
+                    "reverse seq, a restart replays them forward, which is "
+                    "why it is a single sequence across all record types "
+                    "rather than a per-type counter. strength = accumulated "
+                    "fired weight of the decisions a rule took part in; "
+                    "'Reset (keep the strongest)' ranks the rule-creating "
+                    "records by it, so it stays blank for modifications.")
+            else:
+                st.caption("The store holds no generated record yet.")
             _learned = [_r for _r in _rlist if _is_learned(_r)]
-            st.markdown("**Modified / generated rules (stage ①②③) — "
-                        f"{len(_learned)}**")
-            st.caption("These live in logs/learned_rules.json and are merged "
-                       "into every new engine at start, so the DSS applies "
-                       "them exactly like the seed rules even with evFIS and "
-                       "GenAI turned OFF. They remain until 'Wipe learned "
-                       "store'.")
-            if _learned:
-                _tblL = [dict(
-                    stage=_origin_of(_r)[1], name=_r.name,
-                    IF=" AND ".join(f"{v} is {t}"
-                                    for v, t in _r.antecedents),
-                    THEN=", ".join(f"{iv} {x:.2f}"
-                                   for iv, x in _r.consequents),
-                    strength=round(float(getattr(_r, "strength", 0.0)), 1))
-                    for _r in sorted(_learned,
-                                     key=lambda r: _origin_of(r)[0])]
-                st.dataframe(_tblL, use_container_width=True, height=240)
-                st.caption("strength = how much a rule has contributed so "
-                           "far: the accumulated fired weight of the "
-                           "decisions it took part in (each time it fires and "
-                           "its order is applied, its firing weight is added). "
-                           "Higher = more used / more trusted; 'Reset (keep "
-                           "the strongest)' keeps the top-strength rules and "
-                           "drops the rest.")
-            else:
-                st.caption("None yet — only the seed profile is active.")
 
-            # ---- INTERVENTION -> RULES: pick an intervention, see every rule
-            # (seed + learned) that ORDERS it ----
-            st.markdown("**Interventions — which rules order each**")
-
-            def _ivlbl(iv):
-                return (_dss.INTERVENTION_LABEL.get(iv)
-                        or iv.replace("_", " ") + " (GenAI macro)")
-            _ivall = (list(_dss.INTERVENTIONS)
-                      + list(getattr(_engR, "macros", {}) or {}))
-            _ivsel = st.selectbox("Intervention", _ivall,
-                                  format_func=_ivlbl, key="rules_iv_sel")
-            _iv_rules = sorted(
-                ((_r, dict(_r.consequents).get(_ivsel, 0.0))
-                 for _r in _rlist
-                 if any(str(_i) == _ivsel for _i, _x in _r.consequents)),
-                key=lambda t: -(t[1] or 0.0))
-            if _iv_rules:
-                st.caption(f"{len(_iv_rules)} rule(s) order "
-                           f"**{_ivlbl(_ivsel)}** (strongest first):")
-                for _r, _iy in _iv_rules:
-                    _ifs = " AND ".join(f"{v} is {t}"
-                                        for v, t in _r.antecedents)
-                    _orig = ("🟦 seed" if _origin_of(_r)[0] == 0
-                             else _origin_of(_r)[1])
-                    st.caption(f"• **{_r.name}** [{_orig}] · intensity "
-                               f"{_iy:.2f} — IF {_ifs}")
-            else:
-                st.caption(f"No active rule orders {_ivlbl(_ivsel)} right now.")
-
-            _nnew = sum(1 for _r in _rlist if _r.name[0] in "AG")
-            _ntun = sum(1 for _r in _rlist if "evFIS" in (_r.note or ""))
-            _fullR = _dss.make_runtime_rules("full")
-            _cellsN = [set(_r.antecedents) for _r in _rlist
-                       if _r.active]
-            _hitR = sum(1 for _fr in _fullR if _fr.active and any(
-                set(_fr.antecedents) & _cn for _cn in _cellsN))
-            _totR = sum(1 for _fr in _fullR if _fr.active)
-            st.caption(f"{len(_rlist)} rules \u00b7 adaptation-born: "
-                       f"{_nnew} \u00b7 evFIS-tuned consequents: "
-                       f"{_ntun} \u00b7 convergence toward the "
- f" doctrine: {_hitR}/{_totR} doctrine "
-                       f"cells touched ({_hitR / max(_totR, 1):.0%})."
-                       " Learned rules persist in logs/"
-                       "learned_rules.json across fires, engines and "
-                       "MAPS; strength = accumulated fired weight.")
-            from dss.fuzzy import REGISTRY as _REGR
-            _dcL = (list(getattr(_engR, "decision_concepts", []))
-                    or list(_dss.DECISION_CONCEPTS))
-            _catN = 1
-            for _dcC in _dcL:
-                _catN *= len(_REGR.get(_dcC))
-            _newC = [c for c in getattr(_engR, "hierarchy", {}) or {}
-                     if c not in _dss.HIERARCHY] if _engR else []
-            _newM = list(getattr(_engR, "macros", {}) or {}) \
-                if _engR else []
-            st.caption("LEARNED VOCABULARY \u00b7 concepts: "
-                       + (", ".join(_newC) or "none yet")
-                       + " \u00b7 macro interventions: "
-                       + (", ".join(_newM) or "none yet")
-                       + " \u2014 vocabulary packages (new object + "
-                       "a rule using it, gates G2/G2b/G3/G4/G5) come "
-                       "from the LIVE Claude proposer only. Enable it with "
-                       "an API key or with Claude Code on your subscription.")
-            st.caption(f"Linguistic catalog: {_catN:,} antecedent "
-                       "cells over the five decision concepts "
-                       "(5\u2075 = 3,125 at the seed partition; "
-                       "stage \u2461 term insertions GROW it).")
             st.markdown("**Membership modifications (evFIS stage "
                         "\u2460 + inserted terms, stage \u2461) "
  "\u2014 registry vs**")
             from dss.fuzzy import default_partition as _defpR
+            from dss.fuzzy import REGISTRY as _REGR
             _dpR = _defpR()
             _modsR = []
             for _var in _REGR.variables():
@@ -2738,118 +3961,207 @@ def page_simulation():
                                               for v in _d0)),
                             current=str(tuple(round(float(v), 3)
                                               for v in _abcd))))
+            # the registry above is the ACTIVE partition, so with stage \u2460\u2461
+            # consumption off it is back at factory value and shows nothing.
+            # The stored record is what the viewer must report.
+            _pmods = [_m for _m in (_gdR.get("evfis_rule_modifications") or [])
+                      if _m.get("modification_type") in ("membership_shift",
+                                                         "term_insert")]
             if _modsR:
                 st.dataframe(_modsR, use_container_width=True)
+                st.caption("Currently applied to the registry.")
+            elif _pmods:
+                st.caption(
+                    f"{len(_pmods)} membership record(s) are in the store but "
+                    "not applied right now, because \u201cUse stage \u2460\u2461 rules\u201d is "
+                    "off. They are listed in the table above and return the "
+                    "moment the toggle goes back on.")
             else:
                 st.caption("Every membership still sits on its "
                            "default \u2014 stage \u2460 has not moved anything (yet).")
-        elif panel == "Layer 4 · Analysis":
-            st.caption("Analysis \u2014 only what THIS run created: rules the "
-                       "adaptation loop generated or retuned since the engine "
-                       "started, plus any new concept or intervention. Rules "
-                       "reloaded from the persistent store are NOT shown here; "
-                       "this view resets with each new run (Reset fire / new "
-                       "map). The full accumulated base is on the Layer 4 "
-                       "Rules tab.")
-            _engA = st.session_state.get("dss_engine")
-            if _engA is None:
-                st.info("Turn on 'Apply decisions' and run the DSS to "
-                        "populate this.")
-            else:
-                # exclude rules restored from the store AND pristine seed
-                # rules (incl. the R41/R42 provenance examples that carry an
-                # evFIS/GenAI note but ship unchanged in the catalog)
-                _seedbaseA = {r.name: tuple((str(i), round(float(v), 4))
-                                            for i, v in r.consequents)
-                              for r in _dss.make_runtime_rules(
-                                  str(_sv("dss_seed_profile", "full")))}
 
-                def _this_run(r):
-                    if "restored from the learned store" in (
-                            getattr(r, "note", "") or ""):
-                        return False
-                    _b = _seedbaseA.get(r.name)
-                    if _b is not None and tuple(
-                            (str(i), round(float(v), 4))
-                            for i, v in r.consequents) == _b:
-                        return False   # pristine seed, not learned this run
-                    return True
-                _rlA = [r for r in getattr(_engA, "rules", []) if _this_run(r)]
-                _born = [r for r in _rlA
-                         if (r.name[:1] in ("A", "G"))
-                         or "adaptation-born" in (getattr(r, "note", "") or "")]
-                _genR = [r for r in _born if r.name.startswith("G")]
-                _resR = [r for r in _born if r.name.startswith("A")]
-                def _rule_line(r):
+            # ---- INTERVENTION -> RULES: pick an intervention, see every rule
+            # (seed + learned) that ORDERS it ----
+            st.markdown("**Interventions — which rules order each**")
+
+            def _ivlbl(iv):
+                return (_dss.INTERVENTION_LABEL.get(iv)
+                        or iv.replace("_", " ") + " (GenAI macro)")
+            _ivall = (list(_dss.INTERVENTIONS)
+                      + list(_all_macros(_engR)))
+            _ivsel = st.selectbox("Intervention", _ivall,
+                                  format_func=_ivlbl, key="rules_iv_sel")
+            _iv_rules = sorted(
+                ((_r, dict(_r.consequents).get(_ivsel, 0.0))
+                 for _r in _rlist
+                 if any(str(_i) == _ivsel for _i, _x in _r.consequents)),
+                key=lambda t: -(t[1] or 0.0))
+            # an INACTIVE catalog entry (R41/R42 are shipped as provenance
+            # examples with active=False) cannot order anything, so it is
+            # separated out instead of being listed as if it fires
+            _iv_live = [(r, y) for r, y in _iv_rules if getattr(r, "active",
+                                                               True)]
+            _iv_off = [(r, y) for r, y in _iv_rules
+                       if not getattr(r, "active", True)]
+            if _iv_live:
+                st.caption(f"{len(_iv_live)} rule(s) order "
+                           f"**{_ivlbl(_ivsel)}** (strongest first):")
+                for _r, _iy in _iv_live:
                     _ifs = " AND ".join(f"{v} is {t}"
-                                        for v, t in r.antecedents)
-                    _thn = ", ".join(f"{iv} {x:.2f}"
-                                     for iv, x in r.consequents)
-                    st.caption(f"\u2022 **{r.name}** \u2014 IF {_ifs} \u2192 "
-                               f"THEN {_thn}"
-                               + (f" \u00b7 {r.note}"
-                                  if getattr(r, "note", "") else ""))
+                                        for v, t in _r.antecedents)
+                    _orig = ("🟦 seed" if _origin_of(_r)[0] == 0
+                             else _origin_of(_r)[1])
+                    st.caption(f"• **{_r.name}** [{_orig}] · intensity "
+                               f"{_iy:.2f} — IF {_ifs}")
+            else:
+                st.caption(f"No active rule orders {_ivlbl(_ivsel)} right now.")
+            if _iv_off:
+                st.caption("Inactive catalog entries naming it (they never "
+                           "fire): "
+                           + ", ".join(f"**{r.name}**" for r, _ in _iv_off))
 
-                # stage \u2460 retunes EXISTING seed rules (R# with an evFIS note);
-                # stage \u2461 adds resolution rules (A#); stage \u2462 adds GenAI rules
-                # (G#)
-                _stage1 = [r for r in _rlA if r.name[:1] == "R"
-                           and "evFIS" in (getattr(r, "note", "") or "")]
-                st.markdown(f"**New rules: {len(_born)}** "
-                            f"(+ {len(_stage1)} seed rules retuned)")
-                st.markdown(f"**Stage \u2460 \u2014 evFIS tuning (existing rules "
-                            f"retuned): {len(_stage1)}**")
-                if _stage1:
-                    for r in _stage1:
-                        _rule_line(r)
-                else:
-                    st.caption("None \u2014 no seed rule retuned yet.")
-                st.markdown(f"**Stage \u2461 \u2014 resolution rules (A#): "
-                            f"{len(_resR)}**")
-                if _resR:
-                    for r in _resR:
-                        _rule_line(r)
-                else:
-                    st.caption("None \u2014 the base has covered every "
-                               "situation so far.")
-                st.markdown(f"**Stage \u2462 \u2014 GenAI rules (G#): "
-                            f"{len(_genR)}**")
-                if _genR:
-                    for r in _genR:
-                        _rule_line(r)
-                else:
-                    st.caption("None \u2014 the generative stage added no "
-                               "rule yet.")
-                st.divider()
-                _newCA = [c for c in getattr(_engA, "hierarchy", {}) or {}
-                          if c not in _dss.HIERARCHY]
-                st.markdown(f"**New concepts (GenAI): {len(_newCA)}**")
-                if _newCA:
-                    for c in _newCA:
-                        st.caption(f"\u2022 {c} \u2014 a new intermediate concept; it "
-                                   "enters the Layer 3 hierarchy and feeds the "
-                                   "decision concepts.")
-                else:
-                    st.caption("None \u2014 no new concept has been introduced.")
-                st.divider()
-                _newMA = list(getattr(_engA, "macros", {}) or {})
-                st.markdown(f"**New interventions (GenAI macros): "
-                            f"{len(_newMA)}**")
-                if _newMA:
-                    for m in _newMA:
-                        st.caption(f"\u2022 {m} \u2014 a new macro intervention; added "
-                                   "to the intervention set and shown in the "
-                                   "legend under 'DSS orders (GenAI)'.")
-                else:
-                    st.caption("None \u2014 the six base interventions "
-                               "(S/D/C/P/E/W) are unchanged.")
-                st.caption("How things enter: stage \u2462 (generative) proposes a "
-                           "rule (admitted as G#); when it needs new "
-                           "vocabulary it also proposes a new intermediate "
-                           "CONCEPT or a MACRO intervention, each cleared by "
-                           "the G2/G2b/G5 gates. Stage \u2461 adds plain rules (A#) "
-                           "without new vocabulary. Everything persists in "
-                           "logs/learned_rules.json.")
+            _nnew = sum(1 for _r in _rlist if _r.name[0] in "AG")
+            _ntun = sum(1 for _r in _rlist if "evFIS" in (_r.note or ""))
+            _fullR = _dss.make_runtime_rules("full")
+            _cellsN = [set(_r.antecedents) for _r in _rlist
+                       if _r.active]
+            _hitR = sum(1 for _fr in _fullR if _fr.active and any(
+                set(_fr.antecedents) & _cn for _cn in _cellsN))
+            _totR = sum(1 for _fr in _fullR if _fr.active)
+            st.caption(f"{len(_rlist)} rules \u00b7 adaptation-born: "
+                       f"{_nnew} \u00b7 evFIS-tuned consequents: "
+                       f"{_ntun} \u00b7 convergence toward the "
+ f" doctrine: {_hitR}/{_totR} doctrine "
+                       f"cells touched ({_hitR / max(_totR, 1):.0%})."
+                       " Learned rules persist in logs/"
+                       "dss_generated_state.json across fires, engines and "
+                       "MAPS; strength = accumulated fired weight.")
+            from dss.fuzzy import REGISTRY as _REGR
+            _dcL = (list(getattr(_engR, "decision_concepts", []))
+                    or list(_dss.DECISION_CONCEPTS))
+            _catN = 1
+            for _dcC in _dcL:
+                _catN *= len(_REGR.get(_dcC))
+            # the VIEWER lists the whole stored vocabulary; whether each entry
+            # is admitted right now is a separate statement, not a filter
+            _svc, _svm = _store_vocab(_store_p)
+            _liveC = set(getattr(_engR, "hierarchy", {}) or {})
+            _liveM = set(getattr(_engR, "macros", {}) or {})
+            _newC = [(c + ("" if c in _liveC else " (stored, stage \u2462 off)"))
+                     for c in _svc]
+            _newM = [(m + ("" if m in _liveM else " (stored, stage \u2462 off)"))
+                     for m in _svm]
+            st.caption("LEARNED VOCABULARY \u00b7 concepts: "
+                       + (", ".join(_newC) or "none yet")
+                       + " \u00b7 macro interventions: "
+                       + (", ".join(_newM) or "none yet")
+                       + " \u2014 vocabulary packages (new object + "
+                       "a rule using it, gates G2/G2b/G3/G4/G5) come "
+                       "from the LIVE Claude proposer only. Enable it with "
+                       "an API key or with Claude Code on your subscription.")
+            st.caption(f"Linguistic catalog: {_catN:,} antecedent "
+                       "cells over the five decision concepts "
+                       "(5\u2075 = 3,125 at the seed partition; "
+                       "stage \u2461 term insertions GROW it).")
+        elif panel == "Layer 4 · Analysis":
+            # ONE table, one row per decision cycle: what the DSS decided,
+            # what the adaptation tried, which gate stopped it, what came out
+            # of it, and whether the fail-safe let the orders through. The
+            # funnel and per-stage summaries were removed: they counted
+            # things without ever saying what happened at a given step.
+            _engA = st.session_state.get("dss_engine")
+            _cycA = list(getattr(_engA, "cycles", []) or [])
+            _rsA = dict(getattr(_engA, "run_stats", {}) or {})
+            if not _cycA:
+                st.info("No decision cycle has run yet. Turn on 'Apply "
+                        "decisions' and step the simulation.")
+            else:
+                _acc = sum(1 for c in _cycA
+                           if (c.get("adaptation") or {}).get("accepted"))
+                _rows = build_step_rows(_cycA, _rsA)
+                _COLS_A = list(STEP_COLS)
+                st.caption(
+                    f"{len(_cycA)} decision cycle(s) · {_acc} adaptation(s) "
+                    f"accepted · seed base "
+                    f"**{_sv('dss_seed_profile', 'minimal')}**")
+                st.markdown("**What happened at each step**")
+                # THE PANEL COLUMN IS NARROW. Twenty-one columns of
+                # provenance do not fit beside the map, so the full table
+                # lives on its own page; what stays here is a preview.
+                if st.button("Open the full table as a page",
+                             key="goto_steps_page",
+                             use_container_width=True,
+                             help="Opens 'Step analysis' in the navigation: "
+                                  "the same table across the whole window."):
+                    st.session_state["nav_page"] = "Step analysis"
+                    st.rerun()
+                _ob1, _ob2 = st.columns([1, 1])
+                if hasattr(st, "dialog"):
+                    @st.dialog("What happened at each step", width="large")
+                    def _steps_window():
+                        st.dataframe(_rows, use_container_width=True,
+                                     height=620, column_order=_COLS_A)
+                        st.caption(
+                            f"{len(_rows)} cycle(s). Columns are explained "
+                            "under the preview table on the panel.")
+                        _csvA = ("\t".join(_COLS_A) + "\n" + "\n".join(
+                            "\t".join(str(r.get(c, "")) for c in _COLS_A)
+                            for r in _rows))
+                        st.download_button(
+                            "Download as TSV", _csvA,
+                            file_name="layer4_steps.tsv", mime="text/tab-"
+                            "separated-values", key="dl_steps_tsv")
+                    if _ob1.button("Open in a window", key="open_steps",
+                                   use_container_width=True,
+                                   help="Shows the full table with every "
+                                        "column, wider than this panel "
+                                        "allows."):
+                        _steps_window()
+                _prev = _ob2.checkbox("Preview here", value=True,
+                                      key="prev_steps")
+                if _prev:
+                    st.dataframe(_rows, use_container_width=True, height=300,
+                                 column_order=_COLS_A)
+                st.markdown(_STEP_COL_HELP)
+
+                with st.expander("What the gates G1 to G5 mean"):
+                    st.markdown(_GATE_HELP)
+
+                st.markdown(
+                    "**$J_{total}$ — full decision cost "
+                    "(burned area + assets + population + response + "
+                    "delay)**")
+                _js = _rsA.get("j_series") or []
+                if _js:
+                    import pandas as _pdA
+                    st.line_chart(_pdA.DataFrame(
+                        [dict(step=s, candidate=jc, no_action=j0,
+                              satisficing_bound=b)
+                         for s, jc, j0, b in _js]).set_index("step"),
+                        height=200)
+                    st.caption(
+                        "$J_{total}$ of the DSS candidate against $J_{total}$ "
+                        "of doing nothing, plus the satisficing bound the "
+                        "candidate has to clear. This one INCLUDES the price "
+                        "of acting.")
+                _ps_ = _rsA.get("phys_series") or []
+                if _ps_:
+                    st.markdown(
+                        "**$J_{phys}$ — physical cost only "
+                        "(burned area + assets + population)**")
+                    import pandas as _pdP
+                    st.line_chart(_pdP.DataFrame(
+                        [dict(step=s, candidate=pc, no_action=p0)
+                         for s, pc, p0 in _ps_]).set_index("step"),
+                        height=200)
+                    _win = sum(1 for _s, _pc, _p0 in _ps_ if _pc < _p0 - 1e-9)
+                    st.caption(
+                        f"Total $J$ above, PHYSICAL cost below. The orders "
+                        f"were physically better than no action in "
+                        f"**{_win}** of {len(_ps_)} cycle(s). Total $J$ also "
+                        "carries the price of acting, so it sits higher "
+                        "whenever the fleet is fielded; the physical curve "
+                        "is the verdict on the orders themselves.")
         elif panel == "Layer 4 · Logs":
             _eng4 = st.session_state.get("dss_engine")
             with st.expander("Saved runs \u2014 load & replay"):
@@ -3099,7 +4411,7 @@ def page_simulation():
                 if _rsel == "All agents (table)":
                     _hd = "| |" + "".join(f" {r.region} |" for r in _recs)
                     _rws = [_hd, "|---|" + "---|" * len(_recs)]
-                    _macL = list(getattr(_eng4, "macros", {}) or {})
+                    _macL = list(_all_macros(_eng4))
                     for _ivL in list(_dss.INTERVENTIONS) + _macL:
                         _chipL = ("<span style='color:"
                                   f"{_IV_COLOR.get(_ivL, '#c000ff')}'>"
@@ -3133,8 +4445,16 @@ def page_simulation():
                     st.caption(
                         "orders (rules→final): " + " · ".join(
                             f"{k.split('_')[0]} "
-                            f"{_rg['orders_from_rules'][k]:.2f}→{v:.2f}"
-                            for k, v in _rg["orders_final"].items())
+                            f"{_rg['orders_from_rules'].get(k, 0):.2f}"
+                            f"→{v:.2f}"
+                            for k, v in _rg["orders_final"].items()
+                            # undiscovered actuators carry permanent
+                            # zeros; only doctrine families and cells
+                            # with a real order belong in the story
+                            if k in _dss.rules.DOCTRINE_INTERVENTIONS
+                            or float(v) > 0.02
+                            or float(_rg["orders_from_rules"]
+                                     .get(k, 0)) > 0.02)
                         + f" · Q={_rg['quality']:.2f}"
                         + (" · FAILSAFE" if _rg["failsafe"] else "")
                         + f" · share {_rg['coord_share']:.2f}")
@@ -3469,13 +4789,14 @@ def page_simulation():
                        "weather service \u00b7 $z_6, z_7, z_8$: GIS "
                        "(assets, access, roads) \u00b7 $z_9$: own "
                        "resource ledger (staged pool).")
+            _mirror("dss_n", "l1_dss_n", 1)
             n_agents = int(st.number_input(
-                "Number of local DSS agents", 1, 12,
-                int(_sv("dss_n", 1)), 1,
+                "Number of local DSS agents", 1, 12, step=1,
+                key="l1_dss_n",
+                on_change=_adopt, args=("dss_n", "l1_dss_n"),
                 help="The map is split into exactly this many regions "
                      "covering every cell (near-square blocks, Agent_1 "
                      "at the north-west)."))
-            st.session_state["dss_n"] = n_agents
             _nrec = max(1, min(12, round((cfg.nx * cfg.ny) / 2500.0)))
             st.caption(f"Suggested: {_nrec} agent(s) \u2014 one "
                        "Local DSS per ~50\u00d750-cell "
@@ -3680,8 +5001,23 @@ def page_simulation():
             _clk, _nf = _clock_info()
             _dreg = st.session_state.get("dss_region")
             _rb, _rl = (_dreg[:4], _dreg[4]) if _dreg else (None, None)
-            _rall = (st.session_state.get("dss_regions_all")
-                     if bool(_sv("ly_agents_v", True)) else None)
+            # THE OVERLAY IS DERIVED HERE, not inherited from a panel. It
+            # used to be written only inside the Layer 2 panel, so changing
+            # the agent count anywhere else left the map showing the old
+            # split until that particular panel happened to be open. The
+            # Layer 2 version carries an extra attendance flag per region;
+            # it is kept when it still matches the current count.
+            _rall = None
+            if bool(_sv("ly_agents_v", True)):
+                _nreg = int(_sv("dss_n", 1))
+                _rall = st.session_state.get("dss_regions_all")
+                if bool(_sv("dss_show_all", True)):
+                    if not _rall or len(_rall) != _nreg:
+                        _rall = [(*r.box, r.name) for r in
+                                 _dss.partition_n(cfg.nx, cfg.ny, _nreg)]
+                        st.session_state["dss_regions_all"] = _rall
+                else:
+                    _rall = None
             _sens = (st.session_state.get("dss_sensors_draw")
                      if bool(_sv("ly_sens_v", True)) else None)
             _deps = (st.session_state.get("dss_depots_draw")
@@ -3709,6 +5045,11 @@ def page_simulation():
                     if isinstance(_acts, dict):
                         _acts["genai_regions"] = getattr(
                             _eng_m, "last_genai_regions", set())
+                        # the macro definitions travel with the orders, so a
+                        # generated intervention can be drawn in its OWN
+                        # colour instead of one anonymous magenta badge
+                        _acts["macros"] = dict(getattr(_eng_m, "macros", {})
+                                               or {})
             elif (_eng_m is not None and not _pool_live
                     and getattr(_eng_m, "last_override", None) is not None):
                 _eng_m.last_override = None
@@ -3797,19 +5138,85 @@ def page_simulation():
     # BELOW the map + legend (row 2 of column 1); column 2 holds the tab
     # buttons + the selected panel.
     with view_col:
-        _dlog = st.session_state.get("dss_decision_log") or []
-        if _dlog:
-            with st.expander(f"Decision log — interventions per cycle "
-                             f"({len(_dlog)})", expanded=False):
-                st.caption("S suppression · D resource deployment · C "
-                           "containment · P asset protection · E evacuation · "
-                           "W public warning · number = ordered intensity · "
-                           "✅ = adaptation accepted · ΔJ = forecast cost "
-                           "change (negative = improves).")
-                st.code("\n".join(reversed(_dlog[-40:])), language=None)
-                if st.button("Clear decision log", key="clr_declog"):
-                    st.session_state["dss_decision_log"] = []
-                    st.rerun()
+        # DECISION LOG as a table a person can read: one row per region per
+        # cycle, saying which local DSS ordered what and why, with the
+        # coordinator's own decision for that cycle beside it. The previous
+        # version was a wall of abbreviated text lines.
+        _engDL = st.session_state.get("dss_engine")
+        _cycDL = list(getattr(_engDL, "cycles", []) or [])
+        if _cycDL:
+            with st.expander(f"Decision log — who decided what, cycle by "
+                             f"cycle ({len(_cycDL)})", expanded=False):
+                _last = st.number_input(
+                    "Show the last N cycles", 1, 500,
+                    min(20, len(_cycDL)), 5, key="dlog_n")
+                _rows_dl = []
+                for _c in _cycDL[-int(_last):]:
+                    _g = _c.get("global_dss") or {}
+                    _hot = _g.get("hotspot")
+                    _shares = _g.get("shares") or {}
+                    _att = set(_g.get("attended") or [])
+                    _ad = _c.get("adaptation") or {}
+                    for _rn, _r in (_c.get("regions") or {}).items():
+                        _u = _r.get("orders_final") or {}
+                        _ordered = ", ".join(
+                            f"{_k.replace('_', ' ')} {float(_v):.2f}"
+                            for _k, _v in _u.items() if float(_v) > 0.02)
+                        _fired = ", ".join(
+                            str(_f[0]) for _f in (_r.get("fired") or [])[:5])
+                        _rows_dl.append(dict(
+                            step=int(_c.get("step", 0)),
+                            t_min=round(float(_c.get("t_min", 0.0)), 1),
+                            local_dss=_rn,
+                            role=("HOTSPOT" if _rn == _hot
+                                  else ("engaged" if _rn in _att
+                                        else "monitored")),
+                            share=round(float(_shares.get(_rn, 1.0)), 2),
+                            ordered=_ordered or "nothing",
+                            fired_rules=_fired or "none",
+                            quality=round(float(_r.get("quality", 0.0)), 2),
+                            failsafe=("attenuated" if _r.get("failsafe")
+                                      else "full strength"),
+                            withheld=("WITHHELD"
+                                      if _c.get("no_harm_withheld")
+                                      else ""),
+                            adaptation=(
+                                f"stage {_ad.get('tried')} "
+                                + ("accepted" if _ad.get("accepted")
+                                   else "rejected")
+                                if _ad.get("tried") else ""),
+                            global_dss=str(_g.get("statement") or "")[:150]))
+                # same reason as the step table: this sits in the narrow left
+                # column, and the coordinator's statement alone needs width
+                if hasattr(st, "dialog"):
+                    @st.dialog("Decision log", width="large")
+                    def _dlog_window():
+                        st.dataframe(_rows_dl, use_container_width=True,
+                                     height=620)
+                        _cd = list(_rows_dl[0].keys()) if _rows_dl else []
+                        st.download_button(
+                            "Download as TSV",
+                            ("\t".join(_cd) + "\n" + "\n".join(
+                                "\t".join(str(r.get(c, "")) for c in _cd)
+                                for r in _rows_dl)),
+                            file_name="decision_log.tsv",
+                            mime="text/tab-separated-values",
+                            key="dl_declog_tsv")
+                    if st.button("Open in a window", key="open_dlog",
+                                 use_container_width=True):
+                        _dlog_window()
+                st.dataframe(_rows_dl, use_container_width=True, height=300)
+                st.caption(
+                    "**local_dss** is the regional agent that produced the "
+                    "orders. **role** is the coordinator's call for that "
+                    "cycle: the hotspot leads, engaged regions act at full "
+                    "tempo, monitored ones keep watching with their "
+                    "offensive share cut to **share**. **failsafe** says "
+                    "whether the quality gate attenuated the orders, "
+                    "**withheld** whether the no-harm guard pulled the "
+                    "offensive allocation for that whole cycle. "
+                    "**global_dss** is the coordinator's statement in its "
+                    "own words.")
         _cost_panel()
 
 
@@ -3854,6 +5261,14 @@ _J_TERMS = [
 
 def _cost_panel():
     import matplotlib.pyplot as plt
+
+    # `_sv` is a helper defined inside page_simulation, and Python does not
+    # hand a caller's locals to a module-level function. The custom-weight
+    # branch below referenced it and would have raised NameError the moment
+    # anyone picked the Custom cost profile.
+    def _sv(key, default):
+        return st.session_state.get(key, default)
+
     thr = float(sim.cfg.cost.acceptance_fraction)
     st.divider()
     st.subheader("Cost function $J_k$")
@@ -3939,6 +5354,43 @@ def _cost_panel():
         st.warning("Response cost + delay above 40% makes the "
                    "optimizer reluctant to field resources at all "
                    "\u2014 the fire terms should dominate.")
+    # ---- protection priority weights (V_prio) ----
+    # The SAME value judgment as the loss weights above, applied one
+    # step earlier: J decides WHAT a bad outcome is, V_prio decides
+    # WHERE the protective effort goes on the map (asset-protection
+    # targeting and the asset exposure feature both read it). The two
+    # belong side by side so a doctrine choice is made in one place.
+    with st.container(border=True):
+        st.markdown("**Protection priority weights** $V_{prio}$")
+        st.caption("How the protective effort is targeted across what "
+                   "is at risk. Dimensionless, renormalized to sum "
+                   "to 1. A decision input, not a fire-behaviour "
+                   "parameter; steers asset protection placement and "
+                   "the asset exposure feature.")
+        _vw = sim.cfg.value_weights
+        _va, _vb = st.columns(2)
+        _vw.w_crit = _va.number_input(
+            "$w_{crit}$ — critical facility", 0.0, 1.0,
+            float(_vw.w_crit), 0.05, key="vw_crit")
+        _vw.w_pop = _vb.number_input(
+            "$w_{pop}$ — population", 0.0, 1.0,
+            float(_vw.w_pop), 0.05, key="vw_pop")
+        _vw.w_bld = _va.number_input(
+            "$w_{bld}$ — building", 0.0, 1.0,
+            float(_vw.w_bld), 0.05, key="vw_bld")
+        _vw.w_evac = _vb.number_input(
+            "$w_{evac}$ — evacuation", 0.0, 1.0,
+            float(_vw.w_evac), 0.05, key="vw_evac")
+        _vsum = _vw.w_crit + _vw.w_pop + _vw.w_bld + _vw.w_evac
+        if _vsum > 1e-9:
+            _vs = _pct_to_100([_vw.w_crit, _vw.w_pop, _vw.w_bld,
+                               _vw.w_evac])
+            st.caption(f"Normalized shares (sum 100%): critical "
+                       f"{_vs[0]}% · population {_vs[1]}% · building "
+                       f"{_vs[2]}% · evacuation {_vs[3]}%")
+        else:
+            st.warning("All weights are zero — set at least one "
+                       "above 0.")
     # the cost model's non-weight safeguards + reference scales live here too
     # (moved out of Parameters, so all cost settings are in one place)
     with st.expander("Advanced cost settings (thresholds & reference scales)"):
@@ -4388,10 +5840,16 @@ def page_editor():
                 objs = (result.json_data or {}).get("objects", []) if result else []
                 if live and objs:
                     _push_snapshot(); _apply_edits(objs, scale, kw)
+                    _simP = st.session_state.get("sim")
+                    if _simP is not None:
+                        _simP._fmoist0 = world.fuel.fmoist.copy()
                     st.session_state.canvas_key += 1; st.rerun()
                 if not live and st.button("Apply edits", type="primary",
                                           use_container_width=True):
                     _push_snapshot(); _apply_edits(objs, scale, kw)
+                    _simP = st.session_state.get("sim")
+                    if _simP is not None:
+                        _simP._fmoist0 = world.fuel.fmoist.copy()
                     st.session_state.canvas_key += 1; st.rerun()
             else:
                 st.image(bg)
@@ -4646,6 +6104,21 @@ def page_params():
     # 'Run limit' (max_steps) now lives in the sidebar Simulation card, and
     # 'Suppression effectiveness' is not exposed here: real scenes overwrite it
     # (build_real_world calibration) and synthetic scenes use the defaults.
+    with st.expander("Integration", expanded=False):
+        st.number_input(
+            "Substep cap per step (0 = uncapped)", 0, 200,
+            int(st.session_state.get("sim_substep_cap", 8)), 1,
+            key="sim_substep_cap",
+            help="A long step is integrated in internal substeps so the "
+                 "front advances at most about one cell per substep; the "
+                 "cap trades a little spread accuracy for speed. It applies "
+                 "to EVERY way of advancing the run (Step, Step X, Run to "
+                 "end, Animate), so a scenario reproduces regardless of "
+                 "which control was used. 0 removes the cap and runs at "
+                 "full fidelity, roughly three times slower.")
+        st.caption("Uncapped is the reference integration; the default cap "
+                   "of 8 is what the interactive runs have always used.")
+
     with st.expander("Fire spread and propagation", expanded=True):
         a, b = st.columns(2)
         cfg.spread.w0 = a.number_input("$w_0$ — wind saturation speed (m/s)", 0.5, 30.0,
@@ -6047,9 +7520,57 @@ def _make_validation_report(res, left, right, overall, R, T, img,
     return docx_bytes, png_bytes, out_dir
 
 
+# =========================================================== STEP ANALYSIS ===
+def page_steps():
+    """The per-step adaptation table, across the whole window.
+
+    The same rows the Layer 4 Analysis panel previews, but this is a page, so
+    all twenty-one columns get real width instead of the narrow side panel."""
+    st.subheader("Step analysis — what happened at each decision cycle")
+    _eng = st.session_state.get("dss_engine")
+    _cyc = list(getattr(_eng, "cycles", []) or [])
+    _rs = dict(getattr(_eng, "run_stats", {}) or {})
+    if not _cyc:
+        st.info("No decision cycle has run yet. Go to Simulation, turn on "
+                "'Apply decisions' and step the fire.")
+        return
+    _rows = build_step_rows(_cyc, _rs)
+    _acc = sum(1 for c in _cyc
+               if (c.get("adaptation") or {}).get("accepted"))
+    _gd = _read_gstate()
+    st.caption(
+        f"{len(_cyc)} decision cycle(s) · {_acc} adaptation(s) accepted · "
+        f"seed base **{st.session_state.get('dss_seed_profile', 'minimal')}**"
+        f" · config `{_dss_pkg.config_id(_gd.get('runtime_flags') or {})}`")
+
+    _c1, _c2, _c3 = st.columns([2, 2, 3])
+    _only = _c1.checkbox("Only cycles where a stage was tried", value=False,
+                         key="steps_only_tried")
+    _acc_only = _c2.checkbox("Only accepted", value=False,
+                             key="steps_only_acc")
+    _view = list(_rows)
+    if _only:
+        _view = [r for r in _view if r.get("stage", "").strip()[:1] != "0"]
+    if _acc_only:
+        _view = [r for r in _view if r.get("verdict") == "ACCEPTED"]
+    _c3.caption(f"showing {len(_view)} of {len(_rows)} cycle(s)")
+    st.dataframe(_view, use_container_width=True, height=620,
+                 column_order=STEP_COLS)
+    _tsv = ("\t".join(STEP_COLS) + "\n" + "\n".join(
+        "\t".join(str(r.get(c, "")) for c in STEP_COLS) for r in _view))
+    st.download_button("Download as TSV", _tsv,
+                       file_name="layer4_steps.tsv",
+                       mime="text/tab-separated-values", key="steps_tsv")
+    with st.expander("What the columns mean", expanded=False):
+        st.markdown(_STEP_COL_HELP)
+    with st.expander("What the gates G1 to G5 mean", expanded=False):
+        st.markdown(_GATE_HELP)
+
+
 PAGES = {"Simulation": page_simulation, "Map editor": page_editor,
          "Data layers": page_layers, "Parameters": page_params,
          "GIS import": page_gis, "Validation": page_validation,
+         "Step analysis": page_steps,
  "System Description": page_system_description}
 
 # Map layers bar: pinned at the top of the content area, but only on the pages
@@ -6061,14 +7582,55 @@ if page in ("Simulation", "Map editor"):
 
 PAGES[page]()
 
+# run to end: a CHUNK of steps per rerun, AFTER the page has rendered,
+# so the map shows every intermediate state instead of a blank flicker
+# (the old version stepped inside the sidebar and reran before the map
+# was ever drawn). The chunk is time-budgeted: about one second of
+# stepping per frame keeps the motion visible without crawling.
+if page == "Simulation" and st.session_state.get("runend_on"):
+    _t0 = time.time()
+    _limit = int(cfg.max_steps)
+    _done = None
+    while sim.state.step < _limit and time.time() - _t0 < 1.0:
+        _d = _step_sim(); _record_costs()
+        if (_d.n_burning == 0 and sim.state.step > 1
+                and sim.ever_burned.any()
+                and not any(ev.step >= sim.state.step
+                            for ev in world.ignitions)):
+            _done = "fire is out"
+            break
+    if sim.state.step >= _limit:
+        _done = f"step cap {_limit} reached"
+    if _done:
+        st.session_state["runend_stop"] = True
+        st.toast(f"Run to end stopped at step "
+                 f"{sim.state.step}: {_done}")
+    st.rerun()
+
 # animate: advance one step per rerun while playing (only on the Simulation
 # page, otherwise the rerun loop would trap every other tab)
 if page == "Simulation" and st.session_state.get("anim_on", False):
     _pending = any(ev.step >= sim.state.step for ev in world.ignitions)
-    _finished = sim.is_quiescent() and (
-        sim.ever_burned.any() or (not _pending and sim.state.step > 1))
+    # is_quiescent() is a SNAPSHOT: no cell above the burning threshold in
+    # THIS frame. A fire dips below it all the time without being out (the
+    # ignition still ramping up, a front briefly knocked down by suppression,
+    # the overnight moisture stall). Treating one such frame as "the fire is
+    # over" is what stopped the animation on the first click and again in the
+    # middle of a run. So: no pending ignition, and quiet for several
+    # consecutive frames, matching what Run to end already required.
+    _QUIET_NEED = 3
+    if sim.is_quiescent():
+        _quiet = int(st.session_state.get("anim_quiet", 0)) + 1
+    else:
+        _quiet = 0
+    st.session_state["anim_quiet"] = _quiet
+    _finished = (_quiet >= _QUIET_NEED and not _pending
+                 and sim.state.step > 1 and bool(sim.ever_burned.any()))
     if not _finished and sim.state.step < cfg.max_steps:
-        _step_sim(); _record_costs(); time.sleep(0.08); st.rerun()
+        # no artificial pause: a frame already costs physics + DSS + render
+        # (well over 100 ms on a normal map), so the sleep only added dead
+        # time to every frame without making the animation any smoother
+        _step_sim(); _record_costs(); st.rerun()
     else:
         # cannot write a widget key after the toggle rendered; flag it for
         # the next run (handled just before the toggle in the sidebar)
@@ -6079,4 +7641,5 @@ if page == "Simulation" and st.session_state.get("anim_on", False):
         else:
             st.toast("Animation stopped: the fire is out.")
         st.session_state["anim_stop"] = True
+        st.session_state.pop("anim_quiet", None)
         st.rerun()

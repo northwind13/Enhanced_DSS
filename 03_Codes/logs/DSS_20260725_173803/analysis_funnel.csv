@@ -1,0 +1,10 @@
+﻿quantity;value
+cycles;295
+satisficing_failed;293
+tried;0
+accepted;0
+rejected;0
+withheld;0
+persist_failed;0
+dJ_accepted;0.000000
+blocked: adaptation master switch off (evFIS and GenAI both off);293

@@ -1,0 +1,7 @@
+﻿step;t_min;region;story;stage_tried;stage_accepted;fired_rules;suppression;deployment;containment;protection;evacuation;warning;quality;gate_min;J_forecast;J_noaction;attended
+351;351;Agent_1;orders came from the seed rule base (rules as-is);0;0;R20[0.15] R26[0.32] A1[0.08];0.32;0.41;0.00;0.07;0.05;0.00;0.71;0.01;0.1021;0.0840;1
+351;351;Agent_2;orders came from the seed rule base (rules as-is);0;0;R20[0.30] R26[0.32] A1[0.50];0.32;0.55;0.00;0.44;0.30;0.00;0.86;0.01;0.1021;0.0840;1
+351;351;Agent_3;orders came from the seed rule base (rules as-is);0;0;R20[0.14] R26[0.26] A1[0.12];0.26;0.35;0.00;0.11;0.07;0.00;0.69;0.01;0.1021;0.0840;1
+352;352;Agent_1;orders came from the seed rule base (rules as-is);0;0;R20[0.14] R26[0.29] A1[0.07];0.29;0.37;0.00;0.07;0.04;0.00;0.72;0.01;0.1029;0.0842;1
+352;352;Agent_2;orders came from the seed rule base (rules as-is);0;0;R20[0.27] R26[0.29] A1[0.49];0.29;0.50;0.00;0.43;0.29;0.00;0.86;0.01;0.1029;0.0842;1
+352;352;Agent_3;orders came from the seed rule base (rules as-is);0;0;R20[0.13] R26[0.23] A1[0.12];0.23;0.31;0.00;0.11;0.07;0.00;0.70;0.01;0.1029;0.0842;1

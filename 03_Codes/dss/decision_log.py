@@ -103,7 +103,16 @@ class RunLogger:
         import os
         import time
         stamp = time.strftime("%Y%m%d_%H%M%S")
-        self.dir = os.path.join(root, f"dss_{tag}_{stamp}")
+        # DSS_YYYYMMDD_HHMMSS: one run = one directory, sorted by name
+        # in time order. The map/tag detail lives in meta.json, not in
+        # the directory name (dss_m1_... read as a riddle).
+        self.tag = str(tag)
+        self.dir = os.path.join(root, f"DSS_{stamp}")
+        if os.path.exists(self.dir):        # two runs in one second
+            k = 2
+            while os.path.exists(f"{self.dir}_{k}"):
+                k += 1
+            self.dir = f"{self.dir}_{k}"
         os.makedirs(self.dir, exist_ok=True)
         self._steps = open(os.path.join(self.dir, "steps.csv"), "a")
         self._steps.write("step,t_min,burning,burned,j_total,"
@@ -141,6 +150,67 @@ class RunLogger:
         import os
         with open(os.path.join(self.dir, "meta.json"), "w") as fh:
             json.dump(meta, fh, indent=1, default=str)
+
+    def save_analysis(self, engine) -> None:
+        """Persist the per-run adaptation analysis beside the traces.
+
+        The Analysis view is read off these files, so the figures in it can be
+        rebuilt later without replaying the run. Written as CSV next to JSON
+        because the cost series and the funnel are what end up in a thesis
+        figure, and a plotting tool should not have to parse the log format
+        to get at them.
+
+        analysis.json      the whole tally (funnel, per stage, gates, reasons)
+        analysis_cost.csv  step, J candidate / no action / bound, physical
+        analysis_funnel.csv  the funnel rows, one per line
+        """
+        import csv
+        import json
+        import os
+        rs = dict(getattr(engine, "run_stats", {}) or {})
+        if not rs.get("cycles"):
+            return
+        ctrl = getattr(engine, "controller", None)
+        rs["stage_controller"] = {f"{b}|{s}": float(v) for (b, s), v
+                                  in (getattr(ctrl, "q", {}) or {}).items()}
+        rs["config_id"] = getattr(getattr(engine, "gstate", None),
+                                  "config_id", "")
+        rs["seed_profile"] = getattr(engine, "seed_profile", "")
+        rs["persist_errors"] = list(getattr(engine, "persist_errors", []))
+        with open(os.path.join(self.dir, "analysis.json"), "w",
+                  encoding="utf-8") as fh:
+            json.dump(rs, fh, indent=1, default=str)
+
+        phys = {int(s): (pc, p0) for s, pc, p0 in rs.get("phys_series", [])}
+        with open(os.path.join(self.dir, "analysis_cost.csv"), "w",
+                  newline="", encoding="utf-8-sig") as fh:
+            w = csv.writer(fh, delimiter=";")
+            w.writerow(["step", "j_candidate", "j_noaction",
+                        "satisficing_bound", "phys_candidate",
+                        "phys_noaction"])
+            for s, jc, j0, bd in rs.get("j_series", []):
+                pc, p0 = phys.get(int(s), ("", ""))
+                w.writerow([s, f"{jc:.6f}", f"{j0:.6f}", f"{bd:.6f}",
+                            (f"{pc:.6f}" if pc != "" else ""),
+                            (f"{p0:.6f}" if p0 != "" else "")])
+
+        with open(os.path.join(self.dir, "analysis_funnel.csv"), "w",
+                  newline="", encoding="utf-8-sig") as fh:
+            w = csv.writer(fh, delimiter=";")
+            w.writerow(["quantity", "value"])
+            for k in ("cycles", "satisficing_failed", "tried", "accepted",
+                      "rejected", "withheld", "persist_failed"):
+                w.writerow([k, rs.get(k, 0)])
+            w.writerow(["dJ_accepted", f"{rs.get('dJ_accepted', 0.0):.6f}"])
+            for st_, d in sorted((rs.get("per_stage") or {}).items()):
+                w.writerow([f"stage{st_}_tried", d.get("tried", 0)])
+                w.writerow([f"stage{st_}_accepted", d.get("accepted", 0)])
+            for k, v in (rs.get("blocked") or {}).items():
+                w.writerow([f"blocked: {k}", v])
+            for k, v in (rs.get("gates") or {}).items():
+                w.writerow([f"gate: {k}", v])
+            for k, v in (rs.get("reasons") or {}).items():
+                w.writerow([f"rejected: {k}", v])
 
     def save_rules(self, rules, profile="full", engine=None) -> None:
         """Per-run SNAPSHOT of the rule base (learned delta + vocabulary), in

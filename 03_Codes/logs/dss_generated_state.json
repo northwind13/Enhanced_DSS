@@ -1,0 +1,889 @@
+{
+ "schema_version": "1.0",
+ "last_updated": "2026-07-25T14:35:11Z",
+ "baseline_ref": {
+  "rule_sets": [
+   "minimal5",
+   "core_doctrine",
+   "rule42"
+  ],
+  "intervention_count": 6
+ },
+ "runtime_flags": {
+  "dss_active": true,
+  "active_rule_set": "minimal",
+  "evfis_active": true,
+  "genai_active": true,
+  "use_stage12_rules": true,
+  "use_stage3_rules": true
+ },
+ "evfis_rule_modifications": [
+  {
+   "base_rule_id": "A1",
+   "base_rule_set": "minimal",
+   "modification_type": "rule_add",
+   "before": {
+    "rule": null
+   },
+   "after": {
+    "rule": {
+     "name": "A1",
+     "antecedents": [
+      [
+       "asset_exposure_risk",
+       "VH"
+      ],
+      [
+       "suppression_feasibility",
+       "VH"
+      ]
+     ],
+     "consequents": [
+      [
+       "asset_protection",
+       0.8822713257955821
+      ],
+      [
+       "evacuation",
+       0.5987536227611577
+      ]
+     ],
+     "note": "adaptation-born: resolution increase (instantiated antecedent cell)",
+     "strength": 0.0
+    }
+   },
+   "trigger": {
+    "step": 10,
+    "minute": 10.0,
+    "deficit": 0.18,
+    "stage": 2
+   },
+   "id": "evfis_mod_0002",
+   "seq": 2,
+   "origin": "evfis",
+   "source_stage": 2,
+   "produced_under_flags": {
+    "use_stage12_rules": true,
+    "use_stage3_rules": true,
+    "evfis_active": true,
+    "genai_active": true
+   },
+   "timestamp": "2026-07-25T13:46:10Z"
+  },
+  {
+   "base_rule_id": "G5",
+   "base_rule_set": "minimal",
+   "modification_type": "consequent_update",
+   "before": {
+    "consequents": [
+     [
+      "downwind_retardant_shield",
+      0.9
+     ],
+     [
+      "asset_protection",
+      0.7
+     ],
+     [
+      "resource_deployment",
+      0.7
+     ]
+    ]
+   },
+   "after": {
+    "consequents": [
+     [
+      "downwind_retardant_shield",
+      0.9500000000000001
+     ],
+     [
+      "asset_protection",
+      0.75
+     ],
+     [
+      "resource_deployment",
+      0.75
+     ]
+    ]
+   },
+   "trigger": {
+    "step": 10,
+    "minute": 10.0,
+    "deficit": 0.05,
+    "stage": 1
+   },
+   "id": "evfis_mod_0011",
+   "seq": 11,
+   "origin": "evfis",
+   "source_stage": 1,
+   "produced_under_flags": {
+    "use_stage12_rules": true,
+    "use_stage3_rules": true,
+    "evfis_active": true,
+    "genai_active": true
+   },
+   "timestamp": "2026-07-25T14:05:40Z"
+  },
+  {
+   "base_rule_id": "G5",
+   "base_rule_set": "minimal",
+   "modification_type": "consequent_update",
+   "before": {
+    "consequents": [
+     [
+      "downwind_retardant_shield",
+      0.9
+     ],
+     [
+      "asset_protection",
+      0.7
+     ],
+     [
+      "resource_deployment",
+      0.7
+     ]
+    ]
+   },
+   "after": {
+    "consequents": [
+     [
+      "downwind_retardant_shield",
+      0.9500000000000001
+     ],
+     [
+      "asset_protection",
+      0.75
+     ],
+     [
+      "resource_deployment",
+      0.75
+     ]
+    ]
+   },
+   "trigger": {
+    "step": 25,
+    "minute": 25.0,
+    "deficit": 0.3,
+    "stage": 1
+   },
+   "id": "evfis_mod_0016",
+   "seq": 16,
+   "origin": "evfis",
+   "source_stage": 1,
+   "produced_under_flags": {
+    "use_stage12_rules": true,
+    "use_stage3_rules": true,
+    "evfis_active": true,
+    "genai_active": true
+   },
+   "timestamp": "2026-07-25T14:34:14Z"
+  },
+  {
+   "base_rule_id": "G5",
+   "base_rule_set": "minimal",
+   "modification_type": "consequent_update",
+   "before": {
+    "consequents": [
+     [
+      "downwind_retardant_shield",
+      0.9
+     ],
+     [
+      "asset_protection",
+      0.7
+     ],
+     [
+      "resource_deployment",
+      0.7
+     ]
+    ]
+   },
+   "after": {
+    "consequents": [
+     [
+      "downwind_retardant_shield",
+      0.9500000000000001
+     ],
+     [
+      "asset_protection",
+      0.75
+     ],
+     [
+      "resource_deployment",
+      0.75
+     ]
+    ]
+   },
+   "trigger": {
+    "step": 35,
+    "minute": 35.0,
+    "deficit": 0.3,
+    "stage": 1
+   },
+   "id": "evfis_mod_0017",
+   "seq": 17,
+   "origin": "evfis",
+   "source_stage": 1,
+   "produced_under_flags": {
+    "use_stage12_rules": true,
+    "use_stage3_rules": true,
+    "evfis_active": true,
+    "genai_active": true
+   },
+   "timestamp": "2026-07-25T14:34:27Z"
+  },
+  {
+   "base_rule_id": "G5",
+   "base_rule_set": "minimal",
+   "modification_type": "consequent_update",
+   "before": {
+    "consequents": [
+     [
+      "downwind_retardant_shield",
+      0.9
+     ],
+     [
+      "asset_protection",
+      0.7
+     ],
+     [
+      "resource_deployment",
+      0.7
+     ]
+    ]
+   },
+   "after": {
+    "consequents": [
+     [
+      "downwind_retardant_shield",
+      0.9500000000000001
+     ],
+     [
+      "asset_protection",
+      0.75
+     ],
+     [
+      "resource_deployment",
+      0.75
+     ]
+    ]
+   },
+   "trigger": {
+    "step": 40,
+    "minute": 40.0,
+    "deficit": 0.3,
+    "stage": 1
+   },
+   "id": "evfis_mod_0018",
+   "seq": 18,
+   "origin": "evfis",
+   "source_stage": 1,
+   "produced_under_flags": {
+    "use_stage12_rules": true,
+    "use_stage3_rules": true,
+    "evfis_active": true,
+    "genai_active": true
+   },
+   "timestamp": "2026-07-25T14:34:33Z"
+  },
+  {
+   "base_rule_id": "G5",
+   "base_rule_set": "minimal",
+   "modification_type": "consequent_update",
+   "before": {
+    "consequents": [
+     [
+      "downwind_retardant_shield",
+      0.9
+     ],
+     [
+      "asset_protection",
+      0.7
+     ],
+     [
+      "resource_deployment",
+      0.7
+     ]
+    ]
+   },
+   "after": {
+    "consequents": [
+     [
+      "downwind_retardant_shield",
+      0.9500000000000001
+     ],
+     [
+      "asset_protection",
+      0.75
+     ],
+     [
+      "resource_deployment",
+      0.75
+     ]
+    ]
+   },
+   "trigger": {
+    "step": 5,
+    "minute": 5.0,
+    "deficit": 0.05,
+    "stage": 1
+   },
+   "id": "evfis_mod_0019",
+   "seq": 19,
+   "origin": "evfis",
+   "source_stage": 1,
+   "produced_under_flags": {
+    "use_stage12_rules": true,
+    "use_stage3_rules": true,
+    "evfis_active": true,
+    "genai_active": true
+   },
+   "timestamp": "2026-07-25T14:35:11Z"
+  }
+ ],
+ "genai_rules": [
+  {
+   "name": "G1",
+   "antecedents": [
+    [
+     "fire_threat_level",
+     "H"
+    ],
+    [
+     "suppression_feasibility",
+     "VH"
+    ]
+   ],
+   "consequents": [
+    [
+     "suppression_effort",
+     0.9
+    ],
+    [
+     "retardant_drop",
+     0.8
+    ],
+    [
+     "resource_deployment",
+     0.7
+    ]
+   ],
+   "note": "adaptation-born: generative (claude), gates G1-G4",
+   "strength": 0.0,
+   "depends_on_concepts": [],
+   "trigger": {
+    "step": 9,
+    "minute": 5.0,
+    "deficit": 0.2,
+    "stage": 3
+   },
+   "id": "gen_rule_0001",
+   "seq": 1,
+   "origin": "genai",
+   "source_stage": 3,
+   "produced_under_flags": {
+    "use_stage12_rules": true,
+    "use_stage3_rules": true,
+    "evfis_active": true,
+    "genai_active": true
+   },
+   "timestamp": "2026-07-25T13:46:08Z"
+  },
+  {
+   "name": "G2",
+   "antecedents": [
+    [
+     "suppression_feasibility",
+     "VH"
+    ],
+    [
+     "intervention_urgency",
+     "VH"
+    ]
+   ],
+   "consequents": [
+    [
+     "suppression_effort",
+     0.9
+    ],
+    [
+     "retardant_drop",
+     0.8
+    ],
+    [
+     "resource_deployment",
+     0.7
+    ]
+   ],
+   "note": "adaptation-born: generative (claude), gates G1-G4",
+   "strength": 0.0,
+   "depends_on_concepts": [],
+   "trigger": {
+    "step": 16,
+    "minute": 11.0,
+    "deficit": 0.08,
+    "stage": 3
+   },
+   "id": "gen_rule_0003",
+   "seq": 3,
+   "origin": "genai",
+   "source_stage": 3,
+   "produced_under_flags": {
+    "use_stage12_rules": true,
+    "use_stage3_rules": true,
+    "evfis_active": true,
+    "genai_active": true
+   },
+   "timestamp": "2026-07-25T13:48:05Z"
+  },
+  {
+   "name": "G3",
+   "antecedents": [
+    [
+     "suppression_feasibility",
+     "VH"
+    ],
+    [
+     "fire_threat_level",
+     "H"
+    ],
+    [
+     "intervention_urgency",
+     "VH"
+    ]
+   ],
+   "consequents": [
+    [
+     "suppression_effort",
+     0.95
+    ],
+    [
+     "retardant_drop",
+     0.85
+    ],
+    [
+     "resource_deployment",
+     0.9
+    ]
+   ],
+   "note": "adaptation-born: generative (claude), gates G1-G4",
+   "strength": 0.0,
+   "depends_on_concepts": [],
+   "trigger": {
+    "step": 10,
+    "minute": 10.0,
+    "deficit": 0.18,
+    "stage": 3
+   },
+   "id": "gen_rule_0004",
+   "seq": 4,
+   "origin": "genai",
+   "source_stage": 3,
+   "produced_under_flags": {
+    "use_stage12_rules": true,
+    "use_stage3_rules": true,
+    "evfis_active": true,
+    "genai_active": true
+   },
+   "timestamp": "2026-07-25T13:51:45Z"
+  },
+  {
+   "name": "G4",
+   "antecedents": [
+    [
+     "suppression_feasibility",
+     "VH"
+    ],
+    [
+     "intervention_urgency",
+     "VH"
+    ],
+    [
+     "fire_threat_level",
+     "M"
+    ]
+   ],
+   "consequents": [
+    [
+     "downwind_backburn",
+     0.9
+    ],
+    [
+     "retardant_drop",
+     0.8
+    ],
+    [
+     "asset_protection",
+     0.6
+    ]
+   ],
+   "note": "adaptation-born: generative (claude), gates G1-G4",
+   "strength": 0.0,
+   "depends_on_concepts": [],
+   "trigger": {
+    "step": 25,
+    "minute": 25.0,
+    "deficit": 0.3,
+    "stage": 3
+   },
+   "id": "gen_rule_0006",
+   "seq": 6,
+   "origin": "genai",
+   "source_stage": 3,
+   "produced_under_flags": {
+    "use_stage12_rules": true,
+    "use_stage3_rules": true,
+    "evfis_active": true,
+    "genai_active": true
+   },
+   "timestamp": "2026-07-25T13:52:27Z"
+  },
+  {
+   "name": "G5",
+   "antecedents": [
+    [
+     "asset_exposure_risk",
+     "VH"
+    ],
+    [
+     "suppression_feasibility",
+     "VH"
+    ]
+   ],
+   "consequents": [
+    [
+     "downwind_retardant_shield",
+     0.9
+    ],
+    [
+     "asset_protection",
+     0.7
+    ],
+    [
+     "resource_deployment",
+     0.7
+    ]
+   ],
+   "note": "adaptation-born: generative (claude), gates G1-G4",
+   "strength": 0.0,
+   "depends_on_concepts": [],
+   "trigger": {
+    "step": 5,
+    "minute": 5.0,
+    "deficit": 0.12,
+    "stage": 3
+   },
+   "id": "gen_rule_0008",
+   "seq": 8,
+   "origin": "genai",
+   "source_stage": 3,
+   "produced_under_flags": {
+    "use_stage12_rules": true,
+    "use_stage3_rules": true,
+    "evfis_active": true,
+    "genai_active": true
+   },
+   "timestamp": "2026-07-25T13:54:29Z"
+  },
+  {
+   "name": "G6",
+   "antecedents": [
+    [
+     "suppression_feasibility",
+     "VH"
+    ],
+    [
+     "fire_threat_level",
+     ">=H"
+    ]
+   ],
+   "consequents": [
+    [
+     "drafting_sustained_attack",
+     0.95
+    ],
+    [
+     "resource_deployment",
+     0.8
+    ]
+   ],
+   "note": "adaptation-born: generative (claude), gates G1-G4",
+   "strength": 0.0,
+   "depends_on_concepts": [],
+   "trigger": {
+    "step": 10,
+    "minute": 10.0,
+    "deficit": 0.1,
+    "stage": 3
+   },
+   "id": "gen_rule_0010",
+   "seq": 10,
+   "origin": "genai",
+   "source_stage": 3,
+   "produced_under_flags": {
+    "use_stage12_rules": true,
+    "use_stage3_rules": true,
+    "evfis_active": true,
+    "genai_active": true
+   },
+   "timestamp": "2026-07-25T14:02:20Z"
+  },
+  {
+   "name": "G7",
+   "antecedents": [
+    [
+     "fire_threat_level",
+     ">=H"
+    ],
+    [
+     "suppression_feasibility",
+     "VH"
+    ]
+   ],
+   "consequents": [
+    [
+     "head_knockdown",
+     0.95
+    ],
+    [
+     "resource_deployment",
+     0.8
+    ]
+   ],
+   "note": "adaptation-born: generative (claude), gates G1-G4",
+   "strength": 0.0,
+   "depends_on_concepts": [],
+   "trigger": {
+    "step": 10,
+    "minute": 10.0,
+    "deficit": 0.08,
+    "stage": 3
+   },
+   "id": "gen_rule_0013",
+   "seq": 13,
+   "origin": "genai",
+   "source_stage": 3,
+   "produced_under_flags": {
+    "use_stage12_rules": true,
+    "use_stage3_rules": true,
+    "evfis_active": true,
+    "genai_active": true
+   },
+   "timestamp": "2026-07-25T14:33:42Z"
+  },
+  {
+   "name": "G8",
+   "antecedents": [
+    [
+     "suppression_feasibility",
+     "VH"
+    ],
+    [
+     "fire_threat_level",
+     ">=H"
+    ],
+    [
+     "evacuation_pressure",
+     "VH"
+    ]
+   ],
+   "consequents": [
+    [
+     "wet_containment_line",
+     0.9
+    ],
+    [
+     "resource_deployment",
+     0.8
+    ]
+   ],
+   "note": "adaptation-born: generative (claude), gates G1-G4",
+   "strength": 0.0,
+   "depends_on_concepts": [],
+   "trigger": {
+    "step": 15,
+    "minute": 15.0,
+    "deficit": 0.16,
+    "stage": 3
+   },
+   "id": "gen_rule_0015",
+   "seq": 15,
+   "origin": "genai",
+   "source_stage": 3,
+   "produced_under_flags": {
+    "use_stage12_rules": true,
+    "use_stage3_rules": true,
+    "evfis_active": true,
+    "genai_active": true
+   },
+   "timestamp": "2026-07-25T14:34:01Z"
+  }
+ ],
+ "genai_concepts": [],
+ "genai_interventions": [
+  {
+   "name": "downwind_backburn",
+   "composition": [
+    {
+     "channel": "containment_line",
+     "weight": 1.0
+    },
+    {
+     "channel": "suppression_effort",
+     "weight": 0.7
+    }
+   ],
+   "clauses": [],
+   "depends_on_concepts": [],
+   "trigger": {
+    "step": 25,
+    "minute": 25.0,
+    "deficit": 0.3,
+    "stage": 3
+   },
+   "id": "gen_interv_0005",
+   "seq": 5,
+   "origin": "genai",
+   "source_stage": 3,
+   "produced_under_flags": {
+    "use_stage12_rules": true,
+    "use_stage3_rules": true,
+    "evfis_active": true,
+    "genai_active": true
+   },
+   "timestamp": "2026-07-25T13:52:27Z"
+  },
+  {
+   "name": "downwind_retardant_shield",
+   "composition": [
+    {
+     "channel": "retardant_drop",
+     "weight": 1.0
+    },
+    {
+     "channel": "containment_line",
+     "weight": 0.8
+    }
+   ],
+   "clauses": [],
+   "depends_on_concepts": [],
+   "trigger": {
+    "step": 5,
+    "minute": 5.0,
+    "deficit": 0.12,
+    "stage": 3
+   },
+   "id": "gen_interv_0007",
+   "seq": 7,
+   "origin": "genai",
+   "source_stage": 3,
+   "produced_under_flags": {
+    "use_stage12_rules": true,
+    "use_stage3_rules": true,
+    "evfis_active": true,
+    "genai_active": true
+   },
+   "timestamp": "2026-07-25T13:54:29Z"
+  },
+  {
+   "name": "drafting_sustained_attack",
+   "composition": [
+    {
+     "channel": "water_drafting",
+     "weight": 1.0
+    },
+    {
+     "channel": "suppression_effort",
+     "weight": 0.9
+    }
+   ],
+   "clauses": [],
+   "depends_on_concepts": [],
+   "trigger": {
+    "step": 10,
+    "minute": 10.0,
+    "deficit": 0.1,
+    "stage": 3
+   },
+   "id": "gen_interv_0009",
+   "seq": 9,
+   "origin": "genai",
+   "source_stage": 3,
+   "produced_under_flags": {
+    "use_stage12_rules": true,
+    "use_stage3_rules": true,
+    "evfis_active": true,
+    "genai_active": true
+   },
+   "timestamp": "2026-07-25T14:02:20Z"
+  },
+  {
+   "name": "head_knockdown",
+   "composition": [
+    {
+     "channel": "water_drafting",
+     "weight": 1.0
+    },
+    {
+     "channel": "suppression_effort",
+     "weight": 0.9
+    },
+    {
+     "channel": "retardant_drop",
+     "weight": 0.6
+    }
+   ],
+   "clauses": [],
+   "depends_on_concepts": [],
+   "trigger": {
+    "step": 10,
+    "minute": 10.0,
+    "deficit": 0.08,
+    "stage": 3
+   },
+   "id": "gen_interv_0012",
+   "seq": 12,
+   "origin": "genai",
+   "source_stage": 3,
+   "produced_under_flags": {
+    "use_stage12_rules": true,
+    "use_stage3_rules": true,
+    "evfis_active": true,
+    "genai_active": true
+   },
+   "timestamp": "2026-07-25T14:33:42Z"
+  },
+  {
+   "name": "wet_containment_line",
+   "composition": [
+    {
+     "channel": "water_drafting",
+     "weight": 1.0
+    },
+    {
+     "channel": "containment_line",
+     "weight": 0.8
+    }
+   ],
+   "clauses": [],
+   "depends_on_concepts": [],
+   "trigger": {
+    "step": 15,
+    "minute": 15.0,
+    "deficit": 0.16,
+    "stage": 3
+   },
+   "id": "gen_interv_0014",
+   "seq": 14,
+   "origin": "genai",
+   "source_stage": 3,
+   "produced_under_flags": {
+    "use_stage12_rules": true,
+    "use_stage3_rules": true,
+    "evfis_active": true,
+    "genai_active": true
+   },
+   "timestamp": "2026-07-25T14:34:01Z"
+  }
+ ]
+}

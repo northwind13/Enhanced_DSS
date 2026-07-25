@@ -1030,29 +1030,27 @@ def _sec_11(ctx):
         "conservative minimum, the cell-level confidence is the "
         "weakest component, and the bounded disturbance shrinks "
         "with confidence:")
-    _eq(r"conf_{j,k}^{i}(x,y)=\min\Big\{\,\theta_{j,k}^{i}(x,y),\;"
-        r"\rho_{k}^{i}(x,y),\;e^{-\lambda_{conf}\,\Delta t_{rep,k}^{i}"
-        r"(x,y)},\;\gamma_{k}^{i}\,\Big\}",
-        [r"$\theta_{j,k}^{i} \in [0,1]$ — observability weight of "
-         r"component $j$: $1$ = a sensor observing $j$ covers "
-         r"the cell, $0$ = complete coverage gap",
-         r"$\rho_{k}^{i} \in [0,1]$ — normalized sensor coverage "
-         r"density at the cell",
-         r"$\Delta t_{rep}$ — time since the most recent observation; "
-         r"$\lambda_{conf} = \ln 2 / 90$ min$^{-1}$ (freshness halves "
-         r"every 90 min)",
-         r"$\gamma_{k}^{i} \in [0,1]$ — source reliability of the best "
-         r"covering sensor ($1-\bar\epsilon_s$)",
-         r"figure notation: the four factors are "
-         r"$\gamma_{obs}=\theta$, $\gamma_{cov}=\rho$, "
-         r"$\gamma_{fre}=e^{-\lambda_{conf}\Delta t}$, "
-         r"$\gamma_{rel}=\gamma$, so "
-         r"$conf=\min\{\gamma_{obs},\gamma_{cov},\gamma_{fre},"
-         r"\gamma_{rel}\}$"])
-    _eq(r"conf_{k}^{i}(x,y)=\min_{j\in\{B,F,I,\tau\}} "
-        r"conf_{j,k}^{i}(x,y),\qquad "
+    _eq(r"\gamma_{j,k}^{i}(x,y)=\min\big\{\,\gamma_{obs},\;\gamma_{cov},"
+        r"\;\gamma_{fre},\;\gamma_{rel}\,\big\}",
+        [r"$\gamma_{obs}\in[0,1]$ — observability of component $j$: $1$ = "
+         r"a sensor reading $j$ covers the cell, $0$ = complete coverage "
+         r"gap",
+         r"$\gamma_{cov}\in[0,1]$ — normalized sensor coverage density at "
+         r"the cell",
+         r"$\gamma_{fre}=e^{-\lambda_{conf}\,\Delta t_{rep,k}^{i}(x,y)}$ — "
+         r"freshness; $\Delta t_{rep}$ is the time since the most recent "
+         r"observation and $\lambda_{conf}=\ln 2/90$ min$^{-1}$, so "
+         r"freshness halves every 90 min",
+         r"$\gamma_{rel}\in[0,1]$ — reliability of the best covering "
+         r"source ($1-\bar\epsilon_s$)",
+         r"the conjunctive minimum is the conservative reading: the "
+         r"weakest of the four bounds the confidence. The thesis names "
+         r"three factors; the implementation adds $\gamma_{rel}$ because "
+         r"the sources differ in reliability"])
+    _eq(r"\gamma_{k}^{i}(x,y)=\min_{j\in\{B,F,I,\tau\}} "
+        r"\gamma_{j,k}^{i}(x,y),\qquad "
         r"\big|\epsilon_{j,k}^{i}(x,y)\big|\le "
-        r"\big(1-conf_{j,k}^{i}(x,y)\big)\,\bar\epsilon_{j}^{i}",
+        r"\big(1-\gamma_{j,k}^{i}(x,y)\big)\,\bar\epsilon_{j}^{i}",
         [r"cell confidence = weakest component (conservative principle, "
          r") — the model value that bounds the disturbance; the "
          r"region-level scalar DISPLAYED next to each agent is the "
@@ -1064,9 +1062,84 @@ def _sec_11(ctx):
          r"the ten bounded features of the decision layer are computed "
          r"from the fused observation $\hat z$, and each Local DSS reads "
          r"it restricted to its own region $\Omega_i$"])
+    st.markdown(
+        "The reasoning layers never consume the raw observation. Each "
+        "feature extractor maps it to a bounded scalar, so every quantity "
+        "entering the concept hierarchy lives on a common scale:")
+    _eq(r"z_{f,k}^{i}=\xi_f\big(\mathcal{O}_k^{i}\big)\in[0,1],"
+        r"\qquad f=1,\dots,N_{feature},\qquad N_{feature}=10",
+        [r"$\xi_f$ — the extractor of feature $f$: a fixed, documented "
+         r"reduction of the observed fields over the region (an average, a "
+         r"maximum, a normalized count)",
+         r"$z_{f,k}^{i}$ — the value of feature $f$ for agent $i$ at step "
+         r"$k$, bounded to $[0,1]$ by construction",
+         r"bounding is what lets one fuzzy partition serve every feature: "
+         r"the linguistic terms are defined once on $[0,1]$"])
+    st.caption(
+        "Each feature carries the confidence of the components it was "
+        "built from, so the gate that Layer 3 applies to a concept is "
+        "inherited from the sensing that produced its inputs.")
 
 
 def _sec_12(ctx):
+    cfg, sp, su, ip, vw, cp = ctx
+    st.markdown(
+        "Ten bounded features are too many to write rules over directly: a "
+        "five-term partition on ten features spans $5^{10}$ antecedent "
+        "cells, which no expert can fill and no log can explain. Layer 3 "
+        "inserts an intermediate abstraction between the features and the "
+        "rules:")
+    _eq(r"|R|=N_{term}^{\,N_{feature}}\;\;\dashrightarrow\;\;"
+        r"N_{concept}\cdot N_{term}^{\,N_{input}}",
+        [r"$|R|$ — the number of antecedent cells a flat rule base would "
+         r"have to cover: $5^{10}\approx 9.8\times10^{6}$",
+         r"$N_{concept}$ — number of concepts, each aggregating only its "
+         r"own small input set $N_{input}$ (two or three)",
+         r"the decision rules then run over five decision concepts, so the "
+         r"catalog is $5^{5}=3{,}125$ cells: four orders of magnitude "
+         r"smaller, and every cell has an operational reading"])
+    st.markdown(
+        "**Aggregation.** A base concept is a weighted sum over the "
+        "membership of its assigned features; a higher-level concept "
+        "aggregates the concepts one level below it. The weights are "
+        "nonnegative and sum to one per concept, so an activation stays in "
+        "$[0,1]$ without any further normalization:")
+    _eq(r"a_{n,k}^{(1),i}=\sum_{f\in\mathcal{Z}_n}\omega_{n,f}\cdot"
+        r"\mu_{\mathcal{A}_{n,f}}\big(z_{f,k}^{i}\big),\qquad"
+        r"\sum_{f\in\mathcal{Z}_n}\omega_{n,f}=1",
+        [r"$a_{n,k}^{(1),i}$ — observed activation of base concept $n$ "
+         r"(level 1) for agent $i$",
+         r"$\mathcal{Z}_n$ — the feature set assigned to concept $n$",
+         r"$\omega_{n,f}$ — the weight of feature $f$ in concept $n$",
+         r"$\mu_{\mathcal{A}_{n,f}}$ — membership of the feature value in "
+         r"the term the concept reads",
+         r"levels 2 to 4 use the same form with the lower-level "
+         r"activations in place of the feature memberships"])
+    st.markdown(
+        "**Gating.** A raw activation is never consumed. It is blended "
+        "with the persistence-carried prior in proportion to the "
+        "confidence of the sensing that produced it, so a well-observed "
+        "concept passes through unchanged while an uninformative one falls "
+        "back on its decayed previous estimate:")
+    _eq(r"a_{n,k}^{eff,i}=\gamma_{n,k}^{i}\cdot a_{n,k}^{obs,i}"
+        r"+\big(1-\gamma_{n,k}^{i}\big)\cdot\rho\cdot a_{n,k-1}^{eff,i}",
+        [r"$a^{eff}$ — the effective (gated) activation, the only value "
+         r"the rules ever read",
+         r"$\gamma_{n,k}^{i}$ — the concept gate: the MINIMUM confidence "
+         r"among the inputs feeding the concept, so the weakest ingredient "
+         r"bounds the whole chain",
+         r"$\rho$ — persistence decay per decision cycle "
+         r"(default $0.9$)",
+         r"$\gamma=1$ gives pure observation; $\gamma=0$ gives the decayed "
+         r"prior, which is the honest answer when nothing was observed"])
+    st.caption(
+        "This is where epistemic uncertainty becomes operational rather "
+        "than cosmetic: an unobserved region does not produce confident "
+        "concept values, so the rules it fires are weak and the "
+        "graduated fail-safe attenuates what they order.")
+
+
+def _sec_13(ctx):
     cfg, sp, su, ip, vw, cp = ctx
     st.markdown("The decision policy maps observations and decisional "
                 "context to the resource allocation:")
@@ -1097,9 +1170,71 @@ def _sec_12(ctx):
         "- Conversely the DSS observes $\\mathcal{O}_k$ (and derived "
         "features such as $V_{prio}$, $\\tau_k$, $I_k$) to decide the next "
         "allocation.")
+    st.markdown("#### The rule base — how $\\pi_{DSS}$ is evaluated")
+    st.markdown(
+        "The policy is a fuzzy rule base written over the five decision "
+        "concepts. A rule names a term for some of them and orders "
+        "intensities on the intervention channels:")
+    _eq(r"R_r:\;\text{IF }a_{1,k}^{eff,i}\text{ is }\mathcal{A}_{r,1}"
+        r"\text{ AND }\dots\text{ AND }a_{n,k}^{eff,i}\text{ is }"
+        r"\mathcal{A}_{r,n}\;\text{ THEN }\;u_{m}=v_{r,m}",
+        [r"$\mathcal{A}_{r,n}$ — the linguistic term rule $r$ requires of "
+         r"concept $n$, drawn from {VL, L, M, H, VH}",
+         r"$v_{r,m}\in[0,1]$ — the intensity rule $r$ orders on "
+         r"intervention channel $m$",
+         r"a rule constrains only the concepts it names; the rest are free, "
+         r"which is what lets a small base cover a large catalog"])
+    st.markdown(
+        "**Firing strength.** The antecedent is conjunctive, so the "
+        "rule fires as strongly as its weakest satisfied clause:")
+    _eq(r"w_r=\min_{n}\ \mu_{\mathcal{A}_{r,n}}\big(a_{n,k}^{eff,i}\big)",
+        [r"$w_r\in[0,1]$ — firing strength of rule $r$ this cycle",
+         r"the minimum is the standard conjunctive t-norm: one unmet "
+         r"clause is enough to silence the rule",
+         r"rules below the activation floor $\alpha_{min}$ are treated as "
+         r"silent and never reach the output"])
+    st.markdown(
+        "**Aggregation.** Outputs are combined by a zero-order "
+        "Takagi-Sugeno weighted average. The denominator is floored at "
+        "one, which is the deliberate part: when the total firing weight "
+        "is below one the base is only partly confident, and the ordered "
+        "intensity is scaled down rather than renormalized up to full "
+        "strength:")
+    _eq(r"u_{m,k}^{i}=\frac{\sum_{r} w_r\,v_{r,m}}"
+        r"{\max\big(1,\;\sum_{r} w_r\big)}",
+        [r"$u_{m,k}^{i}$ — ordered intensity on channel $m$ for agent $i$",
+         r"a single rule firing at $w_r=0.4$ orders $0.4\,v_{r,m}$, not "
+         r"$v_{r,m}$: a thinly supported situation produces a hesitant "
+         r"order, which is the intended behaviour under a sparse base",
+         r"once the total weight passes one the expression is the ordinary "
+         r"weighted average and the floor stops binding"])
+    st.markdown(
+        "**Coverage.** Because a rule leaves unnamed concepts free, it "
+        "answers a whole block of the catalog:")
+    _eq(r"N_{cover}(R_r)=N_{term}^{\,N_{concept}-N_{antecedent,r}}"
+        r",\qquad |C|=\prod_{c\in dec}|T_c|=5^{5}=3{,}125",
+        [r"$N_{antecedent,r}$ — how many concepts rule $r$ names",
+         r"$|C|$ — the size of the antecedent catalog over the five "
+         r"decision concepts at the seed partition",
+         r"a two-antecedent rule covers $5^{3}=125$ cells, so a few dozen "
+         r"rules already reach most of the catalog",
+         r"inserting a term (stage \u2461) grows $|T_c|$ and therefore the "
+         r"catalog itself: the decision space is open, not fixed"])
+    st.markdown(
+        "**Coverage deficit.** The weak point of a sparse base is the "
+        "situation where nothing fires. The worst case over the whole "
+        "concept cube measures it:")
+    _eq(r"\min_{a^{eff}\in[0,1]^{5}}\ \max_{r}\ "
+        r"\alpha_r\big(a^{eff}\big)",
+        [r"the inner maximum is the strongest rule available at that "
+         r"situation; the outer minimum finds the situation the base "
+         r"answers worst",
+         r"a value near zero means a genuine void: some reachable "
+         r"situation has no rule at all, which is what triggers the "
+         r"resolution stage rather than a parameter tweak"])
 
 
-def _sec_13(ctx):
+def _sec_14(ctx):
     cfg, sp, su, ip, vw, cp = ctx
     st.markdown(
         "A decision is an *intervention*: the DSS works with a small, fixed "
@@ -1123,7 +1258,7 @@ def _sec_13(ctx):
         "are scored by the cost function.")
 
 
-def _sec_14(ctx):
+def _sec_15(ctx):
     cfg, sp, su, ip, vw, cp = ctx
     st.markdown(
         "**Mathematical basis.** The decision cost follows the "
@@ -1285,7 +1420,7 @@ def _sec_14(ctx):
         "dominate and pushes the DSS toward earlier protective action.")
 
 
-def _sec_15(ctx):
+def _sec_16(ctx):
     cfg, sp, su, ip, vw, cp = ctx
     st.markdown(
         "Cost measures *outcome*; a complementary quality score measures "
@@ -1319,84 +1454,394 @@ def _sec_15(ctx):
         "Together, and close the loop: the cost drives the "
         "*search* for better decisions (accept only $\\Delta J<0$), the "
         "quality gate governs the *application* of the chosen one.")
+    st.markdown("#### Global coordination — attention shares")
+    st.markdown(
+        "Local agents do not compete for the fleet. The coordinator reads "
+        "the operational-priority concept of every region and splits them "
+        "into engaged and monitored:")
+    _eq(r"\sigma_i=\begin{cases}1,&\text{if }p_i\ge\tau\,p_{max}\\"
+        r"\sigma_{mon},&\text{otherwise}\end{cases}",
+        [r"$p_i$ — operational priority of region $i$ (the level-4 "
+         r"coordination concept)",
+         r"$p_{max}=\max_j p_j$ — the priority of the leading region",
+         r"$\tau\in[0,1]$ — attention threshold: how far below the leader "
+         r"a region may sit and still be treated as engaged",
+         r"$\sigma_i$ — attention share applied to the OFFENSIVE channels "
+         r"of region $i$; life-safety orders are never attenuated",
+         r"a monitored region keeps observing and keeps warning, but its "
+         r"suppression tempo is throttled so the fleet concentrates where "
+         r"the fire is decided"])
+    st.caption(
+        "Attention is owned by the coordinator, not by the local agent: a "
+        "region cannot promote itself, which is what keeps the "
+        "distributed architecture stable when several regions are "
+        "simultaneously alarmed.")
 
 
-def _sec_16(ctx):
+def _sec_17(ctx):
     cfg, sp, su, ip, vw, cp = ctx
-    _table(
-        "| Symbol | Meaning | Unit / Range | Defined in |\n"
-        "|---|---|---|---|\n"
-        "| $G,\\ (x,y)$ | Grid domain, cell index | – | |\n"
-        "| $k,\\ \\Delta t,\\ \\Delta x$ | Step index, step length, cell size | –, time, m | |\n"
-        "| $\\Theta_{UI}$ | User interaction operator | – | |\n"
-        "| $\\mathcal{F}_{in,k}$ | Physical input set | – |, 2 |\n"
-        "| $\\mathcal{F}_{DSS,k}$ | Decisional context set | – |, 12 |\n"
-        "| $W_{temp,k}, W_{rh,k}$ | Air temperature, relative humidity | °C, % | |\n"
-        "| $W_{ws,k}, W_{wd,k}$ | Wind speed, wind direction | m/s, rad | |\n"
-        "| $W_{gust,k}, W_{prec,k}$ | Wind gust, precipitation | m/s, mm/h | |\n"
-        "| $G_{elev}, G_{slope}, G_{aspect}$ | Elevation, slope, aspect | m, rad, rad | |\n"
-        "| $G_{access}$ | Accessibility index | $[0,1]$ | |\n"
-        "| $F_{type}$ | Fuel class id | categorical | |\n"
-        "| $F_{load,k}$ | Fuel load (state) | $[0,1]$ norm. |, 3, 6 |\n"
-        "| $F_{moist,k}$ | Fuel moisture | mass fraction | |\n"
-        "| $I_{Ign,k}$ | Ignition injection | $\\{0,1\\}$ | |\n"
-        "| $V_{bld}, V_{crit}, V_{pop}, V_{evac}, V_{prio}$ | Values at risk, priority score | see | |\n"
-        "| $w_{bld}, w_{crit}, w_{pop}, w_{evac}$ | Priority weights (sum = 1) | – | |\n"
-        "| $R_{cap,k}, R_{avail,k}, R_{eff,k}, R_{time,k}$ | DSS resource fields | see | |\n"
-        "| $U_{Res,k}$ | External resource pool | – |, 12 |\n"
-        "| $s_k, S_k$ | Local / global state | – | |\n"
-        "| $B_k$ | Burning status (state) | $\\{0,1\\}$ |, 4 |\n"
-        "| $I_k$ | Fire intensity proxy (state) | $[0,1]$ |, 7 |\n"
-        "| $\\tau_k$ | Time since ignition (state) | time |, 8 |\n"
-        "| $\\Phi$ | Transition operator | – | |\n"
-        "| $\\mathbb{1}[\\cdot]$ | Indicator function | $\\{0,1\\}$ | |\n"
-        "| $\\epsilon_{fuel}$ | Extinction fuel threshold | norm. fuel | |\n"
-        "| $\\Psi_k$ | Propagation influence | cells/step | |\n"
-        "| $\\Theta_{ign}$ | Ignition threshold | cells/step | |\n"
-        "| $N^8(x,y)$ | 8-connected neighbourhood | – | |\n"
-        "| $g_{dir}, \\theta_{(i,j)\\to(x,y)}$ | Directional weight, geometry angle | $[0,1]$, rad | |\n"
-        "| $A_k$ (buildup) | Ignition influence buildup | \u215b cell-widths | |\n"
-        "| $\\lambda$ | Buildup leak | fraction/step | |\n"
-        "| $f_{back}$ | Flank/backing floor of $g_{dir}$ | – | |\n"
-        "| $k_{slope},\\ \\vec u_{eff}$ | Slope-equivalent wind, effective vector | m/s, – | |\n"
-        "| $g_{slope}^{max}$ | Slope factor cap | – | |\n"
-        "| $s,\\ n_{sub}$ | Step-length scale, substep count | –, – | |\n"
-        "| $LB,\\ e$ | Ellipse length/breadth, eccentricity | –, – | |\n"
-        "| $p_{spot}, d_{spot}$ | Spotting probability, distance | –, cells | |\n"
-        "| $R_{spread,k}$ | Rate of spread | cells/step | |\n"
-        "| $r_{base}$ | Base spread rate (per fuel class) | cells/step | |\n"
-        "| $g_{moist}, g_{wind}, g_{slope}, g_{aspect}$ | Spread modifiers | – | |\n"
-        "| $m_{ext}$ | Extinction moisture (per fuel class) | mass fraction | |\n"
-        "| $a_w, a_s, a_{asp}$ | Wind / slope / aspect sensitivity | – | |\n"
-        "| $w_0$ | Wind saturation scale | m/s | |\n"
-        "| $e(F_{type})$ | Economic value of fuel class | currency/cell unit |, 14 |\n"
-        "| $F_{burn,k}$ | Combustion fraction per step | $[0,1]$ | |\n"
-        "| $b_{base}$ | Baseline combustion coefficient | fraction/step | |\n"
-        "| $F_{red,k}$ | Suppression fuel reduction | $[0,1]$ | |\n"
-        "| $\\alpha_s$ | Global suppression gain | fraction/step | |\n"
-        "| $\\eta_{cap}, \\eta_{avail}, \\eta_{reach}, \\eta_{eff}$ | Suppression factors | $[0,1]$ | |\n"
-        "| $R_{cap,max}$ | Reference max capacity | as $R_{cap}$ | |\n"
-        "| $\\beta_t$ | Travel-time decay rate | 1/time | |\n"
-        "| $\\gamma_I$ | Intensity resistance | – | |\n"
-        "| $\\tilde F, \\tilde W, \\tilde S$ | Normalized fuel / wind / slope | $[0,1]$ | |\n"
-        "| $F_{max}, W_{ref}, S_{max}$ | Normalization references | norm., m/s, rad | |\n"
-        "| $\\beta, \\gamma_W, \\gamma_S$ | Intensity gain and weights | – | |\n"
-        "| $\\mathcal{O}_k,\\ h,\\ \\epsilon_k$ | Observation, obs. function, obs. noise | – | |\n"
-        "| $r_s, T_s, \\ell_s, \\bar\\epsilon_j$ | Sensor footprint, revisit, latency, disturbance bound | m, min, min, – | |\n"
-        "| $\\theta_{j,k}^{i},\\ \\rho_k^i,\\ \\gamma_k^i$ | Observability weight, coverage density, source reliability | $[0,1]$ | |\n"
-        "| $conf_{j,k}^{i},\\ \\lambda_{conf},\\ \\Delta t_{rep}$ | Observation confidence, freshness decay, data age | $[0,1]$, 1/min, min | |\n"
-        "| $\\pi_{DSS}$ | Decision policy | – | |\n"
-        "| $A_k$ (burned mask) | Cumulative burned mask | $\\{0,1\\}$ | |\n"
-        "| $M_{cons,k}, M_{supp,k}$ | Cumulative consumed / suppressed fuel | norm. fuel | |\n"
-        "| $a_{ha}, a_{km^2}$ | Cell area conversions | ha, km² | |\n"
-        "| $J_k,\\ J^{burn},J^{val},J^{inf},J^{pop},J^{sup},J^{del}$ | Total cost and its six terms | currency | |\n"
-        "| $w_1,\\dots,w_6$ | Cost term weights | – | |\n"
-        "| $c_{ha}, c_{bld}, c_{crit}, c_{sup}$ | Unit costs | currency | |\n"
-        "| $\\lambda_{for}, \\lambda_{loss}$ | Forest multiplier, loss fraction | – | |\n"
-        "| $P^{exp}, N^{cas}, \\rho_{risk}, v_L$ | Exposure, casualties, risk fraction, VSL | persons, persons, –, currency | |\n"
-        "| $\\bar t^{\\,resp}$ | Capacity-weighted mean response time | time | |\n"
-        "| $H,\\ U_{base},\\ \\Delta J$ | Rollout horizon, baseline, cost gain | steps, –, currency | |\n"
-        "| $Q_k, q_j, \\omega_j, \\eta$ | Quality score, components, weights, threshold | $[0,1]$ | |")
+    st.markdown(
+        "The rule base is not fixed. When the satisficing test fails the "
+        "decision layer is allowed to change itself, and a value-based "
+        "stage controller picks ONE adaptation stage for that cycle. "
+        "Every stage is a proposal followed by a simulated verdict: "
+        "nothing enters the base on argument alone.")
+    st.markdown("**Stage ① — parameter tuning (evFIS).** The "
+                "consequents of the deficient rules are perturbed and "
+                "kept only if the forecast improves:")
+    _eq(r"v_{r,m}\leftarrow \text{clip}_{[0,1]}\big(v_{r,m}\pm\delta\big)"
+        r",\qquad \text{kept}\iff \Delta\widehat{J}_{phys}<0",
+        [r"$\delta$ — the tuning step (default $0.05$)",
+         r"$\Delta\widehat{J}_{phys}$ — change in the PHYSICAL part of the "
+         r"forecast cost: burned area, assets and population",
+         r"the physical basis is the point. Judging a tweak on total $J$ "
+         r"would reject every proposal that commits more capacity, because "
+         r"the response term rises immediately while the fire benefit "
+         r"arrives later"])
+    st.markdown(
+        "**Stage ② — resolution.** When the base is silent rather "
+        "than wrong, tuning has nothing to act on. A new rule is "
+        "instantiated at the antecedent cell of the current situation:")
+    _eq(r"A_{new}=\big\{\big(c^{(1)},t^{*}(c^{(1)})\big),"
+        r"\big(c^{(2)},t^{*}(c^{(2)})\big)\big\},\qquad "
+        r"t^{*}(c)=\arg\max_{t\in T_c}\mu_t\big(a_c^{eff}\big)",
+        [r"$c^{(1)},c^{(2)}$ — the two most activated decision concepts "
+         r"of the current situation",
+         r"$t^{*}(c)$ — the dominant term of concept $c$: the linguistic "
+         r"label that best describes what is happening",
+         r"the consequents are seeded from the concept demands, so the new "
+         r"rule answers the situation it was born in"])
+    st.markdown(
+        "If even the dominant term fits poorly, the partition itself is "
+        "too coarse and a new term is inserted between the existing ones:")
+    _eq(r"\max_{t\in T_{c^{(1)}}}\mu_t\big(a_{c^{(1)}}^{eff}\big)<0.62"
+        r"\;\Rightarrow\;\text{insert a term},\quad |T_{c}|\mathrel{+}=1",
+        [r"$0.62$ — the fit threshold: below it no existing label "
+         r"describes the situation well",
+         r"inserting a term enlarges the catalog $|C|$, so this stage "
+         r"grows the decision space rather than filling it in"])
+    st.markdown(
+        "**Stage ③ — generative.** A language model proposes a rule, "
+        "and may propose a new intermediate concept or a composite "
+        "intervention along with it. A proposal is admitted only through "
+        "the full gate chain:")
+    _eq(r"\text{G2b}:\ \cos(\omega_{new},\omega_c)<0.95\ \ \forall c"
+        r"\qquad\text{G3}:\ \Delta J_{phys}^{(V_a)}\le 0"
+        r"\qquad\text{G4}:\ \Delta J_{phys}^{(V_b)}\le 0",
+        [r"G1 — form: the proposal parses and uses only the declared "
+         r"vocabulary",
+         r"G2 — constraints: the antecedent cell is not already covered, "
+         r"and the object it introduces is well formed",
+         r"G2b — redundancy: a proposed concept must not be collinear with "
+         r"one that already exists, or the hierarchy grows without gaining "
+         r"anything",
+         r"G3 and G4 — an A/B test on two independent seeds: a proposal "
+         r"has to survive both futures, not one lucky one"])
+    st.markdown(
+        "A proposal that also grows the vocabulary faces a stricter "
+        "verdict, because a new object is a permanent commitment:")
+    _eq(r"\text{G5}:\ \Delta J_{phys}^{(a)}<-\delta_v\ \ \wedge\ \ "
+        r"\Delta J_{phys}^{(b)}<-\delta_v",
+        [r"$\delta_v>0$ — the margin a vocabulary-growing package must "
+         r"clear on BOTH seeds",
+         r"non-inferiority is not enough here: an ordinary rule may be "
+         r"admitted for being harmless, a new concept or intervention has "
+         r"to earn its place"])
+    st.markdown(
+        "**Composite interventions.** A generated intervention is a named "
+        "bundle of the base channels, never a new physical effect:")
+    _eq(r"\Phi_m=\big\langle(b_1,\beta_1),\dots,(b_p,\beta_p)\big\rangle"
+        r",\qquad u_{b_j}\mathrel{+}=\beta_j\cdot v",
+        [r"$b_j$ — a base channel of the fixed six-channel vocabulary",
+         r"$\beta_j$ — its RELATIVE proportion in the bundle, rescaled so "
+         r"the strongest component runs at the rule's own intensity",
+         r"$v$ — the intensity the firing rule orders on the macro",
+         r"the bundle expands to base channels before the physics sees "
+         r"it, so the simulator is never asked to model an invented "
+         r"mechanism"])
+    st.markdown(
+        "**Stage selection.** Which stage runs is itself learned. The "
+        "controller is an associative search (contextual bandit) over the "
+        "situation bucket, rewarded by the realized cost reduction:")
+    _eq(r"q_k=\underset{q\in\mathcal{A}(e_k)}{\arg\max}\ H(e_k,q),"
+        r"\qquad H(e_k,q_k)\leftarrow H(e_k,q_k)+\eta_H\big[r_k-H(e_k,q_k)"
+        r"\big]",
+        [r"$e_k$ — the situation bucket (coverage deficit crossed with "
+         r"the void indicator)",
+         r"$\mathcal{A}(e_k)$ — the stages allowed in that bucket",
+         r"$H$ — the learned value of a stage in a bucket, "
+         r"$\eta_H$ its learning rate",
+         r"$r_k$ — realized cost reduction; a rejected proposal is "
+         r"penalized, so the controller stops spending a scarce budget on "
+         r"a stage that keeps failing"])
+    st.markdown(
+        "**Admission, in one line.** Whatever the stage, a change enters "
+        "the base only if the base is measurably better with it:")
+    _eq(r"R'\ \text{admitted}\iff J_{R\cup\{R'\}}\le J_R-\delta,"
+        r"\qquad \delta\ge 0")
+    st.caption(
+        "This is what makes the decision space open in a controlled way. "
+        "The system may invent rules, terms, concepts and interventions, "
+        "but each one has to pay for itself in simulated cost before it "
+        "is allowed to persist.")
+
+
+def _sec_18(ctx):
+    cfg, sp, su, ip, vw, cp = ctx
+    st.markdown(
+        "The simulation core is validated against historical fires on "
+        "SPREAD, not on final-area overlap. Area agreement rewards a model "
+        "for burning the right total amount even when it burns it in the "
+        "wrong place at the wrong time, so the criteria below score "
+        "coverage, front geometry and timing separately.")
+    st.markdown("**Coverage.** How much of the real burned area the "
+                "simulation reproduces:")
+    _eq(r"POD=\frac{|FR_{Sim}\cap FR_{Re}|}{|FR_{Re}|}",
+        [r"$FR_{Sim},FR_{Re}$ — simulated and reference (observed) fire "
+         r"regions, as cell sets",
+         r"$POD\in[0,1]$ — probability of detection: the fraction of the "
+         r"real fire the simulation covers"])
+    st.markdown("**Front geometry.** How far the simulated fire front "
+                "sits from the observed one:")
+    _eq(r"D(x,\mathcal{G}_{Set})=\min_{y\in\mathcal{G}_{Set}}\|x-y\|,"
+        r"\qquad \overline{d_{Front}}=\frac{\sum_{x\in\partial FR_{Sim}}"
+        r"D(x,\partial FR_{Re})}{|\partial FR_{Sim}|}",
+        [r"$\partial FR$ — the boundary (front) of a fire region",
+         r"$D$ — distance from a front cell to the nearest cell of the "
+         r"reference front",
+         r"$\overline{d_{Front}}$ — mean front error, in cells or metres"])
+    _eq(r"R=\sqrt{\frac{|N_{burned}|\,A_{cell}}{\pi}}",
+        [r"$R$ — equivalent radius of a burned region: the radius of the "
+         r"circle with the same area",
+         r"reporting the front error against $R$ separates a small "
+         r"absolute error on a large fire from the same error on a small "
+         r"one"])
+    st.markdown("**Timing.** Whether cells burn when they actually "
+                "burned:")
+    _eq(r"\tau_{MAE}=\frac{1}{N_{cells}}\sum_{c\in FR_{Sim}\cap FR_{Re}}"
+        r"\big|\tau_{Sim}(c)-\tau_{Re}(c)\big|,\qquad "
+        r"TH_{MAE}=1-\frac{\tau_{MAE}}{T}",
+        [r"$\tau_{Sim},\tau_{Re}$ — simulated and observed arrival time "
+         r"of the fire at cell $c$",
+         r"$\tau_{MAE}$ — mean absolute arrival-time error over the cells "
+         r"both agree burned",
+         r"$T$ — the duration of the episode, so $TH_{MAE}$ is a "
+         r"normalized timing score on $[0,1]$"])
+    st.caption(
+        "Coverage, front error and arrival time answer three different "
+        "questions: did the fire reach the right ground, did the front "
+        "hold the right shape, and did it get there at the right time. A "
+        "model can pass one and fail the others, which is exactly why "
+        "they are reported separately.")
+
+
+def _sec_19(ctx):
+    cfg, sp, su, ip, vw, cp = ctx
+    st.markdown(
+        "Every symbol this page uses, in the functional categories of the "
+        "thesis symbol list. Categories 1 to 13 follow the thesis order and "
+        "wording; entries the thesis list does not carry but the equations "
+        "on this page do have been added to the category they belong to, "
+        "and the validation metrics are grouped at the end.")
+    st.markdown("#### 1. Fire State and Propagation Variables")
+    _rows = ["| Symbol | Meaning |", "|---|---|"]
+    _rows.append("| $B_{k}(x,y)$ | Burning status indicator |")
+    _rows.append("| $B_{k + 1}^{pers}(x,y)$ | Burning persistence term |")
+    _rows.append("| $B_{k + 1}^{prop}(x,y)$ | Burning propagation term |")
+    _rows.append("| $F_{burn,k}(x,y)$ | Fractional burn rate |")
+    _rows.append("| $I_{k}(x,y)$ | Local fire intensity proxy |")
+    _rows.append("| $I_{Ign,k}(x,y)$ | External ignition injection indicator |")
+    _rows.append("| $R_{spread,k}(x,y)$ | Rate of spread at time step $k$ |")
+    _rows.append("| $\\tau_{k}(x,y)$ | Time since ignition |")
+    _rows.append("| $\\Psi_{k}(x,y)$ | Propagation influence |")
+    _rows.append("| $\\Theta_{ign}$ | Ignition threshold |")
+    _rows.append("| $\\Phi$ | State transition operator |")
+    _table("\n".join(_rows))
+    st.markdown("#### 2. Fuel Variables")
+    _rows = ["| Symbol | Meaning |", "|---|---|"]
+    _rows.append("| $F_{load,k}(x,y)$ | Available combustible fuel mass |")
+    _rows.append("| $F_{moist,k}(x,y)$ | Surface fuel moisture |")
+    _rows.append("| $F_{red,k}(x,y)$ | Suppression-induced fuel reduction |")
+    _rows.append("| $F_{type}(x,y)$ | Fuel type classification |")
+    _rows.append("| $U_{Fuel,k}(x,y)$ | Fuel-related input |")
+    _rows.append("| $\\varepsilon_{fuel\\_load}$ | Fuel extinction threshold |")
+    _table("\n".join(_rows))
+    st.markdown("#### 3. Terrain / Geographic Variables")
+    _rows = ["| Symbol | Meaning |", "|---|---|"]
+    _rows.append("| $G_{access}(x,y)$ | Terrain accessibility index |")
+    _rows.append("| $G_{aspect}(x,y)$ | Terrain orientation (aspect) |")
+    _rows.append("| $G_{elev}(x,y)$ | Terrain elevation |")
+    _rows.append("| $G_{slope}(x,y)$ | Terrain slope |")
+    _rows.append("| $U_{Geo}(x,y)$ | Terrain-related input |")
+    _table("\n".join(_rows))
+    st.markdown("#### 4. Meteorological Variables")
+    _rows = ["| Symbol | Meaning |", "|---|---|"]
+    _rows.append("| $W_{gust,k}(x,y)$ | Wind gust field |")
+    _rows.append("| $W_{prec,k}$ | Precipitation (domain-uniform scalar, no spatial variation) |")
+    _rows.append("| $W_{rh,k}(x,y)$ | Relative humidity field |")
+    _rows.append("| $W_{temp,k}(x,y)$ | Air temperature field |")
+    _rows.append("| $W_{wd,k}(x,y)$ | Wind direction field |")
+    _rows.append("| $W_{ws,k}(x,y)$ | Wind speed field |")
+    _rows.append("| $U_{Meteo,k}(x,y)$ | Meteorological input |")
+    _rows.append("| $\\delta_{Meteo}$ | Meteorological perturbation applied by operator |")
+    _table("\n".join(_rows))
+    st.markdown("#### 5. Value / Asset Variables")
+    _rows = ["| Symbol | Meaning |", "|---|---|"]
+    _rows.append("| $V_{bld}(x,y)$ | Building footprint indicator |")
+    _rows.append("| $V_{crit}(x,y)$ | Critical facility index |")
+    _rows.append("| $V_{evac}^{norm}(x,y)$ | Accessibility to evacuation routes |")
+    _rows.append("| $V_{pop}^{norm}(x,y)$ | Population density at grid cell (person/km²) |")
+    _rows.append("| $V_{prio}(x,y)$ | Asset priority index |")
+    _rows.append("| $U_{Val,k}(x,y)$ | Value-related contextual input |")
+    _rows.append("| $\\sigma_{Val}$ | Value priority scaling factor in $_UI$ |")
+    _table("\n".join(_rows))
+    st.markdown("#### 6. Resource / Suppression Variables")
+    _rows = ["| Symbol | Meaning |", "|---|---|"]
+    _rows.append("| $C_{k}$ | Total available resource capacity |")
+    _rows.append("| $D_{k}$ | Total integrated intervention demand over the domain at step $k$ |")
+    _rows.append("| $M$ | Number of intervention types |")
+    _rows.append("| $R_{avail,k}(x,y)$ | Operational availability of suppression resources |")
+    _rows.append("| $R_{cap,k}(x,y)$ | Available suppression capacity |")
+    _rows.append("| $R_{eff,k}(x,y)$ | Nominal suppression effectiveness |")
+    _rows.append("| $R_{time,k}(x,y)$ | Estimated travel time for suppression resources |")
+    _rows.append("| $U_{Res,k}(x,y)$ | Resource-related contextual input |")
+    _rows.append("| $u_{k,m}^{i}(x,y)$ | Candidate intervention degree for type m in region i |")
+    _rows.append("| $\\alpha_{m}$ | Priority weight for intervention type m |")
+    _rows.append("| ${\\bar{\\alpha}}_{m}$ | Normalized priority weight for intervention type m |")
+    _rows.append("| $\\delta_{Res}(x,y)$ | Resource availability perturbation applied by operator |")
+    _rows.append("| $\\eta_{cap,k}$ | Normalized suppression capacity factor |")
+    _rows.append("| $\\eta_{avail,k}$ | Normalized resource availability factor |")
+    _rows.append("| $\\eta_{reach,k}$ | Reachability (travel-time) factor |")
+    _rows.append("| $\\eta_{eff,k}$ | Suppression effectiveness factor |")
+    _table("\n".join(_rows))
+    st.markdown("#### 7. Observation / Sensing Variables")
+    _rows = ["| Symbol | Meaning |", "|---|---|"]
+    _rows.append("| $O_{k}^{i}(x,y)$ | Region-specific observable information at time step k |")
+    _rows.append("| $O_{k}(x,y)$ | Observable information at time step $k$ |")
+    _rows.append("| $h( \\bullet )$ | Observation process |")
+    _rows.append("| $h^{i}( \\bullet )$ | Region-specific observation function for $ ᵢ$ |")
+    _rows.append("| $\\gamma_{k}^{i}$ | Communication reliability factor for region i |")
+    _rows.append("| $\\varepsilon_{k}^{i}\\left( x,y \\right)$ | Observation uncertainty |")
+    _rows.append("| $\\gamma_{j,k}^{i}(x,y)$ | Observation confidence of component $j$ (min of the four factors) |")
+    _rows.append("| $\\gamma_{k}^{i}(x,y)$ | Cell confidence: the weakest component |")
+    _rows.append("| $\\gamma_{obs},\\ \\gamma_{cov},\\ \\gamma_{fre},\\ \\gamma_{rel}$ | Observability, coverage, freshness and reliability factors |")
+    _rows.append("| $\\lambda_{conf}$ | Freshness decay rate ($\\ln 2/90$ min$^{-1}$) |")
+    _rows.append("| $\\Delta t_{rep,k}^{i}(x,y)$ | Time since the most recent observation of the cell |")
+    _rows.append("| $z_{f,k}^{i}$ | Value of feature $f$ for agent $i$, bounded to $[0,1]$ |")
+    _rows.append("| $\\xi_f$ | Feature extractor: reduction of the observation to feature $f$ |")
+    _rows.append("| $\\bar\\epsilon_{j}^{i}$ | Disturbance bound of component $j$ |")
+    _table("\n".join(_rows))
+    st.markdown("#### 8. Spatial Domain / Grid Variables")
+    _rows = ["| Symbol | Meaning |", "|---|---|"]
+    _rows.append("| $\\mathcal{G}$ | Spatial grid domain |")
+    _rows.append("| $N$ | Total number of operational regions / local agents |")
+    _rows.append("| $N_{x}$ | Number of grid cells along the horizontal axis |")
+    _rows.append("| $N_{y}$ | Number of grid cells along the vertical axis |")
+    _rows.append("| $\\mathcal{N}^{8}(x,y)$ | 8-connected neighborhood |")
+    _rows.append("| $S_{k}(x,y)$ | Wildfire system state over spatial grid at time step k |")
+    _table("\n".join(_rows))
+    st.markdown("#### 9. Decision Support System (DSS) Variables")
+    _rows = ["| Symbol | Meaning |", "|---|---|"]
+    _rows.append("| $\\mathcal{F}_{DSS,k}$ | Contextual input set |")
+    _rows.append("| $\\mathcal{F}_{DSS,k}^{*}$ | UI-modified decision-context set at step k |")
+    _rows.append("| $\\mathcal{F}_{in,k}$ | External input set |")
+    _rows.append("| $\\mathcal{F}_{in,k}^{*}$ | UI-modified external input set at step k |")
+    _rows.append("| $U_{DSS,k}(x,y)$ | DSS-generated intervention input parameters |")
+    _rows.append("| $U_{DSS,k}^{i}\\left( x,y \\right)$ | Regional intervention output from agent $i$ |")
+    _rows.append("| $U_{DSS,k}^{m}\\left( x,y \\right)$ | Per-intervention-type global intervention field |")
+    _rows.append("| $U_{DSS,k}^{final}\\left( x,y \\right)$ | Final intervention |")
+    _rows.append("| $U_{DSS,safe}$ | Conservative baseline intervention under fail-safe policy |")
+    _rows.append("| $\\mathcal{U}_{DSS}$ | Feasible intervention space |")
+    _rows.append("| $U_{Ign,k}(x,y)$ | Ignition input |")
+    _rows.append("| $\\pi_{DSS}^{i}$ | Regional decision-support mapping |")
+    _rows.append("| $\\zeta_{k}$ | Mean resource sufficiency ratio |")
+    _rows.append("| ${\\bar{s}}_{k}^{*}$ | Mean resource sufficiency ratio |")
+    _rows.append("| $\\delta_{DSS}(x,y)$ | Resource parameter perturbation applied by operator |")
+    _rows.append("| $\\delta_{Ign}(x,y)$ | Ignition perturbation applied by operator |")
+    _rows.append("| $\\lambda_{k}$ | Fail-safe blending factor between the DSS decision and the conservative baseline |")
+    _rows.append("| $\\Theta_{UI}$ | User interaction operator |")
+    _rows.append("| $\\theta_{k}$ | Satisficing acceptance threshold |")
+    _rows.append("| $\\theta_{\\min}$ | Lower bound of adaptive acceptance threshold |")
+    _rows.append("| $\\theta_{\\max}$ | Upper bound of adaptive acceptance threshold |")
+    _rows.append("| $\\sigma_i$ | Attention share applied to the offensive channels of region $i$ |")
+    _rows.append("| $p_i,\\ p_{max}$ | Operational priority of region $i$, and of the leading region |")
+    _rows.append("| $\\tau$ | Attention threshold of the coordinator |")
+    _rows.append("| $\\Phi_m$ | Composite (macro) intervention: a named bundle of base channels |")
+    _rows.append("| $\\beta_j$ | Relative proportion of base channel $b_j$ in a bundle |")
+    _rows.append("| $q_k,\\ e_k$ | Adaptation stage chosen this cycle, and the situation bucket |")
+    _rows.append("| $H(e_k,q)$ | Learned value of stage $q$ in bucket $e_k$ |")
+    _rows.append("| $\\eta_H$ | Learning rate of the stage controller |")
+    _rows.append("| $\\delta_v$ | Margin a vocabulary-growing package must clear on both seeds |")
+    _rows.append("| $G1\\ \\dots\\ G5$ | Admission gates: form, constraints, redundancy, A/B, margin |")
+    _table("\n".join(_rows))
+    st.markdown("#### 10. Fuzzy Logic Variables")
+    _rows = ["| Symbol | Meaning |", "|---|---|"]
+    _rows.append("| $\\mathcal{N}_{concept}$ | Number of situational concepts |")
+    _rows.append("| $N_{feature}$ | Number of input features |")
+    _rows.append("| $\\mu_{k}^{i}$ | Membership matrix for region $i$ at step k |")
+    _rows.append("| $\\mu_{k,n,l}^{i}$ | Membership degree |")
+    _rows.append("| $v_{R}$ | Singleton consequent value for rule R |")
+    _rows.append("| $\\alpha_{R}$ | Activation strength of rule R = min over antecedent membership |")
+    _rows.append("| $w_{j}$ | Criterion weight for $f_eval$ |")
+    _rows.append("| $\\alpha_r,\\ w_r$ | Firing strength of rule $r$ (conjunctive minimum) |")
+    _rows.append("| $v_{r,m}$ | Intensity rule $r$ orders on intervention channel $m$ |")
+    _rows.append("| $\\mathcal{A}_{r,n}$ | Linguistic term rule $r$ requires of concept $n$ |")
+    _rows.append("| $N_{term},\\ N_{feature},\\ N_{concept}$ | Terms per variable, feature count, concept count |")
+    _rows.append("| $N_{cover}(R_r)$ | Number of antecedent cells rule $r$ covers |")
+    _rows.append("| $|C|$ | Size of the antecedent catalog over the decision concepts |")
+    _rows.append("| $\\omega_{n,f}$ | Weight of feature $f$ in concept $n$ (sums to one per concept) |")
+    _rows.append("| $a_{n,k}^{(1),i},\\ a_{n,k}^{eff,i}$ | Observed and gated (effective) activation of concept $n$ |")
+    _rows.append("| $\\rho$ | Persistence decay of the concept prior per decision cycle |")
+    _table("\n".join(_rows))
+    st.markdown("#### 11. Functions / Mappings")
+    _rows = ["| Symbol | Meaning |", "|---|---|"]
+    _rows.append("| $f_{intensity}$ | Fire intensity approximation function |")
+    _rows.append("| $f_{ros}$ | Rate-of-spread mapping function |")
+    _rows.append("| $f_{supp}$ | Suppression-to-mitigation mapping |")
+    _rows.append("| $g_{dir,k}$ | Directional spread weighting factor |")
+    _table("\n".join(_rows))
+    st.markdown("#### 12. Feature Variables and Parameters")
+    _rows = ["| Symbol | Meaning |", "|---|---|"]
+    _rows.append("| $z_{k,l}^{i}(x,y)$ | $l^th$ feature at $(x,y)$, region $i$, step $k$; $z\\ \\ 0,1$, $l\\ = \\ 1 10$ |")
+    _rows.append("| $\\beta_{t}$ | Travel-time decay coefficient |")
+    _rows.append("| $Δt$ | Simulation time step |")
+    _rows.append("| $\\delta$ | Admission margin of the generative verification gates (δ ≥ 0) |")
+    _table("\n".join(_rows))
+    st.markdown("#### 13. Decision Cost and Quality Variables")
+    _rows = ["| Symbol | Meaning |", "|---|---|"]
+    _rows.append("| $J$ | Total normalized decision cost (weighted sum of cost terms) |")
+    _rows.append("| $J_{phys}$ | Physical decision cost (burned area, asset loss, population) |")
+    _rows.append("| $J_{burn}$ | Burned-area cost term |")
+    _rows.append("| $J_{asset}$ | Asset-loss cost term |")
+    _rows.append("| $J_{pop}$ | Population-exposure cost term |")
+    _rows.append("| $J_{resp}$ | Response cost term |")
+    _rows.append("| $J_{delay}$ | Response-delay cost term |")
+    _rows.append("| $Q_{k}$ | Decision quality at step k |")
+    _rows.append("| $N_{term}$ | Number of linguistic terms per fuzzy variable |")
+    _rows.append("| $N_{input}$ | Number of rule antecedent inputs |")
+    _rows.append("| $a_{k}^{eff}$ | Gated concept activation at step k |")
+    _rows.append("| $a_{k}^{obs}$ | Observation-based concept activation at step k |")
+    _rows.append("| $a_{k}^{per}$ | Persistence-prior concept activation at step k |")
+    _rows.append("| $e_{k}$ | Contextual-bandit state (deficit band and coverage-gap flag) |")
+    _rows.append("| $q_{k}$ | Selected adaptation stage (contextual-bandit action) |")
+    _rows.append("| $\\eta$ | Quality gate for the graduated fail-safe (accept if $Q_k\\ \\ $) |")
+    _rows.append("| $\\varphi_{(i,j)}$ | Bearing angle from cell (i,j) toward (x,y) in directional spread |")
+    _rows.append("| $J_{TH}$ | Absolute satisficing threshold on the forecast cost |")
+    _rows.append("| $\\Delta J_{phys}$ | Change in the physical part of the forecast cost |")
+    _rows.append("| $\\delta$ | Margin a new rule must clear to be admitted |")
+    _rows.append("| $Q_k,\\ \\eta$ | Decision quality and the quality scale of the fail-safe |")
+    _table("\n".join(_rows))
+    st.markdown("#### 14. Validation Metrics for the Simulation Core")
+    _rows = ["| Symbol | Meaning |", "|---|---|"]
+    _rows.append("| $POD$ | Probability of detection: share of the real fire the simulation covers |")
+    _rows.append("| $FR_{Sim},\\ FR_{Re}$ | Simulated and reference fire regions (cell sets) |")
+    _rows.append("| $\\partial FR$ | Boundary (front) of a fire region |")
+    _rows.append("| $D(x,\\mathcal{G}_{Set})$ | Distance from a cell to the nearest cell of a set |")
+    _rows.append("| $\\overline{d_{Front}}$ | Mean front error against the reference front |")
+    _rows.append("| $R,\\ A_{cell},\\ N_{burned}$ | Equivalent radius, cell area, burned cell count |")
+    _rows.append("| $\\tau_{MAE}$ | Mean absolute arrival-time error over commonly burned cells |")
+    _rows.append("| $TH_{MAE}$ | Normalized timing score, $1-\\tau_{MAE}/T$ |")
+    _table("\n".join(_rows))
 
 
 SECTIONS = [
@@ -1411,12 +1856,15 @@ SECTIONS = [
     ("Part II — The Simulator (the system)", "8", "State transition IV — ignition time $\\tau_k \\rightarrow \\tau_{k+1}$", False, _sec_8),
     ("Part II — The Simulator (the system)", "9", "Implementation notes — exact behaviour of the code", False, _sec_9),
     ("Part II — The Simulator (the system)", "10", "Worked example — one update step by hand", False, _sec_10),
-    ("Part III — The Decision Support System", "11", "Observation interface — $\\mathcal{O}_k=h(S_k,\\epsilon_k)$", False, _sec_11),
-    ("Part III — The Decision Support System", "12", "Decision policy — how $U_{DSS,k}$ is produced and how it acts", False, _sec_12),
-    ("Part III — The Decision Support System", "13", "Intervention vocabulary — what a decision can order", False, _sec_13),
-    ("Part III — The Decision Support System", "14", "Cost function — how a decision is scored", False, _sec_14),
-    ("Part III — The Decision Support System", "15", "Decision quality and graduated fail-safe", False, _sec_15),
-    ("Part IV — Reference", "16", "Symbol glossary", False, _sec_16),
+    ("Part III — The Decision Support System", "11", "Layer 2 — observation, features and confidence", False, _sec_11),
+    ("Part III — The Decision Support System", "12", "Layer 3 — concept space and the feature-concept hierarchy", False, _sec_12),
+    ("Part III — The Decision Support System", "13", "Layer 4 — decision policy, rule base and coverage", False, _sec_13),
+    ("Part III — The Decision Support System", "14", "Intervention vocabulary — what a decision can order", False, _sec_14),
+    ("Part III — The Decision Support System", "15", "Cost function — how a decision is scored", False, _sec_15),
+    ("Part III — The Decision Support System", "16", "Decision quality, graduated fail-safe and coordination", False, _sec_16),
+    ("Part III — The Decision Support System", "17", "Open decision space — staged adaptation and its gates", False, _sec_17),
+    ("Part IV — Reference", "18", "Validation criteria for the simulation core", False, _sec_18),
+    ("Part IV — Reference", "19", "Symbol glossary", False, _sec_19),
 ]
 
 # ----------------------------------------------------- search infrastructure

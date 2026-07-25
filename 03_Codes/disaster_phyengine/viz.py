@@ -87,7 +87,30 @@ def apply_fire(img: np.ndarray, sim) -> np.ndarray:
     colour is the same whether or not other overlays are active."""
     burned = sim.ever_burned
     active = sim.state.burning > 0.5
-    img[burned] = _BURN_SCAR
+    # BURN SEVERITY SPECTRUM: how much of the cell's fuel actually
+    # burned tells the story of the suppression. A cell knocked down
+    # early keeps most of its fuel: the terrain stays visible under a
+    # light ash-grey veil. A cell that burned out completely goes to
+    # the black scar. The map therefore SHOWS the success of the
+    # attack, not just the perimeter it reached.
+    _cons = getattr(sim, "fuel_consumed_total", None)
+    _fl0 = getattr(getattr(sim, "world", None), "fuel", None)
+    _fl0 = getattr(_fl0, "fload0", None)
+    if _cons is not None and _fl0 is not None and burned.any():
+        sev = np.clip(np.asarray(_cons)
+                      / np.maximum(np.asarray(_fl0), 1e-6),
+                      0.0, 1.0)
+        # light singe (s=0): terrain + thin grey-white veil;
+        # full burn (s=1): the black scar
+        _veil = np.array([0.82, 0.82, 0.80])
+        _mixv = 0.30 + 0.20 * sev[..., None]     # veil opacity
+        _lightly = (img * (1.0 - _mixv) + _veil * _mixv)
+        _sc = np.array(_BURN_SCAR)
+        _t = np.clip((sev[..., None] - 0.25) / 0.75, 0.0, 1.0) ** 0.8
+        _shaded = _lightly * (1.0 - _t) + _sc * _t
+        img[burned] = _shaded[burned]
+    else:
+        img[burned] = _BURN_SCAR
     if active.any():
         inten = np.clip(sim.state.intensity, 0.0, 1.0)
         img[..., 0][active] = 1.0                       # red channel full
@@ -440,9 +463,57 @@ def render_pil(world, sim=None, scale: int = 8, show_fire: bool = True,
             # GenAI-generated order marker: a magenta "G" badge on the
             # region where a G# (generative) rule fired this cycle, so the
             # generated orders read distinctly from the base ones.
-            if ro.get("name") in (actions.get("genai_regions") or set()):
-                _gcx = (x0_ + x1_) * scale // 2
-                _gcy = (y0_ + y1_) * scale // 2
+            _macdefs = actions.get("macros") or {}
+            # A generated intervention that FIRED in this region is drawn as
+            # its own chip, coloured by what it is made of and tagged with
+            # its initials, so the map shows WHICH one acted. The plain "G"
+            # badge stays as the fallback for a generated RULE that ordered
+            # only base channels, where there is no macro to name.
+            _fired_m = [(_mn, float(u.get(_mn, 0.0)))
+                        for _mn in _macdefs
+                        if float(u.get(_mn, 0.0)) > 0.05]
+            _gcx = (x0_ + x1_) * scale // 2
+            _gcy = (y0_ + y1_) * scale // 2
+            _mcells_all = actions.get("macro_cells") or {}
+            if _fired_m:
+                _fired_m.sort(key=lambda t: -t[1])
+                for _i, (_mn, _mv) in enumerate(_fired_m[:3]):
+                    _mc, _msh = macro_style(_mn)
+                    _fill = (_mc[0], _mc[1], _mc[2], 235)
+                    _ink = (0, 0, 0, 220)
+                    _cells = _mcells_all.get(_mn)
+                    if _cells is not None and _cells.any():
+                        # the symbol sits ON THE WORKED CELLS, sized
+                        # to the cell, drawn sparsely so the terrain
+                        # stays readable; the 2-letter tag marks the
+                        # cluster centre for identity
+                        _cys, _cxs = np.where(_cells)
+                        _r = max(2, scale // 2 - 1)
+                        for _yy2, _xx2 in zip(_cys.tolist(),
+                                              _cxs.tolist()):
+                            if (_yy2 * 7 + _xx2 * 3) % 3:
+                                continue
+                            _px = _xx2 * scale + scale // 2
+                            _py = _yy2 * scale + scale // 2
+                            _draw_macro_shape(draw, _px, _py, _r,
+                                              _msh, _fill, _ink)
+                        _tag = macro_tag(_mn)
+                        _tx = int(_cxs.mean()) * scale
+                        _ty = int(_cys.mean()) * scale
+                        draw.text((_tx - 3 * len(_tag), _ty - 6),
+                                  _tag, fill=(20, 20, 20, 255))
+                        continue
+                    # no recorded cells (older log replay): small
+                    # badge at the region centre as before
+                    _cy0 = _gcy + _i * 24 - (len(_fired_m[:3]) - 1) * 12
+                    _r = 10 + int(5 * min(1.0, _mv))
+                    _draw_macro_shape(draw, _gcx, _cy0, _r, _msh,
+                                      (_mc[0], _mc[1], _mc[2], 255),
+                                      (0, 0, 0, 255))
+                    _tag = macro_tag(_mn)
+                    draw.text((_gcx - 3 * len(_tag), _cy0 - 6), _tag,
+                              fill=(20, 20, 20, 255))
+            elif ro.get("name") in (actions.get("genai_regions") or set()):
                 draw.ellipse([_gcx - 8, _gcy - 8, _gcx + 8, _gcy + 8],
                              fill=(192, 0, 255, 210), outline=(0, 0, 0, 220),
                              width=1)
@@ -627,6 +698,148 @@ def _hex(rgb01):
     return f"#{r:02x}{g:02x}{b:02x}"
 
 
+# the six base channels, in the order the legend lists them, with the colour
+# each one is drawn in. A generated macro is a weighted bundle of these, so
+# its identity can be DERIVED from them instead of being an anonymous badge.
+BASE_IV_RGB = {
+    "suppression_effort": (40, 120, 255),
+    "resource_deployment": (0, 230, 255),
+    "containment_line": (110, 70, 30),
+    "asset_protection": (40, 220, 90),
+    "evacuation": (255, 140, 0),
+    "public_warning": (255, 220, 0),
+    "tactical_burn": (255, 90, 30),
+    "water_drafting": (60, 170, 255),
+    "retardant_drop": (200, 90, 200),
+}
+BASE_IV_LABEL = {
+    "suppression_effort": "suppression",
+    "resource_deployment": "deployment",
+    "containment_line": "containment line",
+    "asset_protection": "asset protection",
+    "evacuation": "evacuation",
+    "public_warning": "public warning",
+    "tactical_burn": "tactical burn",
+    "water_drafting": "water drafting",
+    "retardant_drop": "retardant drop",
+}
+
+
+# A generated intervention needs to be told apart from the OTHER generated
+# ones at a glance. Mixing its colour from its composition failed at exactly
+# that: three macros built from containment plus suppression all came out the
+# same blue-grey. So identity comes from a fixed palette and a shape, and the
+# composition is carried in the legend TEXT where it can be read exactly.
+#
+# The palette deliberately avoids the six base-channel colours (blue, cyan,
+# brown, green, orange, yellow) so a generated order never reads as a base one.
+# Chosen by greedy maximum separation rather than by eye: the hand-picked
+# list had violet next to lilac (118 apart, indistinguishable on a busy map).
+# Every pair here is at least 150 apart in RGB manhattan distance and every
+# entry is at least 171 from the nearest base-channel colour.
+MACRO_PALETTE = [
+    (204, 10, 204),    # magenta
+    (124, 255, 38),    # spring green
+    (10, 29, 204),     # deep blue
+    (255, 114, 255),   # light pink
+    (255, 38, 81),     # crimson
+    (114, 255, 212),   # aquamarine
+    (226, 255, 114),   # pale lime
+    (204, 10, 10),     # dark red
+]
+MACRO_SHAPES = ("hex", "diamond", "pent", "star", "chip", "bars")
+
+
+def _macro_key(name: str) -> int:
+    """Stable across processes: Python's hash() is salted per run, which
+    would repaint every macro on restart."""
+    import hashlib
+    return int(hashlib.md5(str(name).encode("utf-8")).hexdigest()[:8], 16)
+
+
+def macro_style(name: str):
+    """(rgb, shape) of a generated intervention, fixed by its NAME.
+
+    Keyed on the name rather than on its position in a list, so adding a new
+    macro never repaints the existing ones, and the legend swatch, the map
+    badge and any figure in the thesis keep agreeing with each other."""
+    k = _macro_key(name)
+    return (MACRO_PALETTE[k % len(MACRO_PALETTE)],
+            MACRO_SHAPES[(k // len(MACRO_PALETTE)) % len(MACRO_SHAPES)])
+
+
+def macro_rgb(spec_or_name) -> tuple:
+    """Colour of a generated intervention.
+
+    Accepts the macro NAME (preferred) or its spec dict, so older callers
+    that passed the spec keep working."""
+    if isinstance(spec_or_name, str):
+        return macro_style(spec_or_name)[0]
+    return (192, 0, 255)
+
+
+def _macro_polygon(cx, cy, r, shape):
+    """Vertices of a macro badge. Colour alone is not enough to separate a
+    dozen generated interventions, and it fails outright for a reader who
+    cannot distinguish two hues, so the shape carries the identity too."""
+    import math
+    if shape == "diamond":
+        return [(cx, cy - r), (cx + r, cy), (cx, cy + r), (cx - r, cy)]
+    if shape in ("hex", "pent"):
+        n = 6 if shape == "hex" else 5
+        off = math.pi / 2
+        return [(cx + r * math.cos(off + 2 * math.pi * i / n),
+                 cy - r * math.sin(off + 2 * math.pi * i / n))
+                for i in range(n)]
+    if shape == "star":
+        pts = []
+        for i in range(10):
+            rr = r if i % 2 == 0 else r * 0.46
+            a = math.pi / 2 + math.pi * i / 5
+            pts.append((cx + rr * math.cos(a), cy - rr * math.sin(a)))
+        return pts
+    return None            # chip and bars are drawn as rectangles
+
+
+def _draw_macro_shape(draw, cx, cy, r, shape, fill, ink):
+    poly = _macro_polygon(cx, cy, r, shape)
+    if poly is not None:
+        draw.polygon(poly, fill=fill, outline=ink)
+        return
+    if shape == "bars":
+        # two stacked bars: reads as a distinct silhouette next to a chip
+        draw.rectangle([cx - r - 4, cy - r + 1, cx + r + 4, cy - 1],
+                       fill=fill, outline=ink, width=1)
+        draw.rectangle([cx - r - 4, cy + 1, cx + r + 4, cy + r - 1],
+                       fill=fill, outline=ink, width=1)
+        return
+    draw.rounded_rectangle([cx - r - 4, cy - r + 2, cx + r + 4, cy + r - 2],
+                           radius=5, fill=fill, outline=ink, width=1)
+
+
+def macro_tag(name: str) -> str:
+    """Two or three letters for the on-map badge: 'downwind backburn' -> DB."""
+    parts = [p for p in str(name).replace("-", "_").split("_") if p]
+    if len(parts) >= 2:
+        return "".join(p[0] for p in parts[:3]).upper()
+    return str(name)[:2].upper()
+
+
+def macro_description(name: str, spec) -> str:
+    """The legend text: what the generated intervention actually orders."""
+    comp = (spec or {}).get("composition") or []
+    bits = []
+    for item in comp:
+        if isinstance(item, dict):
+            ch, wt = item.get("channel"), float(item.get("weight", 0.0))
+        else:
+            ch, wt = item[0], float(item[1])
+        bits.append(f"{BASE_IV_LABEL.get(str(ch), str(ch))} {wt:.2f}")
+    body = " + ".join(bits) if bits else "no resolved composition"
+    return (f"{str(name).replace('_', ' ')} [{macro_tag(name)}] "
+            f"— GenAI macro: {body}")
+
+
 def legend_entries(macros=None):
     """Categorized legend as (group, label, hex_color, glyph).
 
@@ -648,7 +861,9 @@ def legend_entries(macros=None):
                  "urban": "urban / built-up"}.get(m.name, m.name.replace("_", " "))
         out.append(("Land cover", label, _hex(_FUEL_COLORS[i]), "sq"))
     out.append(("Fire", "active fire", _hex((0.98, 0.35, 0.06)), "sq"))
-    out.append(("Fire", "burned scar", _hex((0.16, 0.13, 0.12)), "sq"))
+    out.append(("Fire", "burn scar spectrum: light grey veil = "
+                "knocked down early (fuel saved), black = burned out",
+                _hex((0.16, 0.13, 0.12)), "sq"))
     # perimeter is drawn as RED cell outlines (not a white ring)
     out.append(("Fire", "fire perimeter", "#ff3c28", "box"))
     # Assets & infrastructure (merged): things on the map that carry value
@@ -695,10 +910,11 @@ def legend_entries(macros=None):
     _macro_names = list((macros or {}).keys())
     if _macro_names:
         for _mn in _macro_names:
-            _lab = str(_mn).replace("_", " ")
-            out.append(("DSS orders (GenAI-generated)",
-                        f"{_lab} — new intervention by GenAI", "#c000ff",
-                        "dot"))
+            _c, _shape = macro_style(_mn)
+            out.append((
+                "DSS orders (GenAI-generated)",
+                macro_description(_mn, (macros or {}).get(_mn)),
+                f"#{_c[0]:02x}{_c[1]:02x}{_c[2]:02x}", _shape))
     else:
         out.append(("DSS orders (GenAI-generated)",
                     "none yet — interventions the generative stage creates "

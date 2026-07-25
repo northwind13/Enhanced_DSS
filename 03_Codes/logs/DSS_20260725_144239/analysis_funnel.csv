@@ -1,0 +1,22 @@
+﻿quantity;value
+cycles;24
+satisficing_failed;18
+tried;4
+accepted;0
+rejected;4
+withheld;0
+persist_failed;0
+dJ_accepted;0.000000
+stage1_tried;1
+stage1_accepted;0
+stage2_tried;1
+stage2_accepted;0
+stage3_tried;2
+stage3_accepted;0
+blocked: cooldown between adaptation trials;13
+gate: rejected at G3 (no improvement);1
+gate: rejected at G5 (package margin);1
+rejected: rejected at G3 (claude);1
+rejected: no improving perturbation found;1
+rejected: cell already covered — an active rule sits on this antecedent cell and;1
+rejected: rejected at G5 package margin (claude);1

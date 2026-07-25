@@ -36,7 +36,7 @@ from . import viz
 __version__ = "0.2.1"   # region overlays, clock/night render, perf pass
 # Bumped on EVERY engine change; the app refuses to run against a stale
 # in-process engine (Streamlit hot-reloads the app but never the packages).
-ENGINE_BUILD = 35
+ENGINE_BUILD = 37
 
 __all__ = [
     "SimConfig", "SpreadParams", "SuppressionParams", "IntensityParams",

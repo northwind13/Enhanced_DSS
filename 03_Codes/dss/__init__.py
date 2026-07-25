@@ -27,11 +27,14 @@ from .actions import (resource_suggestion, decision_to_resources,
 from .evaluate import (clone_sim, forecast_cost, candidate_vs_noaction,
                        quality_Q, graduated_failsafe, CONCEPT_FAMILY)
 from .persist import (save_learned, load_learned, load_parts,
-                      merge_learned,
+                      load_vocab, merge_learned,
                       prune_learned, wipe_learned)
+from .state import GeneratedState, config_id
+from .resolve import resolve_active_set, ActiveSet
 from .adapt import (make_runtime_rules, StageController, AdaptOutcome,
                     stage1_evfis, stage2_resolution, stage3_generative,
-                    genai_status, genai_config, genai_probe)
+                    genai_status, genai_config, genai_probe,
+                    genai_timeout)
 from .decision_log import DecisionLog, DecisionRecord, RunLogger
 from .loop import DecisionEngine, counterfactual
 
@@ -52,12 +55,15 @@ __all__ = ["Region", "partition", "partition_n", "ten_features",
            "clone_sim", "forecast_cost", "candidate_vs_noaction",
            "quality_Q", "graduated_failsafe", "CONCEPT_FAMILY",
            "make_runtime_rules", "StageController", "AdaptOutcome",
-           "save_learned", "load_learned", "load_parts", "merge_learned",
+           "save_learned", "load_learned", "load_parts", "load_vocab",
+           "merge_learned",
            "prune_learned", "wipe_learned",
+           "GeneratedState", "config_id", "resolve_active_set",
+           "ActiveSet",
            "DecisionLog", "DecisionRecord", "RunLogger", "genai_status",
-           "genai_config", "genai_probe",
+           "genai_config", "genai_probe", "genai_timeout",
            "DecisionEngine",
            "counterfactual"]
 
 # bumped on every dss change; checked by the app freshness gate
-DSS_BUILD = 58
+DSS_BUILD = 77

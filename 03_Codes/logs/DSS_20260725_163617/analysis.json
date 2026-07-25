@@ -1,0 +1,50 @@
+{
+ "start_step": 0,
+ "seq0": 24,
+ "cycles": 1,
+ "satisficing_failed": 1,
+ "tried": 1,
+ "accepted": 0,
+ "rejected": 1,
+ "blocked": {},
+ "per_stage": {
+  "3": {
+   "tried": 1,
+   "accepted": 0,
+   "dJ": 0.0
+  }
+ },
+ "gates": {
+  "rejected at G3 (no improvement)": 1
+ },
+ "reasons": {
+  "rejected at G3 (claude)": 1
+ },
+ "withheld": 0,
+ "dJ_accepted": 0.0,
+ "j_series": [
+  [
+   0,
+   0.2238882193431757,
+   0.2238882193431757,
+   0.21269380837601692
+  ]
+ ],
+ "phys_series": [
+  [
+   0,
+   0.28732124171607953,
+   0.28732124171607953
+  ]
+ ],
+ "persist_failed": 0,
+ "genai_ms": [
+  8819.8
+ ],
+ "stage_controller": {
+  "low|3": -0.0002
+ },
+ "config_id": "DSS1-EV1-GA1-U12:1-U3:1",
+ "seed_profile": "minimal",
+ "persist_errors": []
+}

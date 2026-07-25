@@ -1,6 +1,0 @@
-﻿step;t_min;region;story;stage_tried;stage_accepted;fired_rules;suppression;deployment;containment;protection;evacuation;warning;quality;gate_min;J_forecast;J_noaction;attended
-232;232;Agent_1;RL selected stage 3 [GenAI] (deficit bucket: low) → rejected (rejected at G2 duplicate cell (template) — an active rule already sits on this antecedent cell; re-issuing it with different numbers is stage ① evFIS's job, not a new rule | seed-base decision stands, its orders are applied);3;0;R1[0.11] R2[0.17] R3[0.30] R4[0.11] R7[0.07] R9[0.11];0.38;0.60;0.37;0.83;0.72;0.80;0.90;0.02;0.1123;0.1037;1
-233;233;Agent_1;orders came from the seed rule base (rules as-is);0;0;R1[0.10] R2[0.15] R3[0.27] R4[0.10] R7[0.07] R9[0.10];0.38;0.60;0.37;0.82;0.71;0.79;0.90;0.02;0.1112;0.1031;1
-234;234;Agent_1;orders came from the seed rule base (rules as-is);0;0;R1[0.09] R2[0.14] R3[0.25] R4[0.09] R7[0.07] R9[0.09];0.38;0.61;0.37;0.82;0.67;0.76;0.90;0.02;0.1111;0.1032;1
-235;235;Agent_1;orders came from the seed rule base (rules as-is);0;0;R1[0.08] R2[0.13] R3[0.23] R4[0.08] R7[0.07] R9[0.08];0.38;0.61;0.37;0.82;0.66;0.76;0.89;0.02;0.1111;0.1032;1
-236;236;Agent_1;orders came from the seed rule base (rules as-is);0;0;R1[0.07] R2[0.11] R3[0.21] R4[0.07] R7[0.07] R9[0.07];0.38;0.61;0.37;0.81;0.66;0.76;0.87;0.02;0.1112;0.1032;1

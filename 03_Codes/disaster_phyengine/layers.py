@@ -157,8 +157,24 @@ class ResourceLayer:
     #        protection ring around a town never scrapes its park
     # revac in [0,1]: EVACUATE here - populated cells lose their
     #        people toward safety at a tempo set by the order
+    # rwarn in [0,1]: WARNED here (public warning) - no physical
+    #        effect by itself; a warned population responds faster
+    #        when an evacuation order lands (readiness priming)
+    # rburn in [0,1]: TACTICAL BURN here (counter-fire) - a firing
+    #        crew intentionally ignites these cells so the counter
+    #        fire consumes the fuel before the main front arrives.
+    #        Fire is fire: the engine treats it as a real ignition,
+    #        which is exactly why a badly placed order is DANGEROUS
+    #        and the forecast gates must judge it.
     rcut: np.ndarray | None = None
     revac: np.ndarray | None = None
+    rwarn: np.ndarray | None = None
+    rburn: np.ndarray | None = None
+    # rret in [0,1]: RETARDANT/SOIL COATING here (aerial drop) - the
+    #        coated fuel resists ignition even after it dries; the
+    #        engine keeps a per-incident retard field that decays
+    #        very slowly
+    rret: np.ndarray | None = None
 
     @classmethod
     def none(cls, ny: int, nx: int) -> "ResourceLayer":

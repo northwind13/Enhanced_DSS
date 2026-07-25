@@ -92,7 +92,9 @@ def save_learned(rules: List[Rule], path: str,
         if getattr(engine, "macros", None):
             vocab["macros"] = {
                 k: dict(composition=[[a, float(b)] for a, b in
-                                     v["composition"]])
+                                     v.get("composition", [])],
+                        **({"clauses": list(v["clauses"])}
+                           if v.get("clauses") else {}))
                 for k, v in engine.macros.items()}
     d = _read_store(path)
     _prev = d["profiles"].get("shared", {}) or {}
@@ -104,14 +106,29 @@ def save_learned(rules: List[Rule], path: str,
               if str(b.get("name", ""))[:1] == "A"]
     _prevG = [b for b in _prev.get("born", [])
               if str(b.get("name", ""))[:1] == "G"]
+
+    def _keep(engine_born, prev_born):
+        # union by rule name so a stored rule the engine did not re-load (a
+        # seed already covers its cell, so merge_learned skipped it) is NOT
+        # dropped on the next save; the engine's version wins on a name
+        # clash because its strength is the freshest.
+        by = {b.get("name"): b for b in prev_born}
+        for b in engine_born:
+            by[b.get("name")] = b
+        return list(by.values())
     _shared = dict(
-        born=(_bornA if use_evfis else _prevA)
-        + (_bornG if use_genai else _prevG),
+        born=(_keep(_bornA, _prevA) if use_evfis else _prevA)
+        + (_keep(_bornG, _prevG) if use_genai else _prevG),
         tuned=(tuned if use_evfis else _prev.get("tuned", {})),
         parts=(parts if use_evfis else _prev.get("parts", {})))
-    _concepts = (vocab.get("concepts") if use_genai
+    # only an engine can report the vocabulary; a save without one (or with
+    # stage 3 not loaded) must KEEP what the store already holds instead of
+    # writing an empty section over it
+    _manage_vocab = bool(use_genai and engine is not None)
+    _concepts = (vocab.get("concepts") if _manage_vocab
                  else _prev.get("concepts"))
-    _macros = (vocab.get("macros") if use_genai else _prev.get("macros"))
+    _macros = (vocab.get("macros") if _manage_vocab
+               else _prev.get("macros"))
     if _concepts:
         _shared["concepts"] = _concepts
     if _macros:
@@ -126,6 +143,16 @@ def load_learned(path: str, profile: str = "full"):
     sec = _read_store(path)["profiles"].get("shared",
                                             {})
     return sec.get("born", []), sec.get("tuned", {})
+
+
+def load_vocab(path: str, profile: str = "full"):
+    """The GENERATED vocabulary sitting in the store: (concepts, macros).
+
+    Lets a view show what has been learned BEFORE any engine exists (a fresh
+    app start, no run yet): the store is the ground truth, the engine is only
+    its current instance."""
+    sec = _read_store(path)["profiles"].get("shared", {})
+    return (sec.get("concepts") or {}), (sec.get("macros") or {})
 
 
 def load_parts(path: str, profile: str = "full") -> dict:
@@ -163,6 +190,8 @@ def merge_learned(rules: List[Rule], path: str,
             engine.macros[mn] = dict(
                 composition=[(a, float(b)) for a, b in
                              md.get("composition", [])])
+            if md.get("clauses"):
+                engine.macros[mn]["clauses"] = list(md["clauses"])
     from .fuzzy import REGISTRY
     if use_evfis:
         # term inserts (stage 2 resolution) and consequent tunes (stage 1)

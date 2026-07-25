@@ -1,8 +1,13 @@
 # Core engine
 numpy>=1.23
 
-# Dashboard
-streamlit>=1.30
+# Dashboard. The wide analysis tables open in a modal window via st.dialog,
+# which arrived in 1.35; the app checks for it and simply omits the "Open in
+# a window" button on older builds, so 1.30 still runs.
+streamlit>=1.35
+# used by the dashboard tables and the Layer 4 analysis charts; it was an
+# undeclared dependency that happened to arrive with streamlit
+pandas>=1.5
 matplotlib>=3.6
 plotly>=5.0
 pillow>=9.0

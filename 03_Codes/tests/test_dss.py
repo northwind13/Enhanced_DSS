@@ -1,5 +1,7 @@
 """Tests for the rebuilt DSS, phase 1a: regions + ten bounded features."""
 
+import os
+
 import numpy as np
 
 from disaster_phyengine import Simulator, SimConfig, World
@@ -667,7 +669,11 @@ def test_genai_package_grows_vocabulary():
     old_margin, old_prop = A.G5_MARGIN, A._genai_propose
     try:
         A.G5_MARGIN = -1.0
-        pkg = {"antecedents": [["fire_threat_level", "H"]],
+        # G2c relevance gate: the rule must fire NOW, so the test
+        # keys the antecedent to the situation's own dominant term
+        _domT = A._dominant_terms(rows[hot]["eff"])
+        pkg = {"antecedents": [["fire_threat_level",
+                                _domT["fire_threat_level"]]],
                "consequents": [["backburn", 0.9]],
                "new_intervention": {
                    "name": "backburn",
@@ -814,3 +820,404 @@ def test_coordinator_tightens_gate_on_monitored_regions():
     mon = [n for n in g["shares"] if n not in g["attended"]]
     assert mon
     assert all(g["thresholds"][n] > eta + 1e-6 for n in mon)
+
+
+def _toggle_world():
+    import numpy as np
+    import dss
+    from disaster_phyengine import terrain
+    from disaster_phyengine.config import SimConfig
+    cfg = SimConfig(nx=40, ny=30, cell_size_m=30.0)
+    cfg.step_minutes = 2.0
+    w = terrain.generate_landscape(cfg, seed=3, preset="Rolling hills",
+                                   n_settlements=3,
+                                   population_per_settlement=9000)
+    base, _ = dss.resource_suggestion(w)
+    return w, base
+
+
+def _seeded_state(path):
+    """A store holding one record of every kind."""
+    import dss
+    gs = dss.GeneratedState.load(path, active_rule_set="minimal")
+    seed_name = None
+    rs = dss.make_runtime_rules("minimal")
+    seed_name = rs[0].name
+    old = [[i, float(v)] for i, v in rs[0].consequents]
+    new = [[i, min(1.0, float(v) + 0.10)] for i, v in rs[0].consequents]
+    gs.append("evfis_rule_modifications",
+              dict(base_rule_id=seed_name, base_rule_set="minimal",
+                   modification_type="consequent_update",
+                   before={"consequents": old},
+                   after={"consequents": new}), source_stage=1,
+              save=False)
+    gs.append("genai_concepts",
+              dict(name="test_pressure", layer=2,
+                   inputs=[{"name": "fire_threat_level", "weight": 1.0}],
+                   outputs=[{"name": "activation", "range": [0, 1]}]),
+              source_stage=3, save=False)
+    gs.append("genai_interventions",
+              dict(name="test_bundle",
+                   composition=[{"channel": "suppression_effort",
+                                 "weight": 1.0}]),
+              source_stage=3, save=False)
+    gs.append("genai_rules",
+              dict(name="G90",
+                   antecedents=[["test_pressure", "H"]],
+                   consequents=[["test_bundle", 0.8]],
+                   depends_on_concepts=["test_pressure"]),
+              source_stage=3, save=False)
+    gs.save()
+    return seed_name, old, new
+
+
+def test_toggle_matrix_resolves_per_spec(tmp_path):
+    """OFF/OFF = pure seed (factory values). use12 ON = revert vs
+    apply of stored modifications. use3 ON = generated concepts,
+    interventions and rules enter; OFF = they leave entirely."""
+    import dss
+    w, base = _toggle_world()
+    sp = str(tmp_path / "gstate.json")
+    seed_name, old, new = _seeded_state(sp)
+
+    def eng(u12, u3):
+        return dss.DecisionEngine(
+            dss.partition_n(40, 30, 1), base_pool=base,
+            cycle_min=4.0, horizon_min=10.0, adapt_on=False,
+            seed_profile="minimal", use_evfis=u12, use_genai=u3,
+            state_path=sp)
+
+    seed_rules = {r.name for r in dss.make_runtime_rules("minimal")}
+
+    e00 = eng(False, False)
+    assert {r.name for r in e00.rules} == seed_rules
+    r0 = next(r for r in e00.rules if r.name == seed_name)
+    assert [[i, float(v)] for i, v in r0.consequents] == old
+    assert "test_pressure" not in e00.hierarchy
+    assert "test_bundle" not in e00.macros
+
+    e10 = eng(True, False)
+    r1 = next(r for r in e10.rules if r.name == seed_name)
+    assert [[i, float(v)] for i, v in r1.consequents] == new
+    assert {r.name for r in e10.rules} == seed_rules   # revert != delete
+    assert "test_pressure" not in e10.hierarchy
+
+    e01 = eng(False, True)
+    r2 = next(r for r in e01.rules if r.name == seed_name)
+    assert [[i, float(v)] for i, v in r2.consequents] == old
+    assert "test_pressure" in e01.hierarchy
+    assert "test_bundle" in e01.macros
+    assert any(r.name == "G90" for r in e01.rules)
+
+
+def test_unresolved_dependency_warns_and_drops(tmp_path):
+    """A generated rule whose concept is missing is not loaded, and
+    the finding is a visible warning, not a silent drop."""
+    import json
+    import dss
+    w, base = _toggle_world()
+    sp = str(tmp_path / "gstate.json")
+    _seeded_state(sp)
+    d = json.load(open(sp))
+    d["genai_concepts"] = []          # break the dependency
+    json.dump(d, open(sp, "w"))
+    e = dss.DecisionEngine(
+        dss.partition_n(40, 30, 1), base_pool=base,
+        cycle_min=4.0, horizon_min=10.0, adapt_on=False,
+        seed_profile="minimal", use_evfis=True, use_genai=True,
+        state_path=sp)
+    assert not any(r.name == "G90" for r in e.rules)
+    assert any("G90" in m for m in e.resolve_warnings)
+
+
+def test_shadow_mode_stores_but_does_not_apply(tmp_path, monkeypatch):
+    """evFIS active + use stage 1-2 OFF: an accepted stage-1 result is
+    written to the store while the active base keeps factory values."""
+    import numpy as np
+    import dss
+    import dss.loop as L
+    from dss.adapt import AdaptOutcome
+    from disaster_phyengine.core import Simulator
+    w, base = _toggle_world()
+    sp = str(tmp_path / "gstate.json")
+
+    def fake_stage1(build, sim, rules, fired, horizon, step_size=0.05):
+        r = rules[0]
+        r.consequents = [(i, min(1.0, float(v) + 0.2))
+                         for i, v in r.consequents]
+        r.note = (r.note + " | " if r.note else "") + "evFIS: consequent"
+        return AdaptOutcome(1, True, "fake tune", dJ=-0.05)
+
+    monkeypatch.setattr(L, "stage1_evfis", fake_stage1)
+    ok = (w.fuel.fload > 0.4) & (w.fuel.ftype != 0)
+    ys, xs = np.where(ok)
+    w.add_ignition(int(xs[0]), int(ys[0]), step=0, radius=1)
+    sim = Simulator(w)
+    sim.record_states = False
+    eng = dss.DecisionEngine(
+        dss.partition_n(40, 30, 1), base_pool=base,
+        cycle_min=2.0, horizon_min=10.0, adapt_on=True,
+        evfis_on=True, genai_on=False, seed_profile="minimal",
+        use_evfis=False, use_genai=False, state_path=sp,
+        j_threshold=0.0)                 # every forecast is a deficit
+    eng.adapt_cooldown_min = 0.0
+    factory = {r.name: [(i, float(v)) for i, v in r.consequents]
+               for r in dss.make_runtime_rules("minimal")}
+    for _ in range(6):
+        sim.step(resource_override=eng.maybe_decide(sim))
+    # active base stayed at factory values...
+    for r in eng.rules:
+        if r.name in factory:
+            assert [(i, float(v)) for i, v in r.consequents] \
+                == factory[r.name], r.name
+    # ...and the store received the produced modification
+    gs = dss.GeneratedState.load(sp)
+    assert len(gs.records("evfis_rule_modifications")) >= 1
+
+
+# ---------------------------------------------- generated state: durability
+def test_seq_is_global_and_monotonic(tmp_path):
+    """Replay order is ONE sequence across all four sections. Per-section
+    counters would interleave wrongly on restart, and timestamps are too
+    coarse to order records written in the same second."""
+    import dss
+    sp = str(tmp_path / "gstate.json")
+    _seeded_state(sp)
+    gs = dss.GeneratedState.load(sp)
+    seqs = [int(r["seq"])
+            for sec in ("evfis_rule_modifications", "genai_rules",
+                        "genai_concepts", "genai_interventions")
+            for r in gs.records(sec)]
+    assert sorted(seqs) == list(range(1, len(seqs) + 1))
+    assert gs.next_seq() == len(seqs) + 1
+    mods = gs.sorted_records("evfis_rule_modifications")
+    assert [r["seq"] for r in mods] == sorted(r["seq"] for r in mods)
+    # every record carries the provenance the spec requires
+    for sec in ("evfis_rule_modifications", "genai_rules"):
+        for r in gs.records(sec):
+            assert r["origin"] in ("evfis", "genai")
+            assert "produced_under_flags" in r and "timestamp" in r
+            assert "active" not in r      # activity is derived, never stored
+
+
+def test_wipe_clears_records_but_never_the_baseline(tmp_path):
+    """A wipe is a factory reset of the GENERATED knowledge only: the seed
+    rule sets and the six base interventions survive it."""
+    import dss
+    sp = str(tmp_path / "gstate.json")
+    _seeded_state(sp)
+    gs = dss.GeneratedState.load(sp)
+    counts = gs.wipe()
+    assert sum(counts.values()) == 4
+    assert sum(gs.counts().values()) == 0
+    # production stops, consumption intent is left alone
+    assert gs.flags["evfis_active"] is False
+    assert gs.flags["genai_active"] is False
+    assert gs.flags["use_stage12_rules"] is True
+    assert gs.flags["dss_active"] is True
+    assert os.path.exists(os.path.splitext(sp)[0] + ".bak.json")
+    # an engine rebuilt from the wiped store is the pristine seed profile
+    w, base = _toggle_world()
+    e = dss.DecisionEngine(dss.partition_n(40, 30, 1), base_pool=base,
+                           cycle_min=4.0, horizon_min=10.0, adapt_on=False,
+                           seed_profile="minimal", use_evfis=True,
+                           use_genai=True, state_path=sp)
+    pristine = dss.make_runtime_rules("minimal")
+    assert {r.name for r in e.rules} == {r.name for r in pristine}
+    for got, want in zip(sorted(e.rules, key=lambda r: r.name),
+                         sorted(pristine, key=lambda r: r.name)):
+        assert [(i, round(float(v), 6)) for i, v in got.consequents] == \
+               [(i, round(float(v), 6)) for i, v in want.consequents]
+
+
+def test_restart_reproduces_the_active_set(tmp_path):
+    """Two engines built from the same store hold the same active set: the
+    restart path is a replay, not a re-derivation that can drift."""
+    import dss
+    sp = str(tmp_path / "gstate.json")
+    _seeded_state(sp)
+    w, base = _toggle_world()
+
+    def build():
+        return dss.DecisionEngine(
+            dss.partition_n(40, 30, 1), base_pool=base, cycle_min=4.0,
+            horizon_min=10.0, adapt_on=False, seed_profile="minimal",
+            use_evfis=True, use_genai=True, state_path=sp)
+
+    a, b = build(), build()
+    def sig(e):
+        return (sorted((r.name,
+                        tuple((i, round(float(v), 6))
+                              for i, v in r.consequents)) for r in e.rules),
+                sorted(e.hierarchy), sorted(e.macros))
+    assert sig(a) == sig(b)
+    assert "test_pressure" in a.hierarchy and "test_bundle" in a.macros
+
+
+def test_atomic_write_never_leaves_a_half_written_store(tmp_path):
+    """A store truncated mid-write would brick the next start, so the write
+    goes to a temp file and is renamed into place."""
+    import json
+    import dss
+    sp = str(tmp_path / "gstate.json")
+    _seeded_state(sp)
+    good = open(sp, encoding="utf-8").read()
+
+    real_dump = json.dump
+
+    def exploding_dump(obj, fp, **kw):
+        fp.write('{"schema_version": "1.0", "evfis_rule_mod')
+        raise IOError("disk full")
+
+    gs = dss.GeneratedState.load(sp)
+    json.dump = exploding_dump
+    try:
+        try:
+            gs.save()
+        except IOError:
+            pass
+    finally:
+        json.dump = real_dump
+    # the store that was already on disk is untouched and still parses
+    assert open(sp, encoding="utf-8").read() == good
+    assert json.loads(good)["schema_version"] == "1.0"
+    assert sum(dss.GeneratedState.load(sp).counts().values()) == 4
+
+
+def test_corrupt_store_is_quarantined_not_silently_replaced(tmp_path):
+    """Losing generated knowledge without a trace is worse than failing
+    loudly, so an unreadable store is set aside and reported."""
+    import dss
+    sp = str(tmp_path / "gstate.json")
+    with open(sp, "w", encoding="utf-8") as f:
+        f.write("{not json at all")
+    gs = dss.GeneratedState.load(sp)
+    assert sum(gs.counts().values()) == 0
+    assert gs.warnings and "could not be read" in gs.warnings[0]
+    assert os.path.exists(sp + ".corrupt")
+
+
+def test_frozen_mode_consumes_without_producing(tmp_path):
+    """Production off, consumption on: the accumulated knowledge is used and
+    nothing new is written. This is the reproducible-experiment mode."""
+    import dss
+    sp = str(tmp_path / "gstate.json")
+    seed_name, old, new = _seeded_state(sp)
+    w, base = _toggle_world()
+    sim = Simulator(w)
+    for _ in range(4):
+        sim.step()
+    e = dss.DecisionEngine(dss.partition_n(40, 30, 1), base_pool=base,
+                           cycle_min=4.0, horizon_min=10.0,
+                           adapt_on=False, evfis_on=False, genai_on=False,
+                           seed_profile="minimal", use_evfis=True,
+                           use_genai=True, state_path=sp)
+    before = e.gstate.counts()
+    for _ in range(6):
+        e.decide(sim)
+        sim.step()
+    assert e.gstate.counts() == before          # nothing produced
+    r = next(x for x in e.rules if x.name == seed_name)
+    assert [[i, float(v)] for i, v in r.consequents] == new   # but consumed
+
+
+def test_config_id_names_the_experiment(tmp_path):
+    """Each toggle combination is an experiment configuration, so it gets a
+    stable label a results table can group by."""
+    import dss
+    sp = str(tmp_path / "gstate.json")
+    gs = dss.GeneratedState.load(sp)
+    gs.set_flags(dss_active=True, evfis_active=True, genai_active=False,
+                 use_stage12_rules=True, use_stage3_rules=False)
+    assert gs.config_id == "DSS1-EV1-GA0-U12:1-U3:0"
+    gs.set_flags(evfis_active=False)
+    assert gs.config_id == "DSS1-EV0-GA0-U12:1-U3:0"
+
+
+def test_waterless_map_shelves_water_macros(tmp_path):
+    """A learned macro that needs water stays in the store but leaves
+    the ACTIVE set on a map without any water body; a rule ordering
+    it sleeps with a visible warning, and nothing is deleted."""
+    import numpy as np
+    import dss
+    from disaster_phyengine.core import Simulator
+    w, base = _toggle_world()
+    w.fuel.ftype[w.fuel.ftype == 5] = 1        # suyu tamamen kaldır
+    sp = str(tmp_path / "gstate.json")
+    gs = dss.GeneratedState.load(sp, active_rule_set="minimal")
+    gs.append("genai_interventions",
+              dict(name="drafting_sustained_attack",
+                   composition=[{"channel": "water_drafting",
+                                 "weight": 1.0},
+                                {"channel": "suppression_effort",
+                                 "weight": 0.9}]),
+              source_stage=3, save=False)
+    gs.append("genai_rules",
+              dict(name="G80", antecedents=[["fire_threat_level", "H"]],
+                   consequents=[["drafting_sustained_attack", 0.9]],
+                   depends_on_concepts=[]),
+              source_stage=3, save=False)
+    gs.save()
+    ok = (w.fuel.fload > 0.4) & (w.fuel.ftype != 0)
+    ys, xs = np.where(ok)
+    w.add_ignition(int(xs[0]), int(ys[0]), step=0, radius=1)
+    sim = Simulator(w)
+    sim.record_states = False
+    eng = dss.DecisionEngine(
+        dss.partition_n(40, 30, 1), base_pool=base, cycle_min=2.0,
+        horizon_min=10.0, adapt_on=False, seed_profile="minimal",
+        use_evfis=True, use_genai=True, state_path=sp)
+    sim.step(resource_override=eng.maybe_decide(sim))
+    assert "drafting_sustained_attack" not in eng.macros
+    assert "drafting_sustained_attack" in eng._shelved_macros
+    g80 = next(r for r in eng.rules if r.name == "G80")
+    assert not g80.active
+    assert any("waterless" in m or "water body" in m
+               for m in eng.resolve_warnings)
+    # store untouched: the lineage survives for the next wet map
+    gs2 = dss.GeneratedState.load(sp)
+    assert any(r.get("name") == "drafting_sustained_attack"
+               for r in gs2.records("genai_interventions"))
+
+
+def test_tuning_of_a_generated_rule_applies_when_stage3_is_on(tmp_path):
+    """A stage 1 tuning may name a rule stage 3 created.
+
+    The resolver used to replay the tunings BEFORE installing the generated
+    rules, so such a tuning could never find its target: it was skipped on
+    every cycle and the warning blamed the stage 3 toggle, which was on.
+    """
+    from dss.state import GeneratedState
+    from dss.resolve import resolve_active_set
+    from dss.adapt import make_runtime_rules, reset_partitions
+    from dss.fuzzy import REGISTRY
+
+    st = GeneratedState(str(tmp_path / "s.json"))
+    st.flags.update(dss_active=True, active_rule_set="minimal5",
+                    use_stage12_rules=True, use_stage3_rules=True)
+    st.append("genai_rules", dict(
+        name="G5",
+        antecedents=[("fire_intensity", "high")],
+        consequents=[("suppression_effort", 0.9)],
+        depends_on_concepts=[]), source_stage=3, save=False)
+    st.append("evfis_rule_modifications", dict(
+        modification_type="consequent_update", base_rule_id="G5",
+        before={"consequents": [["suppression_effort", 0.9]]},
+        after={"consequents": [["suppression_effort", 0.4]]}),
+        source_stage=1, save=False)
+
+    a = resolve_active_set(st, make_runtime_rules, REGISTRY, reset_partitions)
+    g5 = {r.name: r for r in a.rules}.get("G5")
+    assert g5 is not None, "the generated rule must be in the active set"
+    assert a.applied_mods == 1, "the tuning must be counted as applied"
+    assert g5.consequents == [("suppression_effort", 0.4)], \
+        "the stored tuning must have overwritten the generated consequent"
+    assert not a.warnings, f"nothing should be skipped: {a.warnings}"
+
+    # with stage 3 consumption off the SAME record is skipped, and the
+    # message is then allowed to blame the toggle, because that is the cause
+    st.flags["use_stage3_rules"] = False
+    b = resolve_active_set(st, make_runtime_rules, REGISTRY, reset_partitions)
+    assert "G5" not in {r.name for r in b.rules}
+    assert b.applied_mods == 0
+    assert len(b.warnings) == 1 and "is off" in b.warnings[0]

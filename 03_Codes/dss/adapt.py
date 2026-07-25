@@ -309,7 +309,11 @@ def stage2_resolution(build_override, sim, rules: List[Rule],
 
 
 # ------------------------------------------------------------- stage 3
-_GENAI_SCHEMA = ("Return ONLY a JSON object: {\"antecedents\": "
+_GENAI_SCHEMA = ("Answer with the MINIFIED JSON object only, on one line, "
+                 "with no commentary before or after it: every extra token "
+                 "delays the simulation that is waiting on this call and is "
+                 "then discarded unread. "
+                 "Return ONLY a JSON object: {\"antecedents\": "
                  "[[concept, term], ...], \"consequents\": "
                  "[[intervention, intensity], ...]} with concepts from "
                  f"{list(DECISION_CONCEPTS)}, terms from {list(TERMS)}, "
@@ -324,7 +328,11 @@ _GENAI_SCHEMA = ("Return ONLY a JSON object: {\"antecedents\": "
                  "normalized)} or "
                  "\"new_intervention\": {\"name\": str, "
                  "\"composition\": [[base_intervention, weight], "
-                 "...] (at most 3, weights in (0,1])}. A package must "
+                 "...] (at most 3, weights in (0,1] and read as the "
+                 "RELATIVE PROPORTIONS of the bundle: they are rescaled "
+                 "so the strongest component runs at the rule's own "
+                 "intensity, so a composite is never weaker than "
+                 "ordering the same channels directly)}. A package must "
                  "still contain the rule, and the rule must USE the "
                  "new object (a new concept in its antecedents, a new "
                  "intervention in its consequents). FIXED by design: "
@@ -334,7 +342,77 @@ _GENAI_SCHEMA = ("Return ONLY a JSON object: {\"antecedents\": "
                  "physics, no new features.")
 
 
-def _genai_propose_cli(prompt: str, timeout: float = 120.0) -> Optional[dict]:
+# wall time of the last live proposal call, so the run log can show WHY a
+# cycle took seconds instead of milliseconds
+LAST_GENAI_MS: float = 0.0
+
+
+LAST_GENAI_ERR = None    # why the last CLI call returned nothing
+
+
+def genai_timeout() -> float:
+    """How long a live proposal may block the caller.
+
+    This used to be 120 s. Stage 3 runs inside the decision cycle, and the
+    decision cycle runs inside the animation frame, so one slow call froze the
+    whole interface for up to two minutes and read as a crash. A bounded wait
+    turns that into a skipped stage, which the log records honestly. Raise
+    DSS_GENAI_TIMEOUT for batch experiments where nobody is watching."""
+    try:
+        return max(5.0, float(os.environ.get("DSS_GENAI_TIMEOUT", "90")))
+    except ValueError:
+        return 90.0
+
+
+# the private spelling is kept as an alias: this module is edited from more
+# than one place and an import of either name should keep working
+_genai_timeout = genai_timeout
+
+
+def genai_cmd(prompt: str) -> list:
+    """The `claude -p` command line, built in ONE place.
+
+    Stage 3 wants a single JSON object, not an agent. By default `claude -p`
+    boots the whole coding assistant: its system prompt, every built-in tool
+    definition, the MCP servers and the project settings. A measured call
+    carried about 26,500 cached input tokens of that scaffolding, all of it
+    dead weight for a one-shot question, and the boot cost lands on the
+    decision cycle, which lands on the animation frame.
+
+    The probe and the live proposer share this builder deliberately: they had
+    drifted apart, so the Test button was timing the heavy path while the
+    simulation ran the lean one, and the reported latency described neither.
+    """
+    cmd = ["claude"]
+    # --model is a LAUNCH flag: the docs rank it above ANTHROPIC_MODEL and the
+    # settings file, and it belongs before the prompt
+    _m = os.environ.get("DSS_GENAI_MODEL")
+    if _m:
+        cmd += ["--model", _m]
+    cmd += [
+        # OUTPUT LENGTH IS THE COST. Measured on this transport the call is
+        # about 3.0 s of fixed startup plus 10 ms per OUTPUT token, so a
+        # chatty 330-token answer costs ~3.5 s more than the same decision
+        # expressed in 60. The parser reads one JSON object and throws every
+        # surrounding word away, so prose is pure latency.
+        "--system-prompt",
+        "You emit exactly one minified JSON object and nothing else. "
+        "No prose, no explanation, no markdown fence, no code block, "
+        "no leading or trailing text. Any character outside the JSON "
+        "object is discarded by the caller, so writing it only costs "
+        "time. Keep every string field short.",
+        "--tools", "",                      # no built-in tools
+        "--disallowedTools", "*",           # drop them from context entirely
+        "--strict-mcp-config",              # with no --mcp-config: no servers
+        "--setting-sources", "",            # ignore user/project settings
+        "--max-turns", "1",                 # single shot, no agentic loop
+    ]
+    cmd += ["-p", prompt, "--output-format", "json"]
+    return cmd
+
+
+def _genai_propose_cli(prompt: str, timeout: float | None = None
+                       ) -> Optional[dict]:
     """One rule proposal via the Claude Code CLI (`claude -p`), i.e. on the
     user's Claude subscription, no API key. Returns the parsed dict or None.
 
@@ -343,17 +421,29 @@ def _genai_propose_cli(prompt: str, timeout: float = 120.0) -> Optional[dict]:
     shim can be runnable by subprocess yet invisible to which, which used to
     make stage 3 look unreachable even though the model answered fine."""
     import subprocess
-    cmd = ["claude", "-p", prompt, "--output-format", "json"]
-    _m = os.environ.get("DSS_GENAI_MODEL")
-    if _m:
-        cmd += ["--model", _m]
+    import time as _t
+    global LAST_GENAI_MS
+    timeout = genai_timeout() if timeout is None else float(timeout)
+    _t0 = _t.time()
+    cmd = genai_cmd(prompt)
+    global LAST_GENAI_ERR
     try:
         res = subprocess.run(cmd, capture_output=True, text=True,
                              timeout=timeout)
-    except Exception:
+    except subprocess.TimeoutExpired:
+        LAST_GENAI_MS = (_t.time() - _t0) * 1000.0
+        LAST_GENAI_ERR = f"timeout after {timeout:.0f} s"
         return None
+    except Exception as exc:
+        LAST_GENAI_MS = (_t.time() - _t0) * 1000.0
+        LAST_GENAI_ERR = f"launch failed ({type(exc).__name__})"
+        return None
+    LAST_GENAI_MS = (_t.time() - _t0) * 1000.0
     if res.returncode != 0 or not res.stdout.strip():
+        LAST_GENAI_ERR = (f"exit {res.returncode}: "
+                          + (res.stderr or "no output").strip()[:160])
         return None
+    LAST_GENAI_ERR = None
     inner = res.stdout
     try:                                   # unwrap {"result": "...text..."}
         wrap = json.loads(res.stdout)
@@ -457,6 +547,50 @@ def _validate_package(prop: dict, engine) -> Optional[str]:
         if not name or name in INTERVENTIONS \
                 or name in engine.macros:
             return "G2 package (name empty or taken)"
+        cls = ni.get("clauses") or []
+        if cls:
+            from .actions import EFFECTS, SECTORS
+            if not (1 <= len(cls) <= 3):
+                return "G2 package (1..3 clauses)"
+            for c in cls:
+                if str(c.get("effect")) not in EFFECTS:
+                    return ("G2 package (unknown effect; allowed: "
+                            + ", ".join(EFFECTS) + ")")
+                if str(c.get("sector", "ring")) not in SECTORS:
+                    return ("G2 package (unknown sector; allowed: "
+                            + ", ".join(SECTORS) + ")")
+                rr = c.get("range") or [2, 6]
+                try:
+                    rin, rout = int(rr[0]), int(rr[1])
+                except Exception:
+                    return "G2 package (range must be [rin, rout])"
+                if not (0 <= rin < rout <= 15):
+                    return "G2 package (range must satisfy 0<=rin<rout<=15)"
+                aa = float(c.get("amount", 0.8))
+                if not (0.0 < aa <= 1.0):
+                    return "G2 package (amount in (0,1])"
+            # G2b: an identical clause signature is a duplicate
+            def _sig(cl_list):
+                return tuple(sorted(
+                    (str(c.get("effect")), str(c.get("sector", "ring")),
+                     int((c.get("range") or [2, 6])[0]),
+                     int((c.get("range") or [2, 6])[1]))
+                    for c in cl_list))
+            for _mn, _md in (getattr(engine, "macros", {}) or {}).items():
+                if _md.get("clauses") and _sig(_md["clauses"]) == _sig(cls):
+                    return (f"G2b intervention (same clause tactic as "
+                            f"existing '{_mn}'; use it or change the "
+                            "tactic)")
+            ni["name"] = name
+            ni["clauses"] = [dict(effect=str(c.get("effect")),
+                                  sector=str(c.get("sector", "ring")),
+                                  range=[int((c.get("range")
+                                              or [2, 6])[0]),
+                                         int((c.get("range")
+                                              or [2, 6])[1])],
+                                  amount=float(c.get("amount", 0.8)))
+                             for c in cls]
+            return None
         comp = ni.get("composition") or []
         if not (1 <= len(comp) <= 3):
             return "G2 package (1..3 components)"
@@ -465,7 +599,39 @@ def _validate_package(prop: dict, engine) -> Optional[str]:
             if bi not in INTERVENTIONS or not (0.0 < bw <= 1.0):
                 return ("G2 package (composition must reduce to the "
                         "base physical channels)")
-        ni["composition"] = [[str(a), float(b)] for a, b in comp]
+        # the weights are RELATIVE PROPORTIONS of the bundle, not an
+        # attenuation: rescale so the strongest component runs at the rule's
+        # own intensity and the others keep their ratio to it. Without this
+        # every composite is strictly weaker than ordering the same channels
+        # directly, so no composite could ever clear the G5 margin.
+        _wmax = max(float(p[1]) for p in comp)
+        ni["composition"] = [[str(a), float(b) / _wmax] for a, b in comp]
+        # G2b for interventions: the composition must be a genuine MIX
+        # (a composition dominated by one channel IS that channel) and
+        # must not repeat an already-learned intervention with cosmetic
+        # weight changes (cosine over the base-channel vector)
+        _ws = sorted((float(b) for _a, b in ni["composition"]),
+                     reverse=True)
+        if len(_ws) < 2 or _ws[1] < 0.25:
+            return ("G2b intervention (a single channel in disguise; "
+                    "order that channel with a plain rule instead)")
+        import numpy as _np
+        _axes = sorted(INTERVENTIONS)
+        def _vec(compo):
+            v = _np.zeros(len(_axes))
+            for a, b in compo:
+                if str(a) in _axes:
+                    v[_axes.index(str(a))] = float(b)
+            n = _np.linalg.norm(v)
+            return v / n if n > 1e-9 else v
+        _vn = _vec(ni["composition"])
+        for _mn, _md in (getattr(engine, "macros", {}) or {}).items():
+            _cs = float(_np.dot(_vn, _vec(_md.get("composition", []))))
+            if _cs > G2B_COS:
+                return (f"G2b intervention (duplicate of existing "
+                        f"'{_mn}', cosine {_cs:.2f}; propose something "
+                        "that differs in effect or use the existing "
+                        "one)")
         ni["name"] = name
     return None
 
@@ -489,8 +655,12 @@ def _install_package(prop: dict, engine) -> dict:
             engine.concept_family[nc["name"]] = (nc["family"],)
             undo["decision"] = True
     if ni:
-        engine.macros[ni["name"]] = dict(
-            composition=[(a, b) for a, b in ni["composition"]])
+        if ni.get("clauses"):
+            engine.macros[ni["name"]] = dict(
+                composition=[], clauses=list(ni["clauses"]))
+        else:
+            engine.macros[ni["name"]] = dict(
+                composition=[(a, b) for a, b in ni["composition"]])
         undo["macro"] = ni["name"]
     return undo
 
@@ -527,12 +697,201 @@ def _g1_g2(prop: dict, engine=None) -> Optional[str]:
     for v, t in ants:
         if v not in _known_c and v != _ncn:
             return "G2 vocabulary"
-        if t not in TERMS and t not in REGISTRY.get(v):
+        _tb = t[2:] if str(t).startswith(">=") else t
+        if _tb not in TERMS and _tb not in REGISTRY.get(v):
             return "G2 vocabulary"
     for i, x in cons:
         if (i not in _known_i and i != _nin) \
                 or not (0.0 <= x <= 1.0):
             return "G2 range"
+    return None
+
+
+def _situation_brief(sim, engine) -> str:
+    """An incident briefing for the generative stage: what burns, where
+    it is heading, what is threatened first, what capacity is on hand
+    and which cost term is bleeding. The model can only aim its rule at
+    the cheapest-to-avert loss if it can SEE the incident; the concept
+    crisps alone were too little and produced blind guesses."""
+    try:
+        import numpy as _np
+        w = sim.world
+        cfg = sim.cfg
+        cell = float(getattr(cfg, "cell_size_m", 30.0))
+        ha = cell * cell / 10000.0
+        b = sim.state.burning > 0.5
+        nb = int(b.sum())
+        ever = int(sim.ever_burned.sum())
+        lines = ["INCIDENT BRIEF:"]
+        lines.append(f"- fire: {nb} cells burning now, "
+                     f"{ever * ha:.1f} ha burned so far, "
+                     f"t = {getattr(sim, 't_elapsed_min', 0.0):.0f} min")
+        # WHERE IT CAME FROM, not only where it is. A snapshot cannot say
+        # whether the last orders are working: the same 40 burning cells mean
+        # opposite things when the fire is doubling and when it is dying.
+        _hist = getattr(engine, "_brief_hist", None)
+        if _hist:
+            _p_t, _p_nb, _p_ever = _hist[-1]
+            _dt = float(getattr(sim, "t_elapsed_min", 0.0)) - _p_t
+            if _dt > 0:
+                _rate = (ever - _p_ever) * ha / _dt * 60.0
+                _trend = ("GROWING" if nb > _p_nb * 1.15 else
+                          "SHRINKING" if nb < _p_nb * 0.85 else "STEADY")
+                lines.append(
+                    f"- trend since {_dt:.0f} min ago: {_trend}, "
+                    f"{_p_nb} -> {nb} burning cells, "
+                    f"spreading at {_rate:.1f} ha/h. "
+                    + ("The orders in force are not holding it."
+                       if _trend == "GROWING" else
+                       "The orders in force are containing it."
+                       if _trend == "SHRINKING" else
+                       "The orders in force are holding the line."))
+            if len(_hist) >= 2:
+                lines.append("- burned-area history (min, ha): "
+                             + ", ".join(f"({t:.0f}, {e * ha:.1f})"
+                                         for t, _n, e in _hist[-4:]))
+        try:
+            _h = list(_hist or [])
+            _h.append((float(getattr(sim, "t_elapsed_min", 0.0)), nb, ever))
+            engine._brief_hist = _h[-8:]
+        except Exception:
+            pass
+        if nb:
+            ys, xs = _np.where(b)
+            cx, cy = float(xs.mean()), float(ys.mean())
+            wws = float(w.meteo.wws.mean())
+            wwd = float(w.meteo.wwd.mean()) if hasattr(w.meteo, "wwd") \
+                else 0.0
+            lines.append(f"- front centred near cell ({cx:.0f},{cy:.0f}); "
+                         f"wind {wws:.1f} m/s from {wwd:.0f} deg, so the "
+                         "spread runs downwind of that point")
+            fm = float(w.fuel.fmoist[b].mean())
+            lines.append(f"- fuel moisture at the front {fm:.2f} "
+                         "(drier burns faster)")
+            best = None
+            for a in (w.assets or []):
+                d = ((_np.sqrt((xs - a.x) ** 2 + (ys - a.y) ** 2)).min()
+                     * cell)
+                if best is None or d < best[0]:
+                    best = (float(d), a)
+            if best is not None:
+                d, a = best
+                lines.append(f"- nearest asset: {a.kind} '{a.name}' at "
+                             f"{d:.0f} m from the fire"
+                             + (f", {a.population:.0f} persons"
+                                if a.population else ""))
+            _wat = _np.asarray(w.fuel.ftype == 5)
+            if _wat.any():
+                wy, wx = _np.where(_wat)
+                dmin = float(_np.sqrt(
+                    (wx[None, :] - xs[:, None].astype(float)) ** 2
+                    + (wy[None, :] - ys[:, None].astype(float)) ** 2
+                ).min()) * cell if len(xs) else -1.0
+                lines.append(
+                    f"- water: a lake/sea lies ~{dmin:.0f} m from the "
+                    "front; water_drafting raises sustained capacity "
+                    "near it")
+            else:
+                lines.append("- water: none on this map "
+                             "(water_drafting would do nothing)")
+            pool = getattr(engine, "base_pool", None)
+            if pool is not None:
+                cap = float((pool.rcap * _np.clip(pool.ravail, 0, 1)
+                             ).sum())
+                tt = float(pool.rtime[b].mean())
+                _fielded = float(getattr(sim,
+                                         "response_capacity_steps",
+                                         0.0))
+                lines.append(f"- resources: available capacity "
+                             f"{cap:.1f} (rcap sum), mean travel time "
+                             f"to the front {tt:.0f} min"
+                             + ("; the pool is running NEAR ITS "
+                                "LIMIT, extra sustained capacity "
+                                "(water_drafting) is what pays"
+                                if _fielded > 0 and cap < 80.0
+                                else "")
+                             + ("; air support can reach the whole map"
+                                if getattr(pool, "rair", None) is not None
+                                else ""))
+        try:
+            from disaster_phyengine.costs import compute_costs as _cc
+            rep = _cc(sim)
+            terms = [("burned area", rep.j_burn),
+                     ("asset loss", rep.j_asset),
+                     ("population exposure", rep.j_pop)]
+            terms.sort(key=lambda t: -t[1])
+            lines.append("- cost terms now: "
+                         + ", ".join(f"{n}={v:.2f}" for n, v in terms)
+                         + f"; the biggest bleed is {terms[0][0]}")
+        except Exception:
+            pass
+        lines.append(
+            "- ANALYSIS REQUIRED before answering: from the brief, "
+            "decide where the fire is heading, what is lost first, and "
+            "which intervention family cuts the 45-minute PHYSICAL "
+            "forecast most given the travel times and capacity "
+            "(direct suppression when the front is reachable and "
+            "capacity is free; containment across the downwind path "
+            "when it is not; evacuation and warning when people are "
+            "close). Then write the ONE rule (or package) that orders "
+            "exactly that. Output ONLY the JSON.")
+        return "\n".join(lines) + "\n"
+    except Exception:
+        return ""
+
+
+_WATER_DEPENDENT = ("water_drafting", "retardant_drop")
+
+
+def _availability(prop: dict, sim) -> Optional[str]:
+    """An action that needs a resource the MAP does not carry is not
+    orderable: proposing it is rejected before any simulation, with
+    the reason spelled out so the revision can drop it."""
+    try:
+        import numpy as _np
+        has_water = bool(_np.asarray(
+            sim.world.fuel.ftype == 5).any())
+    except Exception:
+        return None
+    if has_water:
+        return None
+    cited = set()
+    for i, _v in (prop.get("consequents") or []):
+        cited.add(str(i))
+    ni = prop.get("new_intervention") or {}
+    for a, _b in (ni.get("composition") or []):
+        cited.add(str(a))
+    for c in (ni.get("clauses") or []):
+        if str(c.get("effect")) == "draft":
+            cited.add("water_drafting")
+        if str(c.get("effect")) == "coat":
+            cited.add("retardant_drop")
+    bad = sorted(cited & set(_WATER_DEPENDENT))
+    if bad:
+        return ("G2 availability (this map has NO water body: "
+                + ", ".join(bad) + " cannot be supplied; choose an "
+                "action the terrain supports)")
+    return None
+
+
+def _fires_now(prop: dict, eff) -> Optional[str]:
+    """G2c relevance: the proposal must fire on the PRESENT effective
+    activations. Antecedents on a brand-new concept cannot be scored
+    yet and are skipped; the known part must still carry weight."""
+    from .rules import _membership
+    _ncn = (prop.get("new_concept") or {}).get("name")
+    ws = []
+    for v, t in prop.get("antecedents", []):
+        if str(v) == _ncn or str(v) not in eff:
+            continue
+        try:
+            ws.append(float(_membership(str(v), str(t), eff, {})))
+        except Exception:
+            return None
+    if ws and min(ws) < 0.20:
+        return ("G2c relevance (the rule does not fire in the "
+                "PRESENT situation; use each concept's CURRENT "
+                "dominant term from the situation line)")
     return None
 
 
@@ -584,13 +943,106 @@ def stage3_generative(build_override, sim, rules: List[Rule],
                       coverage_gap: bool = False,
                       cov_w: float = 1.0,
                       engine=None) -> AdaptOutcome:
-    situation = ", ".join(f"{c}={crisp_c.get(c, 0.0):.2f}"
-                          for c in DECISION_CONCEPTS)
+    _mb = ""
+    if engine is not None and hasattr(engine, "mission"):
+        try:
+            _mb = engine.mission(sim) or ""
+        except Exception:
+            _mb = ""
+    situation = _mb + _situation_brief(sim, engine)
+    situation += ", ".join(f"{c}={crisp_c.get(c, 0.0):.2f}"
+                           for c in DECISION_CONCEPTS)
+    _dom = _dominant_terms(eff)
+    situation += ("\nCurrent dominant terms: "
+                  + ", ".join(f"{c}={_dom[c]}" for c in DECISION_CONCEPTS)
+                  + "\nHARD REQUIREMENT: the rule must FIRE in this "
+                  "PRESENT situation. For every concept used in the "
+                  "antecedents pick its CURRENT dominant term above "
+                  "(a neighbouring term only if it still holds now). "
+                  "A rule for a hypothetical other situation is "
+                  "rejected without simulation. In a deficit the "
+                  "orders must be strong enough to move a 45-minute "
+                  "forecast; timid consequents (< 0.6 on the main "
+                  "channel) rarely clear the gates. For a threat that "
+                  "will keep RISING, write the term as '>=H' (fires at "
+                  "H and everything above), so the rule stays in force "
+                  "while the situation escalates instead of falling "
+                  "silent at VH.")
     # the proposer sees the WHOLE current base and the coverage
     # verdict, so it can aim at the void instead of paraphrasing an
     # existing rule
     situation += ("\nCurrent rule base:\n"
                   + "\n".join(r.text() for r in rules if r.active))
+    from .rules import ACTUATOR_LIBRARY
+    try:
+        import numpy as _np_av
+        _has_water = bool(_np_av.asarray(
+            sim.world.fuel.ftype == 5).any())
+    except Exception:
+        _has_water = True
+    if not _mb:
+        situation += (
+        "\nAVAILABLE PHYSICAL ACTIONS beyond the doctrine (no seed "
+        "rule uses them; you may order them as consequents or use "
+        "them inside a composite when the situation calls for it, "
+        "and say WHY in the rationale):\n"
+        + "\n".join(
+            f"  {n}: {d}"
+            + ("  [UNAVAILABLE on this map: no water body to supply "
+               "it — do NOT order it]"
+               if (n in _WATER_DEPENDENT and not _has_water) else "")
+            for n, d in ACTUATOR_LIBRARY.items())
+        + "\nYou may also DEFINE A NEW ACTUATOR of your own as a "
+        "package: new_intervention with \"clauses\" instead of a "
+        "composition. Each clause = one verified physical effect "
+        "(wet, clear, ignite, coat, evacuate, prime, draft) applied "
+        "to a sector (head, flank, rear, ring, at_fire, assets, "
+        "populated) at a cell range [rin, rout] from the front, with "
+        "an amount. This is a genuinely new tactic (WHERE and HOW, "
+        "not a blend); pull it from the wildfire literature, name it "
+        "honestly, and justify it in the rationale. It still has to "
+        "win the reseeded forecast gates before any rule may use it.")
+    from .concepts import HIERARCHY as _BASE_H2
+    _lc = {cn: spec for cn, spec in
+           (getattr(engine, "hierarchy", {}) or {}).items()
+           if cn not in _BASE_H2}
+    if _lc:
+        situation += ("\nCurrent LEARNED concepts (do NOT re-propose "
+                      "these or near-copies under a new name; CITE "
+                      "them in your antecedents like any concept):\n"
+                      + "\n".join(
+                          f"  {cn} = " + " + ".join(
+                              f"{a} {float(b):.2f}"
+                              for a, b in (spec[1] if isinstance(
+                                  spec, (tuple, list)) else []))
+                          for cn, spec in _lc.items()))
+    _macs = getattr(engine, "macros", {}) or {}
+    if _macs:
+        situation += ("\nCurrent LEARNED interventions (do NOT "
+                      "re-propose these or near-copies; cite them in "
+                      "a rule instead):\n"
+                      + "\n".join(
+                          f"  {mn} = " + " + ".join(
+                              f"{a} {b:.2f}" for a, b in
+                              md.get("composition", []))
+                          for mn, md in _macs.items()))
+    # DOCTRINE REFERENCE. On a minimal profile the active base is five rules,
+    # which is a thin sample of what good practice looks like. The full
+    # catalog is shown as a reference the proposer may draw on, marked
+    # clearly as NOT active so it does not simply copy a line out of it: a
+    # verbatim copy would be an existing doctrine cell, not an answer to the
+    # void. Off by default because it costs prompt size on every call.
+    if os.environ.get("DSS_GENAI_DOCTRINE", "").strip().lower() in (
+            "1", "true", "yes", "on"):
+        _act = {r.name for r in rules if r.active}
+        _ref = [r for r in SEED_RULES if r.active and r.name not in _act]
+        if _ref:
+            situation += (
+                "\n\nDOCTRINE REFERENCE (the full expert catalog; these "
+                "rules are NOT active in this run and must not be copied "
+                "verbatim, they are shown so the proposal follows the same "
+                "operational logic):\n"
+                + "\n".join(r.text() for r in _ref))
     if coverage_gap:
         situation += (f"\nThe base is nearly silent here (max "
                       f"fired weight {cov_w:.2f}): propose ONE rule "
@@ -602,10 +1054,25 @@ def stage3_generative(build_override, sim, rules: List[Rule],
                       "matters here) OR ONE composite intervention (a weighted "
                       "mix of base channels), and write the rule USING that "
                       "new object. Grow the vocabulary when it genuinely helps "
-                      "answer the void.")
+                      "answer the void. A composite must DIFFER IN EFFECT "
+                      "from any single channel or it fails the growth margin: "
+                      "containment_line+suppression_effort acts as a backburn "
+                      "pattern across the downwind path, "
+                      "asset_protection+containment_line hardens a threatened "
+                      "settlement; evacuation+public_warning is REDUNDANT (a "
+                      "plain rule already orders both) and will be rejected.")
     situation += ("\nDo NOT re-issue an existing rule's antecedent "
                   "cell with different numbers (that is the tuning "
                   "stage's job); pick an UNCOVERED situation cell.")
+    if not coverage_gap:
+        situation += (
+            "\nIf plain rules on the existing concepts keep failing "
+            "the forecast gates for THIS kind of situation, the "
+            "missing piece is usually PERCEPTION, not action: "
+            "propose a package with ONE new intermediate concept "
+            "that NAMES the situation (a weighted mix of existing "
+            "features/concepts, not collinear with what exists), "
+            "and write the rule on it.")
     situation += _nearest_cases(engine, crisp_c)
     # ---- BOUNDED REVISION BUDGET: a proposal rejected at the CHEAP
     # gates (G1 form, G2 constraints, G2b redundancy) returns to the
@@ -622,27 +1089,50 @@ def stage3_generative(build_override, sim, rules: List[Rule],
     # stand-in. If the model cannot be reached (or returns nothing usable)
     # the stage is skipped and logged, never silently substituted.
     if prop is None:
+        _err = str(LAST_GENAI_ERR or "")
+        if _err.startswith("timeout"):
+            return AdaptOutcome(
+                3, False,
+                f"model call timed out ({_err}); the model is "
+                "reachable but the answer took longer than the wait "
+                "budget. Attempt skipped this cycle; raise "
+                "DSS_GENAI_TIMEOUT to wait longer",
+                info=dict(source="claude", reason="model timeout",
+                          error=_err))
         return AdaptOutcome(
             3, False,
-            "generative stage requires a reachable model; none available "
-            "(install Claude Code and run `/login` on your Pro/Max plan)",
-            info=dict(source="none", reason="model unreachable"))
-    err = _g1_g2(prop, engine=engine)
+            "generative model not reachable"
+            + (f" ({_err})" if _err else "")
+            + "; install Claude Code and run /login",
+            info=dict(source="none", reason="model unreachable",
+                      error=_err))
+    err = (_g1_g2(prop, engine=engine) or _fires_now(prop, eff)
+           or _availability(prop, sim))
     while err and len(_revisions) < _budget:
         _revisions.append(dict(proposal=prop, gate=err))
         retry = (situation
                  + f"\nYour previous proposal was rejected at gate "
                  f"{err}. Revise it: fix exactly that defect and "
-                 "return the corrected JSON only.")
+                 "return the corrected JSON only. Reminder, the "
+                 "PRESENT dominant terms are: "
+                 + ", ".join(f"{c}={_dom[c]}"
+                             for c in DECISION_CONCEPTS)
+                 + "; antecedents must hold NOW (or use '>=').")
         prop = _genai_propose(retry)
         if prop is None:
+            _err = str(LAST_GENAI_ERR or "")
+            _tmo = _err.startswith("timeout")
             return AdaptOutcome(
                 3, False,
-                "generative stage aborted: model unreachable during "
-                "revision",
-                info=dict(source="claude", reason="model unreachable",
-                          revisions=_revisions))
-        err = _g1_g2(prop, engine=engine)
+                ("model call timed out during revision" if _tmo
+                 else "model became unreachable during revision")
+                + (f" ({_err})" if _err else ""),
+                info=dict(source="claude",
+                          reason=("model timeout" if _tmo
+                                  else "model unreachable"),
+                          error=_err, revisions=_revisions))
+        err = (_g1_g2(prop, engine=engine) or _fires_now(prop, eff)
+               or _availability(prop, sim))
     if err:
         return AdaptOutcome(3, False, f"rejected at {err} ({src})",
                             info=dict(source=src, proposal=prop,
@@ -694,7 +1184,11 @@ def stage3_generative(build_override, sim, rules: List[Rule],
     newr = Rule(name,
                 [(v, t) for v, t in prop["antecedents"]],
                 [(i, float(x)) for i, x in prop["consequents"]],
-                note=f"adaptation-born: generative ({src}), gates G1-G4")
+                note=(f"adaptation-born: generative ({src}), gates "
+                      "G1-G4"
+                      + (" | WHY: "
+                         + str(prop.get("rationale"))[:180]
+                         if prop.get("rationale") else "")))
     j0c, j0 = _cva(build_override, sim, rules, horizon)
     rules.append(newr)
     j1a, _ = _cva(build_override, sim, rules, horizon, reseed=101)
@@ -866,11 +1360,13 @@ def genai_probe(max_tokens: int = 64) -> dict:
     import subprocess
     t0 = time.time()
     try:
-        cmd = ["claude", "-p", ask, "--output-format", "json"]
-        if os.environ.get("DSS_GENAI_MODEL"):
-            cmd += ["--model", os.environ["DSS_GENAI_MODEL"]]
+        # SAME command the live stage builds, so the number this button
+        # reports is the number the simulation will actually wait through
+        cmd = genai_cmd(ask)
         res = subprocess.run(cmd, capture_output=True, text=True,
-                             timeout=120)
+                             timeout=genai_timeout())
+        out["cmd"] = " ".join(cmd)
+        out["raw"] = (res.stdout or "")[:4000]
         reply = res.stdout.strip()
         _is_err = res.returncode != 0
         try:
@@ -884,9 +1380,46 @@ def genai_probe(max_tokens: int = 64) -> dict:
                         wrap.get("subtype")
                         and wrap.get("subtype") != "success"):
                     _is_err = True
+                # modelUsage maps EVERY model the run touched to its token
+                # counts. A single `claude -p` call can bill more than one:
+                # the requested model answers, while a small fast model does
+                # internal bookkeeping. Reading an arbitrary first key made
+                # the probe report the helper model as the one that served
+                # the request, so pick the model that actually produced the
+                # output and keep the full breakdown for the UI.
                 _mu = wrap.get("modelUsage")
-                out["reported_model"] = (next(iter(_mu), model)
-                                         if _mu else model)
+                if isinstance(_mu, dict) and _mu:
+                    def _num(v, *keys):
+                        for k in keys:
+                            if isinstance(v, dict) and v.get(k) is not None:
+                                return float(v[k])
+                        return 0.0
+                    _top = wrap.get("usage") or {}
+                    _want = (_num(_top, "input_tokens"),
+                             _num(_top, "output_tokens"),
+                             _num(_top, "cache_read_input_tokens"))
+                    # WHICH model answered. Token count is not the signal: a
+                    # helper can emit more tokens than the answer (a 16-token
+                    # reply from Opus next to an 18-token internal note from
+                    # Haiku). The top-level usage block belongs to the model
+                    # that served the request, so match on it, and fall back
+                    # to cost, which separates the tiers by an order of
+                    # magnitude.
+                    _match = [k for k, v in _mu.items()
+                              if (_num(v, "inputTokens"),
+                                  _num(v, "outputTokens"),
+                                  _num(v, "cacheReadInputTokens")) == _want]
+                    if _match:
+                        out["reported_model"] = _match[0]
+                    else:
+                        out["reported_model"] = max(
+                            _mu, key=lambda k: _num(_mu[k], "costUSD"))
+                    out["model_usage"] = {
+                        k: dict(out_tokens=int(_num(v, "outputTokens")),
+                                cost=float(_num(v, "costUSD")))
+                        for k, v in _mu.items()}
+                else:
+                    out["reported_model"] = model
                 out["usage"] = wrap.get("usage")
         except Exception:
             pass
@@ -903,4 +1436,12 @@ def genai_probe(max_tokens: int = 64) -> dict:
     except Exception as exc:
         out["error"] = f"{type(exc).__name__}: {exc}"
     out["latency_ms"] = int((time.time() - t0) * 1000)
+    # WHEN the reply landed, not only how long it took. Two probes a minute
+    # apart can differ by seconds purely because of what else the machine was
+    # doing, and a bare duration hides that.
+    _fin = time.time()
+    out["started_at"] = time.strftime("%H:%M:%S", time.localtime(t0))
+    out["finished_at"] = time.strftime("%H:%M:%S", time.localtime(_fin))
+    out["finished_stamp"] = time.strftime("%Y-%m-%d %H:%M:%S",
+                                          time.localtime(_fin))
     return out

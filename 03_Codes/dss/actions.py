@@ -155,6 +155,7 @@ def suggest_resource_items(world, efficiency_target=None, density=1.0
         tgt = float(np.clip(efficiency_target, 0.05, 0.95))
         base0 = build_resource_layer(world, items)
         eff0, _c0 = pool_efficiency(world, base0)
+        _scaled_down = False
         if eff0 > tgt + 0.005:
             # the target is EXACT in both directions: a target BELOW
             # the baseline scales every capacity DOWN until the pool
@@ -178,13 +179,20 @@ def suggest_resource_items(world, efficiency_target=None, density=1.0
                                     round(float(it["cap"]) * _sc, 3))
             b_ = build_resource_layer(world, items)
             e_, c_ = pool_efficiency(world, b_)
+            _scaled_down = True
             lines.append(
                 f"Target {tgt:.0%} is EXACT: the baseline pool "
                 f"delivered {eff0:.0%}, so every capacity was scaled "
                 f"DOWN to land at {e_:.0%}. An under-resourced pool "
                 "is a legitimate experiment: the interventions are "
                 "ALLOWED to fail. Raise the target to re-arm.")
-        for _n in range(25):
+        # DO NOT RE-ARM WHAT WAS JUST DISARMED. The scale-down accepts
+        # landing a hair below the target (tolerance +0.01), and the greedy
+        # loop below then demanded eff >= tgt exactly, saw the shortfall and
+        # staged a capacity-0.7 helibase, fourteen times the scaled-down
+        # depots. The pool jumped from the requested 10% to 44% while the
+        # message above still claimed it had landed at 10%.
+        for _n in range(0 if _scaled_down else 25):
             base = build_resource_layer(world, items)
             eff, comp = pool_efficiency(world, base)
             if eff >= tgt:
@@ -356,8 +364,118 @@ def pool_efficiency(world, base):
                                    air=air_cov)
 
 
+# ----------------------------------------------------------------------
+# EFFECT GRAMMAR for runtime-defined actuators. The generative stage
+# may DEFINE a new actuator as data: up to three clauses, each a
+# verified physical effect applied to a named sector at a range from
+# the front. The engine never runs model-written code; it interprets
+# this closed grammar, and every definition still has to win the
+# simulation gates before a rule may order it.
+EFFECTS = ("wet", "clear", "ignite", "coat", "evacuate", "prime",
+           "draft")
+SECTORS = ("head", "flank", "rear", "ring", "at_fire", "assets",
+           "populated")
+
+
+def _sector_mask(sector, fire, world, rin, rout, cosang):
+    ny, nx = world.config.ny, world.config.nx
+    if sector == "populated":
+        return np.asarray(world.value.vpop, dtype=float) > 1e-6
+    if sector == "assets":
+        yy, xx = np.ogrid[0:ny, 0:nx]
+        m = np.zeros((ny, nx), dtype=bool)
+        _thr = _dilate(fire, 15)
+        for a in getattr(world, "assets", []):
+            ax = min(max(int(a.x), 0), nx - 1)
+            ay = min(max(int(a.y), 0), ny - 1)
+            if _thr[ay, ax]:
+                r = max(2, int(getattr(a, "radius", 2)))
+                m |= (xx - a.x) ** 2 + (yy - a.y) ** 2 <= r * r
+        return m
+    if not fire.any():
+        return np.zeros((ny, nx), dtype=bool)
+    if sector == "at_fire":
+        return _dilate(fire, 2)
+    band = _dilate(fire, rout) & ~_dilate(fire, max(1, rin))
+    if sector == "ring" or cosang is None:
+        return band
+    if sector == "head":
+        return band & (cosang > 0.35)
+    if sector == "flank":
+        return band & (np.abs(cosang) <= 0.35)
+    if sector == "rear":
+        return band & (cosang < -0.35)
+    return band
+
+
+def apply_actuator_clauses(out, world, fire, region_mask, clauses,
+                           intensity, cap_max, workable, cosang,
+                           cells_out=None):
+    """Interpret one runtime-defined actuator at its firing intensity.
+    cells_out: optional boolean array; the touched cells are OR-ed in
+    so the map can draw the actuator's symbol exactly where it acts."""
+    for cl in clauses[:3]:
+        eff = str(cl.get("effect", ""))
+        sec = str(cl.get("sector", "ring"))
+        rr = cl.get("range") or [2, 6]
+        rin, rout = int(rr[0]), int(rr[1])
+        a = float(np.clip(float(cl.get("amount", 0.8))
+                          * float(intensity), 0.0, 1.0))
+        if a <= 0.05:
+            continue
+        m = _sector_mask(sec, fire, world, rin, rout, cosang)             & region_mask
+        if eff in ("wet", "clear", "ignite", "coat"):
+            m &= workable if eff in ("wet", "clear") else m
+        if not m.any():
+            continue
+        if cells_out is not None:
+            cells_out |= m
+        if eff == "wet":
+            out.rcap[m] = np.maximum(out.rcap[m], a * cap_max)
+            out.ravail[m] = np.maximum(out.ravail[m], 0.3 + 0.7 * a)
+        elif eff == "clear":
+            if out.rcut is None:
+                out.rcut = np.zeros_like(out.rcap)
+            out.rcut[m] = 1.0
+            out.rcap[m] = np.maximum(out.rcap[m],
+                                     max(a, 0.8) * cap_max)
+            out.ravail[m] = np.maximum(out.ravail[m], 0.8)
+        elif eff == "ignite":
+            if out.rburn is None:
+                out.rburn = np.zeros_like(out.rcap)
+            out.rburn[m] = np.maximum(out.rburn[m], a)
+        elif eff == "coat":
+            if out.rret is None:
+                out.rret = np.zeros_like(out.rcap)
+            out.rret[m] = np.maximum(out.rret[m], a)
+        elif eff == "evacuate":
+            if out.revac is None:
+                out.revac = np.zeros_like(out.rcap)
+            _pm = m & (np.asarray(world.value.vpop) > 1e-6)
+            out.revac[_pm] = np.maximum(out.revac[_pm], a)
+        elif eff == "prime":
+            if out.rwarn is None:
+                out.rwarn = np.zeros_like(out.rcap)
+            _pm = m & (np.asarray(world.value.vpop) > 1e-6)
+            out.rwarn[_pm] = np.maximum(out.rwarn[_pm], a)
+        elif eff == "draft":
+            _wat = np.asarray(world.fuel.ftype == 5)
+            if _wat.any():
+                ny, nx = world.config.ny, world.config.nx
+                _dw = np.full((ny, nx), 30.0)
+                _fr = _wat.copy()
+                for _d in range(30):
+                    _nw = _fr & (_dw > _d)
+                    _dw[_nw] = _d
+                    _fr = _dilate(_fr, 1)
+                _bo = 1.0 + 0.8 * a * np.exp(-_dw / 10.0)
+                _mb = m & (out.rcap > 1e-6)
+                out.rcap[_mb] = np.minimum(out.rcap[_mb] * _bo[_mb],
+                                           1.5 * cap_max)
+
+
 def decision_to_resources(world, burning, regions_intensities, base=None,
-                          return_actions=False):
+                          return_actions=False, macros=None):
     """Compose U_DSS from every region's intervention intensities.
 
     burning: boolean burning mask of the CURRENT state (drives where the
@@ -393,6 +511,7 @@ def decision_to_resources(world, burning, regions_intensities, base=None,
         _acc0 = np.maximum(_acc0, 0.9 * np.clip(out.rair, 0.0, 1.0))
     _reach0 = np.exp(-_beta * out.rtime) * _acc0
     _rb_w = np.ones((ny, nx))     # global share weights (per region)
+    _macro_cells: dict = {}       # macro name -> cells it acted on
     m_supp = np.zeros((ny, nx), dtype=bool)
     m_cont = np.zeros((ny, nx), dtype=bool)
     m_prot = np.zeros((ny, nx), dtype=bool)
@@ -418,6 +537,10 @@ def decision_to_resources(world, burning, regions_intensities, base=None,
         _nrm = np.sqrt(_ox * _ox + _oy * _oy) + 1e-9
         _down = (_ox * _wvx + _oy * _wvy) / _nrm > -0.3
         band_all &= _down
+        _down_ok = True
+        _cosang = (_ox * _wvx + _oy * _wvy) / _nrm
+    if "_cosang" not in dir():
+        _cosang = None
     yy, xx = np.ogrid[0:ny, 0:nx]
     for region, u in regions_intensities:
         sy, sx = region.slices()
@@ -483,6 +606,80 @@ def decision_to_resources(world, burning, regions_intensities, base=None,
             _pop_m[sy, sx] = np.asarray(
                 world.value.vpop[sy, sx], dtype=float) > 1e-6
             out.revac[_pop_m] = np.maximum(out.revac[_pop_m], u5)
+        u7 = float(u.get("tactical_burn", 0.0))
+        if u7 > 0.3:
+            # COUNTER-FIRE: the firing crew lights a strip BETWEEN the
+            # containment band and the front, on the downwind side, so
+            # the counter fire eats the fuel the head fire is running
+            # toward. Fire is fire: the engine will spread it, and a
+            # badly judged order makes things worse, which is exactly
+            # what the forecast gates are for.
+            if out.rburn is None:
+                out.rburn = np.zeros((ny, nx))
+            _strip = (_dilate(fire, 6) & ~_dilate(fire, 3)
+                      & rb & _workable)
+            if locals().get("_down_ok"):
+                _strip &= _down
+            out.rburn[_strip] = np.maximum(out.rburn[_strip], u7)
+        u9 = float(u.get("retardant_drop", 0.0))
+        if u9 > 0.3:
+            # AERIAL RETARDANT/SOIL: coat the HEAD sector just ahead
+            # of the front. Aerial delivery ignores road access; the
+            # pass is narrow (2-5 cells out) because a wide carpet is
+            # neither affordable nor needed: the head is what kills.
+            # aircraft must draw the load from somewhere: a map
+            # without any water body cannot support aerial drops
+            if not np.asarray(world.fuel.ftype == 5).any():
+                u9 = 0.0
+        if u9 > 0.3:
+            if out.rret is None:
+                out.rret = np.zeros((ny, nx))
+            _pass = _dilate(fire, 5) & ~_dilate(fire, 2) & rb
+            if locals().get("_down_ok"):
+                _pass &= _down
+            out.rret[_pass] = np.maximum(out.rret[_pass], u9)
+        # RUNTIME-DEFINED actuators: any macro carrying clauses that
+        # this region's rules fired is interpreted here
+        for _mn, _md in (macros or {}).items():
+            _ui = float(u.get(_mn, 0.0))
+            if _ui <= 0.3:
+                continue
+            _mc = _macro_cells.setdefault(
+                _mn, np.zeros((ny, nx), dtype=bool))
+            _cls = _md.get("clauses")
+            if _cls:
+                apply_actuator_clauses(
+                    out, world, fire, rb, _cls, _ui, cap_max,
+                    _workable, locals().get("_cosang"),
+                    cells_out=_mc)
+            else:
+                # composition macro: its footprint is where its
+                # component channels act in this region, so the tag
+                # lands on the worked cells, not on a region badge
+                for _bi, _bw in _md.get("composition", []):
+                    if float(_bw) * _ui <= 0.15:
+                        continue
+                    if _bi == "suppression_effort":
+                        _mc |= at_fire_all & rb & _workable
+                    elif _bi == "containment_line":
+                        _mc |= band_all & rb & _workable
+                    elif _bi in ("evacuation", "public_warning"):
+                        _mc |= rb & (np.asarray(world.value.vpop)
+                                     > 1e-6)
+                    elif _bi == "retardant_drop" \
+                            and getattr(out, "rret", None) is not None:
+                        _mc |= (out.rret > 0.3) & rb
+        u6 = float(u.get("public_warning", 0.0))
+        if u6 > 0.3:
+            # WARNING PRIMES EVACUATION: no physical effect on its
+            # own, but a warned population responds faster once an
+            # evacuation order lands (readiness, not movement)
+            if out.rwarn is None:
+                out.rwarn = np.zeros((ny, nx))
+            _pop_w = np.zeros((ny, nx), dtype=bool)
+            _pop_w[sy, sx] = np.asarray(
+                world.value.vpop[sy, sx], dtype=float) > 1e-6
+            out.rwarn[_pop_w] = np.maximum(out.rwarn[_pop_w], u6)
         out.ravail[sy, sx] = np.clip(
             np.maximum(out.ravail[sy, sx], 0.3 + 0.7 * u2), 0.0, 1.0)
         out.rtime[sy, sx] = out.rtime[sy, sx] * (1.0 - 0.6 * u2)
@@ -493,6 +690,30 @@ def decision_to_resources(world, burning, regions_intensities, base=None,
             floor = (0.2 + 0.5 * u2) * cap_max
             lim = 1.5 * np.maximum(base.rcap[sy, sx], floor)
             out.rcap[sy, sx] = np.minimum(out.rcap[sy, sx], lim)
+        u8 = float(u.get("water_drafting", 0.0))
+        if u8 > 0.3:
+            # WATER DRAFTING: engines and helicopters refill from the
+            # nearest water body (lake, river, sea) instead of driving
+            # back to the depot, so the SUSTAINED capacity near water
+            # rises above what the staged pool alone could hold. It is
+            # applied AFTER the pool bound on purpose: the water is a
+            # real extra source, not a reallocation. Far from water
+            # the order does nothing; a map without water ignores it.
+            _wat = np.asarray(world.fuel.ftype == 5)
+            if _wat.any():
+                # chebyshev distance-to-water by iterative dilation
+                # (numpy only; capped at 30 cells = 900 m, beyond
+                # which drafting saves nothing anyway)
+                _dw = np.full((ny, nx), 30.0)
+                _frontier = _wat.copy()
+                for _d in range(30):
+                    _new = _frontier & (_dw > _d)
+                    _dw[_new] = _d
+                    _frontier = _dilate(_frontier, 1)
+                _boost = 1.0 + 0.8 * u8 * np.exp(-_dw / 10.0)
+                _mb = rb & (out.rcap > 1e-6)
+                out.rcap[_mb] = np.minimum(
+                    out.rcap[_mb] * _boost[_mb], 1.5 * cap_max)
         _shr = float(u.get("_share", 1.0))
         if abs(_shr - 1.0) > 1e-6:
             # GLOBAL STEERING: the region's share scales its cells'
@@ -503,10 +724,8 @@ def decision_to_resources(world, burning, regions_intensities, base=None,
             name=getattr(region, "name", "?"),
             box=(int(region.x0), int(region.y0),
                  int(region.x1), int(region.y1)),
-            u={k: float(u.get(k, 0.0)) for k in (
-                "suppression_effort", "resource_deployment",
-                "containment_line", "asset_protection",
-                "evacuation", "public_warning")}))
+            u={k: float(v) for k, v in u.items()
+               if k != "_share"}))
     # RESOURCE CONSERVATION BY CONCENTRATION: the DSS allocates the
     # staged pool (surge 1.2), and like a real incident commander it
     # CONCENTRATES: candidate cells are ranked by utility
@@ -546,5 +765,8 @@ def decision_to_resources(world, burning, regions_intensities, base=None,
         m_prot &= funded
     if return_actions:
         return out, dict(supp=m_supp, cont=m_cont, prot=m_prot,
-                         regions=region_orders)
+                         regions=region_orders,
+                         macro_cells={k: v for k, v in
+                                      _macro_cells.items()
+                                      if v.any()})
     return out

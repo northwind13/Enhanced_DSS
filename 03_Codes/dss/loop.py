@@ -54,7 +54,8 @@ class DecisionEngine:
                  seed_profile: str = "full",
                  learned_store: str | None = None,
                  revision_budget: int = 3,
-                 use_evfis: bool = True, use_genai: bool = True):
+                 use_evfis: bool = True, use_genai: bool = True,
+                 state_path: str | None = None):
         self.regions = list(regions)
         self.base_pool = base_pool
         self.network = network
@@ -136,6 +137,38 @@ class DecisionEngine:
                           profile=self.seed_profile, engine=self,
                           use_evfis=self.use_evfis,
                           use_genai=self.use_genai)
+        # what came OUT OF THE STORE, so a view can tell restored vocabulary
+        # apart from vocabulary this engine actually invented. The rules
+        # already carry that provenance in their note; concepts and macros
+        # had no equivalent, so every restored concept looked freshly made.
+        from .concepts import HIERARCHY as _BASE_H
+        self.loaded_concepts = {c for c in self.hierarchy
+                                if c not in _BASE_H}
+        self.loaded_macros = set(self.macros)
+        # ---- GENERATED-STATE STORE (production / consumption split) ----
+        # The adaptation stages no longer edit the live rule objects and keep
+        # them: they append a record here, and the set the inference reasons
+        # with is DERIVED from this store on every cycle. That is what makes
+        # a consumption flag able to revert anything at all.
+        from .state import GeneratedState
+        self.state_path = state_path
+        self.gstate = GeneratedState.load(
+            state_path or "logs/dss_generated_state.json",
+            active_rule_set=self.seed_profile)
+        self.gstate.set_flags(active_rule_set=self.seed_profile,
+                              evfis_active=self.evfis_on,
+                              genai_active=self.genai_on,
+                              use_stage12_rules=self.use_evfis,
+                              use_stage3_rules=self.use_genai)
+        self.resolve_warnings: list = []
+        self.persist_errors: list = []
+        self._evfis_rules = None
+        self.run_stats = self._fresh_run_stats()
+        if state_path:
+            self._sync_active_set()
+        self.mission_brief: str | None = None
+        self._avail_checked = False
+        self._shelved_macros: dict = {}
         self.controller = StageController(eps=ctrl_eps, lr=ctrl_lr)
         # PERFORMANCE THROTTLES (live-run economics, not physics):
         # adaptation trials and the 45-min no-harm re-forecast are the
@@ -143,7 +176,10 @@ class DecisionEngine:
         # 45 min of physics). With a 1-min decision cycle they must
         # not run EVERY cycle: trials respect a cooldown, the no-harm
         # verdict is reused while the composed orders are unchanged.
-        self.adapt_cooldown_min = 10.0
+        # 5 min between trials: with the 1-min cycle the old 10 min
+        # allowed only ~5 attempts in a 50-min run, which starved the
+        # generative stage (epsilon-greedy rarely reached it at all)
+        self.adapt_cooldown_min = 5.0
         self.noharm_recheck_min = 10.0
         self._adapt_last_min = None
         self._nh_last = None      # (t_min, order_sig, phys_c, phys_0)
@@ -272,10 +308,311 @@ class DecisionEngine:
         if keep_actions:
             ov, acts = decision_to_resources(
                 world, _burn, pairs, self.base_pool,
-                return_actions=True)
+                return_actions=True, macros=self.macros)
             self.last_actions = acts
             return ov
-        return decision_to_resources(world, _burn, pairs, self.base_pool)
+        return decision_to_resources(world, _burn, pairs,
+                                     self.base_pool,
+                                     macros=self.macros)
+
+    # ------------------------------------------- per-run adaptation tally
+    @staticmethod
+    def _fresh_run_stats() -> dict:
+        """What the adaptation did over THIS simulation.
+
+        Kept on the engine rather than recovered from the log, so the view
+        works while the run is still going. Answering "did evFIS engage at
+        all, and if not why" used to mean reading cycles.jsonl by hand."""
+        # seq0 scopes the store to THIS run. Step numbers restart with every
+        # fire, so a view that joined records to cycles on the step alone
+        # pulled in records from earlier runs that happened to reach the same
+        # step. The store sequence is global and monotonic, so anything at or
+        # above the value it had when the run started belongs to this run.
+        return dict(start_step=None, seq0=None, cycles=0,
+                    satisficing_failed=0,
+                    tried=0, accepted=0, rejected=0,
+                    blocked={}, per_stage={}, gates={},
+                    reasons={}, withheld=0, dJ_accepted=0.0,
+                    j_series=[], phys_series=[], persist_failed=0)
+
+    def _tally_cycle(self, step, j_c, j_0, bound, deficit_on, gap,
+                     adapt_due, menu):
+        s = self.run_stats
+        if s["start_step"] is None:
+            s["start_step"] = int(step)
+            try:
+                s["seq0"] = int(self.gstate.next_seq())
+            except Exception:
+                s["seq0"] = None
+        s["cycles"] += 1
+        s["j_series"].append((int(step), float(j_c), float(j_0),
+                              float(bound)))
+        if not (deficit_on or gap):
+            return
+        s["satisficing_failed"] += 1
+        # the gate opened; record WHY nothing was tried when nothing was
+        if not self.adapt_on:
+            k = ("adaptation master switch off (evFIS and GenAI both off)"
+                 if not self.stages_allowed
+                 else "adaptation master switch off")
+            s["blocked"][k] = s["blocked"].get(k, 0) + 1
+        elif not adapt_due:
+            s["blocked"]["cooldown between adaptation trials"] = \
+                s["blocked"].get("cooldown between adaptation trials", 0) + 1
+        elif not menu:
+            s["blocked"]["no runnable stage (GenAI retired, evFIS off)"] = \
+                s["blocked"].get(
+                    "no runnable stage (GenAI retired, evFIS off)", 0) + 1
+
+    def _tally_outcome(self, stage, outcome):
+        s = self.run_stats
+        s["tried"] += 1
+        ps = s["per_stage"].setdefault(int(stage),
+                                       dict(tried=0, accepted=0, dJ=0.0))
+        ps["tried"] += 1
+        if outcome.accepted:
+            s["accepted"] += 1
+            ps["accepted"] += 1
+            ps["dJ"] += float(outcome.dJ or 0.0)
+            s["dJ_accepted"] += float(outcome.dJ or 0.0)
+        else:
+            s["rejected"] += 1
+            # FULL first segment: the 70-char cut chopped every reason
+            # mid-sentence in the run analysis panel
+            r = (outcome.detail or "rejected").split(" | ")[0]
+            s["reasons"][r] = s["reasons"].get(r, 0) + 1
+        # stage 3 keeps its own funnel: which gate turned a proposal away
+        info = outcome.info or {}
+        if int(stage) == 3:
+            # a live model call blocks the decision cycle, and the decision
+            # cycle blocks the animation frame, so the wait is recorded: a
+            # multi-second cycle should read as "waiting for Claude", not as
+            # a frozen application
+            try:
+                from .adapt import LAST_GENAI_MS as _gms
+                s.setdefault("genai_ms", []).append(round(float(_gms), 1))
+            except Exception:
+                pass
+            v = ((info.get("gates") or {}).get("verdict")
+                 or info.get("reason") or ("admitted" if outcome.accepted
+                                           else "rejected"))
+            s["gates"][str(v)[:70]] = s["gates"].get(str(v)[:70], 0) + 1
+
+    # ------------------------------ generated state: derive, then record
+    def _sync_active_set(self) -> None:
+        """Rebuild what the inference reasons with, from the baseline plus
+        whatever the consumption flags allow. Runs every cycle: the active set
+        is derived, never accumulated, so a flag turned off genuinely reverts
+        instead of leaving an already-mutated object behind."""
+        from .resolve import resolve_active_set
+        from .adapt import make_runtime_rules, reset_partitions
+        from .fuzzy import REGISTRY
+        a = resolve_active_set(self.gstate, make_runtime_rules, REGISTRY,
+                               reset_partitions)
+        self.rules = a.rules
+        self.hierarchy = a.hierarchy
+        self.decision_concepts = a.decision_concepts
+        self.macros = a.macros
+        self.resolve_warnings = a.warnings
+        self.active_idle = a.idle
+        self.applied_mods = a.applied_mods
+
+    def _apply_availability(self, sim) -> None:
+        """MAP-DEPENDENT AVAILABILITY (spec 6.2 spirit): learned
+        knowledge survives across maps, but a tactic the CURRENT map
+        cannot supply must not be active on it. On a map without
+        water, a macro whose composition or clauses need water is
+        SHELVED (kept in the store, dropped from the active set) and
+        a rule ordering it is deactivated, both with visible
+        warnings. Nothing is deleted: the same lineage reactivates
+        on the next map that has water."""
+        import numpy as _np
+        try:
+            has_water = bool(_np.asarray(
+                sim.world.fuel.ftype == 5).any())
+        except Exception:
+            return
+        if has_water:
+            return
+        _dep = {"water_drafting", "retardant_drop"}
+
+        def _needs_water(md):
+            if any(str(a) in _dep
+                   for a, _b in md.get("composition", [])):
+                return True
+            return any(str(c.get("effect")) in ("draft", "coat")
+                       for c in (md.get("clauses") or []))
+        for name in list(self.macros):
+            if _needs_water(self.macros[name]):
+                self._shelved_macros[name] = self.macros.pop(name)
+                _w = (f"{name}: needs a water body and this map has "
+                      "none; shelved here, kept in the store")
+                if _w not in self.resolve_warnings:
+                    self.resolve_warnings.append(_w)
+        bad = _dep | set(self._shelved_macros)
+        for r in self.rules:
+            if getattr(r, "active", True) and any(
+                    str(iv) in bad for iv, _v in r.consequents):
+                r.active = False
+                _w = ("rule " + r.name + ": orders "
+                      + ", ".join(sorted({str(iv) for iv, _v
+                                          in r.consequents
+                                          if str(iv) in bad}))
+                      + ", unavailable on this waterless map; the "
+                      "rule sleeps here and wakes on a map with "
+                      "water")
+                if _w not in self.resolve_warnings:
+                    self.resolve_warnings.append(_w)
+
+    def mission(self, sim) -> str:
+        """The standing brief, built ONCE per engine/incident. A
+        byte-identical prefix across the run's model calls, so the
+        provider-side prompt cache can reuse it; also written to the
+        run log as mission_brief.md for the operator."""
+        if self.mission_brief is None:
+            from .mission import build_mission_brief
+            try:
+                self.mission_brief = build_mission_brief(
+                    sim.world, self.base_pool)
+            except Exception:
+                self.mission_brief = ""
+            lg = getattr(self, "run_logger", None)
+            if lg is not None and self.mission_brief:
+                try:
+                    import os as _os_mb
+                    with open(_os_mb.path.join(lg.dir,
+                                               "mission_brief.md"),
+                              "w", encoding="utf-8") as f:
+                        f.write(self.mission_brief)
+                except Exception:
+                    pass
+        return self.mission_brief
+
+    def _evfis_base(self):
+        """The base evFIS tunes and measures against: baseline plus the WHOLE
+        modification chain, whatever the consumption flag says. Cutting the
+        chain would invalidate the stored `before` values and with them both
+        the reverse-order revert and the forward replay."""
+        from .resolve import evfis_chain_set
+        from .adapt import make_runtime_rules, reset_partitions
+        from .fuzzy import REGISTRY
+        if self.use_evfis:
+            # consumption is on, so the active set already IS the chain
+            return self.rules
+        a = evfis_chain_set(self.gstate, make_runtime_rules, REGISTRY,
+                            reset_partitions)
+        return a.rules
+
+    @staticmethod
+    def _snap_rules(rules):
+        return {r.name: [(str(i), float(v)) for i, v in r.consequents]
+                for r in rules}
+
+    @staticmethod
+    def _snap_parts():
+        from .fuzzy import REGISTRY
+        return {v: {t: [float(x) for x in abcd]
+                    for t, abcd in REGISTRY.get(v).items()}
+                for v in REGISTRY.variables()}
+
+    def _record_changes(self, stage, before_rules, before_parts,
+                        after_rules, trigger=None):
+        """Turn what a stage actually changed into store records.
+
+        Diffing is deliberate: the stages keep their existing in-place
+        implementation and this reads the result, so the acceptance logic and
+        the persistence format stay independent of each other."""
+        from .concepts import HIERARCHY as _BASE_HIER
+        after = self._snap_rules(after_rules)
+        trig = dict(trigger or {})
+        section = ("genai_rules" if stage == 3
+                   else "evfis_rule_modifications")
+        # new rules
+        for r in after_rules:
+            if r.name in before_rules:
+                continue
+            spec = dict(name=r.name,
+                        antecedents=[list(a) for a in r.antecedents],
+                        consequents=[[str(i), float(v)]
+                                     for i, v in r.consequents],
+                        note=r.note, strength=float(getattr(r, "strength",
+                                                            0.0)))
+            if stage == 3:
+                # spec already carries `name`; passing it again raised
+                # TypeError, and the caller's blanket except swallowed it, so
+                # every admitted stage-3 rule was silently dropped instead of
+                # being stored
+                self.gstate.append("genai_rules",
+                                   dict(spec,
+                                        depends_on_concepts=[
+                                            c for c, _t in r.antecedents
+                                            if c not in _BASE_HIER],
+                                        trigger=trig),
+                                   source_stage=3, save=False)
+            else:
+                self.gstate.append(
+                    "evfis_rule_modifications",
+                    dict(base_rule_id=r.name,
+                         base_rule_set=self.seed_profile,
+                         modification_type="rule_add",
+                         before={"rule": None}, after={"rule": spec},
+                         trigger=trig),
+                    source_stage=2, save=False)
+        # retuned consequents of rules that already existed
+        for name, cons in after.items():
+            old = before_rules.get(name)
+            if old is None or old == cons:
+                continue
+            self.gstate.append(
+                "evfis_rule_modifications",
+                dict(base_rule_id=name, base_rule_set=self.seed_profile,
+                     modification_type="consequent_update",
+                     before={"consequents": old}, after={"consequents": cons},
+                     trigger=trig),
+                source_stage=1, save=False)
+        # membership moves and inserted terms
+        now_parts = self._snap_parts()
+        for var, part in now_parts.items():
+            old = before_parts.get(var)
+            if old == part:
+                continue
+            _ins = old is not None and set(part) - set(old)
+            self.gstate.append(
+                "evfis_rule_modifications",
+                dict(variable=var, base_rule_set=self.seed_profile,
+                     modification_type=("term_insert" if _ins
+                                        else "membership_shift"),
+                     before={"partition": old or {}},
+                     after={"partition": part},
+                     trigger=trig),
+                source_stage=(2 if _ins else 1), save=False)
+        self.gstate.save()
+
+    def record_package(self, concepts=None, macros=None, trigger=None):
+        """Stage 3 vocabulary growth, recorded as its own records so the
+        consumption flag can deactivate the whole package at once."""
+        for name, spec in (concepts or {}).items():
+            lvl, ins = spec
+            self.gstate.append(
+                "genai_concepts",
+                dict(name=name, layer=int(lvl),
+                     inputs=[{"name": a, "weight": float(b)}
+                             for a, b in ins],
+                     outputs=[{"name": "activation", "range": [0, 1]}],
+                     aggregation="weighted-sum-gated",
+                     trigger=dict(trigger or {})),
+                source_stage=3, save=False)
+        for name, spec in (macros or {}).items():
+            self.gstate.append(
+                "genai_interventions",
+                dict(name=name,
+                     composition=[{"channel": a, "weight": float(b)}
+                                  for a, b in spec.get("composition", [])],
+                     clauses=list(spec.get("clauses") or []),
+                     depends_on_concepts=[],
+                     trigger=dict(trigger or {})),
+                source_stage=3, save=False)
+        self.gstate.save()
 
     # ------------------------------------------------------------ public
     def maybe_decide(self, sim):
@@ -299,7 +636,10 @@ class DecisionEngine:
         self.last_override = None
         self.last_withheld = False
         self.last_actions = None
+        # a new fire is a new run: the tally describes ONE simulation
+        self.run_stats = self._fresh_run_stats()
         self._nh_last = None
+        self._nh_zero = None
         self._adapt_last_min = None
         # GenAI retirement is PER FIRE: a fresh fire gives stage 3 a new chance
         self._genai_dead = False
@@ -333,6 +673,7 @@ class DecisionEngine:
         self.last_withheld = False
         self.last_global = None
         self._nh_last = None
+        self._nh_zero = None
         self._adapt_last_min = None
         self._prev_ever = None
         self._genai_dead = False
@@ -347,6 +688,17 @@ class DecisionEngine:
 
     def decide(self, sim):
         sim._dss_hmin = self.horizon_min    # stage forecasts read this
+        # DERIVE the active set first. Consumption flags therefore take effect
+        # on the very next cycle, with no engine rebuild and no restart.
+        if getattr(self, "state_path", None):
+            self.gstate.set_flags(evfis_active=self.evfis_on,
+                                  genai_active=self.genai_on,
+                                  use_stage12_rules=self.use_evfis,
+                                  use_stage3_rules=self.use_genai)
+            self._sync_active_set()
+        # availability AFTER the sync: the derived set is filtered by
+        # what THIS map can physically supply, every cycle
+        self._apply_availability(sim)
         step = int(sim.state.step)
         ctx = self._perceive(sim)
 
@@ -420,6 +772,11 @@ class DecisionEngine:
                 f"adaptation on cooldown ({_left:.0f} min left); "
                 "seed-base decision stands, its orders are applied",
                 dJ=j_c - j_0)
+        # the cycle is tallied BEFORE the stage runs, so a cycle where the
+        # gate opened but nothing was tried still records the reason
+        self._tally_cycle(step, j_c, j_0, need, _deficit_on, _gap,
+                          _adapt_due,
+                          self.stages_allowed if self.adapt_on else ())
         if self.adapt_on and (_deficit_on or _gap) and _adapt_due:
             self._adapt_last_min = _now_min
             deficit = max(j_c - self.j_threshold,
@@ -455,18 +812,29 @@ class DecisionEngine:
             else:
                 stage = self.controller.select(deficit, stages=_menu,
                                                 gap=_gap)
+                # PRODUCTION runs on the stage's own base, independent of what
+                # the inference is allowed to consume. With stage 1-2
+                # consumption off this is the evFIS chain, so the learner
+                # keeps its continuity while the DSS runs on factory values.
+                _work = (self._evfis_base()
+                         if (stage in (1, 2)
+                             and getattr(self, "state_path", None))
+                         else self.rules)
+                _b_rules = self._snap_rules(_work)
+                _b_parts = self._snap_parts()
+                _b_vocab = (set(self.hierarchy), set(self.macros))
                 if stage == 1:
-                    outcome = stage1_evfis(build, sim, self.rules,
+                    outcome = stage1_evfis(build, sim, _work,
                                            fired_all, self.horizon_steps,
                                            step_size=self.evfis_step)
                 elif stage == 2:
                     outcome = stage2_resolution(
-                        build, sim, self.rules, rows[hot]["eff"],
+                        build, sim, _work, rows[hot]["eff"],
                         rows[hot]["crisp"], self.horizon_steps,
                         coverage_gap=_gap, cov_w=_covw)
                 else:
                     outcome = stage3_generative(
-                        build, sim, self.rules, rows[hot]["eff"],
+                        build, sim, _work, rows[hot]["eff"],
                         rows[hot]["crisp"], self.horizon_steps,
                         coverage_gap=_gap, cov_w=_covw, engine=self)
                     # retire stage 3 for the rest of this run when GenAI is
@@ -480,11 +848,15 @@ class DecisionEngine:
                         self._genai_dead = True
                     elif outcome.accepted:
                         self._genai_fails = 0
+                    elif (outcome.info or {}).get("reason") \
+                            == "model timeout":
+                        pass    # a slow answer is not a bad proposal
                     else:
                         self._genai_fails += 1
-                        if self._genai_fails >= 2:
+                        if self._genai_fails >= 3:
                             self._genai_dead = True
                 outcome.stage = stage
+                self._tally_outcome(stage, outcome)
                 _rw = -outcome.dJ
                 # a REJECTED attempt wasted a cycle: give it a small negative
                 # reward so the controller does not stay stuck on a stage that
@@ -494,6 +866,36 @@ class DecisionEngine:
                 if outcome.accepted and (outcome.info or {}).get("package"):
                     _rw -= 0.02      # G5: vocabulary growth costs margin
                 self.controller.update(deficit, stage, reward=_rw, gap=_gap)
+                if outcome.accepted and getattr(self, "state_path", None):
+                    # PERSIST WHAT CHANGED, not the whole engine. The record
+                    # carries before/after, so a wipe can revert it and a
+                    # restart can replay it in the order it happened.
+                    try:
+                        _trig = dict(step=int(sim.state.step),
+                                     minute=float(_now_min),
+                                     deficit=float(deficit),
+                                     stage=int(stage))
+                        _nc = {c: self.hierarchy[c]
+                               for c in set(self.hierarchy) - _b_vocab[0]}
+                        _nm = {m: self.macros[m]
+                               for m in set(self.macros) - _b_vocab[1]}
+                        if _nc or _nm:
+                            self.record_package(concepts=_nc, macros=_nm,
+                                                trigger=_trig)
+                        self._record_changes(stage, _b_rules, _b_parts,
+                                             _work, trigger=_trig)
+                        # the inference set is re-derived next cycle, so the
+                        # change reaches the DSS only if consumption allows it
+                        self._sync_active_set()
+                    except Exception as _exc_p:
+                        # never silent: an accepted adaptation that fails to
+                        # persist looks exactly like an adaptation that never
+                        # happened, and the panels then contradict each other
+                        self.persist_errors.append(
+                            f"step {int(sim.state.step)}, stage {stage}: "
+                            f"{type(_exc_p).__name__}: {_exc_p}")
+                        self.run_stats["persist_failed"] = \
+                            self.run_stats.get("persist_failed", 0) + 1
                 if outcome.accepted and self.learned_store:
                     from .persist import save_learned
                     try:
@@ -547,12 +949,29 @@ class DecisionEngine:
             else:
                 _rc45 = forecast_cost(sim, ov, self.horizon_steps,
                                       horizon_min=45.0)
-                _r045 = forecast_cost(sim, None, self.horizon_steps,
-                                      horizon_min=45.0)
+                # the NO-ACTION 45-min future does not depend on the
+                # candidate, so it is keyed on the state alone: changing the
+                # override used to re-run it for the identical answer, which
+                # doubled the cost of every no-harm recheck
+                _nh0 = getattr(self, "_nh_zero", None)
+                if _nh0 is not None and _nh0[0] == int(sim.state.step):
+                    _phys_0 = _nh0[1]
+                else:
+                    _r045 = forecast_cost(sim, None, self.horizon_steps,
+                                          horizon_min=45.0)
+                    _phys_0 = physical_cost(_r045, sim.cfg.cost)
+                    self._nh_zero = (int(sim.state.step), _phys_0)
                 _phys_c = physical_cost(_rc45, sim.cfg.cost)
-                _phys_0 = physical_cost(_r045, sim.cfg.cost)
                 self._nh_last = (_now_min, _sig, _phys_c, _phys_0)
         self.last_withheld = bool(_phys_c > _phys_0 + 1e-3)
+        # the PHYSICAL comparison is the one that says whether the orders are
+        # buying a better fire. The total J also carries the price of acting,
+        # so it sits above no-action whenever anything is fielded, and reading
+        # only the total makes a working DSS look like a failing one.
+        self.run_stats["phys_series"].append(
+            (int(step), float(_phys_c), float(_phys_0)))
+        if self.last_withheld:
+            self.run_stats["withheld"] += 1
         if self.last_withheld:
             for name in rows:
                 for k_off in ("suppression_effort",
@@ -685,6 +1104,14 @@ class DecisionEngine:
                         self.rules, self.seed_profile, self)
             except Exception:
                 pass
+        # the per-run analysis goes to disk every cycle, so the figures it
+        # feeds can be rebuilt from the run directory without replaying
+        if getattr(self, "run_logger", None) is not None:
+            try:
+                self.run_logger.save_analysis(self)
+            except Exception as _exc_a:
+                self.persist_errors.append(
+                    f"analysis log: {type(_exc_a).__name__}: {_exc_a}")
         return ov
 
 

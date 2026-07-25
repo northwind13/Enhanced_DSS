@@ -1,0 +1,229 @@
+﻿step;t_min;region;story;stage_tried;stage_accepted;fired_rules;suppression;deployment;containment;protection;evacuation;warning;quality;gate_min;J_forecast;J_noaction;attended
+0;0;Agent_1;stage controller selected stage 2 [resolution increase] (deficit bucket: low) → rejected (cell already covered — an active rule sits on this antecedent cell and the situation is crisp; numeric tuning is stage ① evFIS's job | seed-base decision stands, its orders are applied);2;0;R7[0.02] R20[0.19] A1[0.54];0.00;0.28;0.01;0.29;0.00;0.00;0.81;0.00;0.1375;0.1375;1
+0;0;Agent_2;stage controller selected stage 2 [resolution increase] (deficit bucket: low) → rejected (cell already covered — an active rule sits on this antecedent cell and the situation is crisp; numeric tuning is stage ① evFIS's job | seed-base decision stands, its orders are applied);2;0;R11[0.23];0.00;0.10;0.00;0.00;0.23;0.23;0.92;0.00;0.1375;0.1375;0
+0;0;Agent_3;stage controller selected stage 2 [resolution increase] (deficit bucket: low) → rejected (cell already covered — an active rule sits on this antecedent cell and the situation is crisp; numeric tuning is stage ① evFIS's job | seed-base decision stands, its orders are applied);2;0;;0.00;0.00;0.00;0.00;0.00;0.00;0.75;0.00;0.1375;0.1375;1
+0;0;Agent_1;stage controller selected stage 3 [GenAI] (deficit bucket: low) → rejected (rejected at G3 (claude) | seed-base decision stands, its orders are applied);3;0;R7[0.02] R20[0.19] A1[0.54];0.00;0.28;0.01;0.29;0.00;0.00;0.81;0.00;0.1375;0.1375;1
+0;0;Agent_2;stage controller selected stage 3 [GenAI] (deficit bucket: low) → rejected (rejected at G3 (claude) | seed-base decision stands, its orders are applied);3;0;R11[0.23];0.00;0.10;0.00;0.00;0.23;0.23;0.92;0.00;0.1375;0.1375;0
+0;0;Agent_3;stage controller selected stage 3 [GenAI] (deficit bucket: low) → rejected (rejected at G3 (claude) | seed-base decision stands, its orders are applied);3;0;;0.00;0.00;0.00;0.00;0.00;0.00;0.75;0.00;0.1375;0.1375;1
+0;0;Agent_1;stage controller selected stage 2 [resolution increase] (deficit bucket: low) → rejected (cell already covered — an active rule sits on this antecedent cell and the situation is crisp; numeric tuning is stage ① evFIS's job | seed-base decision stands, its orders are applied);2;0;R7[0.02] R20[0.19] A1[0.54];0.00;0.28;0.01;0.29;0.00;0.00;0.81;0.00;0.1375;0.1375;1
+0;0;Agent_2;stage controller selected stage 2 [resolution increase] (deficit bucket: low) → rejected (cell already covered — an active rule sits on this antecedent cell and the situation is crisp; numeric tuning is stage ① evFIS's job | seed-base decision stands, its orders are applied);2;0;R11[0.23];0.00;0.10;0.00;0.00;0.23;0.23;0.92;0.00;0.1375;0.1375;0
+0;0;Agent_3;stage controller selected stage 2 [resolution increase] (deficit bucket: low) → rejected (cell already covered — an active rule sits on this antecedent cell and the situation is crisp; numeric tuning is stage ① evFIS's job | seed-base decision stands, its orders are applied);2;0;;0.00;0.00;0.00;0.00;0.00;0.00;0.75;0.00;0.1375;0.1375;1
+0;0;Agent_1;orders came from the seed rule base (rules as-is);0;0;R7[0.02] R20[0.19] A1[0.54];0.00;0.28;0.01;0.29;0.00;0.00;0.81;0.00;0.1375;0.1375;1
+0;0;Agent_2;orders came from the seed rule base (rules as-is);0;0;R11[0.23];0.00;0.10;0.00;0.00;0.23;0.23;0.92;0.00;0.1375;0.1375;0
+0;0;Agent_3;orders came from the seed rule base (rules as-is);0;0;;0.00;0.00;0.00;0.00;0.00;0.00;0.75;0.00;0.1375;0.1375;1
+0;0;Agent_1;orders came from the seed rule base (rules as-is);0;0;R7[0.02] R20[0.19] A1[0.54];0.00;0.28;0.01;0.29;0.00;0.00;0.81;0.00;0.1375;0.1375;1
+0;0;Agent_2;orders came from the seed rule base (rules as-is);0;0;R11[0.23];0.00;0.10;0.00;0.00;0.23;0.23;0.92;0.00;0.1375;0.1375;0
+0;0;Agent_3;orders came from the seed rule base (rules as-is);0;0;;0.00;0.00;0.00;0.00;0.00;0.00;0.75;0.00;0.1375;0.1375;1
+0;0;Agent_1;orders came from the seed rule base (rules as-is);0;0;R7[0.02] R20[0.19] A1[0.54];0.00;0.31;0.01;0.32;0.00;0.00;0.81;0.00;0.1406;0.1406;1
+0;0;Agent_2;orders came from the seed rule base (rules as-is);0;0;R11[0.23];0.00;0.10;0.00;0.00;0.23;0.23;0.92;0.00;0.1406;0.1406;0
+0;0;Agent_3;orders came from the seed rule base (rules as-is);0;0;;0.00;0.00;0.00;0.00;0.00;0.00;0.75;0.00;0.1406;0.1406;1
+0;0;Agent_1;stage controller selected stage 2 [resolution increase] (deficit bucket: low) → rejected (cell already covered — an active rule sits on this antecedent cell and the situation is crisp; numeric tuning is stage ① evFIS's job | seed-base decision stands, its orders are applied);2;0;R7[0.02] R20[0.19] A1[0.54];0.00;0.28;0.01;0.29;0.00;0.00;0.81;0.00;0.1375;0.1375;1
+0;0;Agent_2;stage controller selected stage 2 [resolution increase] (deficit bucket: low) → rejected (cell already covered — an active rule sits on this antecedent cell and the situation is crisp; numeric tuning is stage ① evFIS's job | seed-base decision stands, its orders are applied);2;0;R11[0.23];0.00;0.10;0.00;0.00;0.23;0.23;0.92;0.00;0.1375;0.1375;0
+0;0;Agent_3;stage controller selected stage 2 [resolution increase] (deficit bucket: low) → rejected (cell already covered — an active rule sits on this antecedent cell and the situation is crisp; numeric tuning is stage ① evFIS's job | seed-base decision stands, its orders are applied);2;0;;0.00;0.00;0.00;0.00;0.00;0.00;0.75;0.00;0.1375;0.1375;1
+0;0;Agent_1;stage controller selected stage 3 [GenAI] (deficit bucket: low) → rejected (rejected at G3 (claude) | seed-base decision stands, its orders are applied);3;0;R7[0.02] R20[0.19] A1[0.54];0.00;0.28;0.01;0.29;0.00;0.00;0.81;0.00;0.1375;0.1375;1
+0;0;Agent_2;stage controller selected stage 3 [GenAI] (deficit bucket: low) → rejected (rejected at G3 (claude) | seed-base decision stands, its orders are applied);3;0;R11[0.23];0.00;0.10;0.00;0.00;0.23;0.23;0.92;0.00;0.1375;0.1375;0
+0;0;Agent_3;stage controller selected stage 3 [GenAI] (deficit bucket: low) → rejected (rejected at G3 (claude) | seed-base decision stands, its orders are applied);3;0;;0.00;0.00;0.00;0.00;0.00;0.00;0.75;0.00;0.1375;0.1375;1
+0;0;Agent_1;stage controller selected stage 2 [resolution increase] (deficit bucket: low) → rejected (cell already covered — an active rule sits on this antecedent cell and the situation is crisp; numeric tuning is stage ① evFIS's job | seed-base decision stands, its orders are applied);2;0;R7[0.02] R20[0.19] A1[0.54];0.00;0.28;0.01;0.29;0.00;0.00;0.81;0.00;0.1375;0.1375;1
+0;0;Agent_2;stage controller selected stage 2 [resolution increase] (deficit bucket: low) → rejected (cell already covered — an active rule sits on this antecedent cell and the situation is crisp; numeric tuning is stage ① evFIS's job | seed-base decision stands, its orders are applied);2;0;R11[0.23];0.00;0.10;0.00;0.00;0.23;0.23;0.92;0.00;0.1375;0.1375;0
+0;0;Agent_3;stage controller selected stage 2 [resolution increase] (deficit bucket: low) → rejected (cell already covered — an active rule sits on this antecedent cell and the situation is crisp; numeric tuning is stage ① evFIS's job | seed-base decision stands, its orders are applied);2;0;;0.00;0.00;0.00;0.00;0.00;0.00;0.75;0.00;0.1375;0.1375;1
+0;0;Agent_1;orders came from the seed rule base (rules as-is);0;0;R7[0.02] R20[0.19] A1[0.54];0.00;0.28;0.01;0.29;0.00;0.00;0.81;0.00;0.1375;0.1375;1
+0;0;Agent_2;orders came from the seed rule base (rules as-is);0;0;R11[0.23];0.00;0.10;0.00;0.00;0.23;0.23;0.92;0.00;0.1375;0.1375;0
+0;0;Agent_3;orders came from the seed rule base (rules as-is);0;0;;0.00;0.00;0.00;0.00;0.00;0.00;0.75;0.00;0.1375;0.1375;1
+0;0;Agent_1;orders came from the seed rule base (rules as-is);0;0;R7[0.02] R20[0.19] A1[0.54];0.00;0.28;0.01;0.29;0.00;0.00;0.81;0.00;0.1375;0.1375;1
+0;0;Agent_2;orders came from the seed rule base (rules as-is);0;0;R11[0.23];0.00;0.10;0.00;0.00;0.23;0.23;0.92;0.00;0.1375;0.1375;0
+0;0;Agent_3;orders came from the seed rule base (rules as-is);0;0;;0.00;0.00;0.00;0.00;0.00;0.00;0.75;0.00;0.1375;0.1375;1
+0;0;Agent_1;orders came from the seed rule base (rules as-is);0;0;R7[0.02] R20[0.19] A1[0.54];0.00;0.31;0.01;0.32;0.00;0.00;0.81;0.00;0.1406;0.1406;1
+0;0;Agent_2;orders came from the seed rule base (rules as-is);0;0;R11[0.23];0.00;0.10;0.00;0.00;0.23;0.23;0.92;0.00;0.1406;0.1406;0
+0;0;Agent_3;orders came from the seed rule base (rules as-is);0;0;;0.00;0.00;0.00;0.00;0.00;0.00;0.75;0.00;0.1406;0.1406;1
+0;0;Agent_1;orders came from the seed rule base (rules as-is);0;0;R7[0.02] R20[0.19] A1[0.54];0.00;0.31;0.01;0.32;0.00;0.00;0.81;0.00;0.1406;0.1406;1
+0;0;Agent_2;orders came from the seed rule base (rules as-is);0;0;R11[0.23];0.00;0.10;0.00;0.00;0.23;0.23;0.92;0.00;0.1406;0.1406;0
+0;0;Agent_3;orders came from the seed rule base (rules as-is);0;0;;0.00;0.00;0.00;0.00;0.00;0.00;0.75;0.00;0.1406;0.1406;1
+1;1;Agent_1;orders came from the seed rule base (rules as-is);0;0;R7[0.02] R20[0.17] A1[0.49];0.00;0.26;0.01;0.26;0.00;0.00;0.83;0.00;0.1413;0.1413;1
+1;1;Agent_2;orders came from the seed rule base (rules as-is);0;0;R11[0.20];0.00;0.09;0.00;0.00;0.20;0.20;0.93;0.00;0.1413;0.1413;0
+1;1;Agent_3;orders came from the seed rule base (rules as-is);0;0;;0.00;0.00;0.00;0.00;0.00;0.00;0.78;0.00;0.1413;0.1413;1
+1;1;Agent_1;orders came from the seed rule base (rules as-is);0;0;R7[0.02] R20[0.17] A1[0.49];0.00;0.26;0.01;0.26;0.00;0.00;0.83;0.00;0.1413;0.1413;1
+1;1;Agent_2;orders came from the seed rule base (rules as-is);0;0;R11[0.20];0.00;0.09;0.00;0.00;0.20;0.20;0.93;0.00;0.1413;0.1413;0
+1;1;Agent_3;orders came from the seed rule base (rules as-is);0;0;;0.00;0.00;0.00;0.00;0.00;0.00;0.78;0.00;0.1413;0.1413;1
+1;1;Agent_1;orders came from the seed rule base (rules as-is);0;0;R7[0.02] R20[0.17] A1[0.49];0.00;0.26;0.01;0.26;0.00;0.00;0.83;0.00;0.1413;0.1413;1
+1;1;Agent_2;orders came from the seed rule base (rules as-is);0;0;R11[0.20];0.00;0.09;0.00;0.00;0.20;0.20;0.93;0.00;0.1413;0.1413;0
+1;1;Agent_3;orders came from the seed rule base (rules as-is);0;0;;0.00;0.00;0.00;0.00;0.00;0.00;0.78;0.00;0.1413;0.1413;1
+1;1;Agent_1;orders came from the seed rule base (rules as-is);0;0;R7[0.02] R20[0.17] A1[0.49];0.00;0.28;0.01;0.29;0.00;0.00;0.83;0.00;0.1440;0.1440;1
+1;1;Agent_2;orders came from the seed rule base (rules as-is);0;0;R11[0.20];0.00;0.09;0.00;0.00;0.20;0.20;0.93;0.00;0.1440;0.1440;0
+1;1;Agent_3;orders came from the seed rule base (rules as-is);0;0;;0.00;0.00;0.00;0.00;0.00;0.00;0.78;0.00;0.1440;0.1440;1
+0;0;Agent_1;stage controller selected stage 2 [resolution increase] (deficit bucket: low) → rejected (cell already covered — an active rule sits on this antecedent cell and the situation is crisp; numeric tuning is stage ① evFIS's job | seed-base decision stands, its orders are applied);2;0;R7[0.02] R20[0.19] A1[0.54];0.00;0.28;0.01;0.29;0.00;0.00;0.81;0.00;0.1375;0.1375;1
+0;0;Agent_2;stage controller selected stage 2 [resolution increase] (deficit bucket: low) → rejected (cell already covered — an active rule sits on this antecedent cell and the situation is crisp; numeric tuning is stage ① evFIS's job | seed-base decision stands, its orders are applied);2;0;R11[0.23];0.00;0.10;0.00;0.00;0.23;0.23;0.92;0.00;0.1375;0.1375;0
+0;0;Agent_3;stage controller selected stage 2 [resolution increase] (deficit bucket: low) → rejected (cell already covered — an active rule sits on this antecedent cell and the situation is crisp; numeric tuning is stage ① evFIS's job | seed-base decision stands, its orders are applied);2;0;;0.00;0.00;0.00;0.00;0.00;0.00;0.75;0.00;0.1375;0.1375;1
+0;0;Agent_1;stage controller selected stage 3 [GenAI] (deficit bucket: low) → rejected (rejected at G3 (claude) | seed-base decision stands, its orders are applied);3;0;R7[0.02] R20[0.19] A1[0.54];0.00;0.28;0.01;0.29;0.00;0.00;0.81;0.00;0.1375;0.1375;1
+0;0;Agent_2;stage controller selected stage 3 [GenAI] (deficit bucket: low) → rejected (rejected at G3 (claude) | seed-base decision stands, its orders are applied);3;0;R11[0.23];0.00;0.10;0.00;0.00;0.23;0.23;0.92;0.00;0.1375;0.1375;0
+0;0;Agent_3;stage controller selected stage 3 [GenAI] (deficit bucket: low) → rejected (rejected at G3 (claude) | seed-base decision stands, its orders are applied);3;0;;0.00;0.00;0.00;0.00;0.00;0.00;0.75;0.00;0.1375;0.1375;1
+0;0;Agent_1;stage controller selected stage 2 [resolution increase] (deficit bucket: low) → rejected (cell already covered — an active rule sits on this antecedent cell and the situation is crisp; numeric tuning is stage ① evFIS's job | seed-base decision stands, its orders are applied);2;0;R7[0.02] R20[0.19] A1[0.54];0.00;0.28;0.01;0.29;0.00;0.00;0.81;0.00;0.1375;0.1375;1
+0;0;Agent_2;stage controller selected stage 2 [resolution increase] (deficit bucket: low) → rejected (cell already covered — an active rule sits on this antecedent cell and the situation is crisp; numeric tuning is stage ① evFIS's job | seed-base decision stands, its orders are applied);2;0;R11[0.23];0.00;0.10;0.00;0.00;0.23;0.23;0.92;0.00;0.1375;0.1375;0
+0;0;Agent_3;stage controller selected stage 2 [resolution increase] (deficit bucket: low) → rejected (cell already covered — an active rule sits on this antecedent cell and the situation is crisp; numeric tuning is stage ① evFIS's job | seed-base decision stands, its orders are applied);2;0;;0.00;0.00;0.00;0.00;0.00;0.00;0.75;0.00;0.1375;0.1375;1
+0;0;Agent_1;orders came from the seed rule base (rules as-is);0;0;R7[0.02] R20[0.19] A1[0.54];0.00;0.28;0.01;0.29;0.00;0.00;0.81;0.00;0.1375;0.1375;1
+0;0;Agent_2;orders came from the seed rule base (rules as-is);0;0;R11[0.23];0.00;0.10;0.00;0.00;0.23;0.23;0.92;0.00;0.1375;0.1375;0
+0;0;Agent_3;orders came from the seed rule base (rules as-is);0;0;;0.00;0.00;0.00;0.00;0.00;0.00;0.75;0.00;0.1375;0.1375;1
+0;0;Agent_1;orders came from the seed rule base (rules as-is);0;0;R7[0.02] R20[0.19] A1[0.54];0.00;0.28;0.01;0.29;0.00;0.00;0.81;0.00;0.1375;0.1375;1
+0;0;Agent_2;orders came from the seed rule base (rules as-is);0;0;R11[0.23];0.00;0.10;0.00;0.00;0.23;0.23;0.92;0.00;0.1375;0.1375;0
+0;0;Agent_3;orders came from the seed rule base (rules as-is);0;0;;0.00;0.00;0.00;0.00;0.00;0.00;0.75;0.00;0.1375;0.1375;1
+0;0;Agent_1;orders came from the seed rule base (rules as-is);0;0;R7[0.02] R20[0.19] A1[0.54];0.00;0.31;0.01;0.32;0.00;0.00;0.81;0.00;0.1406;0.1406;1
+0;0;Agent_2;orders came from the seed rule base (rules as-is);0;0;R11[0.23];0.00;0.10;0.00;0.00;0.23;0.23;0.92;0.00;0.1406;0.1406;0
+0;0;Agent_3;orders came from the seed rule base (rules as-is);0;0;;0.00;0.00;0.00;0.00;0.00;0.00;0.75;0.00;0.1406;0.1406;1
+0;0;Agent_1;orders came from the seed rule base (rules as-is);0;0;R7[0.02] R20[0.19] A1[0.54];0.00;0.31;0.01;0.32;0.00;0.00;0.81;0.00;0.1406;0.1406;1
+0;0;Agent_2;orders came from the seed rule base (rules as-is);0;0;R11[0.23];0.00;0.10;0.00;0.00;0.23;0.23;0.92;0.00;0.1406;0.1406;0
+0;0;Agent_3;orders came from the seed rule base (rules as-is);0;0;;0.00;0.00;0.00;0.00;0.00;0.00;0.75;0.00;0.1406;0.1406;1
+0;0;Agent_1;stage controller selected stage 1 [evFIS] (deficit bucket: low) → rejected (no improving perturbation found | seed-base decision stands, its orders are applied);1;0;R7[0.02] R20[0.19] A1[0.54];0.00;0.31;0.01;0.32;0.00;0.00;0.81;0.00;0.1406;0.1406;1
+0;0;Agent_2;stage controller selected stage 1 [evFIS] (deficit bucket: low) → rejected (no improving perturbation found | seed-base decision stands, its orders are applied);1;0;R11[0.23];0.00;0.10;0.00;0.00;0.23;0.23;0.92;0.00;0.1406;0.1406;0
+0;0;Agent_3;stage controller selected stage 1 [evFIS] (deficit bucket: low) → rejected (no improving perturbation found | seed-base decision stands, its orders are applied);1;0;;0.00;0.00;0.00;0.00;0.00;0.00;0.75;0.00;0.1406;0.1406;1
+2;2;Agent_1;orders came from the seed rule base (rules as-is);0;0;R7[0.02] R20[0.16] A1[0.60];0.00;0.26;0.01;0.32;0.00;0.00;0.80;0.12;0.1455;0.1455;1
+2;2;Agent_2;orders came from the seed rule base (rules as-is);0;0;R11[0.23];0.00;0.10;0.00;0.00;0.23;0.23;0.91;0.12;0.1455;0.1455;0
+2;2;Agent_3;orders came from the seed rule base (rules as-is);0;0;;0.00;0.00;0.00;0.00;0.00;0.00;0.75;0.12;0.1455;0.1455;1
+2;2;Agent_1;orders came from the seed rule base (rules as-is);0;0;R7[0.02] R20[0.16] A1[0.60];0.00;0.26;0.01;0.32;0.00;0.00;0.80;0.12;0.1455;0.1455;1
+2;2;Agent_2;orders came from the seed rule base (rules as-is);0;0;R11[0.23];0.00;0.10;0.00;0.00;0.23;0.23;0.91;0.12;0.1455;0.1455;0
+2;2;Agent_3;orders came from the seed rule base (rules as-is);0;0;;0.00;0.00;0.00;0.00;0.00;0.00;0.75;0.12;0.1455;0.1455;1
+2;2;Agent_1;orders came from the seed rule base (rules as-is);0;0;R7[0.02] R20[0.16] A1[0.60];0.00;0.26;0.01;0.32;0.00;0.00;0.80;0.12;0.1455;0.1455;1
+2;2;Agent_2;orders came from the seed rule base (rules as-is);0;0;R11[0.23];0.00;0.10;0.00;0.00;0.23;0.23;0.91;0.12;0.1455;0.1455;0
+2;2;Agent_3;orders came from the seed rule base (rules as-is);0;0;;0.00;0.00;0.00;0.00;0.00;0.00;0.75;0.12;0.1455;0.1455;1
+2;2;Agent_1;orders came from the seed rule base (rules as-is);0;0;R7[0.02] R20[0.15] A1[0.59];0.00;0.28;0.01;0.35;0.00;0.00;0.80;0.12;0.1466;0.1466;1
+2;2;Agent_2;orders came from the seed rule base (rules as-is);0;0;R11[0.23];0.00;0.10;0.00;0.00;0.23;0.23;0.91;0.12;0.1466;0.1466;0
+2;2;Agent_3;orders came from the seed rule base (rules as-is);0;0;;0.00;0.00;0.00;0.00;0.00;0.00;0.76;0.12;0.1466;0.1466;1
+3;3;Agent_1;orders came from the seed rule base (rules as-is);0;0;R7[0.02] R20[0.16] R26[0.04] A1[0.68];0.04;0.35;0.01;0.39;0.00;0.00;0.73;0.12;0.1635;0.1498;1
+3;3;Agent_2;orders came from the seed rule base (rules as-is);0;0;R11[0.23];0.00;0.10;0.00;0.00;0.23;0.23;0.88;0.12;0.1635;0.1498;0
+3;3;Agent_3;orders came from the seed rule base (rules as-is);0;0;R7[0.04] R20[0.02] R26[0.04] A1[0.08];0.04;0.07;0.02;0.08;0.00;0.00;0.72;0.12;0.1635;0.1498;1
+4;4;Agent_1;orders came from the seed rule base (rules as-is);0;0;R7[0.02] R20[0.17] R26[0.08] A1[0.68];0.08;0.39;0.01;0.39;0.00;0.00;0.72;0.12;0.1656;0.1544;1
+4;4;Agent_2;orders came from the seed rule base (rules as-is);0;0;R11[0.23];0.00;0.10;0.00;0.00;0.23;0.23;0.88;0.12;0.1656;0.1544;0
+4;4;Agent_3;orders came from the seed rule base (rules as-is);0;0;R7[0.04] R20[0.04] R26[0.08] A1[0.08];0.08;0.12;0.02;0.08;0.00;0.00;0.72;0.12;0.1656;0.1544;1
+5;5;Agent_1;orders came from the seed rule base (rules as-is);0;0;R7[0.02] R20[0.18] R26[0.11] A1[0.68];0.11;0.42;0.01;0.39;0.00;0.00;0.72;0.12;0.1552;0.1561;1
+5;5;Agent_2;orders came from the seed rule base (rules as-is);0;0;R7[0.04] R11[0.23] A1[0.04];0.00;0.11;0.02;0.05;0.23;0.23;0.87;0.12;0.1552;0.1561;0
+5;5;Agent_3;orders came from the seed rule base (rules as-is);0;0;R7[0.04] R20[0.05] R26[0.11] A1[0.08];0.11;0.15;0.02;0.08;0.00;0.00;0.72;0.12;0.1552;0.1561;1
+6;6;Agent_1;orders came from the seed rule base (rules as-is);0;0;R7[0.02] R20[0.19] R26[0.13] A1[0.68];0.13;0.45;0.01;0.39;0.00;0.00;0.72;0.12;0.1688;0.1797;1
+6;6;Agent_2;orders came from the seed rule base (rules as-is);0;0;R7[0.04] R11[0.23] A1[0.04];0.00;0.11;0.02;0.05;0.23;0.23;0.87;0.12;0.1688;0.1797;0
+6;6;Agent_3;orders came from the seed rule base (rules as-is);0;0;R7[0.04] R20[0.06] R26[0.13] A1[0.08];0.13;0.18;0.02;0.08;0.00;0.00;0.73;0.12;0.1688;0.1797;1
+7;7;Agent_1;orders came from the seed rule base (rules as-is);0;0;R7[0.02] R20[0.20] R26[0.14] A1[0.68];0.14;0.46;0.01;0.39;0.00;0.00;0.72;0.12;0.1874;0.1920;1
+7;7;Agent_2;orders came from the seed rule base (rules as-is);0;0;R7[0.04] R11[0.23] A1[0.04];0.00;0.12;0.02;0.05;0.23;0.23;0.88;0.12;0.1874;0.1920;0
+7;7;Agent_3;orders came from the seed rule base (rules as-is);0;0;R7[0.04] R20[0.07] R26[0.14] A1[0.08];0.14;0.20;0.02;0.08;0.00;0.00;0.73;0.12;0.1874;0.1920;1
+8;8;Agent_1;orders came from the seed rule base (rules as-is);0;0;R7[0.02] R20[0.20] R26[0.16] A1[0.68];0.16;0.46;0.01;0.39;0.00;0.00;0.72;0.12;0.2047;0.2027;1
+8;8;Agent_2;orders came from the seed rule base (rules as-is);0;0;R7[0.04] R11[0.23] A1[0.04];0.00;0.12;0.02;0.05;0.23;0.23;0.88;0.12;0.2047;0.2027;0
+8;8;Agent_3;orders came from the seed rule base (rules as-is);0;0;R7[0.04] R20[0.07] R26[0.16] A1[0.08];0.16;0.22;0.02;0.08;0.00;0.00;0.73;0.12;0.2047;0.2027;1
+9;9;Agent_1;orders came from the seed rule base (rules as-is);0;0;R7[0.02] R20[0.20] R26[0.17] A1[0.68];0.17;0.47;0.01;0.39;0.00;0.00;0.72;0.12;0.2161;0.2107;1
+9;9;Agent_2;orders came from the seed rule base (rules as-is);0;0;R7[0.04] R11[0.23] R15[0.01] R26[0.01] A1[0.04];0.01;0.12;0.02;0.05;0.23;0.23;0.88;0.12;0.2161;0.2107;0
+9;9;Agent_3;orders came from the seed rule base (rules as-is);0;0;R7[0.04] R20[0.08] R26[0.17] A1[0.08];0.17;0.23;0.02;0.08;0.00;0.00;0.73;0.12;0.2161;0.2107;1
+10;10;Agent_1;stage controller selected stage 3 [GenAI] (deficit bucket: low) → rejected (rejected at G3 (claude) | seed-base decision stands, its orders are applied);3;0;R7[0.02] R20[0.21] R26[0.17] A1[0.68];0.17;0.47;0.01;0.39;0.00;0.00;0.72;0.12;0.2256;0.2182;1
+10;10;Agent_2;stage controller selected stage 3 [GenAI] (deficit bucket: low) → rejected (rejected at G3 (claude) | seed-base decision stands, its orders are applied);3;0;R7[0.04] R11[0.23] R15[0.01] R20[0.01] R26[0.01] A1[0.04];0.01;0.12;0.03;0.05;0.23;0.23;0.88;0.12;0.2256;0.2182;0
+10;10;Agent_3;stage controller selected stage 3 [GenAI] (deficit bucket: low) → rejected (rejected at G3 (claude) | seed-base decision stands, its orders are applied);3;0;R7[0.04] R20[0.08] R26[0.17] A1[0.08];0.17;0.24;0.02;0.08;0.00;0.00;0.73;0.12;0.2256;0.2182;1
+11;11;Agent_1;orders came from the seed rule base (rules as-is);0;0;R7[0.02] R20[0.21] R26[0.18] A1[0.68];0.18;0.47;0.01;0.39;0.00;0.00;0.72;0.11;0.2326;0.2233;1
+11;11;Agent_2;orders came from the seed rule base (rules as-is);0;0;R7[0.04] R11[0.23] R15[0.01] R20[0.01] R26[0.01] A1[0.04];0.01;0.12;0.03;0.05;0.23;0.24;0.88;0.11;0.2326;0.2233;0
+11;11;Agent_3;orders came from the seed rule base (rules as-is);0;0;R7[0.04] R20[0.09] R26[0.18] A1[0.08];0.18;0.25;0.02;0.08;0.00;0.00;0.73;0.11;0.2326;0.2233;1
+12;12;Agent_1;orders came from the seed rule base (rules as-is);0;0;R7[0.02] R20[0.21] R26[0.18] A1[0.68];0.18;0.48;0.01;0.39;0.00;0.00;0.72;0.11;0.2348;0.2243;1
+12;12;Agent_2;orders came from the seed rule base (rules as-is);0;0;R7[0.04] R11[0.23] R15[0.01] R20[0.01] R26[0.01] A1[0.04];0.01;0.12;0.03;0.05;0.23;0.24;0.88;0.11;0.2348;0.2243;0
+12;12;Agent_3;orders came from the seed rule base (rules as-is);0;0;R7[0.04] R20[0.09] R26[0.18] A1[0.08];0.18;0.25;0.02;0.08;0.00;0.00;0.73;0.11;0.2348;0.2243;1
+13;13;Agent_1;orders came from the seed rule base (rules as-is);0;0;R7[0.02] R20[0.21] R26[0.19] A1[0.68];0.19;0.48;0.01;0.39;0.00;0.00;0.72;0.11;0.2345;0.2250;1
+13;13;Agent_2;orders came from the seed rule base (rules as-is);0;0;R7[0.04] R11[0.23] R15[0.01] R20[0.01] R26[0.01] A1[0.04];0.01;0.12;0.03;0.05;0.23;0.24;0.88;0.11;0.2345;0.2250;0
+13;13;Agent_3;orders came from the seed rule base (rules as-is);0;0;R7[0.04] R20[0.09] R26[0.19] A1[0.08];0.19;0.26;0.02;0.08;0.00;0.00;0.73;0.11;0.2345;0.2250;1
+14;14;Agent_1;orders came from the seed rule base (rules as-is);0;0;R7[0.02] R20[0.21] R26[0.19] A1[0.68];0.19;0.48;0.01;0.39;0.00;0.00;0.72;0.11;0.1957;0.2251;1
+14;14;Agent_2;orders came from the seed rule base (rules as-is);0;0;R7[0.08] R11[0.23] R15[0.02] R20[0.02] R26[0.02] A1[0.08];0.01;0.13;0.05;0.11;0.24;0.24;0.89;0.11;0.1957;0.2251;0
+14;14;Agent_3;orders came from the seed rule base (rules as-is);0;0;R7[0.04] R20[0.09] R26[0.19] A1[0.08];0.19;0.26;0.02;0.08;0.00;0.00;0.72;0.11;0.1957;0.2251;1
+15;15;Agent_1;orders came from the seed rule base (rules as-is);0;0;R7[0.02] R20[0.21] R26[0.19] A1[0.68];0.19;0.48;0.01;0.39;0.00;0.00;0.72;0.11;0.1933;0.2272;1
+15;15;Agent_2;orders came from the seed rule base (rules as-is);0;0;R7[0.08] R11[0.23] R15[0.02] R20[0.02] R26[0.02] A1[0.08];0.01;0.14;0.05;0.12;0.24;0.24;0.89;0.11;0.1933;0.2272;0
+15;15;Agent_3;orders came from the seed rule base (rules as-is);0;0;R7[0.04] R20[0.10] R26[0.19] A1[0.08];0.19;0.27;0.02;0.08;0.00;0.00;0.72;0.11;0.1933;0.2272;1
+16;16;Agent_1;orders came from the seed rule base (rules as-is);0;0;R7[0.02] R20[0.21] R26[0.19] A1[0.68];0.19;0.48;0.01;0.39;0.00;0.00;0.72;0.11;0.1824;0.2241;1
+16;16;Agent_2;orders came from the seed rule base (rules as-is);0;0;R7[0.08] R11[0.23] R15[0.02] R20[0.02] R26[0.02] A1[0.08];0.01;0.14;0.05;0.12;0.24;0.24;0.89;0.11;0.1824;0.2241;0
+16;16;Agent_3;orders came from the seed rule base (rules as-is);0;0;R7[0.04] R20[0.10] R26[0.19] A1[0.08];0.19;0.28;0.02;0.08;0.00;0.00;0.72;0.11;0.1824;0.2241;1
+17;17;Agent_1;orders came from the seed rule base (rules as-is);0;0;R7[0.02] R20[0.21] R26[0.19] A1[0.68];0.19;0.48;0.01;0.39;0.00;0.00;0.72;0.11;0.1846;0.2223;1
+17;17;Agent_2;orders came from the seed rule base (rules as-is);0;0;R7[0.08] R11[0.23] R15[0.03] R20[0.02] R26[0.03] A1[0.08];0.01;0.14;0.05;0.12;0.24;0.25;0.89;0.11;0.1846;0.2223;0
+17;17;Agent_3;orders came from the seed rule base (rules as-is);0;0;R7[0.04] R20[0.11] R26[0.19] A1[0.08];0.19;0.28;0.02;0.08;0.00;0.00;0.72;0.11;0.1846;0.2223;1
+18;18;Agent_1;orders came from the seed rule base (rules as-is);0;0;R7[0.02] R20[0.21] R26[0.20] A1[0.68];0.20;0.48;0.01;0.39;0.00;0.00;0.72;0.11;0.1775;0.2221;1
+18;18;Agent_2;orders came from the seed rule base (rules as-is);0;0;R7[0.08] R11[0.23] R15[0.03] R20[0.02] R26[0.03] A1[0.08];0.01;0.14;0.06;0.12;0.24;0.25;0.89;0.11;0.1775;0.2221;0
+18;18;Agent_3;orders came from the seed rule base (rules as-is);0;0;R7[0.04] R20[0.11] R26[0.20] A1[0.08];0.20;0.29;0.02;0.08;0.00;0.00;0.72;0.11;0.1775;0.2221;1
+19;19;Agent_1;orders came from the seed rule base (rules as-is);0;0;R7[0.02] R20[0.21] R26[0.20] A1[0.68];0.20;0.48;0.01;0.39;0.00;0.00;0.72;0.11;0.1797;0.2205;1
+19;19;Agent_2;orders came from the seed rule base (rules as-is);0;0;R7[0.08] R11[0.23] R15[0.03] R20[0.02] R26[0.03] A1[0.08];0.01;0.15;0.06;0.12;0.24;0.25;0.89;0.11;0.1797;0.2205;0
+19;19;Agent_3;orders came from the seed rule base (rules as-is);0;0;R7[0.04] R20[0.12] R26[0.20] A1[0.08];0.20;0.29;0.02;0.08;0.00;0.00;0.72;0.11;0.1797;0.2205;1
+20;20;Agent_1;stage controller selected stage 1 [evFIS] (deficit bucket: mid+gap) → rejected (no improving perturbation found | seed-base decision stands, its orders are applied);1;0;R7[0.02] R20[0.21] R26[0.20] A1[0.68];0.20;0.48;0.01;0.39;0.00;0.00;0.72;0.11;0.1711;0.2201;1
+20;20;Agent_2;stage controller selected stage 1 [evFIS] (deficit bucket: mid+gap) → rejected (no improving perturbation found | seed-base decision stands, its orders are applied);1;0;R7[0.08] R11[0.23] R15[0.03] R20[0.03] R26[0.03] A1[0.08];0.01;0.15;0.06;0.12;0.24;0.25;0.89;0.11;0.1711;0.2201;0
+20;20;Agent_3;stage controller selected stage 1 [evFIS] (deficit bucket: mid+gap) → rejected (no improving perturbation found | seed-base decision stands, its orders are applied);1;0;R7[0.04] R20[0.12] R26[0.20] A1[0.08];0.20;0.30;0.02;0.08;0.00;0.00;0.72;0.11;0.1711;0.2201;1
+21;21;Agent_1;orders came from the seed rule base (rules as-is);0;0;R7[0.02] R20[0.21] R26[0.20] A1[0.68];0.20;0.48;0.01;0.39;0.00;0.00;0.72;0.11;0.1647;0.2238;1
+21;21;Agent_2;orders came from the seed rule base (rules as-is);0;0;R7[0.08] R11[0.23] R15[0.03] R20[0.03] R26[0.03] A1[0.08];0.02;0.15;0.06;0.12;0.24;0.25;0.89;0.11;0.1647;0.2238;0
+21;21;Agent_3;orders came from the seed rule base (rules as-is);0;0;R7[0.04] R20[0.13] R26[0.20] A1[0.08];0.20;0.30;0.02;0.08;0.00;0.00;0.72;0.11;0.1647;0.2238;1
+22;22;Agent_1;orders came from the seed rule base (rules as-is);0;0;R7[0.02] R20[0.21] R26[0.20] A1[0.68];0.20;0.48;0.01;0.39;0.00;0.00;0.72;0.11;0.1682;0.2178;1
+22;22;Agent_2;orders came from the seed rule base (rules as-is);0;0;R7[0.08] R11[0.23] R15[0.03] R20[0.03] R26[0.03] A1[0.08];0.02;0.15;0.06;0.12;0.24;0.25;0.89;0.11;0.1682;0.2178;0
+22;22;Agent_3;orders came from the seed rule base (rules as-is);0;0;R7[0.04] R20[0.13] R26[0.20] A1[0.08];0.20;0.31;0.02;0.08;0.00;0.00;0.72;0.11;0.1682;0.2178;1
+23;23;Agent_1;orders came from the seed rule base (rules as-is);0;0;R7[0.02] R20[0.21] R26[0.20] A1[0.68];0.20;0.48;0.01;0.39;0.00;0.00;0.72;0.10;0.1706;0.2211;1
+23;23;Agent_2;orders came from the seed rule base (rules as-is);0;0;R7[0.08] R11[0.23] R15[0.03] R20[0.03] R26[0.03] A1[0.08];0.02;0.15;0.06;0.12;0.24;0.25;0.89;0.10;0.1706;0.2211;0
+23;23;Agent_3;orders came from the seed rule base (rules as-is);0;0;R7[0.04] R20[0.14] R26[0.20] A1[0.08];0.20;0.31;0.02;0.08;0.00;0.00;0.72;0.10;0.1706;0.2211;1
+24;24;Agent_1;orders came from the seed rule base (rules as-is);0;0;R7[0.02] R20[0.21] R26[0.19] A1[0.68];0.19;0.48;0.01;0.39;0.00;0.00;0.72;0.10;0.1629;0.2137;1
+24;24;Agent_2;orders came from the seed rule base (rules as-is);0;0;R7[0.08] R11[0.23] R15[0.03] R20[0.03] R26[0.03] A1[0.08];0.02;0.15;0.06;0.12;0.24;0.25;0.89;0.10;0.1629;0.2137;0
+24;24;Agent_3;orders came from the seed rule base (rules as-is);0;0;R7[0.04] R20[0.14] R26[0.19] A1[0.08];0.19;0.32;0.02;0.08;0.00;0.00;0.73;0.10;0.1629;0.2137;1
+25;25;Agent_1;orders came from the seed rule base (rules as-is);0;0;R7[0.02] R20[0.21] R26[0.19] A1[0.68];0.19;0.48;0.01;0.39;0.00;0.00;0.72;0.10;0.1623;0.2206;1
+25;25;Agent_2;orders came from the seed rule base (rules as-is);0;0;R7[0.08] R11[0.23] R15[0.03] R20[0.03] R26[0.03] A1[0.08];0.02;0.15;0.06;0.12;0.24;0.25;0.89;0.10;0.1623;0.2206;0
+25;25;Agent_3;orders came from the seed rule base (rules as-is);0;0;R7[0.04] R20[0.15] R26[0.19] A1[0.08];0.19;0.32;0.02;0.08;0.00;0.00;0.73;0.10;0.1623;0.2206;1
+26;26;Agent_1;orders came from the seed rule base (rules as-is);0;0;R7[0.02] R20[0.21] R26[0.19] A1[0.68];0.19;0.48;0.01;0.39;0.00;0.00;0.72;0.10;0.1579;0.2106;1
+26;26;Agent_2;orders came from the seed rule base (rules as-is);0;0;R7[0.08] R11[0.23] R15[0.03] R20[0.03] R26[0.03] A1[0.08];0.02;0.15;0.06;0.12;0.24;0.25;0.89;0.10;0.1579;0.2106;0
+26;26;Agent_3;orders came from the seed rule base (rules as-is);0;0;R7[0.04] R20[0.15] R26[0.19] A1[0.08];0.19;0.33;0.02;0.08;0.00;0.00;0.73;0.10;0.1579;0.2106;1
+27;27;Agent_1;orders came from the seed rule base (rules as-is);0;0;R7[0.02] R20[0.21] R26[0.19] A1[0.68];0.19;0.48;0.01;0.39;0.00;0.00;0.72;0.10;0.1588;0.2092;1
+27;27;Agent_2;orders came from the seed rule base (rules as-is);0;0;R7[0.08] R11[0.23] R15[0.03] R20[0.03] R26[0.03] A1[0.08];0.02;0.15;0.06;0.12;0.24;0.25;0.89;0.10;0.1588;0.2092;0
+27;27;Agent_3;orders came from the seed rule base (rules as-is);0;0;R7[0.04] R20[0.16] R26[0.19] A1[0.08];0.19;0.33;0.02;0.08;0.00;0.00;0.73;0.10;0.1588;0.2092;1
+28;28;Agent_1;orders came from the seed rule base (rules as-is);0;0;R7[0.02] R20[0.21] R26[0.19] A1[0.68];0.19;0.48;0.01;0.39;0.00;0.00;0.72;0.10;0.1871;0.2079;1
+28;28;Agent_2;orders came from the seed rule base (rules as-is);0;0;R7[0.08] R11[0.23] R15[0.03] R20[0.03] R26[0.03] A1[0.08];0.02;0.15;0.06;0.12;0.24;0.25;0.89;0.10;0.1871;0.2079;0
+28;28;Agent_3;orders came from the seed rule base (rules as-is);0;0;R7[0.04] R20[0.16] R26[0.19] A1[0.08];0.19;0.33;0.02;0.08;0.00;0.00;0.73;0.10;0.1871;0.2079;1
+29;29;Agent_1;orders came from the seed rule base (rules as-is);0;0;R7[0.02] R20[0.20] R26[0.19] A1[0.68];0.19;0.48;0.01;0.39;0.00;0.00;0.72;0.10;0.1885;0.2032;1
+29;29;Agent_2;orders came from the seed rule base (rules as-is);0;0;R7[0.08] R11[0.23] R15[0.03] R20[0.03] R26[0.03] A1[0.08];0.02;0.15;0.06;0.12;0.24;0.25;0.89;0.10;0.1885;0.2032;0
+29;29;Agent_3;orders came from the seed rule base (rules as-is);0;0;R7[0.04] R20[0.16] R26[0.19] A1[0.08];0.19;0.33;0.02;0.08;0.00;0.00;0.73;0.10;0.1885;0.2032;1
+30;30;Agent_1;stage controller selected stage 2 [resolution increase] (deficit bucket: mid+gap) → rejected (cell already covered — an active rule sits on this antecedent cell and the situation is crisp; numeric tuning is stage ① evFIS's job | seed-base decision stands, its orders are applied);2;0;R7[0.02] R20[0.20] R26[0.19] A1[0.68];0.19;0.48;0.01;0.39;0.00;0.00;0.72;0.10;0.1908;0.2042;1
+30;30;Agent_2;stage controller selected stage 2 [resolution increase] (deficit bucket: mid+gap) → rejected (cell already covered — an active rule sits on this antecedent cell and the situation is crisp; numeric tuning is stage ① evFIS's job | seed-base decision stands, its orders are applied);2;0;R7[0.08] R11[0.23] R15[0.03] R20[0.03] R26[0.03] A1[0.08];0.02;0.15;0.06;0.12;0.24;0.25;0.89;0.10;0.1908;0.2042;0
+30;30;Agent_3;stage controller selected stage 2 [resolution increase] (deficit bucket: mid+gap) → rejected (cell already covered — an active rule sits on this antecedent cell and the situation is crisp; numeric tuning is stage ① evFIS's job | seed-base decision stands, its orders are applied);2;0;R7[0.04] R20[0.16] R26[0.19] A1[0.08];0.19;0.33;0.02;0.08;0.00;0.00;0.73;0.10;0.1908;0.2042;1
+31;31;Agent_1;orders came from the seed rule base (rules as-is);0;0;R7[0.02] R20[0.20] R26[0.19] A1[0.68];0.19;0.47;0.01;0.39;0.00;0.00;0.72;0.10;0.1622;0.2107;1
+31;31;Agent_2;orders came from the seed rule base (rules as-is);0;0;R7[0.08] R11[0.23] R15[0.03] R20[0.03] R26[0.03] A1[0.08];0.02;0.15;0.06;0.12;0.24;0.25;0.89;0.10;0.1622;0.2107;0
+31;31;Agent_3;orders came from the seed rule base (rules as-is);0;0;R7[0.04] R20[0.16] R26[0.19] A1[0.08];0.19;0.33;0.02;0.08;0.00;0.00;0.73;0.10;0.1622;0.2107;1
+32;32;Agent_1;orders came from the seed rule base (rules as-is);0;0;R7[0.02] R20[0.20] R26[0.19] A1[0.68];0.19;0.47;0.01;0.39;0.00;0.00;0.72;0.10;0.1632;0.1927;1
+32;32;Agent_2;orders came from the seed rule base (rules as-is);0;0;R7[0.08] R11[0.23] R15[0.03] R20[0.03] R26[0.03] A1[0.08];0.02;0.15;0.06;0.12;0.24;0.25;0.89;0.10;0.1632;0.1927;0
+32;32;Agent_3;orders came from the seed rule base (rules as-is);0;0;R7[0.04] R20[0.16] R26[0.19] A1[0.08];0.19;0.33;0.02;0.08;0.00;0.00;0.73;0.10;0.1632;0.1927;1
+33;33;Agent_1;orders came from the seed rule base (rules as-is);0;0;R7[0.02] R20[0.20] R26[0.19] A1[0.68];0.19;0.47;0.01;0.39;0.00;0.00;0.72;0.10;0.1644;0.1944;1
+33;33;Agent_2;orders came from the seed rule base (rules as-is);0;0;R7[0.08] R11[0.23] R15[0.03] R20[0.03] R26[0.03] A1[0.08];0.02;0.15;0.06;0.12;0.24;0.25;0.89;0.10;0.1644;0.1944;0
+33;33;Agent_3;orders came from the seed rule base (rules as-is);0;0;R7[0.04] R20[0.17] R26[0.19] A1[0.08];0.19;0.34;0.02;0.08;0.00;0.00;0.72;0.10;0.1644;0.1944;1
+34;34;Agent_1;orders came from the seed rule base (rules as-is);0;0;R7[0.02] R20[0.20] R26[0.19] A1[0.68];0.19;0.47;0.01;0.39;0.00;0.00;0.72;0.10;0.1654;0.1918;1
+34;34;Agent_2;orders came from the seed rule base (rules as-is);0;0;R7[0.08] R11[0.23] R15[0.03] R20[0.03] R26[0.03] A1[0.08];0.02;0.15;0.06;0.12;0.24;0.25;0.89;0.10;0.1654;0.1918;0
+34;34;Agent_3;orders came from the seed rule base (rules as-is);0;0;R7[0.04] R20[0.17] R26[0.19] A1[0.08];0.19;0.34;0.02;0.08;0.00;0.00;0.72;0.10;0.1654;0.1918;1
+35;35;Agent_1;orders came from the seed rule base (rules as-is);0;0;R7[0.02] R20[0.20] R26[0.19] A1[0.68];0.19;0.47;0.01;0.39;0.00;0.00;0.72;0.10;0.1663;0.1806;1
+35;35;Agent_2;orders came from the seed rule base (rules as-is);0;0;R7[0.08] R11[0.23] R15[0.03] R20[0.03] R26[0.03] A1[0.08];0.02;0.15;0.06;0.12;0.24;0.25;0.89;0.10;0.1663;0.1806;0
+35;35;Agent_3;orders came from the seed rule base (rules as-is);0;0;R7[0.04] R20[0.17] R26[0.19] A1[0.08];0.19;0.34;0.02;0.08;0.00;0.00;0.72;0.10;0.1663;0.1806;1
+36;36;Agent_1;orders came from the seed rule base (rules as-is);0;0;R7[0.02] R20[0.20] R26[0.19] A1[0.68];0.19;0.47;0.01;0.39;0.00;0.00;0.72;0.09;0.1673;0.1819;1
+36;36;Agent_2;orders came from the seed rule base (rules as-is);0;0;R7[0.08] R11[0.23] R15[0.03] R20[0.03] R26[0.03] A1[0.08];0.02;0.15;0.06;0.12;0.24;0.25;0.89;0.09;0.1673;0.1819;0
+36;36;Agent_3;orders came from the seed rule base (rules as-is);0;0;R7[0.04] R20[0.17] R26[0.19] A1[0.08];0.19;0.33;0.02;0.08;0.00;0.00;0.72;0.09;0.1673;0.1819;1
+37;37;Agent_1;orders came from the seed rule base (rules as-is);0;0;R7[0.02] R20[0.20] R26[0.19] A1[0.68];0.19;0.47;0.01;0.39;0.00;0.00;0.72;0.09;0.1685;0.1799;1
+37;37;Agent_2;orders came from the seed rule base (rules as-is);0;0;R7[0.08] R11[0.23] R15[0.03] R20[0.03] R26[0.03] A1[0.08];0.02;0.15;0.06;0.12;0.24;0.25;0.89;0.09;0.1685;0.1799;0
+37;37;Agent_3;orders came from the seed rule base (rules as-is);0;0;R7[0.04] R20[0.17] R26[0.19] A1[0.08];0.19;0.33;0.02;0.08;0.00;0.00;0.72;0.09;0.1685;0.1799;1
+38;38;Agent_1;orders came from the seed rule base (rules as-is);0;0;R7[0.02] R20[0.20] R26[0.19] A1[0.68];0.19;0.47;0.01;0.39;0.00;0.00;0.72;0.09;0.1701;0.1803;1
+38;38;Agent_2;orders came from the seed rule base (rules as-is);0;0;R7[0.08] R11[0.23] R15[0.03] R20[0.03] R26[0.03] A1[0.08];0.02;0.15;0.06;0.12;0.24;0.25;0.89;0.09;0.1701;0.1803;0
+38;38;Agent_3;orders came from the seed rule base (rules as-is);0;0;R7[0.04] R20[0.17] R26[0.19] A1[0.08];0.19;0.33;0.02;0.08;0.00;0.00;0.72;0.09;0.1701;0.1803;1
+39;39;Agent_1;orders came from the seed rule base (rules as-is);0;0;R7[0.02] R20[0.20] R26[0.19] A1[0.68];0.19;0.47;0.01;0.39;0.00;0.00;0.72;0.09;0.1713;0.1790;1
+39;39;Agent_2;orders came from the seed rule base (rules as-is);0;0;R7[0.08] R11[0.23] R15[0.03] R20[0.03] R26[0.03] A1[0.08];0.02;0.15;0.06;0.12;0.24;0.25;0.89;0.09;0.1713;0.1790;0
+39;39;Agent_3;orders came from the seed rule base (rules as-is);0;0;R7[0.04] R20[0.17] R26[0.19] A1[0.08];0.19;0.33;0.02;0.08;0.00;0.00;0.72;0.09;0.1713;0.1790;1
+40;40;Agent_1;stage controller selected stage 1 [evFIS] (deficit bucket: low) → rejected (no improving perturbation found | seed-base decision stands, its orders are applied);1;0;R7[0.02] R20[0.20] R26[0.18] A1[0.68];0.18;0.47;0.01;0.39;0.00;0.00;0.72;0.09;0.1723;0.1799;1
+40;40;Agent_2;stage controller selected stage 1 [evFIS] (deficit bucket: low) → rejected (no improving perturbation found | seed-base decision stands, its orders are applied);1;0;R7[0.08] R11[0.23] R15[0.03] R20[0.03] R26[0.03] A1[0.08];0.02;0.15;0.06;0.12;0.24;0.25;0.89;0.09;0.1723;0.1799;0
+40;40;Agent_3;stage controller selected stage 1 [evFIS] (deficit bucket: low) → rejected (no improving perturbation found | seed-base decision stands, its orders are applied);1;0;R7[0.04] R20[0.17] R26[0.18] A1[0.08];0.18;0.33;0.02;0.08;0.00;0.00;0.72;0.09;0.1723;0.1799;1
+41;41;Agent_1;orders came from the seed rule base (rules as-is);0;0;R7[0.02] R20[0.19] R26[0.18] A1[0.68];0.18;0.47;0.01;0.39;0.00;0.00;0.72;0.09;0.1738;0.1773;1
+41;41;Agent_2;orders came from the seed rule base (rules as-is);0;0;R7[0.08] R11[0.23] R15[0.03] R20[0.03] R26[0.03] A1[0.08];0.02;0.15;0.06;0.12;0.24;0.25;0.89;0.09;0.1738;0.1773;0
+41;41;Agent_3;orders came from the seed rule base (rules as-is);0;0;R7[0.04] R20[0.17] R26[0.18] A1[0.08];0.18;0.33;0.02;0.08;0.00;0.00;0.72;0.09;0.1738;0.1773;1
+42;42;Agent_1;orders came from the seed rule base (rules as-is);0;0;R7[0.02] R20[0.19] R26[0.18] A1[0.68];0.18;0.47;0.01;0.39;0.00;0.00;0.72;0.09;0.1748;0.1925;1
+42;42;Agent_2;orders came from the seed rule base (rules as-is);0;0;R7[0.08] R11[0.23] R15[0.03] R20[0.03] R26[0.03] A1[0.08];0.02;0.15;0.06;0.12;0.24;0.25;0.89;0.09;0.1748;0.1925;0
+42;42;Agent_3;orders came from the seed rule base (rules as-is);0;0;R7[0.04] R20[0.17] R26[0.18] A1[0.08];0.18;0.33;0.02;0.08;0.00;0.00;0.72;0.09;0.1748;0.1925;1
+43;43;Agent_1;orders came from the seed rule base (rules as-is);0;0;R7[0.02] R20[0.19] R26[0.18] A1[0.68];0.18;0.47;0.01;0.39;0.00;0.00;0.72;0.09;0.1760;0.1916;1
+43;43;Agent_2;orders came from the seed rule base (rules as-is);0;0;R7[0.08] R11[0.23] R15[0.03] R20[0.03] R26[0.03] A1[0.08];0.02;0.15;0.06;0.12;0.24;0.25;0.89;0.09;0.1760;0.1916;0
+43;43;Agent_3;orders came from the seed rule base (rules as-is);0;0;R7[0.04] R20[0.17] R26[0.18] A1[0.08];0.18;0.33;0.02;0.08;0.00;0.00;0.72;0.09;0.1760;0.1916;1
+44;44;Agent_1;orders came from the seed rule base (rules as-is);0;0;R7[0.02] R20[0.19] R26[0.18] A1[0.68];0.18;0.47;0.01;0.39;0.00;0.00;0.72;0.09;0.1773;0.1797;1
+44;44;Agent_2;orders came from the seed rule base (rules as-is);0;0;R7[0.08] R11[0.23] R15[0.03] R20[0.03] R26[0.03] A1[0.08];0.02;0.15;0.06;0.12;0.24;0.25;0.89;0.09;0.1773;0.1797;0
+44;44;Agent_3;orders came from the seed rule base (rules as-is);0;0;R7[0.04] R20[0.17] R26[0.18] A1[0.08];0.18;0.33;0.02;0.08;0.00;0.00;0.72;0.09;0.1773;0.1797;1
+45;45;Agent_1;orders came from the seed rule base (rules as-is);0;0;R7[0.02] R20[0.19] R26[0.18] A1[0.68];0.18;0.47;0.01;0.39;0.00;0.00;0.72;0.09;0.1785;0.1844;1
+45;45;Agent_2;orders came from the seed rule base (rules as-is);0;0;R7[0.08] R11[0.23] R15[0.03] R20[0.03] R26[0.03] A1[0.08];0.02;0.15;0.06;0.12;0.24;0.25;0.89;0.09;0.1785;0.1844;0
+45;45;Agent_3;orders came from the seed rule base (rules as-is);0;0;R7[0.04] R20[0.16] R26[0.18] A1[0.08];0.18;0.33;0.02;0.08;0.00;0.00;0.72;0.09;0.1785;0.1844;1
+46;46;Agent_1;orders came from the seed rule base (rules as-is);0;0;R7[0.02] R20[0.19] R26[0.18] A1[0.68];0.18;0.47;0.01;0.39;0.00;0.00;0.72;0.09;0.1795;0.1841;1
+46;46;Agent_2;orders came from the seed rule base (rules as-is);0;0;R7[0.08] R11[0.23] R15[0.03] R20[0.03] R26[0.03] A1[0.08];0.02;0.15;0.06;0.12;0.24;0.25;0.89;0.09;0.1795;0.1841;0
+46;46;Agent_3;orders came from the seed rule base (rules as-is);0;0;R7[0.04] R20[0.16] R26[0.18] A1[0.08];0.18;0.33;0.02;0.08;0.00;0.00;0.72;0.09;0.1795;0.1841;1
+47;47;Agent_1;orders came from the seed rule base (rules as-is);0;0;R7[0.02] R20[0.19] R26[0.18] A1[0.68];0.18;0.46;0.01;0.39;0.00;0.00;0.72;0.09;0.1807;0.1865;1
+47;47;Agent_2;orders came from the seed rule base (rules as-is);0;0;R7[0.08] R11[0.23] R15[0.03] R20[0.03] R26[0.03] A1[0.08];0.02;0.15;0.06;0.12;0.24;0.25;0.89;0.09;0.1807;0.1865;0
+47;47;Agent_3;orders came from the seed rule base (rules as-is);0;0;R7[0.04] R20[0.16] R26[0.18] A1[0.08];0.18;0.32;0.02;0.08;0.00;0.00;0.72;0.09;0.1807;0.1865;1
+48;48;Agent_1;orders came from the seed rule base (rules as-is);0;0;R7[0.02] R20[0.19] R26[0.18] A1[0.68];0.18;0.46;0.01;0.39;0.00;0.00;0.72;0.09;0.1819;0.1903;1
+48;48;Agent_2;orders came from the seed rule base (rules as-is);0;0;R7[0.08] R11[0.23] R15[0.03] R20[0.03] R26[0.03] A1[0.08];0.02;0.15;0.06;0.12;0.24;0.25;0.89;0.09;0.1819;0.1903;0
+48;48;Agent_3;orders came from the seed rule base (rules as-is);0;0;R7[0.04] R20[0.16] R26[0.18] A1[0.08];0.18;0.32;0.02;0.08;0.00;0.00;0.72;0.09;0.1819;0.1903;1
+49;49;Agent_1;orders came from the seed rule base (rules as-is);0;0;R7[0.02] R20[0.19] R26[0.18] A1[0.68];0.18;0.46;0.01;0.39;0.00;0.00;0.72;0.09;0.1837;0.1956;1
+49;49;Agent_2;orders came from the seed rule base (rules as-is);0;0;R7[0.08] R11[0.23] R15[0.03] R20[0.03] R26[0.03] A1[0.08];0.02;0.15;0.06;0.12;0.24;0.25;0.89;0.09;0.1837;0.1956;0
+49;49;Agent_3;orders came from the seed rule base (rules as-is);0;0;R7[0.04] R20[0.16] R26[0.18] A1[0.08];0.18;0.32;0.02;0.08;0.00;0.00;0.72;0.09;0.1837;0.1956;1
