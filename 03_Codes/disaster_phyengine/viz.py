@@ -14,7 +14,7 @@ from __future__ import annotations
 
 import numpy as np
 
-from .config import FUEL_MODELS
+from .config import FUEL_MODELS, FUEL_NAME_TO_ID, CROP_FUEL_LOADS
 
 # base colours per fuel id (unburned landscape)
 _FUEL_COLORS = {
@@ -28,10 +28,14 @@ _FUEL_COLORS = {
 }
 
 _ASSET_STYLE = {
-    "building":   {"color": (150, 60, 40),  "shape": "square"},
-    "critical":   {"color": (210, 30, 30),  "shape": "cross"},
-    "population": {"color": (60, 130, 240),  "shape": "circle"},
-    "evac_route": {"color": (40, 170, 90),  "shape": "diamond"},
+    "building":   {"color": (150, 60, 40),  "shape": "square",
+                   "glyph": "house"},
+    "critical":   {"color": (210, 30, 30),  "shape": "cross",
+                   "glyph": "crit"},
+    "population": {"color": (60, 130, 240),  "shape": "circle",
+                   "glyph": "people"},
+    "evac_route": {"color": (40, 170, 90),  "shape": "diamond",
+                   "glyph": "exit"},
 }
 
 
@@ -49,7 +53,46 @@ def landscape_rgb(world) -> np.ndarray:
     veg = ftype > 0
     shade = (0.7 + 0.3 * load)[..., None]
     img = np.where(veg[..., None], img * shade, img)
+    _paint_farmland(img, world)
     return np.clip(img, 0, 1)
+
+
+#: pale field colours: stubble, young crop, ploughed earth, fallow, pasture.
+#: A real field mosaic is read from the air by COLOUR, not by outline, and
+#: the parcels were all one dim shade of grass: a quilt of one colour is a
+#: smudge. They stay pale so a settlement, a fire or an order still reads
+#: over them.
+_CROP_COLORS = [(0.91, 0.84, 0.45),      # stubble / wheat, pale yellow
+                (0.63, 0.82, 0.47),      # young crop, pale green
+                (0.84, 0.58, 0.46),      # ploughed earth, pale red
+                (0.80, 0.79, 0.75),      # fallow, pale grey
+                (0.86, 0.74, 0.44)]      # hay, pale ochre
+
+#: kept for callers that ask what a field looks like; the MASK is the exact
+#: ladder in config, not this band (wild grass reaches down into it)
+CROP_LOAD_LO, CROP_LOAD_HI = min(CROP_FUEL_LOADS), max(CROP_FUEL_LOADS)
+
+
+def _paint_farmland(img, world) -> None:
+    """Give every parcel its own pale colour, in place.
+
+    The class carries no field of its own: the parcel colour is derived
+    from the fuel load the generator wrote, which is drawn once per parcel.
+    That is deliberate. A separate crop layer would have to be saved with
+    the map, resampled on a resize and merged on a GIS import, and it would
+    describe the same thing twice; deriving it means a saved map, a resized
+    map and a hand-painted field all colour the same way.
+    """
+    ft = np.asarray(world.fuel.ftype)
+    fl0 = np.asarray(getattr(world.fuel, "fload0", world.fuel.fload))
+    grass = FUEL_NAME_TO_ID["grass"]
+    for k, _lv in enumerate(CROP_FUEL_LOADS):
+        m = (ft == grass) & (np.abs(fl0 - float(_lv)) < 1e-6)
+        if not m.any():
+            continue
+        col = _CROP_COLORS[k % len(_CROP_COLORS)]
+        for c in range(3):
+            img[..., c][m] = col[c]
 
 
 _HS_CACHE = {}
@@ -151,7 +194,10 @@ def value_overlay_rgb(world) -> np.ndarray:
         return img
     halo = _dilate_mask(core, 2) & ~core
     prio = np.clip(world.priority_field(), 0.0, 1.0)
-    prio = 0.25 + 0.75 * prio          # keep a visible tint even at low priority
+    # NO FLOOR. The tint used to be lifted to 0.25 so a lone asset disc was
+    # still visible; now that every built-up cell carries structure value
+    # and people, the whole town is "core", and a floor made all of it
+    # equally loud. Let low priority stay quiet so the tint says something.
     try:
         from matplotlib import colormaps
         ramp = np.asarray(colormaps["RdPu"](prio))[..., :3]   # pink -> purple
@@ -159,9 +205,24 @@ def value_overlay_rgb(world) -> np.ndarray:
     except Exception:
         ramp = np.stack([0.99 - 0.55 * prio, 0.75 - 0.65 * prio,
                          0.85 - 0.30 * prio], axis=-1)
+    # DO NOT PAINT OVER THE TOWN. The overlay used to fill every valued
+    # cell at 90% opacity, which was tolerable while "valued" meant a few
+    # small asset discs. Now that the whole built-up footprint carries
+    # structure value and people, filling it buried the land cover, the
+    # street grid and the markers under a flat wash: pink over the grey of
+    # built-up ground reads as mud, and the reader loses both the fuel and
+    # the town underneath it.
+    #
+    # The built-up class is already visible on its own. What the overlay has
+    # to add is WHERE THE PRIORITY IS, so it draws a ring around the valued
+    # ground and leaves the ground itself alone: valued cells keep a light
+    # touch that only rises where the priority is genuinely high.
+    _w = 0.10 + 0.30 * prio            # 0.10 at low priority, 0.40 at full
     for c in range(3):
-        img[..., c][core] = 0.10 * img[..., c][core] + 0.90 * ramp[..., c][core]
-        img[..., c][halo] = 0.55 * img[..., c][halo] + 0.45 * ramp[..., c][halo]
+        img[..., c][core] = ((1.0 - _w[core]) * img[..., c][core]
+                             + _w[core] * ramp[..., c][core])
+        img[..., c][halo] = (0.55 * img[..., c][halo]
+                             + 0.45 * ramp[..., c][halo])
     return img
 
 
@@ -183,6 +244,237 @@ def _base_rgb(world, sim=None, show_fire=True, show_value=False,
     return np.clip(img, 0, 1)
 
 
+# ---------------------------------------------------------------- symbols
+# ONE DEFINITION PER SYMBOL, used by the map AND by the legend. The legend
+# swatches used to be hand-written CSS approximations kept in a different
+# file from the PIL code that draws the map, so the two drifted apart by
+# construction and the reader had to guess which blob answered which line.
+# Every glyph below is drawn once, here, and the legend renders its icon by
+# calling the same function at a smaller radius.
+
+def draw_supp(draw, cx, cy, r, rgb=(40, 120, 255)):
+    """S: water on an engaged cell."""
+    draw.ellipse([cx - r, cy - r, cx + r, cy + r],
+                 fill=(*rgb, 230), outline=(255, 255, 255, 180))
+
+
+def draw_deploy(draw, cx, cy, r, rgb=(216, 60, 255)):
+    """D: staged capacity ahead of the front."""
+    draw.rectangle([cx - r, cy - r, cx + r, cy + r],
+                   fill=(*rgb, 120), outline=(*rgb, 220))
+
+
+def draw_containment(draw, cx, cy, r, rgb=(110, 70, 30)):
+    """C: the dozer strokes of a dug fuel break."""
+    q = max(1, r // 2)
+    draw.line([cx - r + 1, cy + r - q, cx + r - q, cy - r + 1],
+              fill=(*rgb, 255), width=2)
+    draw.line([cx - r + q, cy + r - 1, cx + r - 1, cy - r + q],
+              fill=(*rgb, 255), width=2)
+
+
+def draw_protect(draw, cx, cy, r, rgb=(120, 255, 150)):
+    """P: a shield ring, with a dark casing so it reads on green terrain."""
+    draw.ellipse([cx - r - 1, cy - r - 1, cx + r + 1, cy + r + 1],
+                 outline=(10, 40, 20, 235), width=3)
+    draw.ellipse([cx - r, cy - r, cx + r, cy + r],
+                 outline=(*rgb, 255), width=2)
+
+
+def draw_evac(draw, cx, cy, r, rgb=(255, 140, 0)):
+    """E: an arrow leading the population out."""
+    draw.polygon([(cx, cy - 2 * r), (cx - r, cy - r), (cx + r, cy - r)],
+                 fill=(*rgb, 255), outline=(15, 15, 15, 255))
+    draw.rectangle([cx - max(1, r // 3), cy - r,
+                    cx + max(1, r // 3), cy + r // 2],
+                   fill=(*rgb, 255), outline=(15, 15, 15, 255))
+
+
+def draw_warn(draw, cx, cy, r, rgb=(255, 220, 0)):
+    """W: the warning triangle covering a whole region."""
+    draw.polygon([(cx - r, cy + r), (cx + r, cy + r), (cx, cy - r)],
+                 fill=(*rgb, 250), outline=(15, 15, 15, 255))
+    draw.text((cx - 2, cy - 2), "!", fill=(0, 0, 0, 255))
+
+
+def draw_ignition(draw, cx, cy, r, rgb=(162, 0, 222)):
+    """The ignition marker: a ring THROUGH a cross, not a plain ring.
+
+    The legend called it "ring + cross" while its swatch was an empty
+    circle, so the one marker whose name says what it looks like was the
+    one that did not.
+    """
+    draw.ellipse([cx - r, cy - r, cx + r, cy + r],
+                 outline=(*rgb, 255), width=2)
+    draw.line([cx - r, cy, cx + r, cy], fill=(*rgb, 255), width=2)
+    draw.line([cx, cy - r, cx, cy + r], fill=(*rgb, 255), width=2)
+
+
+def draw_fill(draw, cx, cy, r, rgb=(120, 120, 120)):
+    """A flat filled cell: land cover, urban, water, burn scar."""
+    draw.rectangle([cx - r, cy - r, cx + r, cy + r],
+                   fill=(*rgb, 255), outline=(70, 70, 70, 200))
+
+
+def draw_point(draw, cx, cy, r, rgb=(120, 120, 120)):
+    """A point marker: a sensor, a depot, a population cluster."""
+    draw.ellipse([cx - r, cy - r, cx + r, cy + r],
+                 fill=(*rgb, 255), outline=(30, 30, 30, 220))
+
+
+def draw_outline(draw, cx, cy, r, rgb=(120, 120, 120)):
+    """An outlined area: a fire perimeter, a region boundary."""
+    draw.rectangle([cx - r, cy - r, cx + r, cy + r],
+                   outline=(*rgb, 255), width=2)
+
+
+def draw_radius(draw, cx, cy, r, rgb=(120, 120, 120)):
+    """A service or coverage radius: the ring drawn AROUND a unit."""
+    draw.ellipse([cx - r, cy - r, cx + r, cy + r],
+                 outline=(*rgb, 255), width=2)
+
+
+def draw_arrow(draw, cx, cy, r, rgb=(120, 120, 120)):
+    """The wind arrow, pointing the way the wind blows toward."""
+    draw.polygon([(cx, cy - r), (cx - r, cy + r), (cx, cy + r // 3),
+                  (cx + r, cy + r)],
+                 fill=(*rgb, 255), outline=(30, 30, 30, 220))
+
+
+def draw_house(draw, cx, cy, r, rgb=(150, 60, 40)):
+    """A settlement / building: pale body under a coloured roof."""
+    _k = (0, 0, 0, 255)
+    draw.rectangle([cx - r, cy - r // 3, cx + r, cy + r],
+                   fill=(238, 232, 220, 255), outline=_k, width=1)
+    draw.polygon([(cx - r - 1, cy - r // 3), (cx, cy - r - 2),
+                  (cx + r + 1, cy - r // 3)], fill=(*rgb, 255), outline=_k)
+
+
+def draw_critical(draw, cx, cy, r, rgb=(200, 25, 25)):
+    """A critical facility: bordered white plate with an exclamation mark."""
+    draw.rectangle([cx - r, cy - r, cx + r, cy + r],
+                   fill=(250, 250, 250, 255),
+                   outline=(180, 20, 20, 255), width=2)
+    bw = max(2, (2 * r) // 5)
+    draw.rectangle([cx - bw // 2, cy - r + 3, cx + bw // 2, cy + r - bw - 4],
+                   fill=(*rgb, 255))
+    draw.ellipse([cx - bw // 2, cy + r - 2 - bw, cx + bw // 2, cy + r - 2],
+                 fill=(*rgb, 255))
+
+
+def draw_people(draw, cx, cy, r, rgb=(60, 130, 240)):
+    """Population: a filled disc carrying three heads."""
+    draw.ellipse([cx - r, cy - r, cx + r, cy + r], fill=(*rgb, 210),
+                 outline=(0, 0, 0, 255), width=1)
+    for ox in (-r // 2, 0, r // 2):
+        draw.ellipse([cx + ox - 2, cy - 3, cx + ox + 2, cy + 1],
+                     fill=(255, 255, 255, 255))
+
+
+def draw_exit(draw, cx, cy, r, rgb=(40, 170, 90)):
+    """The evacuation exit: a plate with the way-out arrow on it."""
+    draw.rectangle([cx - r, cy - r, cx + r, cy + r], fill=(*rgb, 255),
+                   outline=(0, 0, 0, 255), width=1)
+    draw.polygon([(cx - r // 2, cy - r // 2), (cx + r // 2, cy),
+                  (cx - r // 2, cy + r // 2)], fill=(255, 255, 255, 255))
+
+
+#: legend key -> the function that draws it, so a swatch cannot go stale
+SYMBOL_DRAW = {
+    "supp": draw_supp, "deploy": draw_deploy, "cont": draw_containment,
+    "prot": draw_protect, "evac": draw_evac, "warn": draw_warn,
+    "ignite": draw_ignition, "sq": draw_fill, "dot": draw_point,
+    "box": draw_outline, "ring": draw_radius, "tri": draw_arrow,
+    # THE ASSET GLYPHS ARE THE MAP'S OWN. The legend keyed buildings,
+    # facilities and people to a plain square and a plain dot while the map
+    # drew a house, a red exclamation plate and a disc of heads: a reader
+    # comparing the two had to guess which line meant which marker.
+    "house": draw_house, "crit": draw_critical, "people": draw_people,
+    "exit": draw_exit,
+}
+
+
+#: asset kind -> the drawing function used on the map AND in the legend
+ASSET_GLYPH_DRAW = {k: SYMBOL_DRAW[v["glyph"]]
+                    for k, v in _ASSET_STYLE.items() if "glyph" in v}
+
+
+def legend_icon_png(kind: str, rgb, px: int = 18) -> bytes:
+    """The legend swatch, drawn by the MAP's own code.
+
+    `kind` is either a base-order key from SYMBOL_DRAW or one of the macro
+    shapes, which go through _draw_macro_shape exactly as they do on the map.
+    """
+    from PIL import Image, ImageDraw
+    import io
+    img = Image.new("RGBA", (px, px), (0, 0, 0, 0))
+    d = ImageDraw.Draw(img)
+    c = px // 2
+    rgb = tuple(int(v) for v in rgb[:3])
+    fn = SYMBOL_DRAW.get(kind)
+    if fn is not None:
+        r = max(2, px // 2 - (4 if kind == "evac" else 2))
+        # the arrow is drawn from its tip, so it is nudged down to sit
+        # inside the tile the same way it sits above a settlement
+        fn(d, c, c + (px // 4 if kind == "evac" else 0), r, rgb)
+    else:
+        _draw_macro_shape(d, c, c, max(3, px // 2 - 3), kind,
+                          (*rgb, 255), (25, 25, 25, 255))
+    buf = io.BytesIO()
+    img.save(buf, format="PNG")
+    return buf.getvalue()
+
+
+_FONTS: dict = {}
+
+
+def _font(size: int = 12):
+    """Anti-aliased TrueType lettering for the map.
+
+    PIL's built-in bitmap font has one size and no anti-aliasing, so
+    every label drawn with it reads as debug output. DejaVu Sans ships
+    inside matplotlib (already a dependency), so a real font is always
+    available; Windows system fonts are preferred when present."""
+    f = _FONTS.get(int(size))
+    if f is not None:
+        return f
+    from PIL import ImageFont
+    cands = ["C:/Windows/Fonts/segoeui.ttf",
+             "C:/Windows/Fonts/arial.ttf"]
+    try:
+        import matplotlib.font_manager as _fm
+        cands.append(_fm.findfont("DejaVu Sans"))
+    except Exception:
+        pass
+    for c in cands:
+        try:
+            f = ImageFont.truetype(c, int(size))
+            break
+        except Exception:
+            continue
+    else:
+        f = ImageFont.load_default()
+    _FONTS[int(size)] = f
+    return f
+
+
+def _th(draw) -> int:
+    """Measured line height of the draw's current font."""
+    try:
+        bb = draw.textbbox((0, 0), "Ag")
+        return int(bb[3] - bb[1]) + 2
+    except Exception:
+        return 13
+
+
+def _tw(draw, text) -> int:
+    """Measured pixel width of `text` in the draw's current font."""
+    try:
+        return int(draw.textlength(str(text)))
+    except Exception:
+        return 6 * len(str(text))
+
+
 def _badge(draw, cx, cy, text, rgba, ink=(10, 10, 10, 255)):
     """A short label with its own plate.
 
@@ -191,12 +483,13 @@ def _badge(draw, cx, cy, text, rgba, ink=(10, 10, 10, 255)):
     could be told apart from terrain. A filled plate with a dark border
     behind the word fixes the contrast wherever the symbol lands.
     """
-    _w = 7 * len(text) + 8
-    _h = 15
+    _w = _tw(draw, text) + 10
+    _h = _th(draw) + 6
     x0, y0 = int(cx - _w // 2), int(cy - _h // 2)
-    draw.rectangle([x0, y0, x0 + _w, y0 + _h],
-                   fill=rgba, outline=(15, 15, 15, 245), width=1)
-    draw.text((x0 + 4, y0 + 3), text, fill=ink)
+    draw.rounded_rectangle([x0, y0, x0 + _w, y0 + _h], radius=4,
+                           fill=rgba, outline=(15, 15, 15, 245),
+                           width=1)
+    draw.text((x0 + 5, y0 + 3), str(text), fill=ink)
 
 
 def render_pil(world, sim=None, scale: int = 8, show_fire: bool = True,
@@ -208,8 +501,13 @@ def render_pil(world, sim=None, scale: int = 8, show_fire: bool = True,
                sim_for_behavior=None, night_factor: float = 1.0,
                clock_text=None, region_box=None, region_label=None,
                regions=None, sensors=None, depots=None, alloc=None,
-               actions=None):
-    """Render the map to a polished PIL image of size (nx*scale, ny*scale)."""
+               actions=None, pretty: bool = True):
+    """Render the map to a polished PIL image of size (nx*scale, ny*scale).
+
+    `pretty` is the aesthetic switch the panel exposes: TrueType
+    anti-aliased lettering and a bilinear terrain upscale (smooth
+    hills, ribbon-like roads). Off = raw nearest-neighbour cells, the
+    honest view of the simulation grid."""
     from PIL import Image, ImageDraw
 
     rgb = _base_rgb(world, sim, show_fire, show_value, show_hillshade)
@@ -234,8 +532,16 @@ def render_pil(world, sim=None, scale: int = 8, show_fire: bool = True,
     arr = (np.clip(rgb, 0, 1) * 255).astype(np.uint8)
     img = Image.fromarray(arr, mode="RGB")
     ny, nx = world.shape
+    # NEAREST, always: the smoothing experiment (bilinear, then
+    # Lanczos) only traded crisp cells for fog. The terrain stays the
+    # honest grid; the aesthetics live in the LETTERING, which is
+    # always TrueType now.
     img = img.resize((nx * scale, ny * scale), Image.NEAREST)
     draw = ImageDraw.Draw(img, "RGBA")
+    # LARGER lettering: the plotly path shows the raster slightly
+    # under 1:1, so a 12 px label lands at ~10 px on screen and dies.
+    # Plates are measured from the text, so they scale with it.
+    draw.font = _font(max(13, min(20, int(scale * 1.7))))
 
     # optional cell grid for precise placement (dark, always visible)
     if show_grid:
@@ -251,20 +557,41 @@ def render_pil(world, sim=None, scale: int = 8, show_fire: bool = True,
     if show_ignitions:
         for ev in world.ignitions:
             cx, cy = ev.x * scale + scale // 2, ev.y * scale + scale // 2
-            r = max(4, scale)
-            draw.ellipse([cx - r, cy - r, cx + r, cy + r],
-                         outline=(162, 0, 222, 255), width=2)
-            draw.line([cx - r, cy, cx + r, cy], fill=(162, 0, 222, 255), width=2)
-            draw.line([cx, cy - r, cx, cy + r], fill=(162, 0, 222, 255), width=2)
+            draw_ignition(draw, cx, cy, max(4, scale))
 
     # asset markers: recognizable icons
     if show_assets:
-        _lbl_boxes = []          # drawn label rectangles, for de-cluttering
-        for a in world.assets:
-            # the evacuation route is a routing hint for the E intervention,
-            # not a value asset; it is no longer drawn as an asset marker
-            if a.kind == "evac_route":
-                continue
+        # de-cluttering: the boxes already occupied. MARKERS go in here too,
+        # not only labels: checking label against label alone let a name be
+        # written straight across a neighbouring facility's icon, which is
+        # how a dense town ended up with clipped, unreadable text.
+        _lbl_boxes = []
+        # THE PEOPLE MARKER DOES NOT COVER THE TOWN. A settlement carries a
+        # population asset on the SAME cell as its building, so the blue
+        # disc was drawn straight over the house and every town on the map
+        # read as a population cluster with no settlement under it. The head
+        # count is already written on the settlement's own label, so the
+        # disc is only drawn where population stands on its own.
+        _built_at = {(int(a.x), int(a.y)) for a in world.assets
+                     if getattr(a, "kind", "") == "building"}
+        _draw_assets = [a for a in world.assets
+                        if not (getattr(a, "kind", "") == "population"
+                                and (int(a.x), int(a.y)) in _built_at)]
+        for a in _draw_assets:
+            _mx, _my = a.x * scale + scale // 2, a.y * scale + scale // 2
+            _ar0 = float(getattr(a, "radius", 1) or 1)
+            _mr = int(np.clip(scale * (0.75 + 0.30 * _ar0),
+                              max(5, int(scale * 0.9)),
+                              max(9, int(scale * 2.4))))
+            _lbl_boxes.append([_mx - _mr, _my - _mr, _mx + _mr, _my + _mr])
+        for a in _draw_assets:
+            # THE EVACUATION EXIT IS DRAWN. It is a routing hint rather
+            # than a value at risk, and it was skipped here on that ground
+            # while the 3D view kept drawing it from its own symbol table:
+            # the same world showed an exit in one view and not in the
+            # other, and the marker's drawing code below sat unreachable.
+            # It is where the E intervention sends people, so the reader
+            # has to be able to see it.
             style = _ASSET_STYLE.get(a.kind, {"color": (255, 255, 0)})
             base = style["color"]
             cx, cy = a.x * scale + scale // 2, a.y * scale + scale // 2
@@ -273,37 +600,27 @@ def render_pil(world, sim=None, scale: int = 8, show_fire: bool = True,
             # town; assets now show only their point icon (house / facility
             # square / population dots). Value still comes from the value
             # layers, not from a drawn ring.
-            r = max(7, int(scale * 1.1))
+            # THE MARKER SHOULD SAY HOW BIG THE PLACE IS. It was a fixed
+            # size, so a two-cell hamlet was drawn exactly as large as a
+            # twelve-cell town and a map of small settlements read as a map
+            # of cities. It grows with the asset's own footprint, with a
+            # floor so the smallest is still legible and a ceiling so a
+            # city does not swallow its neighbours.
+            _ar = float(getattr(a, "radius", 1) or 1)
+            r = int(np.clip(scale * (0.75 + 0.30 * _ar),
+                            max(5, int(scale * 0.9)),
+                            max(9, int(scale * 2.4))))
             black = (0, 0, 0, 255)
-            if a.kind == "building":
-                # house: body + roof
-                draw.rectangle([cx - r, cy - r // 3, cx + r, cy + r], fill=(238, 232, 220, 255), outline=black, width=1)
-                draw.polygon([(cx - r - 1, cy - r // 3), (cx, cy - r - 2), (cx + r + 1, cy - r // 3)], fill=(150, 60, 40, 255), outline=black)
-            elif a.kind == "critical":
-                # generic critical infrastructure marker (hospital, power,
-                # water, fuel, ...): red-bordered white square with a bold
-                # red exclamation mark
-                draw.rectangle([cx - r, cy - r, cx + r, cy + r],
-                               fill=(250, 250, 250, 255),
-                               outline=(180, 20, 20, 255), width=2)
-                bw = max(2, (2 * r) // 5)
-                draw.rectangle([cx - bw // 2, cy - r + 3,
-                                cx + bw // 2, cy + r - bw - 4],
-                               fill=(200, 25, 25, 255))
-                draw.ellipse([cx - bw // 2, cy + r - 2 - bw,
-                              cx + bw // 2, cy + r - 2],
-                             fill=(200, 25, 25, 255))
-            elif a.kind == "population":
-                # people: three dots
-                draw.ellipse([cx - r, cy - r, cx + r, cy + r], fill=(60, 130, 240, 210), outline=black, width=1)
-                for ox in (-r // 2, 0, r // 2):
-                    draw.ellipse([cx + ox - 2, cy - 3, cx + ox + 2, cy + 1], fill=(255, 255, 255, 255))
-            elif a.kind == "evac_route":
-                # exit: green square with arrow
-                draw.rectangle([cx - r, cy - r, cx + r, cy + r], fill=(40, 170, 90, 255), outline=black, width=1)
-                draw.polygon([(cx - r // 2, cy - r // 2), (cx + r // 2, cy), (cx - r // 2, cy + r // 2)], fill=(255, 255, 255, 255))
+            # ONE DRAWING FUNCTION PER MARKER, shared with the legend. The
+            # icons used to be written out here and described a second time
+            # in the key, so the two drifted apart and the reader had to
+            # match a house against a square by guesswork.
+            _fn = ASSET_GLYPH_DRAW.get(a.kind)
+            if _fn is not None:
+                _fn(draw, cx, cy, r, base)
             else:
-                draw.ellipse([cx - r, cy - r, cx + r, cy + r], fill=base + (255,), outline=black, width=1)
+                draw.ellipse([cx - r, cy - r, cx + r, cy + r],
+                             fill=base + (255,), outline=black, width=1)
             # labels only for named NON-population assets (population sits on
             # the same spot as its building, so it would double every label),
             # and only when the label box does not collide with one already
@@ -311,15 +628,76 @@ def render_pil(world, sim=None, scale: int = 8, show_fire: bool = True,
             # overlapping text.
             if (show_labels and getattr(a, "name", "")
                     and a.kind != "population"):
-                tx0 = cx + r + 3
-                _bx = [tx0 - 1, cy - 7,
-                       tx0 + 6 * len(str(a.name)) + 1, cy + 6]
-                _hit = any(not (_bx[2] < ob[0] or _bx[0] > ob[2]
-                                or _bx[3] < ob[1] or _bx[1] > ob[3])
-                           for ob in _lbl_boxes)
-                if not _hit:
-                    draw.rectangle(_bx, fill=(0, 0, 0, 120))
-                    draw.text((tx0, cy - 6), str(a.name),
+                # PLACE IT SOMEWHERE, DO NOT DROP IT. The label used to be
+                # tried in ONE spot, to the right of the marker, and simply
+                # abandoned when that collided or ran off the frame: in a
+                # town holding several facilities the markers ended up
+                # nameless, which is the one thing a label is for. Eight
+                # positions are tried around the marker and the box is
+                # clamped inside the image, so a name is only given up when
+                # every side is genuinely taken.
+                _nm = str(a.name)
+                # A SETTLEMENT'S NAME AND SIZE, NOTHING ELSE. The label read
+                # "Village 2 centre  4k": the word "centre" is the asset's
+                # internal name and says nothing a reader needs, and the
+                # head count is the one fact that separates a hamlet from a
+                # city. It reads "Village 2  4K" now, and the population
+                # marker that carries the number is not drawn separately
+                # (it would double every label).
+                _is_town = False
+                if a.kind == "building":
+                    _g = str(getattr(a, "group", "") or "")
+                    _is_town = bool(_g)
+                    if _g:
+                        _nm = _g
+                    elif _nm.lower().endswith(" centre"):
+                        _nm = _nm[:-7]
+                    _pop = 0.0
+                    for _b in world.assets:
+                        if (getattr(_b, "kind", "") == "population"
+                                and abs(_b.x - a.x) <= 1
+                                and abs(_b.y - a.y) <= 1):
+                            _pop = max(_pop,
+                                       float(getattr(_b, "population", 0.0)))
+                    if _pop >= 1000:
+                        _nm += f"  {_pop / 1000:.0f}K"
+                    elif _pop >= 1.0:
+                        _nm += f"  {_pop:.0f}"
+                _w_l = _tw(draw, _nm) + 8
+                _h_l = _th(draw) + 5
+                _W, _H = nx * scale, ny * scale
+                _cands = [(cx + r + 3, cy - 6),           # right
+                          (cx - r - 3 - _w_l, cy - 6),    # left
+                          (cx - _w_l // 2, cy - r - 4 - _h_l),   # above
+                          (cx - _w_l // 2, cy + r + 4),          # below
+                          (cx + r + 3, cy - r - 4 - _h_l),
+                          (cx - r - 3 - _w_l, cy - r - 4 - _h_l),
+                          (cx + r + 3, cy + r + 4),
+                          (cx - r - 3 - _w_l, cy + r + 4)]
+                # A SETTLEMENT IS ALWAYS NAMED. A facility label may be
+                # given up when every side of its marker is taken, but a
+                # town without its name and head count is the one thing the
+                # reader cannot recover from the picture: for those, the
+                # least-crowded position is used rather than none at all.
+                _best = None
+                for _lx, _ly in _cands:
+                    _lx = int(min(max(2, _lx), max(2, _W - _w_l - 2)))
+                    _ly = int(min(max(2, _ly), max(2, _H - _h_l - 2)))
+                    _bx = [_lx - 2, _ly - 1, _lx + _w_l, _ly + _h_l]
+                    _ov = 0
+                    for ob in _lbl_boxes:
+                        _ov += (max(0, min(_bx[2], ob[2]) - max(_bx[0], ob[0]))
+                                * max(0, min(_bx[3], ob[3])
+                                      - max(_bx[1], ob[1])))
+                    if _best is None or _ov < _best[0]:
+                        _best = (_ov, _lx, _ly, _bx)
+                    if _ov == 0:
+                        break
+                if _best is not None and (_best[0] == 0 or _is_town):
+                    _ov, _lx, _ly, _bx = _best
+                    draw.rounded_rectangle(_bx, radius=3,
+                                           fill=(15, 15, 15, 165))
+                    draw.text((_lx + 2, _ly + 1), _nm,
                               fill=(255, 255, 255, 255))
                     _lbl_boxes.append(_bx)
 
@@ -445,13 +823,8 @@ def render_pil(world, sim=None, scale: int = 8, show_fire: bool = True,
             ys_, xs_ = np.where(cont)
             for yy_, xx_ in zip(ys_.tolist(), xs_.tolist()):
                 _x0c, _y0c = xx_ * scale, yy_ * scale
-                _qc = max(2, scale // 4)
-                draw.line([_x0c + 1, _y0c + scale - _qc,
-                           _x0c + scale - _qc, _y0c + 1],
-                          fill=(110, 70, 30, 255), width=2)
-                draw.line([_x0c + _qc, _y0c + scale - 1,
-                           _x0c + scale - 1, _y0c + _qc],
-                          fill=(110, 70, 30, 255), width=2)
+                draw_containment(draw, _x0c + scale // 2,
+                                 _y0c + scale // 2, max(2, scale // 2))
         supp = actions.get("supp")
         if supp is not None:
             ys_, xs_ = np.where(supp)
@@ -460,10 +833,7 @@ def render_pil(world, sim=None, scale: int = 8, show_fire: bool = True,
                     continue
                 cx = xx_ * scale + scale // 2
                 cy = yy_ * scale + scale // 2
-                r_ = max(2, scale // 3)
-                draw.ellipse([cx - r_, cy - r_, cx + r_, cy + r_],
-                             fill=(40, 120, 255, 230),
-                             outline=(255, 255, 255, 180))
+                draw_supp(draw, cx, cy, max(2, scale // 3))
         prot = actions.get("prot")
         if prot is not None and np.asarray(prot).any():
             # A BRIGHT GREEN RING ON GREEN TERRAIN IS NOT A SYMBOL. The
@@ -480,12 +850,7 @@ def render_pil(world, sim=None, scale: int = 8, show_fire: bool = True,
                     continue
                 cx = xx_ * scale + scale // 2
                 cy = yy_ * scale + scale // 2
-                r_ = max(3, scale // 2)
-                draw.ellipse([cx - r_ - 1, cy - r_ - 1,
-                              cx + r_ + 1, cy + r_ + 1],
-                             outline=(10, 40, 20, 235), width=3)
-                draw.ellipse([cx - r_, cy - r_, cx + r_, cy + r_],
-                             outline=(120, 255, 150, 255), width=2)
+                draw_protect(draw, cx, cy, max(3, scale // 2))
             _pbx = int(xs_.max()) * scale + scale
             _pby = int(ys_.mean()) * scale + scale // 2
             _badge(draw, _pbx + 26, _pby, "P protect", (40, 200, 90, 245))
@@ -537,11 +902,9 @@ def render_pil(world, sim=None, scale: int = 8, show_fire: bool = True,
                             _py = _yy2 * scale + scale // 2
                             _draw_macro_shape(draw, _px, _py, _r,
                                               _msh, _fill, _ink)
-                        _tag = macro_tag(_mn)
-                        _tx = int(_cxs.mean()) * scale
-                        _ty = int(_cys.mean()) * scale
-                        draw.text((_tx - 3 * len(_tag), _ty - 6),
-                                  _tag, fill=(20, 20, 20, 255))
+                        # identity comes from the legend entry and
+                        # the cell readout; a floating text code over
+                        # the terrain reads as map noise
                         continue
                     # no recorded cells (older log replay): small
                     # badge at the region centre as before
@@ -595,14 +958,7 @@ def render_pil(world, sim=None, scale: int = 8, show_fire: bool = True,
                     cx = _px * scale + scale // 2
                     cy = _py * scale + scale // 2
                     _s = max(9, scale + 4)          # scale with the zoom
-                    draw.polygon([(cx, cy - 2 * _s), (cx - _s, cy - _s),
-                                  (cx + _s, cy - _s)],
-                                 fill=(255, 140, 0, 255),
-                                 outline=(15, 15, 15, 255))
-                    draw.rectangle([cx - _s // 3, cy - _s,
-                                    cx + _s // 3, cy + _s // 2],
-                                   fill=(255, 140, 0, 255),
-                                   outline=(15, 15, 15, 255))
+                    draw_evac(draw, cx, cy, _s)
                     _badge(draw, cx, cy + _s + 8, "EVAC",
                            (255, 150, 20, 250))
             # PUBLIC WARNING. A 12 px triangle parked in the region corner
@@ -617,21 +973,15 @@ def render_pil(world, sim=None, scale: int = 8, show_fire: bool = True,
                 tx_ = (x0_ + x1_) * scale // 2
                 ty_ = y0_ * scale + 8
                 _t = max(9, scale + 2)
-                draw.polygon([(tx_ - _t, ty_ + 2 * _t), (tx_ + _t,
-                                                         ty_ + 2 * _t),
-                              (tx_, ty_)],
-                             fill=(255, 220, 0, 250),
-                             outline=(15, 15, 15, 255))
-                draw.text((tx_ - 2, ty_ + _t - 2), "!",
-                          fill=(0, 0, 0, 255))
+                draw_warn(draw, tx_, ty_ + _t, _t)
                 _badge(draw, tx_, ty_ + 2 * _t + 12, "W warn",
                        (255, 225, 40, 250))
 
     # DSS allocation overlay (D = resource deployment): the STAGED capacity
-    # ahead of the front glows a faint cyan. Burning / burned cells are
+    # ahead of the front glows a faint violet. Burning / burned cells are
     # skipped (they already read as fire + the blue suppression dots), and
     # only cells carrying a meaningful share of the peak are drawn, so the
-    # map is no longer washed blue.
+    # map is no longer washed in one colour.
     if alloc is not None:
         al = np.asarray(alloc, dtype=float)
         mx = float(al.max())
@@ -651,7 +1001,7 @@ def render_pil(world, sim=None, scale: int = 8, show_fire: bool = True,
                 draw.rectangle([xx_ * scale, yy_ * scale,
                                 (xx_ + 1) * scale - 1,
                                 (yy_ + 1) * scale - 1],
-                               outline=None, fill=(0, 210, 255, a_))
+                               outline=None, fill=(205, 55, 245, a_))
 
     # resource units: GROUND depot = green house marker; HELIBASE (aerial)
     # = cyan circle with an "H", so the two kinds read differently on the map
@@ -783,7 +1133,7 @@ def _hex(rgb01):
 # its identity can be DERIVED from them instead of being an anonymous badge.
 BASE_IV_RGB = {
     "suppression_effort": (40, 120, 255),
-    "resource_deployment": (0, 230, 255),
+    "resource_deployment": (216, 60, 255),
     "containment_line": (110, 70, 30),
     "asset_protection": (40, 220, 90),
     "evacuation": (255, 140, 0),
@@ -950,40 +1300,62 @@ def legend_entries(macros=None):
     # and/or provide access. road/access is its own layer; the facilities
     # (power, water, transport, telecom, hospital, ...) are critical-facility
     # markers, named on the map; buildings and population carry structure /
-    # life value. The evacuation route is NOT here (it is a DSS intervention).
+    # life value. The evacuation exit IS here now: the map draws it, so the
+    # key has to name it, and a symbol on the map with no line in the legend
+    # is exactly the mismatch this legend was rebuilt to stop.
     out.append(("Assets", "road / access",
                 _hex((0.82, 0.78, 0.66)), "sq"))
     asset_labels = {"building": "building",
                     "critical": "critical facility (power, water, transport, "
                                 "telecom, hospital, ...)",
-                    "population": "population"}
+                    "population": "population",
+                    "evac_route": "evacuation exit (where E sends people)"}
     for kind, lab in asset_labels.items():
         c = _ASSET_STYLE[kind]["color"]
-        # population is drawn as a filled circle, the others as squares
-        _gl = "dot" if kind == "population" else "sq"
+        # the glyph the MAP draws for this kind, not an approximation of it
+        _gl = _ASSET_STYLE[kind].get("glyph", "sq")
         out.append(("Assets", lab,
                     f"#{c[0]:02x}{c[1]:02x}{c[2]:02x}", _gl))
-    out.append(("Markers", "ignition point (ring + cross)", "#a200de", "ring"))
-    # the on-map wind arrow is white (the red compass is a separate widget)
-    out.append(("Markers", "wind arrow (blows toward)", "#ffffff", "tri"))
+    out.append(("Markers", "ignition point (ring + cross)", "#a200de",
+                "ignite"))
+    # The wind is shown by the compass rose in the corner, which is a
+    # widget of its own and needs no key. There is no per-cell wind arrow on
+    # the map, so a legend line for one described something that is not
+    # drawn.
     # ---- DSS orders: the intervention icon vocabulary (all six base
     # interventions S D C P E W, in order) ----
     out.append(("DSS orders (base)", "S — suppression effort "
-                "(water on engaged cells)", "#2878ff", "dot"))
+                "(water on engaged cells)", "#2878ff", "supp"))
     out.append(("DSS orders (base)", "D — resource deployment "
-                "(staged capacity, cyan glow)", "#00e6ff", "sq"))
+                "(staged capacity, violet glow)", "#d83cff", "deploy"))
     # C (containment) and its physical footprint (the dug fuel break) are the
     # SAME operation, so they share ONE entry and ONE map glyph: brown diagonal
     # dozer strokes. The order and the dug result are drawn identically.
     out.append(("DSS orders (base)",
                 "C — containment line / dug fuel break (diagonal strokes)",
-                "#6e461e", "diag"))
+                "#6e461e", "cont"))
     out.append(("DSS orders (base)", "P — asset protection (shield rings)",
-                "#28dc5a", "ring"))
+                "#78ff96", "prot"))
     out.append(("DSS orders (base)", "E — evacuation (arrow + EVAC at people)",
-                "#ff8c00", "tri"))
+                "#ff8c00", "evac"))
     out.append(("DSS orders (base)", "W — public warning (region corner)",
-                "#ffdc00", "tri"))
+                "#ffdc00", "warn"))
+    # ---- actuator library: physics-backed channels beyond the six
+    # base orders. The map draws them on the worked cells with the SAME
+    # chip macro_style(name) yields, so this entry cannot drift from
+    # the map.
+    try:
+        from dss.rules import ACTUATOR_LIBRARY as _ALIB
+    except Exception:
+        _ALIB = {"tactical_burn": "", "water_drafting": "",
+                 "retardant_drop": ""}
+    for _an, _ad in _ALIB.items():
+        _c, _shape = macro_style(_an)
+        out.append((
+            "DSS orders (actuator library)",
+            f"{BASE_IV_LABEL.get(_an, _an.replace('_', ' '))} "
+            f"[{macro_tag(_an)}]" + (f" — {_ad}" if _ad else ""),
+            f"#{_c[0]:02x}{_c[1]:02x}{_c[2]:02x}", _shape))
     # ---- GenAI (stage 3) GENERATED interventions: a SECOND type of DSS
     # order. Each macro the generative stage introduces gets its own entry;
     # the group is always shown so it is clear where generated orders appear.
@@ -1006,24 +1378,24 @@ def legend_entries(macros=None):
         from dss.sensors import SENSOR_CATALOG as _SCATl
         for _k, _sp in _SCATl.items():
             _c = tuple(_sp.get("color", (120, 200, 255)))
-            _rm = _sp.get("radius_m")
-            _rng = ("whole map" if _rm is None
-                    else f"{_rm / 1000.0:.1f} km range")
+            # THE LABEL ALREADY CARRIES THE RANGE, in the parentheses the
+            # catalog puts there. Repeating it after a dash said the same
+            # thing twice and pushed every sensor line off the panel.
             out.append(("Sensors (+ coverage fill)",
-                        f"{_sp.get('label', _k)} — {_rng}",
+                        str(_sp.get("label", _k)),
                         f"#{_c[0]:02x}{_c[1]:02x}{_c[2]:02x}", "dot"))
     except Exception:
         pass
     # ---- resources (kinds match dss.RESOURCE_KINDS) ----
     # two PLACEABLE units (Add dropdown) + two derived elements:
-    out.append(("Resources", "ground depot — placeable (green house)",
-                "#3cc878", "sq"))
-    out.append(("Resources", "helibase / aerial — placeable (cyan H, "
-                "map-wide reach)", "#00bee6", "dot"))
-    out.append(("Resources", "service radius — the ring drawn AROUND each "
-                "unit (not a separate type)", "#ff6464", "ring"))
-    out.append(("Resources", "road corridor — AUTO thin capacity along "
-                "roads (not addable)", _hex((0.82, 0.78, 0.66)), "sq"))
+    # PLAIN NAMES. A legend says what a symbol IS; how a unit is added and
+    # whether it is placeable belong in the panel that places it, and the
+    # explanations made every line wrap.
+    out.append(("Resources", "ground depot", "#3cc878", "sq"))
+    out.append(("Resources", "helibase / aerial", "#00bee6", "dot"))
+    out.append(("Resources", "service radius", "#ff6464", "ring"))
+    out.append(("Resources", "road corridor",
+                _hex((0.82, 0.78, 0.66)), "sq"))
     # region outlines: yellow = normal/attended, grey = monitored (ignored),
     # orange filled = the coordinator's focused hotspot this cycle
     out.append(("Agents", "DSS region boundary + label", "#ffd228", "box"))
@@ -1144,10 +1516,15 @@ def fire_surface_figure(world, sim=None, max_cells: int = 150,
                        hoverinfo="skip")]
 
     # asset markers (buildings, hospital, ...) as 3D points on the terrain
+    # plotly's 3D marker set has no house and no exclamation plate, so the
+    # shapes here are the closest it offers; the COLOURS at least come from
+    # the one asset table the 2D map and the legend read, so a facility is
+    # the same red and a settlement the same brown in every view instead of
+    # turning white in this one.
     sym = {"building": "square", "critical": "x",
            "population": "circle", "evac_route": "diamond"}
-    col = {"building": "rgb(240,240,240)", "critical": "rgb(220,40,40)",
-           "population": "rgb(60,130,240)", "evac_route": "rgb(40,200,120)"}
+    col = {k: "rgb({}, {}, {})".format(*v["color"])
+           for k, v in _ASSET_STYLE.items()}
     if world.assets:
         for kind in sym:
             pts = [a for a in world.assets if a.kind == kind]
@@ -1196,9 +1573,16 @@ def fire_surface_figure(world, sim=None, max_cells: int = 150,
                           f"<extra>{pick_label}</extra>"))
 
     fig = go.Figure(data=data)
-    fig.update_layout(height=460, margin=dict(l=0, r=0, t=0, b=0),
+    # SAME BLOCK AS THE 2D MAP. This was 460 px tall on an opaque white
+    # sheet while the 2D view is 560 on the page's own background, so
+    # switching between them resized the map area and the 3D terrain sat in
+    # a white box of its own instead of in the map card.
+    fig.update_layout(height=560, margin=dict(l=0, r=0, t=0, b=0),
                       showlegend=False, uirevision="keep",
+                      paper_bgcolor="rgba(0,0,0,0)",
+                      plot_bgcolor="rgba(0,0,0,0)",
                       scene=dict(aspectmode="data", uirevision="keep",
+                                 bgcolor="rgba(0,0,0,0)",
                                  xaxis=dict(visible=False),
                                  # row index grows SOUTH on the 2D map;
                                  # reversing y makes the 3D orientation match
@@ -1211,13 +1595,251 @@ def fire_surface_figure(world, sim=None, max_cells: int = 150,
     return fig
 
 
-def map_figure_2d(world, sim=None, scale: int = 6, **flags):
+def cell_hover_text(world, sim=None, actions=None, alloc=None,
+                    regions=None, network=None, only=None, engine=None):
+    """One tooltip per grid cell: where it started, where it is, what moved.
+
+    The map answers "what is happening" at a glance and "what happened HERE"
+    not at all. The burn state, the fuel that was there before the fire, the
+    assets at risk, the orders that landed and the rules behind them were
+    spread across the legend, the step table and the decision log, and none
+    of them was addressable by pointing at the place.
+
+    `ordered` and `applied` are deliberately separate. `ordered` is what the
+    DSS DECIDED for this cell; `applied` is what actually reached the physics
+    after the coordination share, the budget cut and the fail-safe had their
+    say. A cell that is ordered but not applied is one the plan reached and
+    the funding did not.
+
+    Every quantity is given as start -> now with the change, because a lone
+    current value cannot say whether a cell was saved or was never at risk.
+    The fire line carries both instants: the step it was lit and the step it
+    went out, which is what makes a burn scar readable as a history rather
+    than a colour.
+
+    `only=(x, y)` answers for ONE cell. The animated view cannot afford the
+    hover layer (its payload is a hundred times the compressed frame), so a
+    pinned readout is how a place is inspected while the fire runs, and it
+    must not build seven thousand strings to show one.
+
+    Returns an (ny, nx) object array, or a single string when `only` is set.
+    """
+    ny, nx = np.asarray(world.fuel.ftype).shape
+    ft = np.asarray(world.fuel.ftype)
+    fl = np.asarray(world.fuel.fload)
+    fl0 = np.asarray(getattr(world.fuel, "fload0", fl))
+    fm = np.asarray(world.fuel.fmoist)
+    fm0 = np.asarray(getattr(sim, "_fmoist0", fm)) if sim is not None else fm
+    names = {i: m.name for i, m in FUEL_MODELS.items()}
+
+    burning = ever = fis = bout = None
+    step_now = None
+    if sim is not None:
+        burning = np.asarray(sim.state.burning) > 0.5
+        ever = np.asarray(sim.ever_burned)
+        fis = np.asarray(getattr(sim, "first_ignition_step",
+                                 np.full((ny, nx), -1)))
+        bout = np.asarray(getattr(sim, "burnout_step",
+                                  np.full((ny, nx), -1)))
+        step_now = int(getattr(sim.state, "step", 0))
+        inten = np.asarray(getattr(sim.state, "intensity", np.zeros((ny, nx))))
+    else:
+        inten = np.zeros((ny, nx))
+
+    val = getattr(world, "value", None)
+    vbld = np.asarray(val.vbld) if val is not None else None
+    vcrit = np.asarray(val.vcrit) if val is not None else None
+    vpop = np.asarray(val.vpop) if val is not None else None
+    vpop0 = np.asarray(getattr(sim, "_vpop0", vpop)) \
+        if (sim is not None and vpop is not None) else vpop
+
+    supp = cont = prot = None
+    if actions:
+        supp, cont, prot = (actions.get("supp"), actions.get("cont"),
+                            actions.get("prot"))
+    mac = (actions or {}).get("macro_cells") or {}
+
+    res = getattr(sim, "last_applied_resource", None) if sim is not None \
+        else None
+
+    def _arr(name):
+        a = getattr(res, name, None) if res is not None else None
+        return np.asarray(a) if a is not None else None
+
+    rcap, rcut = _arr("rcap"), _arr("rcut")
+    revac, rwarn = _arr("revac"), _arr("rwarn")
+
+    # the caller may hand regions as Region objects or as the
+    # (x0, y0, x1, y1, label) tuples the renderer takes; accept both rather
+    # than making one of the two callers convert
+    reg_lab = np.empty((ny, nx), dtype=object)
+    for r in (regions or []):
+        try:
+            if isinstance(r, dict):
+                x0, y0, x1, y1 = r.get("box", (0, 0, 0, 0))
+                lab = r.get("name", "?")
+            elif hasattr(r, "x0"):
+                x0, y0, x1, y1 = r.x0, r.y0, r.x1, r.y1
+                lab = getattr(r, "name", "?")
+            else:
+                x0, y0, x1, y1, lab = tuple(r)[:5]
+        except Exception:
+            continue
+        reg_lab[max(0, int(y0)):min(ny, int(y1)),
+                max(0, int(x0)):min(nx, int(x1))] = str(lab)
+
+    # WHICH RULES PUT THE ORDERS THERE. The orders on a cell are the
+    # output of the rules that fired for the region that owns it, so the
+    # rules and the adaptation verdict of the last cycle are named per
+    # region and attached to every cell inside it.
+    by_region = {}
+    cyc = None
+    if engine is not None:
+        cycles = getattr(engine, "cycles", None) or []
+        cyc = cycles[-1] if cycles else None
+    if cyc:
+        for _rn, _rd in (cyc.get("regions") or {}).items():
+            _fired = ", ".join(
+                f"{n} {float(w):.2f}"
+                for n, w in (_rd.get("fired") or [])[:4] if float(w) > 0.05)
+            by_region[_rn] = _fired or "none above 0.05"
+
+    def _d(now, start, fmt="{:.2f}"):
+        """start -> now with the signed change, or just the value if equal."""
+        if abs(float(now) - float(start)) < 5e-3:
+            return fmt.format(float(now))
+        return (fmt.format(float(start)) + " → " + fmt.format(float(now))
+                + f" ({float(now) - float(start):+.2f})")
+
+    out = np.empty((ny, nx), dtype=object)
+    if only is not None:
+        _ox, _oy = int(only[0]), int(only[1])
+        if not (0 <= _ox < nx and 0 <= _oy < ny):
+            return None
+        cells = [(_oy, _ox)]
+    else:
+        cells = None
+
+    for y, x in (cells if cells is not None
+                 else ((yy, xx) for yy in range(ny) for xx in range(nx))):
+        L = [f"<b>cell ({x}, {y})</b> · {names.get(int(ft[y, x]), '?')}"
+             + (f" · {reg_lab[y, x]}" if reg_lab[y, x] else "")]
+        # ---- state_0 -> state_k, with the deltas
+        L.append("fuel load " + _d(fl[y, x], fl0[y, x])
+                 + " · moisture " + _d(fm[y, x], fm0[y, x]))
+        # ---- the fire's own history: lit at k, out at k'
+        if burning is not None:
+            _k0 = int(fis[y, x])
+            if burning[y, x]:
+                L.append(f"<b>BURNING</b> since k={_k0}"
+                         + (f", {step_now - _k0} steps"
+                            if _k0 >= 0 and step_now is not None else "")
+                         + f" · intensity {float(inten[y, x]):.2f}")
+            elif ever is not None and ever[y, x]:
+                _k1 = int(bout[y, x]) if bout is not None else -1
+                if _k0 >= 0 and _k1 >= 0:
+                    L.append(f"burned: lit k={_k0}, out k={_k1} "
+                             f"({_k1 - _k0} steps)")
+                elif _k0 >= 0:
+                    L.append(f"burned: lit k={_k0}, still going out")
+                else:
+                    L.append("burned")
+        # ---- what is at stake here
+        _a = []
+        if vbld is not None and float(vbld[y, x]) > 1e-6:
+            _a.append(f"building {float(vbld[y, x]):.2f}")
+        if vcrit is not None and float(vcrit[y, x]) > 1e-6:
+            _a.append(f"critical {float(vcrit[y, x]):.2f}")
+        if vpop is not None and (float(vpop[y, x]) > 1e-6
+                                 or (vpop0 is not None
+                                     and float(vpop0[y, x]) > 1e-6)):
+            _a.append("population "
+                      + _d(vpop[y, x], vpop0[y, x], "{:.0f}") + "/km²")
+        if _a:
+            L.append("at stake: " + ", ".join(_a))
+        # WHO GOT OUT AND WHO DID NOT. Evacuation is the only thing that
+        # removes people from a cell, so the drop since the start IS the
+        # number who left; whoever is still there when the cell burns is
+        # the exposure the population cost integrates. Reading a headcount
+        # beside a burn scar could not tell those two apart.
+        if (vpop is not None and vpop0 is not None
+                and float(vpop0[y, x]) > 1e-6):
+            _left = float(vpop0[y, x]) - float(vpop[y, x])
+            _stay = float(vpop[y, x])
+            _km2 = " /km²"
+            if _left > 1e-6:
+                L.append(f"people: {_left:.0f} evacuated, "
+                         f"{_stay:.0f} still here{_km2}")
+            elif burning is not None and ever is not None and ever[y, x]:
+                L.append(f"people: NONE evacuated, {_stay:.0f} were here "
+                         f"when it burned{_km2}")
+        # ---- the orders that landed on this cell
+        _o = []
+        if supp is not None and supp[y, x]:
+            _o.append("S suppression")
+        if cont is not None and cont[y, x]:
+            _o.append("C containment line")
+        if prot is not None and prot[y, x]:
+            _o.append("P asset protection")
+        for _mn, _cells_m in mac.items():
+            try:
+                if _cells_m[y, x]:
+                    _o.append(f"{macro_tag(_mn)} {_mn}")
+            except Exception:
+                pass
+        if _o:
+            L.append("ordered: " + ", ".join(_o))
+        _ap = []
+        if rcap is not None and float(rcap[y, x]) > 1e-6:
+            _ap.append(f"capacity {float(rcap[y, x]):.2f}")
+        if rcut is not None and float(rcut[y, x]) > 1e-6:
+            _ap.append("fuel break dug")
+        if revac is not None and float(revac[y, x]) > 1e-6:
+            _ap.append(f"evacuation {float(revac[y, x]):.2f}")
+        if rwarn is not None and float(rwarn[y, x]) > 1e-6:
+            _ap.append(f"warning {float(rwarn[y, x]):.2f}")
+        if alloc is not None:
+            try:
+                _v = float(np.asarray(alloc)[y, x])
+                if _v > 1e-6:
+                    _ap.append(f"staged {_v:.2f}")
+            except Exception:
+                pass
+        if _ap:
+            L.append("applied: " + ", ".join(_ap))
+        # ---- and the decision those orders came out of
+        _rl = by_region.get(reg_lab[y, x])
+        if _rl:
+            L.append("rules fired: " + _rl)
+        out[y, x] = "<br>".join(L)
+
+    if cells is not None:
+        return out[cells[0][0], cells[0][1]]
+    return out
+
+
+def map_figure_2d(world, sim=None, scale: int = 6, hover: bool = True,
+                  max_hover_cells: int = 60000, engine=None, **flags):
     """2D map as a plotly image so it supports scroll zoom and pan like the 3D
     view. Draws the same content as render_pil (land cover, roads, assets,
-    flame fire)."""
+    flame fire), plus a per-cell hover.
+
+    `max_hover_cells` bounds the tooltip payload: one string per cell is a
+    fine price on a 100x70 map and an unreasonable one on a 400x400, so
+    beyond the bound the hover layer is simply left off.
+    """
     import plotly.graph_objects as go
+    # NO supersampling: the app pairs this figure with an
+    # image-rendering: pixelated stylesheet, and pixelated wants the
+    # raster NEAR 1:1 (oversized input + nearest decimation reads as
+    # soft mush; near-1:1 + pixelated reads like the st.image path).
     uirev = str(flags.pop("uirevision", "keep"))
-    pil = render_pil(world, sim=sim, scale=scale, show_labels=True, **flags)
+    # read by the hover layer as well as the renderer
+    actions = flags.get("actions")
+    alloc = flags.get("alloc")
+    regions = flags.get("regions")
+    pil = render_pil(world, sim=sim, scale=scale, show_labels=False,
+                     **flags)
     arr = np.asarray(pil)
     # map the raster onto GRID CELL coordinates (dx = dy = 1/scale) so the
     # axes and the hover read the same x,y the user types when placing a
@@ -1226,11 +1848,115 @@ def map_figure_2d(world, sim=None, scale: int = 6, **flags):
     _sc = max(float(scale), 1e-6)
     fig = go.Figure(go.Image(z=arr, x0=0.5 / _sc, dx=1.0 / _sc,
                              y0=0.5 / _sc, dy=1.0 / _sc,
-                             hovertemplate="x=%{x:.0f}, y=%{y:.0f}"
-                                           "<extra></extra>"))
+                             hoverinfo="skip"))
+    # A TRANSPARENT CELL GRID ON TOP, purely to be hovered. The image trace
+    # could only ever report the pixel it was under; what the reader wants
+    # when pointing at a place is what is happening THERE, which lives in
+    # the world, the simulator and the orders rather than in the picture.
+    # The overlay carries one preformatted line per cell and draws nothing.
+    if hover:
+        _ny, _nx = np.asarray(world.fuel.ftype).shape
+        if _ny * _nx <= max_hover_cells:
+            _txt = cell_hover_text(world, sim=sim, actions=actions,
+                                   alloc=alloc, regions=regions,
+                                   engine=engine)
+            fig.add_trace(go.Heatmap(
+                z=np.zeros((_ny, _nx)), x0=0.5, dx=1.0, y0=0.5, dy=1.0,
+                customdata=_txt,
+                hovertemplate="%{customdata}<extra></extra>",
+                colorscale=[[0, "rgba(0,0,0,0)"], [1, "rgba(0,0,0,0)"]],
+                showscale=False, hoverongaps=False))
+            fig.update_layout(hoverlabel=dict(align="left",
+                                              bgcolor="rgba(255,255,255,.96)",
+                                              font=dict(size=12)))
     # IMPORTANT: no explicit axis ranges. With a constant uirevision the
     # user's zoom/pan survives every step; re-setting ranges on every
     # rebuild would fight the preserved UI state and snap the view back.
+    # VECTOR LABELS. Lettering baked into the raster can never be
+    # glass on a scaled canvas; SVG annotations ARE text: razor sharp
+    # at every zoom and always the same on-screen size. Same content
+    # the raster labels carried (name + head count on settlements).
+    try:
+        _assets = list(getattr(world, "assets", None) or [])[:60]
+        _built = {(int(a.x), int(a.y)) for a in _assets
+                  if getattr(a, "kind", "") == "building"}
+        # DE-CLUTTER, the same discipline the raster labels had: a
+        # label claims a box, the next label may not intersect a
+        # claimed box, and each label tries eight positions around
+        # its asset before giving up. Sizes are estimated in CELL
+        # units from the on-screen geometry (560 px tall figure).
+        _ppc = max(560.0 / max(world.config.ny, 1), 1e-6)
+        _ny_c, _nx_c = world.config.ny, world.config.nx
+        _placed = []
+
+        def _clash(bx):
+            if bx[0] < 0 or bx[1] < 0 or bx[2] > _nx_c or bx[3] > _ny_c:
+                return True
+            return any(not (bx[2] < ob[0] or bx[0] > ob[2]
+                            or bx[3] < ob[1] or bx[1] > ob[3])
+                       for ob in _placed)
+
+        # towns first (their labels matter most and are the longest),
+        # then critical facilities, then the rest
+        _order = {"building": 0, "critical": 1}
+        _assets_srt = sorted(
+            [a for a in _assets if getattr(a, "name", "")],
+            key=lambda a: _order.get(getattr(a, "kind", ""), 2))
+        for a in _assets_srt:
+            _k = getattr(a, "kind", "")
+            _nm = str(getattr(a, "name", "") or "")
+            if _k == "population" and (int(a.x), int(a.y)) in _built:
+                continue
+            if _k == "building":
+                _pop = 0.0
+                for b in _assets:
+                    if (getattr(b, "kind", "") == "population"
+                            and abs(b.x - a.x) <= 1
+                            and abs(b.y - a.y) <= 1):
+                        _pop = max(_pop, float(getattr(
+                            b, "population", 0.0)))
+                if _pop >= 1000:
+                    _nm += f"  {_pop / 1000:.0f}k"
+                elif _pop >= 1.0:
+                    _nm += f"  {_pop:.0f}"
+            _wc = (6.9 * len(_nm) + 10) / _ppc      # label box, cells
+            _hc = 21.0 / _ppc
+            _ax, _ay = float(a.x) + 0.5, float(a.y) + 0.5
+            # (x, y, xanchor) candidates: right, left, above, below,
+            # the four diagonals, then a WIDER second ring so a dense
+            # town still finds room instead of dropping its names
+            _cand = []
+            for _d in (1.0, 2.4):
+                _cand += [
+                    (_ax + _d, _ay, "left"),
+                    (_ax - _d, _ay, "right"),
+                    (_ax - _wc / 2, _ay - _d - _hc / 2, "left"),
+                    (_ax - _wc / 2, _ay + _d + _hc / 2, "left"),
+                    (_ax + _d, _ay - _hc, "left"),
+                    (_ax + _d, _ay + _hc, "left"),
+                    (_ax - _d, _ay - _hc, "right"),
+                    (_ax - _d, _ay + _hc, "right"),
+                ]
+            for _cx2, _cy2, _anch in _cand:
+                _bx = ([_cx2, _cy2 - _hc / 2, _cx2 + _wc,
+                        _cy2 + _hc / 2] if _anch == "left" else
+                       [_cx2 - _wc, _cy2 - _hc / 2, _cx2,
+                        _cy2 + _hc / 2])
+                if _clash(_bx):
+                    continue
+                fig.add_annotation(
+                    x=_cx2, y=_cy2, text=_nm, showarrow=False,
+                    xanchor=_anch, yanchor="middle",
+                    font=dict(size=13, color="white"),
+                    bgcolor="rgba(15,15,15,0.72)", borderpad=3)
+                _placed.append(_bx)
+                break
+            # no free spot: the label is dropped, a pile of
+            # overprinted names says less than a missing one
+            if len(_placed) >= 25:
+                break
+    except Exception:
+        pass
     fig.update_xaxes(visible=False, constrain="domain", uirevision=uirev)
     fig.update_yaxes(visible=False, autorange="reversed",
                      scaleanchor="x", scaleratio=1, uirevision=uirev)

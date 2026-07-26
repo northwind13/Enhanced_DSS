@@ -1,0 +1,17 @@
+﻿quantity;value
+cycles;27
+satisficing_failed;7
+tried;2
+accepted;0
+rejected;2
+withheld;0
+persist_failed;0
+dJ_accepted;0.000000
+stage1_tried;1
+stage1_accepted;0
+stage3_tried;1
+stage3_accepted;0
+blocked: cooldown between adaptation trials;5
+gate: rejected at G3 (no improvement);1
+rejected: rejected at G3 (claude);1
+rejected: no improving perturbation found;1

@@ -1,0 +1,12 @@
+﻿quantity;value
+cycles;1
+satisficing_failed;1
+tried;1
+accepted;0
+rejected;1
+withheld;1
+persist_failed;0
+dJ_accepted;0.000000
+stage2_tried;1
+stage2_accepted;0
+rejected: instantiated cell did not improve the physical forecast (0.113 vs 0.113, burn+asset+pop at >=45 min);1

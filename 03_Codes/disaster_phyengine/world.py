@@ -30,6 +30,13 @@ class Asset:
     radius: int = 0           # 0 means a single cell
     value: float = 1.0        # intensity of the asset attribute (e.g. Vcrit level)
     population: float = 0.0   # persons, for population assets
+    # THE SETTLEMENT THIS BELONGS TO. A town is not one asset: it is a
+    # painted block of built-up ground, a street grid, its residents and
+    # its civic facilities. Without a name tying those together the editor
+    # could only delete them one at a time and the block of urban fuel
+    # stayed behind, so the town went on burning as a town with nobody in
+    # it. Empty for assets placed on their own.
+    group: str = ""
 
 
 @dataclass
@@ -142,10 +149,154 @@ class World:
         self.fuel.fload0[m] = load
         self.fuel.fmoist[m] = moisture
 
+    #: value of one cell of general built-up ground, against 1.0 for a
+    #: designated structure asset. A block of houses is worth less per cell
+    #: than a hospital, and more than nothing.
+    BUILTUP_VALUE = 0.5
+
+    def seed_builtup_value(self, value: float | None = None) -> int:
+        """Give every BUILT-UP cell the structure value it plainly has.
+
+        The value layers used to be written only by add_asset, inside the
+        radius of a placed Asset, while the built-up LAND COVER was painted
+        across a much wider footprint. On a generated landscape that left
+        90% of what the map draws and labels as "urban / built-up" carrying
+        no structure value at all: a fire could burn straight through the
+        town and the asset loss stayed at zero, which is what the map's own
+        legend says should not happen.
+
+        A hand-placed asset still wins where it overlaps, because a named
+        hospital is worth more than the block around it.
+
+        Returns the number of cells given a value.
+        """
+        v = float(self.BUILTUP_VALUE if value is None else value)
+        m = np.asarray(self.fuel.ftype) == FUEL_NAME_TO_ID["urban"]
+        if not m.any() or v <= 0.0:
+            return 0
+        self.value.vbld[m] = np.maximum(self.value.vbld[m], v)
+        return int(m.sum())
+
+    def spread_population_over_builtup(self) -> int:
+        """Put a settlement's people across the settlement, not on a disc.
+
+        add_asset writes the population into a circle of the asset's radius
+        around its centre. The map meanwhile paints the town as BLOCKS
+        separated by streets, and the two do not coincide: measured on a
+        generated landscape the population covered 61% of the built-up
+        footprint and spilled onto ground the map does not call a town at
+        all, so a fire could burn most of what looks like a city while the
+        population cost barely moved.
+
+        Every built-up cell is assigned to the nearest population marker and
+        each marker's people are spread evenly over the cells that fall to
+        it. Connectivity is deliberately not used: a town is a cluster of
+        blocks with roads between them, so its cells are not one connected
+        component and treating them as such covers a fraction of it.
+
+        The head count is preserved exactly. Returns the number of markers
+        whose people were redistributed.
+        """
+        pops = [a for a in self.assets
+                if getattr(a, "kind", "") == "population"]
+        if not pops:
+            return 0
+        m = np.asarray(self.fuel.ftype) == FUEL_NAME_TO_ID["urban"]
+        if not m.any():
+            return 0
+        ys, xs = np.where(m)
+        px = np.array([float(a.x) for a in pops])
+        py = np.array([float(a.y) for a in pops])
+        # nearest marker for each built-up cell
+        d2 = ((xs[:, None] - px[None, :]) ** 2
+              + (ys[:, None] - py[None, :]) ** 2)
+        owner = np.argmin(d2, axis=1)
+        cell_km2 = self.config.cell_area_ha / 100.0
+        for a in pops:
+            # the disc this marker wrote is cleared first, so people are not
+            # left standing in the fields beside the town
+            self.value.vpop[self._disk(a.x, a.y,
+                                       getattr(a, "radius", 0))] = 0.0
+        for i, a in enumerate(pops):
+            sel = owner == i
+            if not sel.any():
+                continue
+            # THE TOWN, UNIONED WITH THE GROUND THE MARKER ALREADY HELD.
+            # Built-up cells alone would do for coverage, but where the
+            # painted footprint is smaller than the marker's disc that
+            # CONCENTRATES the same people into fewer cells, and the
+            # protection priority reads density: measured, it pulled the
+            # allocator off the flame front and onto the town it now
+            # thought was three times as dense, and the fire escaped. The
+            # union keeps every built-up cell populated while the density
+            # can only fall, never spike.
+            terr = np.zeros_like(m)
+            terr[ys[sel], xs[sel]] = True
+            disc = (self._disk(a.x, a.y, getattr(a, "radius", 0))
+                    & self.buildable_mask())
+            # only the part of the disc that is not another town's ground
+            terr |= disc & ~(m & ~terr)
+            n_cells = int(terr.sum())
+            if n_cells == 0:
+                continue
+            dens = float(getattr(a, "population", 0.0)) / (n_cells * cell_km2)
+            self.value.vpop[terr] = np.maximum(self.value.vpop[terr], dens)
+        return len(pops)
+
+    def rebuild_value_layers(self, builtup_value: bool = True,
+                             spread_population: bool = True) -> None:
+        """Recompute vbld / vcrit / vpop / vevac from the asset list.
+
+        add_asset WRITES into the value layers and nothing takes a written
+        value back out, because np.maximum cannot be undone: two assets may
+        have contributed to the same cell and there is no record of which.
+        So renaming is harmless but MOVING or DELETING an asset needs the
+        layers rebuilt from scratch, or a deleted hospital goes on being
+        worth protecting at the place it used to stand.
+
+        The derived layers are re-applied afterwards in the same order the
+        generator uses, so an edited map and a freshly generated one end up
+        described the same way.
+        """
+        self.value.vbld[:] = 0.0
+        self.value.vcrit[:] = 0.0
+        self.value.vpop[:] = 0.0
+        self.value.vevac[:] = 0.0
+        kept = list(self.assets)
+        self.assets = []
+        for a in kept:
+            self.add_asset(a)          # re-appends and re-stamps the layers
+        if builtup_value:
+            self.seed_builtup_value()
+        if spread_population:
+            self.spread_population_over_builtup()
+
+    def buildable_mask(self) -> np.ndarray:
+        """Ground that can hold structures and people.
+
+        Nothing stands on open water, and the road and bare-ground class is
+        the corridor between things rather than a place with something in
+        it. The value layers used to be written over a plain disc with no
+        regard for what was underneath, so buildings and residents ended up
+        on lakes and roads: measured on a generated landscape, 19% of all
+        asset value sat on ground that cannot burn, which is both physically
+        absurd and put a ceiling under the loss term that no fire could
+        reach.
+        """
+        ft = np.asarray(self.fuel.ftype)
+        return (ft != FUEL_NAME_TO_ID["water"]) \
+            & (ft != FUEL_NAME_TO_ID["non_fuel"])
+
     def add_asset(self, asset: Asset) -> None:
         """Place an asset and write its contribution into the value layers."""
         self.assets.append(asset)
-        m = self._disk(asset.x, asset.y, asset.radius)
+        m = self._disk(asset.x, asset.y, asset.radius) & self.buildable_mask()
+        if not m.any():
+            # the marker itself sits on water or bare ground: keep the point
+            # so the map still shows it, but write no value onto the water
+            if asset.kind == "evac_route":
+                self._stamp_evac_distance(asset.x, asset.y)
+            return
         if asset.kind == "building":
             self.value.vbld[m] = np.maximum(self.value.vbld[m], asset.value)
         elif asset.kind == "critical":

@@ -1,0 +1,6 @@
+﻿step;t_min;hotspot;attended;shares;statement
+65;65.0;Agent_1;Agent_1|Agent_2|Agent_3;Agent_1=1.0|Agent_2=1.0|Agent_3=1.0;Global DSS: focus on Agent_1 (priority 0.53), Agent_1 share 1.00, Agent_3 share 1.00, Agent_2 share 1.00
+66;66.0;Agent_1;Agent_1|Agent_2|Agent_3;Agent_1=1.0|Agent_2=1.0|Agent_3=1.0;Global DSS: focus on Agent_1 (priority 0.48), Agent_1 share 1.00, Agent_3 share 1.00, Agent_2 share 1.00 · water ferried from Agent_2's water (240 m) to Agent_3
+67;67.0;Agent_1;Agent_1|Agent_2|Agent_3;Agent_1=1.0|Agent_2=1.0|Agent_3=1.0;Global DSS: focus on Agent_1 (priority 0.48), Agent_1 share 1.00, Agent_3 share 1.00, Agent_2 share 1.00 · water ferried from Agent_2's water (240 m) to Agent_3
+68;68.0;Agent_1;Agent_1|Agent_2|Agent_3;Agent_1=1.0|Agent_2=1.0|Agent_3=1.0;Global DSS: focus on Agent_1 (priority 0.48), Agent_1 share 1.00, Agent_3 share 1.00, Agent_2 share 1.00 · water ferried from Agent_2's water (240 m) to Agent_3
+754;754.0;Agent_1;Agent_1|Agent_2|Agent_3;Agent_1=1.0|Agent_2=1.0|Agent_3=1.0;Global DSS: focus on Agent_1 (priority 0.43), Agent_1 share 1.00, Agent_3 share 1.00, Agent_2 share 1.00

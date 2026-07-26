@@ -1,0 +1,2 @@
+﻿step;t_min;hotspot;attended;shares;statement
+66;66.0;Agent_3;Agent_1|Agent_3;Agent_1=1.0|Agent_2=0.651|Agent_3=1.0;Global DSS: focus on Agent_3 (priority 0.52), Agent_3 share 1.00, Agent_1 share 1.00, Agent_2 share 0.65 (monitor)

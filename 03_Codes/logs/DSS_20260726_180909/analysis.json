@@ -1,0 +1,58 @@
+{
+ "start_step": 65,
+ "seq0": 196,
+ "cycles": 1,
+ "satisficing_failed": 1,
+ "tried": 1,
+ "accepted": 0,
+ "rejected": 1,
+ "blocked": {},
+ "per_stage": {
+  "2": {
+   "tried": 1,
+   "accepted": 0,
+   "dJ": 0.0
+  }
+ },
+ "gates": {},
+ "reasons": {
+  "refined cell already covered": 1
+ },
+ "withheld": 0,
+ "dJ_accepted": 0.0,
+ "j_series": [
+  [
+   65,
+   0.2848752536268078,
+   0.2848752536268078,
+   0.25
+  ]
+ ],
+ "phys_series": [
+  [
+   65,
+   0.3228586207770489,
+   0.3228586207770489
+  ]
+ ],
+ "persist_failed": 0,
+ "cooldown_refunds": 1,
+ "stage2_prefiltered": 0,
+ "stage_controller": {
+  "high+gap|2": 0.000245,
+  "low|3": -0.002857,
+  "high+gap|3": -0.00037,
+  "high+gap|1": 0.000328,
+  "mid+gap|1": 0.006,
+  "mid+gap|3": -0.001674,
+  "mid+gap|2": -0.001563,
+  "low|1": -0.002832,
+  "low|2": -0.0026424499999999997,
+  "mid|3": -0.000571,
+  "mid|2": -0.000571,
+  "mid|1": -0.000548
+ },
+ "config_id": "DSS1-EV1-GA1-U12:1-U3:1",
+ "seed_profile": "minimal",
+ "persist_errors": []
+}

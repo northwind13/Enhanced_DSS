@@ -1,0 +1,13 @@
+﻿quantity;value
+cycles;25
+satisficing_failed;24
+tried;1
+accepted;0
+rejected;1
+withheld;0
+persist_failed;0
+dJ_accepted;0.000000
+stage2_tried;1
+stage2_accepted;0
+blocked: cooldown between adaptation trials;23
+rejected: refined cell already covered;1

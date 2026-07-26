@@ -1,0 +1,20 @@
+﻿quantity;value
+cycles;154
+satisficing_failed;154
+tried;31
+accepted;14
+rejected;17
+withheld;37
+persist_failed;0
+dJ_accepted;-0.004445
+stage1_tried;24
+stage1_accepted;12
+stage2_tried;3
+stage2_accepted;2
+stage3_tried;4
+stage3_accepted;0
+blocked: cooldown between adaptation trials;123
+gate: rejected at G3 (no improvement);4
+rejected: rejected at G3 (claude);4
+rejected: no improving perturbation found;12
+"rejected: cell already covered — an active rule sits on this antecedent cell and the situation is crisp; numeric tuning is stage ① evFIS's job";1

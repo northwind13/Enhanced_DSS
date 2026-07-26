@@ -1,0 +1,21 @@
+﻿quantity;value
+cycles;3
+satisficing_failed;3
+tried;5
+accepted;1
+rejected;4
+withheld;0
+persist_failed;0
+dJ_accepted;0.000586
+stage1_tried;1
+stage1_accepted;0
+stage2_tried;2
+stage2_accepted;1
+stage3_tried;2
+stage3_accepted;0
+gate: rejected;1
+gate: model timeout;1
+rejected: no improving perturbation found;1
+"rejected: rejected at G2c relevance (the rule does not fire in the PRESENT situation; use each concept's CURRENT dominant term from the situation line) (claude)";1
+rejected: refined cell already covered;1
+rejected: the wait budget of 90 s for this attempt ran out during revision 3;1

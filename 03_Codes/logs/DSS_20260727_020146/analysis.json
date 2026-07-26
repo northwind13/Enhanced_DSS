@@ -1,0 +1,110 @@
+{
+ "start_step": 0,
+ "seq0": 209,
+ "cycles": 3,
+ "satisficing_failed": 3,
+ "tried": 5,
+ "accepted": 1,
+ "rejected": 4,
+ "blocked": {},
+ "per_stage": {
+  "2": {
+   "tried": 2,
+   "accepted": 1,
+   "dJ": 0.000585827029153968
+  },
+  "1": {
+   "tried": 1,
+   "accepted": 0,
+   "dJ": 0.0
+  },
+  "3": {
+   "tried": 2,
+   "accepted": 0,
+   "dJ": 0.0
+  }
+ },
+ "gates": {
+  "rejected": 1,
+  "model timeout": 1
+ },
+ "reasons": {
+  "no improving perturbation found": 1,
+  "rejected at G2c relevance (the rule does not fire in the PRESENT situation; use each concept's CURRENT dominant term from the situation line) (claude)": 1,
+  "refined cell already covered": 1,
+  "the wait budget of 90 s for this attempt ran out during revision 3": 1
+ },
+ "withheld": 0,
+ "dJ_accepted": 0.000585827029153968,
+ "j_series": [
+  [
+   0,
+   0.07845419776177724,
+   0.07793729155958257,
+   0.07637854572839091
+  ],
+  [
+   1,
+   0.08826176124528505,
+   0.0880083061042531,
+   0.08624813998216804
+  ],
+  [
+   63,
+   0.15075678143349078,
+   0.15063260941933818,
+   0.14761995723095142
+  ]
+ ],
+ "phys_series": [
+  [
+   0,
+   0.08891475746334755,
+   0.08832893043419358
+  ],
+  [
+   1,
+   0.10002999607798974,
+   0.09974274691815353
+  ],
+  [
+   62,
+   0.16634961987005303,
+   0.16634961987005303
+  ],
+  [
+   63,
+   0.1708576856246229,
+   0.1707169573419166
+  ],
+  [
+   60,
+   0.16593506058752774,
+   0.16593506058752774
+  ]
+ ],
+ "persist_failed": 0,
+ "cooldown_refunds": 1,
+ "stage2_prefiltered": 1,
+ "genai_ms": [
+  14397.9,
+  20589.3
+ ],
+ "stage_controller": {
+  "low|3": -0.00039000000000000005,
+  "mid+gap|3": -0.0009048762500000001,
+  "mid|2": -0.0002,
+  "low|2": -0.0003781733964189281,
+  "high+gap|2": -0.0001809586368896517,
+  "high+gap|3": -0.00039000000000000005,
+  "mid+gap|2": -0.0007351503873320085,
+  "mid+gap|1": -0.0005705,
+  "low|1": -0.00039000000000000005,
+  "high+gap|1": -0.0002
+ },
+ "config_id": "DSS1-EV1-GA1-U12:1-U3:1",
+ "seed_profile": "minimal",
+ "persist_errors": [
+  "stage controller: PermissionError: [WinError 32] The process cannot access the file because it is being used by another process: 'D:\\\\repos_github\\\\Enhanced_DSS\\\\03_Codes\\\\logs\\\\dss_generated_state.json.tmp' -> 'D:\\\\repos_github\\\\Enhanced_DSS\\\\03_Codes\\\\logs\\\\dss_generated_state.json'"
+ ]
+}

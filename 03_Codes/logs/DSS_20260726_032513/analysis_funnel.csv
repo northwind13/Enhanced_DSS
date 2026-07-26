@@ -1,0 +1,10 @@
+﻿quantity;value
+cycles;4
+satisficing_failed;4
+tried;0
+accepted;0
+rejected;0
+withheld;0
+persist_failed;0
+dJ_accepted;0.000000
+blocked: cooldown between adaptation trials;3

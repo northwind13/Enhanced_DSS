@@ -38,6 +38,18 @@ SCHEMA_VERSION = "1.0"
 SECTIONS = ("evfis_rule_modifications", "genai_rules",
             "genai_concepts", "genai_interventions")
 
+# THE PROPOSAL LEDGER IS EVIDENCE, NOT KNOWLEDGE, so it is deliberately NOT
+# one of SECTIONS: nothing here is ever resolved into the active rule set, it
+# carries no replay order and it does not answer to the consumption flags.
+# It exists because the failures used to be thrown away. Every stage 3
+# proposal was judged by a gate and then discarded, so across 62 runs 155
+# rejections, each with its verdict and its revisions, left no trace, and
+# there was nothing for a retrieval step to retrieve. A ledger of what was
+# proposed, what the gate said and what the simulation measured is the
+# corpus that grounding the proposer needs.
+LEDGER = "genai_proposals"
+MAX_LEDGER = 2000            # oldest entries drop out first
+
 # which stage owns each section, and therefore which flags gate it
 _ORIGIN = {"evfis_rule_modifications": "evfis",
            "genai_rules": "genai",
@@ -80,6 +92,7 @@ def empty_state(active_rule_set: str = "minimal5") -> Dict[str, Any]:
         # is scoped by `map_key`: the value of a stage is a property of the
         # terrain and the assets, so a different map starts from scratch.
         "stage_controller": {"map_key": None, "maps": {}},
+        LEDGER: [],
     }
     for s in SECTIONS:
         d[s] = []
@@ -144,6 +157,7 @@ class GeneratedState:
             # kept verbatim; _sc() migrates the old single-table layout on
             # first use, so an existing store is not thrown away
             base["stage_controller"] = dict(_sc)
+        base[LEDGER] = list(d.get(LEDGER) or [])
         st.data = base
         return st
 
@@ -235,6 +249,10 @@ class GeneratedState:
         # the controller's value table is learned knowledge too: leaving it
         # behind would let a wiped store still steer the stage choice with
         # experience gathered from rules that no longer exist
+        # the ledger SURVIVES a wipe: it records what was tried and what the
+        # gates measured, which stays true after the rules are reset. Use
+        # clear_ledger() to drop it deliberately.
+        counts["ledger_kept"] = len(self.proposals())
         counts["stage_controller_entries"] = sum(
             len(v.get("q") or {})
             for v in ((self.data.get("stage_controller") or {})
@@ -245,6 +263,55 @@ class GeneratedState:
         self.flags["genai_active"] = False
         self.save()
         return counts
+
+    # ------------------------------------------------------ proposal ledger
+    def proposals(self) -> List[Dict[str, Any]]:
+        return self.data.setdefault(LEDGER, [])
+
+    def append_proposal(self, record: Dict[str, Any],
+                        save: bool = True) -> Dict[str, Any]:
+        """File one stage 3 attempt, accepted or not.
+
+        Its sequence is its OWN, independent of the knowledge sequence: a
+        ledger entry is not replayed and must not shift the order in which
+        rules and modifications are restored.
+        """
+        led = self.proposals()
+        rec = dict(record)
+        rec["lseq"] = (int(led[-1].get("lseq", 0)) + 1) if led else 1
+        rec.setdefault("id", f"prop_{rec['lseq']:05d}")
+        rec.setdefault("timestamp", _now())
+        rec["config"] = config_id(self.flags)
+        led.append(rec)
+        if len(led) > MAX_LEDGER:
+            del led[:len(led) - MAX_LEDGER]
+        if save:
+            self.save()
+        return rec
+
+    def clear_ledger(self, save: bool = True) -> int:
+        """Drop the evidence. Separate from wipe on purpose: a wipe resets
+        the generated KNOWLEDGE, and the record of what was tried and what
+        the gates said about it stays true either way."""
+        n = len(self.proposals())
+        self.data[LEDGER] = []
+        if save:
+            self.save()
+        return n
+
+    def ledger_stats(self) -> Dict[str, Any]:
+        """What the corpus holds, for the panel and for the retrieval step."""
+        led = self.proposals()
+        by_gate: Dict[str, int] = {}
+        acc = 0
+        for r in led:
+            if r.get("accepted"):
+                acc += 1
+            else:
+                g = str(r.get("gate") or "unknown")
+                by_gate[g] = by_gate.get(g, 0) + 1
+        return {"entries": len(led), "accepted": acc,
+                "rejected_by_gate": by_gate}
 
     # --------------------------------------------- stage controller memory
     MAX_CONTROLLER_MAPS = 12     # archived scenes, oldest evicted first

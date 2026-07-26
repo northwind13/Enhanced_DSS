@@ -1,0 +1,13 @@
+﻿quantity;value
+cycles;5
+satisficing_failed;5
+tried;2
+accepted;1
+rejected;1
+withheld;0
+persist_failed;0
+dJ_accepted;-0.510124
+stage1_tried;2
+stage1_accepted;1
+blocked: cooldown between adaptation trials;3
+rejected: no improving perturbation found;1

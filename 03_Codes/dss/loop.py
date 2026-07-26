@@ -797,6 +797,20 @@ class DecisionEngine:
         self.last_override = None
         self.last_withheld = False
         self.last_actions = None
+        # THE CHRONICLE AND THE LOG ARE DECISION STATE, so they go with the
+        # fire that produced them. They used to survive it, and since every
+        # view reads the LAST cycle or the whole list, the dashboard, the
+        # step tables and the decision log all went on showing the previous
+        # fire after a reset: the burned area, the cost bars and the agent
+        # rows were the old run's, on a map where nothing was burning.
+        self.cycles = []
+        self.log.records = []
+        self.last_global = None
+        self.last_adapt_region = None
+        self.last_adapt_why = ""
+        self.resolve_warnings = []
+        self._prev_ever = None
+        self.last_cycle_step = -10 ** 9
         # a new fire is a new run: the tally describes ONE simulation
         self.run_stats = self._fresh_run_stats()
         self._nh_last = None
@@ -1268,9 +1282,14 @@ class DecisionEngine:
         from disaster_phyengine.costs import compute_costs as _cc
         try:
             _rep = _cc(sim)
+            # ALL FIVE TERMS PLUS BOTH AGGREGATES. The chronicle carried
+            # four of the five and neither aggregate, so the dashboard could
+            # not show the delay term at all and could not put the physical
+            # outcome beside the decision cost.
             _costs = dict(j_total=_rep.j_total, j_burn=_rep.j_burn,
                           j_asset=_rep.j_asset, j_pop=_rep.j_pop,
-                          j_resp=_rep.j_resp)
+                          j_resp=_rep.j_resp, j_delay=_rep.j_delay,
+                          j_physical=_rep.j_physical)
         except Exception:
             _costs = {}
         _w = sim.world

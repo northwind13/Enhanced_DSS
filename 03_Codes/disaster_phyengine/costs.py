@@ -54,6 +54,12 @@ class CostReport:
     population_person_steps: float
     population_evacuated: float
     population_at_risk_total: float
+    #: the population the fire STARTED with, which is what J_pop is
+    #: normalized by. Without it the exposed and evacuated headcounts have
+    #: no denominator on screen and cannot be read as shares.
+    population_reference: float
+    #: people who left on their OWN, without an order
+    population_self_evacuated: float
     committed_capacity: float
     available_capacity: float
     mean_response_delay: float
@@ -111,7 +117,19 @@ def compute_costs(sim, cost: CostParams | None = None) -> CostReport:
     asset_field = np.clip(world.value.vbld, 0.0, 1.0) \
         + np.clip(world.value.vcrit, 0.0, 1.0)
     asset_total = float(asset_field.sum())
-    asset_lost = float(asset_field[burned].sum())
+    # AN ASSET THE FIRE REACHED IS LOST. A structure does not need its own
+    # cell to carry fuel to be destroyed: the radiant heat and the embers of
+    # the cell next door do it, which is the WUI mechanism this whole model
+    # is about. Charging only the cells that burned themselves also left a
+    # ceiling under the term that no fire could reach.
+    _hit = burned
+    if bool(getattr(cost, "asset_lost_on_contact", False)):
+        _hit = burned.copy()
+        _hit[1:, :] |= burned[:-1, :]
+        _hit[:-1, :] |= burned[1:, :]
+        _hit[:, 1:] |= burned[:, :-1]
+        _hit[:, :-1] |= burned[:, 1:]
+    asset_lost = float(asset_field[_hit].sum())
     j_asset = asset_lost / max(asset_total, eps)
 
     pop_field = world.value.vpop * cell_km2
@@ -133,7 +151,16 @@ def compute_costs(sim, cost: CostParams | None = None) -> CostReport:
     pop_reference = (float((_v0 * cell_km2).sum()) if _v0 is not None
                      else pop_total + pop_evac)
     denom_pop = max(pop_reference * cost.horizon_steps, eps)
-    j_pop = min(1.0, person_steps / denom_pop)
+    # A DISPLACED PERSON IS NOT A FREE PERSON. Evacuees leave vpop, so they
+    # stop accruing exposure, and at weight zero that made emptying a whole
+    # town cost precisely nothing: the cheapest answer to any fire was to
+    # move everybody. They are charged a small share of what an exposed
+    # person costs for the same time, which keeps the ordering that matters
+    # (exposure >> displacement >> nothing) without pretending the two are
+    # comparable. Self-evacuation is exogenous and is NOT charged.
+    _kw = float(getattr(cost, "evacuation_weight", 0.0))
+    _evps = float(getattr(sim, "evacuated_person_steps", 0.0))
+    j_pop = min(1.0, (person_steps + _kw * _evps) / denom_pop)
 
     # the response cost is charged on the resources ACTUALLY applied in
     # the last step (a DSS/user override), falling back to the world's
@@ -179,6 +206,9 @@ def compute_costs(sim, cost: CostParams | None = None) -> CostReport:
         population_evacuated=pop_evac,
         population_person_steps=person_steps,
         population_at_risk_total=pop_at_risk_total,
+        population_reference=pop_reference,
+        population_self_evacuated=float(
+            getattr(sim, "population_self_evacuated", 0.0)),
         committed_capacity=committed,
         available_capacity=available,
         mean_response_delay=mean_delay,

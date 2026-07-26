@@ -1,0 +1,15 @@
+﻿step;t_min;hotspot;attended;shares;statement
+0;0.0;Agent_2;Agent_1|Agent_2|Agent_3;Agent_1=1.0|Agent_2=1.0|Agent_3=1.0;Global DSS: focus on Agent_2 (priority 0.50), Agent_2 share 1.00, Agent_1 share 1.00, Agent_3 share 1.00
+1;60.0;Agent_2;Agent_1|Agent_2|Agent_3;Agent_1=1.0|Agent_2=1.0|Agent_3=1.0;Global DSS: focus on Agent_2 (priority 0.46), Agent_2 share 1.00, Agent_1 share 1.00, Agent_3 share 1.00
+2;120.0;Agent_2;Agent_1|Agent_2|Agent_3;Agent_1=1.0|Agent_2=1.0|Agent_3=1.0;Global DSS: focus on Agent_2 (priority 0.42), Agent_2 share 1.00, Agent_1 share 1.00, Agent_3 share 1.00
+3;180.0;Agent_2;Agent_1|Agent_2|Agent_3;Agent_1=1.0|Agent_2=1.0|Agent_3=1.0;Global DSS: focus on Agent_2 (priority 0.39), Agent_2 share 1.00, Agent_1 share 1.00, Agent_3 share 1.00
+4;240.0;Agent_2;Agent_1|Agent_2|Agent_3;Agent_1=1.0|Agent_2=1.0|Agent_3=1.0;Global DSS: focus on Agent_2 (priority 0.36), Agent_2 share 1.00, Agent_1 share 1.00, Agent_3 share 1.00
+5;300.0;Agent_2;Agent_1|Agent_2|Agent_3;Agent_1=1.0|Agent_2=1.0|Agent_3=1.0;Global DSS: focus on Agent_2 (priority 0.33), Agent_2 share 1.00, Agent_1 share 1.00, Agent_3 share 1.00
+6;360.0;Agent_2;Agent_1|Agent_2|Agent_3;Agent_1=1.0|Agent_2=1.0|Agent_3=1.0;Global DSS: focus on Agent_2 (priority 0.30), Agent_2 share 1.00, Agent_1 share 1.00, Agent_3 share 1.00
+7;420.0;Agent_2;Agent_1|Agent_2|Agent_3;Agent_1=1.0|Agent_2=1.0|Agent_3=1.0;Global DSS: focus on Agent_2 (priority 0.27), Agent_2 share 1.00, Agent_1 share 1.00, Agent_3 share 1.00
+8;480.0;Agent_2;Agent_1|Agent_2|Agent_3;Agent_1=1.0|Agent_2=1.0|Agent_3=1.0;Global DSS: focus on Agent_2 (priority 0.25), Agent_2 share 1.00, Agent_1 share 1.00, Agent_3 share 1.00
+9;540.0;Agent_2;Agent_1|Agent_2|Agent_3;Agent_1=1.0|Agent_2=1.0|Agent_3=1.0;Global DSS: focus on Agent_2 (priority 0.23), Agent_2 share 1.00, Agent_1 share 1.00, Agent_3 share 1.00
+10;600.0;Agent_2;Agent_1|Agent_2|Agent_3;Agent_1=1.0|Agent_2=1.0|Agent_3=1.0;Global DSS: focus on Agent_2 (priority 0.20), Agent_2 share 1.00, Agent_1 share 1.00, Agent_3 share 1.00
+11;660.0;Agent_2;Agent_1|Agent_2|Agent_3;Agent_1=1.0|Agent_2=1.0|Agent_3=1.0;Global DSS: focus on Agent_2 (priority 0.19), Agent_2 share 1.00, Agent_1 share 1.00, Agent_3 share 1.00
+12;720.0;Agent_2;Agent_1|Agent_2|Agent_3;Agent_1=1.0|Agent_2=1.0|Agent_3=1.0;Global DSS: focus on Agent_2 (priority 0.17), Agent_2 share 1.00, Agent_1 share 1.00, Agent_3 share 1.00
+13;780.0;Agent_2;Agent_1|Agent_2|Agent_3;Agent_1=1.0|Agent_2=1.0|Agent_3=1.0;Global DSS: focus on Agent_2 (priority 0.15), Agent_2 share 1.00, Agent_1 share 1.00, Agent_3 share 1.00

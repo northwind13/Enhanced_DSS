@@ -1,0 +1,18 @@
+﻿quantity;value
+cycles;52
+satisficing_failed;9
+tried;3
+accepted;1
+rejected;2
+withheld;0
+persist_failed;0
+dJ_accepted;-0.098582
+stage2_tried;1
+stage2_accepted;0
+stage3_tried;2
+stage3_accepted;1
+blocked: cooldown between adaptation trials;6
+gate: admitted (improves G3 + G4);1
+gate: rejected;1
+"rejected: cell already covered — an active rule sits on this antecedent cell and the situation is crisp; numeric tuning is stage ① evFIS's job";1
+"rejected: rejected at G2 duplicate cell (claude) — an active rule already sits on this antecedent cell; re-issuing it with different numbers is stage ① evFIS's job, not a new rule";1

@@ -1,0 +1,95 @@
+{
+ "start_step": 0,
+ "seq0": 172,
+ "cycles": 3,
+ "satisficing_failed": 3,
+ "tried": 3,
+ "accepted": 0,
+ "rejected": 3,
+ "blocked": {},
+ "per_stage": {
+  "3": {
+   "tried": 1,
+   "accepted": 0,
+   "dJ": 0.0
+  },
+  "2": {
+   "tried": 2,
+   "accepted": 0,
+   "dJ": 0.0
+  }
+ },
+ "gates": {
+  "rejected at G4 A/B (no improvement)": 1
+ },
+ "reasons": {
+  "rejected at G4 A/B (claude)": 1,
+  "refined cell already covered": 2
+ },
+ "withheld": 0,
+ "dJ_accepted": 0.0,
+ "j_series": [
+  [
+   0,
+   0.13745711402623614,
+   0.13745711402623614,
+   0.13470797174571142
+  ],
+  [
+   173,
+   0.07620559581325291,
+   0.06446807191568507,
+   0.06317871047737136
+  ],
+  [
+   174,
+   0.07623024461399672,
+   0.06446807191568507,
+   0.06317871047737136
+  ]
+ ],
+ "phys_series": [
+  [
+   175,
+   0.053848870056497175,
+   0.053848870056497175
+  ],
+  [
+   172,
+   0.009213759213759212,
+   0.053848870056497175
+  ],
+  [
+   173,
+   0.009213759213759212,
+   0.053848870056497175
+  ],
+  [
+   174,
+   0.009213759213759212,
+   0.053848870056497175
+  ]
+ ],
+ "persist_failed": 0,
+ "cooldown_refunds": 2,
+ "stage2_prefiltered": 1,
+ "genai_ms": [
+  19955.7
+ ],
+ "stage_controller": {
+  "high+gap|2": 0.000105,
+  "low|3": -0.0016392523932578125,
+  "high+gap|3": -0.00037,
+  "high+gap|1": 0.002525,
+  "mid+gap|1": -0.000657,
+  "mid+gap|3": -0.000836,
+  "mid+gap|2": 0.008813154635293832,
+  "low|1": -0.001725,
+  "low|2": -0.0010596324375
+ },
+ "config_id": "DSS1-EV1-GA1-U12:1-U3:1",
+ "seed_profile": "minimal",
+ "persist_errors": [
+  "stage controller: PermissionError: [WinError 32] The process cannot access the file because it is being used by another process: 'D:\\\\repos_github\\\\Enhanced_DSS\\\\03_Codes\\\\logs\\\\dss_generated_state.json.tmp' -> 'D:\\\\repos_github\\\\Enhanced_DSS\\\\03_Codes\\\\logs\\\\dss_generated_state.json'"
+ ]
+}

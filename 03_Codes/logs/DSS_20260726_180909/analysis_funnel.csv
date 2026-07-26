@@ -1,0 +1,12 @@
+﻿quantity;value
+cycles;1
+satisficing_failed;1
+tried;1
+accepted;0
+rejected;1
+withheld;0
+persist_failed;0
+dJ_accepted;0.000000
+stage2_tried;1
+stage2_accepted;0
+rejected: refined cell already covered;1

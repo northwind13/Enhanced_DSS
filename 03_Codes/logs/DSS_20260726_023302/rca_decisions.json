@@ -1,0 +1,12 @@
+{
+ "applied": [
+  "sensor aerial @ (20,48) (No sensor sits in the 609-cell south-central burn near centroid (20,44); undersensing kept fire_threat_level <=0.30 so escalation rules never fired.)",
+  "depot helibase @ (20,52) (Agent_3 held 609/801 burned cells with logistics_support 0.25 and reachability 0.58; an aerial base needs no roads and puts capacity where the fire actually was)",
+  "setting horizon_min -> 45 (A 30-min forecast under a 45-min physics window drove 10 no-harm vetoes (steps 34-43); matching the horizon lets slow-building spread register.)",
+  "setting j_threshold -> 0.25 (Concepts never crossed H/VH while 801 cells burned; a lower response gate escalates effort before severity reaches 0.60.)"
+ ],
+ "skipped": [
+  "rule : G2 vocabulary"
+ ],
+ "at": "2026-07-26 02:37:11"
+}

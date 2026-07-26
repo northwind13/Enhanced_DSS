@@ -13,6 +13,10 @@ plotly>=5.0
 pillow>=9.0
 # Word (.docx) export of the validation report
 python-docx>=0.8.11
+# Excel (.xlsx) export of the step analysis, the agent view and the decision
+# log. TSV lost every number to text and arrived in one column unless the
+# reader ran the import wizard.
+openpyxl>=3.1
 # Generative-AI stage 3 runs on the user's Claude subscription via the Claude
 # Code CLI (`claude -p`); install Claude Code separately, no Python package.
 # mouse-driven map editing (paint forests, drop assets and ignitions)

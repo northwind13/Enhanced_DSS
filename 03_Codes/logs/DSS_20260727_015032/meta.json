@@ -1,0 +1,523 @@
+{
+ "map": {
+  "nx": 200,
+  "ny": 200,
+  "cell_m": 500.0,
+  "step_min": 1.0
+ },
+ "engine": {
+  "regions": 2,
+  "cycle_min": 1.0,
+  "horizon_min": 45.0,
+  "j_th": 0.25,
+  "eta": 0.75,
+  "adapt": true,
+  "genai": true,
+  "evfis": true,
+  "evfis_step": 0.05,
+  "ctrl_eps": 0.1,
+  "ctrl_lr": 0.05,
+  "attn": 0.35,
+  "min_gain": 0.02,
+  "seed_profile": "minimal",
+  "use_stage12": true,
+  "use_stage3": true
+ },
+ "weather": {
+  "wx_mode": "Real case weather",
+  "emc_on": true,
+  "dr_start": 12.0,
+  "dr_tday": 34.0,
+  "dr_tnight": 22.0,
+  "dr_rhday": 20.0,
+  "dr_rhnight": 70.0,
+  "dr_rain_mm": 0.0,
+  "dr_rain_start": 18.0,
+  "dr_rain_dur": 3.0
+ },
+ "sensors": [
+  {
+   "kind": "satellite",
+   "x": 0,
+   "y": 0
+  },
+  {
+   "kind": "aerial",
+   "x": 143,
+   "y": 157
+  },
+  {
+   "kind": "ground_camera",
+   "x": 143,
+   "y": 143
+  },
+  {
+   "kind": "in_situ",
+   "x": 122,
+   "y": 24
+  },
+  {
+   "kind": "field_report",
+   "x": 79,
+   "y": 53
+  },
+  {
+   "kind": "aerial",
+   "x": 115,
+   "y": 10
+  },
+  {
+   "kind": "ground_camera",
+   "x": 150,
+   "y": 108
+  },
+  {
+   "kind": "in_situ",
+   "x": 101,
+   "y": 3
+  },
+  {
+   "kind": "field_report",
+   "x": 159,
+   "y": 13
+  },
+  {
+   "kind": "aerial",
+   "x": 143,
+   "y": 129
+  },
+  {
+   "kind": "ground_camera",
+   "x": 157,
+   "y": 94
+  },
+  {
+   "kind": "in_situ",
+   "x": 136,
+   "y": 164
+  },
+  {
+   "kind": "field_report",
+   "x": 85,
+   "y": 55
+  },
+  {
+   "kind": "aerial",
+   "x": 17,
+   "y": 115
+  },
+  {
+   "kind": "ground_camera",
+   "x": 157,
+   "y": 157
+  },
+  {
+   "kind": "in_situ",
+   "x": 178,
+   "y": 45
+  },
+  {
+   "kind": "field_report",
+   "x": 166,
+   "y": 14
+  },
+  {
+   "kind": "aerial",
+   "x": 185,
+   "y": 38
+  },
+  {
+   "kind": "ground_camera",
+   "x": 164,
+   "y": 136
+  },
+  {
+   "kind": "in_situ",
+   "x": 150,
+   "y": 122
+  },
+  {
+   "kind": "field_report",
+   "x": 80,
+   "y": 60
+  },
+  {
+   "kind": "aerial",
+   "x": 122,
+   "y": 101
+  },
+  {
+   "kind": "ground_camera",
+   "x": 171,
+   "y": 122
+  },
+  {
+   "kind": "in_situ",
+   "x": 178,
+   "y": 24
+  },
+  {
+   "kind": "field_report",
+   "x": 80,
+   "y": 65
+  },
+  {
+   "kind": "aerial",
+   "x": 150,
+   "y": 80
+  },
+  {
+   "kind": "ground_camera",
+   "x": 164,
+   "y": 80
+  },
+  {
+   "kind": "in_situ",
+   "x": 31,
+   "y": 87
+  },
+  {
+   "kind": "field_report",
+   "x": 164,
+   "y": 10
+  },
+  {
+   "kind": "aerial",
+   "x": 31,
+   "y": 101
+  },
+  {
+   "kind": "ground_camera",
+   "x": 136,
+   "y": 101
+  },
+  {
+   "kind": "in_situ",
+   "x": 192,
+   "y": 94
+  },
+  {
+   "kind": "field_report",
+   "x": 156,
+   "y": 5
+  },
+  {
+   "kind": "aerial",
+   "x": 185,
+   "y": 17
+  },
+  {
+   "kind": "ground_camera",
+   "x": 185,
+   "y": 108
+  },
+  {
+   "kind": "in_situ",
+   "x": 129,
+   "y": 136
+  },
+  {
+   "kind": "field_report",
+   "x": 73,
+   "y": 52
+  },
+  {
+   "kind": "public_report",
+   "x": 80,
+   "y": 55
+  },
+  {
+   "kind": "public_report",
+   "x": 159,
+   "y": 13
+  }
+ ],
+ "depots": [
+  {
+   "kind": "depot",
+   "x": 89,
+   "y": 49,
+   "radius": 3,
+   "cap": 0.8,
+   "avail": 1.0,
+   "t_disp": 10.0,
+   "label": "Fire station"
+  },
+  {
+   "kind": "depot",
+   "x": 153,
+   "y": 9,
+   "radius": 3,
+   "cap": 0.8,
+   "avail": 1.0,
+   "t_disp": 10.0,
+   "label": "Fire station (Village 1)"
+  },
+  {
+   "kind": "road_corridor",
+   "cap": 0.4,
+   "avail": 1.0,
+   "label": "road corridor"
+  },
+  {
+   "kind": "helibase",
+   "x": 80,
+   "y": 55,
+   "radius": 50,
+   "cap": 0.6,
+   "avail": 1.0,
+   "t_disp": 6.0,
+   "label": "helibase (aerial)"
+  },
+  {
+   "kind": "helibase",
+   "x": 160,
+   "y": 15,
+   "radius": 25,
+   "cap": 0.7,
+   "avail": 1.0,
+   "t_disp": 8.0,
+   "label": "helibase 2 (target 50%)"
+  },
+  {
+   "kind": "helibase",
+   "x": 164,
+   "y": 144,
+   "radius": 25,
+   "cap": 0.7,
+   "avail": 1.0,
+   "t_disp": 8.0,
+   "label": "helibase 3 (target 50%)"
+  },
+  {
+   "kind": "helibase",
+   "x": 116,
+   "y": 6,
+   "radius": 25,
+   "cap": 0.7,
+   "avail": 1.0,
+   "t_disp": 8.0,
+   "label": "helibase 4 (target 50%)"
+  },
+  {
+   "kind": "helibase",
+   "x": 8,
+   "y": 49,
+   "radius": 25,
+   "cap": 0.7,
+   "avail": 1.0,
+   "t_disp": 8.0,
+   "label": "helibase 5 (target 50%)"
+  },
+  {
+   "kind": "helibase",
+   "x": 142,
+   "y": 162,
+   "radius": 25,
+   "cap": 0.7,
+   "avail": 1.0,
+   "t_disp": 8.0,
+   "label": "helibase 6 (target 50%)"
+  },
+  {
+   "kind": "helibase",
+   "x": 89,
+   "y": 0,
+   "radius": 25,
+   "cap": 0.7,
+   "avail": 1.0,
+   "t_disp": 8.0,
+   "label": "helibase 7 (target 50%)"
+  },
+  {
+   "kind": "helibase",
+   "x": 182,
+   "y": 19,
+   "radius": 25,
+   "cap": 0.7,
+   "avail": 1.0,
+   "t_disp": 8.0,
+   "label": "helibase 8 (target 50%)"
+  },
+  {
+   "kind": "helibase",
+   "x": 141,
+   "y": 140,
+   "radius": 25,
+   "cap": 0.7,
+   "avail": 1.0,
+   "t_disp": 8.0,
+   "label": "helibase 9 (target 50%)"
+  },
+  {
+   "kind": "helibase",
+   "x": 174,
+   "y": 0,
+   "radius": 25,
+   "cap": 0.7,
+   "avail": 1.0,
+   "t_disp": 8.0,
+   "label": "helibase 10 (target 50%)"
+  },
+  {
+   "kind": "helibase",
+   "x": 173,
+   "y": 45,
+   "radius": 25,
+   "cap": 0.7,
+   "avail": 1.0,
+   "t_disp": 8.0,
+   "label": "helibase 11 (target 50%)"
+  },
+  {
+   "kind": "helibase",
+   "x": 185,
+   "y": 69,
+   "radius": 25,
+   "cap": 0.7,
+   "avail": 1.0,
+   "t_disp": 8.0,
+   "label": "helibase 12 (target 50%)"
+  },
+  {
+   "kind": "helibase",
+   "x": 142,
+   "y": 26,
+   "radius": 25,
+   "cap": 0.7,
+   "avail": 1.0,
+   "t_disp": 8.0,
+   "label": "helibase 13 (target 50%)"
+  },
+  {
+   "kind": "helibase",
+   "x": 124,
+   "y": 22,
+   "radius": 25,
+   "cap": 0.7,
+   "avail": 1.0,
+   "t_disp": 8.0,
+   "label": "helibase 14 (target 50%)"
+  },
+  {
+   "kind": "helibase",
+   "x": 160,
+   "y": 7,
+   "radius": 25,
+   "cap": 0.7,
+   "avail": 1.0,
+   "t_disp": 8.0,
+   "label": "helibase 15 (target 50%)"
+  },
+  {
+   "kind": "helibase",
+   "x": 149,
+   "y": 123,
+   "radius": 25,
+   "cap": 0.7,
+   "avail": 1.0,
+   "t_disp": 8.0,
+   "label": "helibase 16 (target 50%)"
+  },
+  {
+   "kind": "helibase",
+   "x": 182,
+   "y": 113,
+   "radius": 25,
+   "cap": 0.7,
+   "avail": 1.0,
+   "t_disp": 8.0,
+   "label": "helibase 17 (target 50%)"
+  },
+  {
+   "kind": "helibase",
+   "x": 47,
+   "y": 51,
+   "radius": 25,
+   "cap": 0.7,
+   "avail": 1.0,
+   "t_disp": 8.0,
+   "label": "helibase 18 (target 50%)"
+  },
+  {
+   "kind": "helibase",
+   "x": 189,
+   "y": 37,
+   "radius": 25,
+   "cap": 0.7,
+   "avail": 1.0,
+   "t_disp": 8.0,
+   "label": "helibase 19 (target 50%)"
+  },
+  {
+   "kind": "helibase",
+   "x": 191,
+   "y": 145,
+   "radius": 25,
+   "cap": 0.7,
+   "avail": 1.0,
+   "t_disp": 8.0,
+   "label": "helibase 20 (target 50%)"
+  },
+  {
+   "kind": "helibase",
+   "x": 104,
+   "y": 1,
+   "radius": 25,
+   "cap": 0.7,
+   "avail": 1.0,
+   "t_disp": 8.0,
+   "label": "helibase 21 (target 50%)"
+  },
+  {
+   "kind": "helibase",
+   "x": 18,
+   "y": 68,
+   "radius": 25,
+   "cap": 0.7,
+   "avail": 1.0,
+   "t_disp": 8.0,
+   "label": "helibase 22 (target 50%)"
+  },
+  {
+   "kind": "helibase",
+   "x": 151,
+   "y": 98,
+   "radius": 25,
+   "cap": 0.7,
+   "avail": 1.0,
+   "t_disp": 8.0,
+   "label": "helibase 23 (target 50%)"
+  },
+  {
+   "kind": "helibase",
+   "x": 193,
+   "y": 53,
+   "radius": 25,
+   "cap": 0.7,
+   "avail": 1.0,
+   "t_disp": 8.0,
+   "label": "helibase 24 (target 50%)"
+  },
+  {
+   "kind": "helibase",
+   "x": 28,
+   "y": 100,
+   "radius": 25,
+   "cap": 0.7,
+   "avail": 1.0,
+   "t_disp": 8.0,
+   "label": "helibase 25 (target 50%)"
+  },
+  {
+   "kind": "helibase",
+   "x": 45,
+   "y": 72,
+   "radius": 25,
+   "cap": 0.7,
+   "avail": 1.0,
+   "t_disp": 8.0,
+   "label": "helibase 26 (target 50%)"
+  }
+ ]
+}

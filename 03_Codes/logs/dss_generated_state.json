@@ -1,6 +1,6 @@
 {
  "schema_version": "1.0",
- "last_updated": "2026-07-26T00:26:11Z",
+ "last_updated": "2026-07-26T23:04:27Z",
  "baseline_ref": {
   "rule_sets": [
    "minimal5",
@@ -18,25 +18,4249 @@
   "use_stage3_rules": true
  },
  "stage_controller": {
-  "map_key": "bb433f06acdc2147",
+  "map_key": "5a4d4bb36faa7faa",
   "maps": {
    "bb433f06acdc2147": {
     "q": {
-     "high+gap/2": 0.000105,
-     "low/3": -0.001906,
+     "high+gap/2": 0.000245,
+     "low/3": -0.002968,
      "high+gap/3": -0.00037,
-     "high+gap/1": 0.002199,
-     "mid+gap/1": -0.000657,
-     "mid+gap/3": -0.000836,
-     "mid+gap/2": 0.008172,
-     "low/1": -0.001725,
-     "low/2": -0.001605
+     "high+gap/1": 0.024327,
+     "mid+gap/1": 0.004165,
+     "mid+gap/3": -0.001674,
+     "mid+gap/2": -0.001563,
+     "low/1": -0.002946,
+     "low/2": -0.002584,
+     "mid/3": -0.000571,
+     "mid/2": -0.000571,
+     "mid/1": -0.000548,
+     "high/1": -0.0002
     },
-    "updates": 72,
-    "seen": "2026-07-26T00:26:11Z"
+    "updates": 237,
+    "seen": "2026-07-26T15:22:36Z"
+   },
+   "6a53c80c507f55ab": {
+    "q": {
+     "low/3": -0.0002,
+     "high+gap/2": 0.001669,
+     "high+gap/3": -0.00039,
+     "mid+gap/3": -0.0002,
+     "mid+gap/2": -0.00039,
+     "mid+gap/1": -0.000742
+    },
+    "updates": 11,
+    "seen": "2026-07-26T15:28:40Z"
+   },
+   "a4c506ed7fef90ba": {
+    "q": {
+     "low/3": -0.0002,
+     "mid+gap/2": 0.009261
+    },
+    "updates": 2,
+    "seen": "2026-07-26T22:09:41Z"
+   },
+   "5a4d4bb36faa7faa": {
+    "q": {
+     "low/3": -0.00039,
+     "mid+gap/3": -0.000905,
+     "mid/2": -0.0002,
+     "low/2": -0.000559,
+     "high+gap/2": -0.001333,
+     "high+gap/3": -0.001258,
+     "mid+gap/2": -0.000898,
+     "mid+gap/1": -0.000905,
+     "low/1": -0.000571,
+     "high+gap/1": -0.001129
+    },
+    "updates": 55,
+    "seen": "2026-07-26T23:04:27Z"
    }
   }
  },
+ "genai_proposals": [
+  {
+   "situation": {
+    "fire_threat_level": 0.1585,
+    "asset_exposure_risk": 0.607,
+    "suppression_feasibility": 0.858,
+    "intervention_urgency": 0.2759,
+    "evacuation_pressure": 0.2731
+   },
+   "coverage_gap": false,
+   "cov_w": 0.54,
+   "step": 9,
+   "accepted": false,
+   "gate": "G2",
+   "detail": "rejected at G2 duplicate cell (claude) — an active rule already sits on this antecedent cell; re-issuing it with different numbers is stage ① evFIS's job, not a new rule",
+   "dJ": 0.0,
+   "raw": {
+    "antecedents": [
+     [
+      "fire_threat_level",
+      "VL"
+     ],
+     [
+      "asset_exposure_risk",
+      "VH"
+     ]
+    ],
+    "consequents": [
+     [
+      "asset_protection",
+      "0.8"
+     ],
+     [
+      "containment_line",
+      "0.7"
+     ],
+     [
+      "retardant_drop",
+      "0.7"
+     ]
+    ]
+   },
+   "repaired": {
+    "antecedents": [
+     [
+      "fire_threat_level",
+      "VL"
+     ],
+     [
+      "asset_exposure_risk",
+      "VH"
+     ]
+    ],
+    "consequents": [
+     [
+      "asset_protection",
+      "0.8"
+     ],
+     [
+      "containment_line",
+      "0.7"
+     ],
+     [
+      "retardant_drop",
+      "0.7"
+     ]
+    ]
+   },
+   "repairs": [],
+   "revisions": [],
+   "measured": {},
+   "lseq": 1,
+   "id": "prop_00001",
+   "timestamp": "2026-07-26T07:25:05Z",
+   "config": "DSS1-EV1-GA1-U12:1-U3:1"
+  },
+  {
+   "situation": {
+    "fire_threat_level": 0.2571,
+    "asset_exposure_risk": 0.1505,
+    "suppression_feasibility": 0.0945,
+    "intervention_urgency": 0.2275,
+    "evacuation_pressure": 0.5724
+   },
+   "coverage_gap": true,
+   "cov_w": 0.6779,
+   "step": 81,
+   "accepted": false,
+   "gate": "G3",
+   "detail": "rejected at G3 (claude)",
+   "dJ": 0.0,
+   "raw": null,
+   "repaired": {
+    "antecedents": [
+     [
+      "suppression_feasibility",
+      "VL"
+     ],
+     [
+      "asset_exposure_risk",
+      "VL"
+     ]
+    ],
+    "consequents": [
+     [
+      "retardant_drop",
+      "0.9"
+     ],
+     [
+      "containment_line",
+      "0.8"
+     ],
+     [
+      "water_drafting",
+      "0.7"
+     ]
+    ]
+   },
+   "repairs": [],
+   "revisions": [],
+   "measured": {
+    "g1_g2": "pass",
+    "g3": {
+     "j_with": 0.2611293559569422,
+     "j_without": 0.261030419292957
+    },
+    "g4": {
+     "j_with": 0.2607319757842598,
+     "j_without": 0.26243898069774735
+    },
+    "verdict": "rejected at G3 (no improvement)"
+   },
+   "lseq": 2,
+   "id": "prop_00002",
+   "timestamp": "2026-07-26T07:26:43Z",
+   "config": "DSS1-EV1-GA1-U12:1-U3:1"
+  },
+  {
+   "situation": {
+    "fire_threat_level": 0.2329,
+    "asset_exposure_risk": 0.1505,
+    "suppression_feasibility": 0.0945,
+    "intervention_urgency": 0.2089,
+    "evacuation_pressure": 0.5781
+   },
+   "coverage_gap": false,
+   "cov_w": 0.6779,
+   "step": 81,
+   "accepted": false,
+   "gate": "transport",
+   "detail": "the wait budget of 90 s for this attempt ran out during revision 2",
+   "dJ": 0.0,
+   "raw": {
+    "antecedents": [
+     [
+      "suppression_feasibility",
+      "VL"
+     ],
+     [
+      "intervention_urgency",
+      "VL"
+     ],
+     [
+      "evacuation_pressure",
+      "VH"
+     ]
+    ],
+    "consequents": [
+     [
+      "retardant_drop",
+      "0.9"
+     ],
+     [
+      "water_drafting",
+      "0.8"
+     ],
+     [
+      "containment_line",
+      "0.7"
+     ]
+    ]
+   },
+   "repaired": {
+    "antecedents": [
+     [
+      "suppression_feasibility",
+      "VL"
+     ],
+     [
+      "intervention_urgency",
+      "VL"
+     ],
+     [
+      "evacuation_pressure",
+      "VH"
+     ]
+    ],
+    "consequents": [
+     [
+      "retardant_drop",
+      "0.9"
+     ],
+     [
+      "water_drafting",
+      "0.8"
+     ],
+     [
+      "containment_line",
+      "0.7"
+     ]
+    ]
+   },
+   "repairs": [],
+   "revisions": [
+    "G2c relevance (the rule does not fire in the PRESENT situation; use each concept",
+    "G2c relevance (the rule does not fire in the PRESENT situation; use each concept"
+   ],
+   "measured": {},
+   "lseq": 3,
+   "id": "prop_00003",
+   "timestamp": "2026-07-26T07:27:54Z",
+   "config": "DSS1-EV1-GA1-U12:1-U3:1"
+  },
+  {
+   "situation": {
+    "fire_threat_level": 0.4893,
+    "asset_exposure_risk": 0.5116,
+    "suppression_feasibility": 0.7912,
+    "intervention_urgency": 0.5832,
+    "evacuation_pressure": 0.5916
+   },
+   "coverage_gap": false,
+   "cov_w": 0.725,
+   "step": 116,
+   "accepted": true,
+   "gate": null,
+   "detail": "G31: G31: IF fire threat level is VH AND suppression feasibility is VH AND asset exposure risk is M THEN suppression effort 1.0, water drafting 0.9, retardant drop 0.8 (adaptation-born: generative (claude), gates G1-G4)",
+   "dJ": -0.000257,
+   "raw": {
+    "antecedents": [
+     [
+      "fire_threat_level",
+      "VH"
+     ],
+     [
+      "suppression_feasibility",
+      "VH"
+     ],
+     [
+      "asset_exposure_risk",
+      "M"
+     ]
+    ],
+    "consequents": [
+     [
+      "suppression_effort",
+      "1.0"
+     ],
+     [
+      "water_drafting",
+      "0.9"
+     ],
+     [
+      "retardant_drop",
+      "0.8"
+     ]
+    ]
+   },
+   "repaired": {
+    "antecedents": [
+     [
+      "fire_threat_level",
+      "VH"
+     ],
+     [
+      "suppression_feasibility",
+      "VH"
+     ],
+     [
+      "asset_exposure_risk",
+      "M"
+     ]
+    ],
+    "consequents": [
+     [
+      "suppression_effort",
+      "1.0"
+     ],
+     [
+      "water_drafting",
+      "0.9"
+     ],
+     [
+      "retardant_drop",
+      "0.8"
+     ]
+    ]
+   },
+   "repairs": [],
+   "revisions": [],
+   "measured": {
+    "g1_g2": "pass",
+    "g3": {
+     "j_with": 0.2856798819952437,
+     "j_without": 0.28648376690638966
+    },
+    "g4": {
+     "j_with": 0.2856798819952437,
+     "j_without": 0.2875010857291757
+    },
+    "verdict": "admitted (improves G3 + G4)"
+   },
+   "lseq": 4,
+   "id": "prop_00004",
+   "timestamp": "2026-07-26T13:00:22Z",
+   "config": "DSS1-EV1-GA1-U12:1-U3:1"
+  },
+  {
+   "situation": {
+    "fire_threat_level": 0.0767,
+    "asset_exposure_risk": 0.5419,
+    "suppression_feasibility": 0.7912,
+    "intervention_urgency": 0.0925,
+    "evacuation_pressure": 0.6052
+   },
+   "coverage_gap": false,
+   "cov_w": 0.725,
+   "step": 138,
+   "accepted": true,
+   "gate": null,
+   "detail": "G32: G32: IF suppression feasibility is VH AND asset exposure risk is H AND evacuation pressure is VH THEN suppression effort 1.0, water drafting 0.9, retardant drop 0.8 (adaptation-born: generative (claude), gates G1-G4)",
+   "dJ": -0.000425,
+   "raw": {
+    "antecedents": [
+     [
+      "suppression_feasibility",
+      "VH"
+     ],
+     [
+      "asset_exposure_risk",
+      "H"
+     ],
+     [
+      "evacuation_pressure",
+      "VH"
+     ]
+    ],
+    "consequents": [
+     [
+      "suppression_effort",
+      "1.0"
+     ],
+     [
+      "water_drafting",
+      "0.9"
+     ],
+     [
+      "retardant_drop",
+      "0.8"
+     ]
+    ]
+   },
+   "repaired": {
+    "antecedents": [
+     [
+      "suppression_feasibility",
+      "VH"
+     ],
+     [
+      "asset_exposure_risk",
+      "H"
+     ],
+     [
+      "evacuation_pressure",
+      "VH"
+     ]
+    ],
+    "consequents": [
+     [
+      "suppression_effort",
+      "1.0"
+     ],
+     [
+      "water_drafting",
+      "0.9"
+     ],
+     [
+      "retardant_drop",
+      "0.8"
+     ]
+    ]
+   },
+   "repairs": [],
+   "revisions": [],
+   "measured": {
+    "g1_g2": "pass",
+    "g3": {
+     "j_with": 0.28574434824434825,
+     "j_without": 0.28648376690638966
+    },
+    "g4": {
+     "j_with": 0.28574434824434825,
+     "j_without": 0.2864421339494653
+    },
+    "verdict": "admitted (improves G3 + G4)"
+   },
+   "lseq": 5,
+   "id": "prop_00005",
+   "timestamp": "2026-07-26T13:00:51Z",
+   "config": "DSS1-EV1-GA1-U12:1-U3:1"
+  },
+  {
+   "situation": {
+    "fire_threat_level": 0.069,
+    "asset_exposure_risk": 0.5522,
+    "suppression_feasibility": 0.7912,
+    "intervention_urgency": 0.0837,
+    "evacuation_pressure": 0.6099
+   },
+   "coverage_gap": false,
+   "cov_w": 0.6779,
+   "step": 155,
+   "accepted": false,
+   "gate": "G2",
+   "detail": "rejected at G2 duplicate cell (claude) — an active rule already sits on this antecedent cell; re-issuing it with different numbers is stage ① evFIS's job, not a new rule",
+   "dJ": 0.0,
+   "raw": null,
+   "repaired": {
+    "antecedents": [
+     [
+      "suppression_feasibility",
+      "VH"
+     ],
+     [
+      "evacuation_pressure",
+      "VH"
+     ]
+    ],
+    "consequents": [
+     [
+      "suppression_effort",
+      "1.0"
+     ],
+     [
+      "water_drafting",
+      "0.9"
+     ],
+     [
+      "retardant_drop",
+      "0.8"
+     ]
+    ]
+   },
+   "repairs": [],
+   "revisions": [],
+   "measured": {},
+   "lseq": 6,
+   "id": "prop_00006",
+   "timestamp": "2026-07-26T13:01:54Z",
+   "config": "DSS1-EV1-GA1-U12:1-U3:1"
+  },
+  {
+   "situation": {
+    "fire_threat_level": 0.06,
+    "asset_exposure_risk": 0.1505,
+    "suppression_feasibility": 0.5945,
+    "intervention_urgency": 0.0516,
+    "evacuation_pressure": 0.5393
+   },
+   "coverage_gap": false,
+   "cov_w": 0.6779,
+   "step": 173,
+   "accepted": true,
+   "gate": null,
+   "detail": "G33: G33: IF suppression feasibility is VH AND asset exposure risk is VL THEN suppression effort 0.9, water drafting 0.8, containment line 0.7 (adaptation-born: generative (claude), gates G1-G4)",
+   "dJ": -0.000489,
+   "raw": {
+    "antecedents": [
+     [
+      "suppression_feasibility",
+      "VH"
+     ],
+     [
+      "asset_exposure_risk",
+      "VL"
+     ]
+    ],
+    "consequents": [
+     [
+      "suppression_effort",
+      "0.9"
+     ],
+     [
+      "water_drafting",
+      "0.8"
+     ],
+     [
+      "containment_line",
+      "0.7"
+     ]
+    ]
+   },
+   "repaired": {
+    "antecedents": [
+     [
+      "suppression_feasibility",
+      "VH"
+     ],
+     [
+      "asset_exposure_risk",
+      "VL"
+     ]
+    ],
+    "consequents": [
+     [
+      "suppression_effort",
+      "0.9"
+     ],
+     [
+      "water_drafting",
+      "0.8"
+     ],
+     [
+      "containment_line",
+      "0.7"
+     ]
+    ]
+   },
+   "repairs": [],
+   "revisions": [
+    "G2c relevance (the rule does not fire in the PRESENT situation; use each concept",
+    "G2c relevance (the rule does not fire in the PRESENT situation; use each concept"
+   ],
+   "measured": {
+    "g1_g2": "pass",
+    "g3": {
+     "j_with": 0.2876399953815957,
+     "j_without": 0.28777806555584334
+    },
+    "g4": {
+     "j_with": 0.2879153038388707,
+     "j_without": 0.28890946848515464
+    },
+    "verdict": "admitted (improves G3 + G4)"
+   },
+   "lseq": 7,
+   "id": "prop_00007",
+   "timestamp": "2026-07-26T13:02:50Z",
+   "config": "DSS1-EV1-GA1-U12:1-U3:1"
+  },
+  {
+   "situation": {
+    "fire_threat_level": 0.0621,
+    "asset_exposure_risk": 0.1505,
+    "suppression_feasibility": 0.5945,
+    "intervention_urgency": 0.0543,
+    "evacuation_pressure": 0.5413
+   },
+   "coverage_gap": false,
+   "cov_w": 0.6779,
+   "step": 180,
+   "accepted": false,
+   "gate": "G3",
+   "detail": "rejected at G3 (claude)",
+   "dJ": 0.0,
+   "raw": null,
+   "repaired": null,
+   "repairs": [],
+   "revisions": [],
+   "measured": {
+    "g1_g2": "pass",
+    "g3": {
+     "j_with": 0.2868141878985571,
+     "j_without": 0.2867525894538607
+    },
+    "g4": {
+     "j_with": 0.28669082766139253,
+     "j_without": 0.28711975243767157
+    },
+    "verdict": "rejected at G3 (no improvement)"
+   },
+   "lseq": 8,
+   "id": "prop_00008",
+   "timestamp": "2026-07-26T13:03:21Z",
+   "config": "DSS1-EV1-GA1-U12:1-U3:1"
+  },
+  {
+   "situation": {
+    "fire_threat_level": 0.0845,
+    "asset_exposure_risk": 0.3811,
+    "suppression_feasibility": 0.5945,
+    "intervention_urgency": 0.0638,
+    "evacuation_pressure": 0.645
+   },
+   "coverage_gap": false,
+   "cov_w": 0.7183,
+   "step": 190,
+   "accepted": true,
+   "gate": null,
+   "detail": "G34: G34: IF suppression feasibility is >=M AND evacuation pressure is H THEN containment line 0.9, retardant drop 0.8, resource deployment 0.7 (adaptation-born: generative (claude), gates G1-G4)",
+   "dJ": -0.000336,
+   "raw": {
+    "antecedents": [
+     [
+      "suppression_feasibility",
+      ">=M"
+     ],
+     [
+      "evacuation_pressure",
+      "H"
+     ]
+    ],
+    "consequents": [
+     [
+      "containment_line",
+      "0.9"
+     ],
+     [
+      "retardant_drop",
+      "0.8"
+     ],
+     [
+      "resource_deployment",
+      "0.7"
+     ]
+    ]
+   },
+   "repaired": {
+    "antecedents": [
+     [
+      "suppression_feasibility",
+      ">=M"
+     ],
+     [
+      "evacuation_pressure",
+      "H"
+     ]
+    ],
+    "consequents": [
+     [
+      "containment_line",
+      "0.9"
+     ],
+     [
+      "retardant_drop",
+      "0.8"
+     ],
+     [
+      "resource_deployment",
+      "0.7"
+     ]
+    ]
+   },
+   "repairs": [],
+   "revisions": [],
+   "measured": {
+    "g1_g2": "pass",
+    "g3": {
+     "j_with": 0.2875010857291757,
+     "j_without": 0.28894683714670255
+    },
+    "g4": {
+     "j_with": 0.28783698338794045,
+     "j_without": 0.2892987287546246
+    },
+    "verdict": "admitted (improves G3 + G4)"
+   },
+   "lseq": 9,
+   "id": "prop_00009",
+   "timestamp": "2026-07-26T13:03:38Z",
+   "config": "DSS1-EV1-GA1-U12:1-U3:1"
+  },
+  {
+   "situation": {
+    "fire_threat_level": 0.0769,
+    "asset_exposure_risk": 0.3811,
+    "suppression_feasibility": 0.5945,
+    "intervention_urgency": 0.0575,
+    "evacuation_pressure": 0.6591
+   },
+   "coverage_gap": false,
+   "cov_w": 0.8976,
+   "step": 217,
+   "accepted": false,
+   "gate": "G5",
+   "detail": "rejected at G5 package margin (claude)",
+   "dJ": 0.0,
+   "raw": {
+    "new_intervention": {
+     "name": "wet_retardant_line",
+     "composition": [
+      [
+       "containment_line",
+       1.0
+      ],
+      [
+       "retardant_drop",
+       0.9
+      ],
+      [
+       "water_drafting",
+       0.8
+      ]
+     ]
+    },
+    "antecedents": [
+     [
+      "suppression_feasibility",
+      ">=M"
+     ],
+     [
+      "asset_exposure_risk",
+      "VL"
+     ]
+    ],
+    "consequents": [
+     [
+      "wet_retardant_line",
+      1.0
+     ]
+    ]
+   },
+   "repaired": {
+    "new_intervention": {
+     "name": "wet_retardant_line",
+     "composition": [
+      [
+       "containment_line",
+       1.0
+      ],
+      [
+       "retardant_drop",
+       0.9
+      ],
+      [
+       "water_drafting",
+       0.8
+      ]
+     ]
+    },
+    "antecedents": [
+     [
+      "suppression_feasibility",
+      ">=M"
+     ],
+     [
+      "asset_exposure_risk",
+      "VL"
+     ]
+    ],
+    "consequents": [
+     [
+      "wet_retardant_line",
+      1.0
+     ]
+    ]
+   },
+   "repairs": [],
+   "revisions": [
+    "G2c relevance (the rule does not fire in the PRESENT situation; use each concept",
+    "G2c relevance (the rule does not fire in the PRESENT situation; use each concept",
+    "G2c relevance (the rule does not fire in the PRESENT situation; use each concept"
+   ],
+   "measured": {
+    "g1_g2": "pass",
+    "g3": {
+     "j_with": 0.288665030051638,
+     "j_without": 0.288665030051638
+    },
+    "g4": {
+     "j_with": 0.288665030051638,
+     "j_without": 0.28915124619721455
+    },
+    "verdict": "rejected at G5 (package margin)"
+   },
+   "lseq": 10,
+   "id": "prop_00010",
+   "timestamp": "2026-07-26T13:04:54Z",
+   "config": "DSS1-EV1-GA1-U12:1-U3:1"
+  },
+  {
+   "situation": {
+    "fire_threat_level": 0.0818,
+    "asset_exposure_risk": 0.3811,
+    "suppression_feasibility": 0.5945,
+    "intervention_urgency": 0.0609,
+    "evacuation_pressure": 0.6534
+   },
+   "coverage_gap": true,
+   "cov_w": 0.8976,
+   "step": 221,
+   "accepted": false,
+   "gate": "G5",
+   "detail": "rejected at G5 package margin (claude)",
+   "dJ": 0.0,
+   "raw": {
+    "new_intervention": {
+     "name": "wet_retardant_line",
+     "composition": [
+      [
+       "containment_line",
+       1.0
+      ],
+      [
+       "retardant_drop",
+       0.9
+      ],
+      [
+       "water_drafting",
+       0.8
+      ]
+     ]
+    },
+    "antecedents": [
+     [
+      "suppression_feasibility",
+      ">=M"
+     ],
+     [
+      "asset_exposure_risk",
+      "VL"
+     ]
+    ],
+    "consequents": [
+     [
+      "wet_retardant_line",
+      1.0
+     ]
+    ]
+   },
+   "repaired": {
+    "antecedents": [
+     [
+      "suppression_feasibility",
+      ">=M"
+     ]
+    ],
+    "consequents": [
+     [
+      "wind_break_line",
+      "0.9"
+     ]
+    ],
+    "new_intervention": {
+     "name": "wind_break_line",
+     "composition": [
+      [
+       "containment_line",
+       "1.0"
+      ],
+      [
+       "retardant_drop",
+       "0.8"
+      ],
+      [
+       "water_drafting",
+       "0.6"
+      ]
+     ]
+    }
+   },
+   "repairs": [],
+   "revisions": [
+    "G2c relevance (the rule does not fire in the PRESENT situation; use each concept",
+    "G2c relevance (the rule does not fire in the PRESENT situation; use each concept",
+    "G2c relevance (the rule does not fire in the PRESENT situation; use each concept"
+   ],
+   "measured": {
+    "g1_g2": "pass",
+    "g3": {
+     "j_with": 0.289077133830971,
+     "j_without": 0.289077133830971
+    },
+    "g4": {
+     "j_with": 0.2894086961347429,
+     "j_without": 0.28948170309426857
+    },
+    "verdict": "rejected at G5 (package margin)"
+   },
+   "lseq": 11,
+   "id": "prop_00011",
+   "timestamp": "2026-07-26T13:05:05Z",
+   "config": "DSS1-EV1-GA1-U12:1-U3:1"
+  },
+  {
+   "situation": {
+    "fire_threat_level": 0.0666,
+    "asset_exposure_risk": 0.3811,
+    "suppression_feasibility": 0.5945,
+    "intervention_urgency": 0.0493,
+    "evacuation_pressure": 0.645
+   },
+   "coverage_gap": false,
+   "cov_w": 0.7182,
+   "step": 232,
+   "accepted": false,
+   "gate": "G2",
+   "detail": "rejected at G2 duplicate cell (claude) — an active rule already sits on this antecedent cell; re-issuing it with different numbers is stage ① evFIS's job, not a new rule",
+   "dJ": 0.0,
+   "raw": {
+    "antecedents": [
+     [
+      "suppression_feasibility",
+      ">=M"
+     ],
+     [
+      "intervention_urgency",
+      "VL"
+     ]
+    ],
+    "consequents": [
+     [
+      "containment_line",
+      "0.9"
+     ],
+     [
+      "suppression_effort",
+      "0.7"
+     ],
+     [
+      "water_drafting",
+      "0.7"
+     ]
+    ]
+   },
+   "repaired": {
+    "antecedents": [
+     [
+      "suppression_feasibility",
+      "VH"
+     ]
+    ],
+    "consequents": [
+     [
+      "containment_line",
+      "0.9"
+     ],
+     [
+      "retardant_drop",
+      "0.8"
+     ],
+     [
+      "water_drafting",
+      "0.7"
+     ]
+    ]
+   },
+   "repairs": [],
+   "revisions": [
+    "G2c relevance (the rule does not fire in the PRESENT situation; use each concept",
+    "G2c relevance (the rule does not fire in the PRESENT situation; use each concept",
+    "G2c relevance (the rule does not fire in the PRESENT situation; use each concept"
+   ],
+   "measured": {},
+   "lseq": 12,
+   "id": "prop_00012",
+   "timestamp": "2026-07-26T13:06:21Z",
+   "config": "DSS1-EV1-GA1-U12:1-U3:1"
+  },
+  {
+   "situation": {
+    "fire_threat_level": 0.3772,
+    "asset_exposure_risk": 0.7245,
+    "suppression_feasibility": 0.858,
+    "intervention_urgency": 0.4045,
+    "evacuation_pressure": 0.326
+   },
+   "coverage_gap": false,
+   "cov_w": 0.5454,
+   "step": 17,
+   "accepted": false,
+   "gate": "G3",
+   "detail": "rejected at G3 (claude)",
+   "dJ": 0.0,
+   "raw": {
+    "antecedents": [
+     [
+      "fire_threat_level",
+      "H"
+     ],
+     [
+      "asset_exposure_risk",
+      "VH"
+     ],
+     [
+      "evacuation_pressure",
+      "VL"
+     ]
+    ],
+    "consequents": [
+     [
+      "suppression_effort",
+      0.9
+     ],
+     [
+      "water_drafting",
+      0.8
+     ],
+     [
+      "retardant_drop",
+      0.7
+     ]
+    ]
+   },
+   "repaired": {
+    "antecedents": [
+     [
+      "fire_threat_level",
+      "H"
+     ],
+     [
+      "asset_exposure_risk",
+      "VH"
+     ],
+     [
+      "evacuation_pressure",
+      "VL"
+     ]
+    ],
+    "consequents": [
+     [
+      "suppression_effort",
+      0.9
+     ],
+     [
+      "water_drafting",
+      0.8
+     ],
+     [
+      "retardant_drop",
+      0.7
+     ]
+    ]
+   },
+   "repairs": [],
+   "revisions": [],
+   "measured": {
+    "g1_g2": "pass",
+    "g3": {
+     "j_with": 0.24263779076429473,
+     "j_without": 0.24263779076429473
+    },
+    "g4": {
+     "j_with": 0.23278709349593496,
+     "j_without": 0.28922511075817103
+    },
+    "verdict": "rejected at G3 (no improvement)"
+   },
+   "lseq": 13,
+   "id": "prop_00013",
+   "timestamp": "2026-07-26T13:10:16Z",
+   "config": "DSS1-EV1-GA1-U12:1-U3:1"
+  },
+  {
+   "situation": {
+    "fire_threat_level": 0.3772,
+    "asset_exposure_risk": 0.7245,
+    "suppression_feasibility": 0.858,
+    "intervention_urgency": 0.4045,
+    "evacuation_pressure": 0.326
+   },
+   "coverage_gap": false,
+   "cov_w": 0.5454,
+   "step": 10,
+   "accepted": false,
+   "gate": "G3",
+   "detail": "rejected at G3 (claude)",
+   "dJ": 0.0,
+   "raw": {
+    "antecedents": [
+     [
+      "fire_threat_level",
+      "H"
+     ],
+     [
+      "asset_exposure_risk",
+      "VH"
+     ],
+     [
+      "evacuation_pressure",
+      "VL"
+     ]
+    ],
+    "consequents": [
+     [
+      "suppression_effort",
+      "0.9"
+     ],
+     [
+      "retardant_drop",
+      "0.8"
+     ],
+     [
+      "containment_line",
+      "0.7"
+     ]
+    ]
+   },
+   "repaired": {
+    "antecedents": [
+     [
+      "fire_threat_level",
+      "H"
+     ],
+     [
+      "asset_exposure_risk",
+      "VH"
+     ],
+     [
+      "evacuation_pressure",
+      "VL"
+     ]
+    ],
+    "consequents": [
+     [
+      "suppression_effort",
+      "0.9"
+     ],
+     [
+      "retardant_drop",
+      "0.8"
+     ],
+     [
+      "containment_line",
+      "0.7"
+     ]
+    ]
+   },
+   "repairs": [],
+   "revisions": [],
+   "measured": {
+    "g1_g2": "pass",
+    "g3": {
+     "j_with": 0.034879336349924586,
+     "j_without": 0.034879336349924586
+    },
+    "g4": {
+     "j_with": 0.034879336349924586,
+     "j_without": 0.15878266622560372
+    },
+    "verdict": "rejected at G3 (no improvement)"
+   },
+   "lseq": 14,
+   "id": "prop_00014",
+   "timestamp": "2026-07-26T13:42:13Z",
+   "config": "DSS1-EV1-GA1-U12:1-U3:1"
+  },
+  {
+   "situation": {
+    "fire_threat_level": 0.4236,
+    "asset_exposure_risk": 0.5804,
+    "suppression_feasibility": 0.7912,
+    "intervention_urgency": 0.4022,
+    "evacuation_pressure": 0.5099
+   },
+   "coverage_gap": false,
+   "cov_w": 0.725,
+   "step": 18,
+   "accepted": false,
+   "gate": "G3",
+   "detail": "rejected at G3 (claude)",
+   "dJ": 0.0,
+   "raw": {
+    "antecedents": [
+     [
+      "fire_threat_level",
+      "VH"
+     ],
+     [
+      "suppression_feasibility",
+      "VH"
+     ],
+     [
+      "intervention_urgency",
+      "M"
+     ]
+    ],
+    "consequents": [
+     [
+      "suppression_effort",
+      "1.0"
+     ],
+     [
+      "water_drafting",
+      "0.9"
+     ],
+     [
+      "retardant_drop",
+      "0.8"
+     ]
+    ]
+   },
+   "repaired": {
+    "antecedents": [
+     [
+      "fire_threat_level",
+      "VH"
+     ],
+     [
+      "suppression_feasibility",
+      "VH"
+     ],
+     [
+      "intervention_urgency",
+      "M"
+     ]
+    ],
+    "consequents": [
+     [
+      "suppression_effort",
+      "1.0"
+     ],
+     [
+      "water_drafting",
+      "0.9"
+     ],
+     [
+      "retardant_drop",
+      "0.8"
+     ]
+    ]
+   },
+   "repairs": [],
+   "revisions": [],
+   "measured": {
+    "g1_g2": "pass",
+    "g3": {
+     "j_with": 0.034879336349924586,
+     "j_without": 0.034879336349924586
+    },
+    "g4": {
+     "j_with": 0.034879336349924586,
+     "j_without": 0.060355233660976025
+    },
+    "verdict": "rejected at G3 (no improvement)"
+   },
+   "lseq": 15,
+   "id": "prop_00015",
+   "timestamp": "2026-07-26T13:42:36Z",
+   "config": "DSS1-EV1-GA1-U12:1-U3:1"
+  },
+  {
+   "situation": {
+    "fire_threat_level": 0.3769,
+    "asset_exposure_risk": 0.5822,
+    "suppression_feasibility": 0.7912,
+    "intervention_urgency": 0.3586,
+    "evacuation_pressure": 0.5107
+   },
+   "coverage_gap": false,
+   "cov_w": 0.725,
+   "step": 23,
+   "accepted": false,
+   "gate": "G3",
+   "detail": "rejected at G3 (claude)",
+   "dJ": 0.0,
+   "raw": {
+    "antecedents": [
+     [
+      "fire_threat_level",
+      "VH"
+     ],
+     [
+      "suppression_feasibility",
+      "VH"
+     ],
+     [
+      "evacuation_pressure",
+      "M"
+     ]
+    ],
+    "consequents": [
+     [
+      "suppression_effort",
+      "1.0"
+     ],
+     [
+      "water_drafting",
+      "0.9"
+     ],
+     [
+      "containment_line",
+      "0.8"
+     ]
+    ]
+   },
+   "repaired": {
+    "antecedents": [
+     [
+      "fire_threat_level",
+      "VH"
+     ],
+     [
+      "suppression_feasibility",
+      "VH"
+     ],
+     [
+      "evacuation_pressure",
+      "M"
+     ]
+    ],
+    "consequents": [
+     [
+      "suppression_effort",
+      "1.0"
+     ],
+     [
+      "water_drafting",
+      "0.9"
+     ],
+     [
+      "containment_line",
+      "0.8"
+     ]
+    ]
+   },
+   "repairs": [],
+   "revisions": [],
+   "measured": {
+    "g1_g2": "pass",
+    "g3": {
+     "j_with": 0.034879336349924586,
+     "j_without": 0.034879336349924586
+    },
+    "g4": {
+     "j_with": 0.034879336349924586,
+     "j_without": 0.04702477844094773
+    },
+    "verdict": "rejected at G3 (no improvement)"
+   },
+   "lseq": 16,
+   "id": "prop_00016",
+   "timestamp": "2026-07-26T13:42:51Z",
+   "config": "DSS1-EV1-GA1-U12:1-U3:1"
+  },
+  {
+   "situation": {
+    "fire_threat_level": 0.1585,
+    "asset_exposure_risk": 0.607,
+    "suppression_feasibility": 0.858,
+    "intervention_urgency": 0.2759,
+    "evacuation_pressure": 0.2731
+   },
+   "coverage_gap": false,
+   "cov_w": 0.6183,
+   "step": 0,
+   "accepted": false,
+   "gate": "G3",
+   "detail": "rejected at G3 (claude)",
+   "dJ": 0.0,
+   "raw": {
+    "antecedents": [
+     [
+      "asset_exposure_risk",
+      "VH"
+     ],
+     [
+      "fire_threat_level",
+      "VL"
+     ],
+     [
+      "evacuation_pressure",
+      "VL"
+     ]
+    ],
+    "consequents": [
+     [
+      "asset_protection",
+      "0.9"
+     ],
+     [
+      "containment_line",
+      "0.8"
+     ],
+     [
+      "retardant_drop",
+      "0.7"
+     ]
+    ]
+   },
+   "repaired": {
+    "antecedents": [
+     [
+      "asset_exposure_risk",
+      "VH"
+     ],
+     [
+      "fire_threat_level",
+      "VL"
+     ],
+     [
+      "evacuation_pressure",
+      "VL"
+     ]
+    ],
+    "consequents": [
+     [
+      "asset_protection",
+      "0.9"
+     ],
+     [
+      "containment_line",
+      "0.8"
+     ],
+     [
+      "retardant_drop",
+      "0.7"
+     ]
+    ]
+   },
+   "repairs": [],
+   "revisions": [],
+   "measured": {
+    "g1_g2": "pass",
+    "g3": {
+     "j_with": 0.20281968835023498,
+     "j_without": 0.20281968835023498
+    },
+    "g4": {
+     "j_with": 0.20101972584419928,
+     "j_without": 0.20101972584419928
+    },
+    "verdict": "rejected at G3 (no improvement)"
+   },
+   "lseq": 17,
+   "id": "prop_00017",
+   "timestamp": "2026-07-26T13:58:40Z",
+   "config": "DSS1-EV1-GA1-U12:1-U3:1"
+  },
+  {
+   "situation": {
+    "fire_threat_level": 0.2003,
+    "asset_exposure_risk": 0.6701,
+    "suppression_feasibility": 0.858,
+    "intervention_urgency": 0.2754,
+    "evacuation_pressure": 0.3057
+   },
+   "coverage_gap": false,
+   "cov_w": 0.6758,
+   "step": 35,
+   "accepted": false,
+   "gate": "G5",
+   "detail": "rejected at G5 package margin (claude)",
+   "dJ": 0.0,
+   "raw": {
+    "new_concept": {
+     "name": "suppression_window",
+     "level": "intermediate",
+     "inputs": [
+      [
+       "suppression_feasibility",
+       0.6
+      ],
+      [
+       "asset_exposure_risk",
+       0.4
+      ]
+     ]
+    },
+    "antecedents": [
+     [
+      "suppression_window",
+      "VH"
+     ],
+     [
+      "fire_threat_level",
+      "VL"
+     ]
+    ],
+    "consequents": [
+     [
+      "suppression_effort",
+      "0.9"
+     ],
+     [
+      "water_drafting",
+      "0.8"
+     ],
+     [
+      "containment_line",
+      "0.7"
+     ]
+    ]
+   },
+   "repaired": {
+    "new_concept": {
+     "name": "suppression_window",
+     "level": "intermediate",
+     "inputs": [
+      [
+       "suppression_feasibility",
+       0.6
+      ],
+      [
+       "asset_exposure_risk",
+       0.4
+      ]
+     ]
+    },
+    "antecedents": [
+     [
+      "suppression_window",
+      "VH"
+     ],
+     [
+      "fire_threat_level",
+      "VL"
+     ]
+    ],
+    "consequents": [
+     [
+      "suppression_effort",
+      "0.9"
+     ],
+     [
+      "water_drafting",
+      "0.8"
+     ],
+     [
+      "containment_line",
+      "0.7"
+     ]
+    ]
+   },
+   "repairs": [],
+   "revisions": [],
+   "measured": {
+    "g1_g2": "pass",
+    "g3": {
+     "j_with": 0.058935690760963784,
+     "j_without": 0.05822036843934655
+    },
+    "g4": {
+     "j_with": 0.05822036843934655,
+     "j_without": 0.10421189752496744
+    },
+    "verdict": "rejected at G5 (package margin)"
+   },
+   "lseq": 18,
+   "id": "prop_00018",
+   "timestamp": "2026-07-26T14:05:44Z",
+   "config": "DSS1-EV1-GA1-U12:1-U3:1"
+  },
+  {
+   "situation": {
+    "fire_threat_level": 0.3061,
+    "asset_exposure_risk": 0.547,
+    "suppression_feasibility": 0.7912,
+    "intervention_urgency": 0.3143,
+    "evacuation_pressure": 0.4869
+   },
+   "coverage_gap": false,
+   "cov_w": 0.6779,
+   "step": 46,
+   "accepted": false,
+   "gate": "G3",
+   "detail": "rejected at G3 (claude)",
+   "dJ": 0.0,
+   "raw": {
+    "antecedents": [
+     [
+      "fire_threat_level",
+      "VH"
+     ],
+     [
+      "suppression_feasibility",
+      "VH"
+     ],
+     [
+      "evacuation_pressure",
+      "M"
+     ]
+    ],
+    "consequents": [
+     [
+      "suppression_effort",
+      1.0
+     ],
+     [
+      "water_drafting",
+      0.9
+     ],
+     [
+      "retardant_drop",
+      0.8
+     ]
+    ]
+   },
+   "repaired": {
+    "antecedents": [
+     [
+      "fire_threat_level",
+      "VH"
+     ],
+     [
+      "suppression_feasibility",
+      "VH"
+     ],
+     [
+      "evacuation_pressure",
+      "M"
+     ]
+    ],
+    "consequents": [
+     [
+      "suppression_effort",
+      1.0
+     ],
+     [
+      "water_drafting",
+      0.9
+     ],
+     [
+      "retardant_drop",
+      0.8
+     ]
+    ]
+   },
+   "repairs": [],
+   "revisions": [],
+   "measured": {
+    "g1_g2": "pass",
+    "g3": {
+     "j_with": 0.058935690760963784,
+     "j_without": 0.058935690760963784
+    },
+    "g4": {
+     "j_with": 0.058935690760963784,
+     "j_without": 0.07505302659487682
+    },
+    "verdict": "rejected at G3 (no improvement)"
+   },
+   "lseq": 19,
+   "id": "prop_00019",
+   "timestamp": "2026-07-26T14:06:07Z",
+   "config": "DSS1-EV1-GA1-U12:1-U3:1"
+  },
+  {
+   "situation": {
+    "fire_threat_level": 0.226,
+    "asset_exposure_risk": 0.5567,
+    "suppression_feasibility": 0.7912,
+    "intervention_urgency": 0.238,
+    "evacuation_pressure": 0.4905
+   },
+   "coverage_gap": false,
+   "cov_w": 0.5982,
+   "step": 57,
+   "accepted": false,
+   "gate": "G2",
+   "detail": "rejected at G2 duplicate cell (claude) — an active rule already sits on this antecedent cell; re-issuing it with different numbers is stage ① evFIS's job, not a new rule",
+   "dJ": 0.0,
+   "raw": {
+    "antecedents": [
+     [
+      "suppression_feasibility",
+      "VH"
+     ],
+     [
+      "asset_exposure_risk",
+      "H"
+     ],
+     [
+      "fire_threat_level",
+      "VL"
+     ]
+    ],
+    "consequents": [
+     [
+      "suppression_effort",
+      0.9
+     ],
+     [
+      "water_drafting",
+      0.8
+     ],
+     [
+      "containment_line",
+      0.7
+     ]
+    ]
+   },
+   "repaired": {
+    "antecedents": [
+     [
+      "suppression_feasibility",
+      "VH"
+     ]
+    ],
+    "consequents": [
+     [
+      "suppression_effort",
+      0.9
+     ],
+     [
+      "water_drafting",
+      0.8
+     ],
+     [
+      "containment_line",
+      0.7
+     ]
+    ]
+   },
+   "repairs": [],
+   "revisions": [
+    "G2c relevance (the rule does not fire in the PRESENT situation; use each concept",
+    "G2c relevance (the rule does not fire in the PRESENT situation; use each concept",
+    "G2c relevance (the rule does not fire in the PRESENT situation; use each concept"
+   ],
+   "measured": {},
+   "lseq": 20,
+   "id": "prop_00020",
+   "timestamp": "2026-07-26T14:06:59Z",
+   "config": "DSS1-EV1-GA1-U12:1-U3:1"
+  },
+  {
+   "situation": {
+    "fire_threat_level": 0.3358,
+    "asset_exposure_risk": 0.8457,
+    "suppression_feasibility": 0.7895,
+    "intervention_urgency": 0.3444,
+    "evacuation_pressure": 0.62
+   },
+   "coverage_gap": false,
+   "cov_w": 0.6779,
+   "step": 72,
+   "accepted": false,
+   "gate": "G3",
+   "detail": "rejected at G3 (claude)",
+   "dJ": 0.0,
+   "raw": {
+    "antecedents": [
+     [
+      "fire_threat_level",
+      "M"
+     ],
+     [
+      "asset_exposure_risk",
+      "VH"
+     ],
+     [
+      "suppression_feasibility",
+      "VH"
+     ]
+    ],
+    "consequents": [
+     [
+      "suppression_effort",
+      "0.9"
+     ],
+     [
+      "retardant_drop",
+      "0.8"
+     ],
+     [
+      "containment_line",
+      "0.8"
+     ]
+    ]
+   },
+   "repaired": {
+    "antecedents": [
+     [
+      "fire_threat_level",
+      "M"
+     ],
+     [
+      "asset_exposure_risk",
+      "VH"
+     ],
+     [
+      "suppression_feasibility",
+      "VH"
+     ]
+    ],
+    "consequents": [
+     [
+      "suppression_effort",
+      "0.9"
+     ],
+     [
+      "retardant_drop",
+      "0.8"
+     ],
+     [
+      "containment_line",
+      "0.8"
+     ]
+    ]
+   },
+   "repairs": [],
+   "revisions": [],
+   "measured": {
+    "g1_g2": "pass",
+    "g3": {
+     "j_with": 0.056051847959362404,
+     "j_without": 0.056051847959362404
+    },
+    "g4": {
+     "j_with": 0.056051847959362404,
+     "j_without": 0.07249958807052233
+    },
+    "verdict": "rejected at G3 (no improvement)"
+   },
+   "lseq": 21,
+   "id": "prop_00021",
+   "timestamp": "2026-07-26T14:20:59Z",
+   "config": "DSS1-EV1-GA1-U12:1-U3:1"
+  },
+  {
+   "situation": {
+    "fire_threat_level": 0.3772,
+    "asset_exposure_risk": 0.7245,
+    "suppression_feasibility": 0.858,
+    "intervention_urgency": 0.4045,
+    "evacuation_pressure": 0.326
+   },
+   "coverage_gap": false,
+   "cov_w": 0.5454,
+   "step": 11,
+   "accepted": false,
+   "gate": "G3",
+   "detail": "rejected at G3 (claude)",
+   "dJ": 0.0,
+   "raw": {
+    "antecedents": [
+     [
+      "fire_threat_level",
+      "H"
+     ],
+     [
+      "asset_exposure_risk",
+      "VH"
+     ],
+     [
+      "intervention_urgency",
+      "VL"
+     ]
+    ],
+    "consequents": [
+     [
+      "suppression_effort",
+      "0.9"
+     ],
+     [
+      "water_drafting",
+      "0.8"
+     ],
+     [
+      "retardant_drop",
+      "0.7"
+     ]
+    ]
+   },
+   "repaired": {
+    "antecedents": [
+     [
+      "fire_threat_level",
+      "H"
+     ],
+     [
+      "asset_exposure_risk",
+      "VH"
+     ],
+     [
+      "intervention_urgency",
+      "VL"
+     ]
+    ],
+    "consequents": [
+     [
+      "suppression_effort",
+      "0.9"
+     ],
+     [
+      "water_drafting",
+      "0.8"
+     ],
+     [
+      "retardant_drop",
+      "0.7"
+     ]
+    ]
+   },
+   "repairs": [],
+   "revisions": [],
+   "measured": {
+    "g1_g2": "pass",
+    "g3": {
+     "j_with": 0.03403289846851956,
+     "j_without": 0.03403289846851956
+    },
+    "g4": {
+     "j_with": 0.03403289846851956,
+     "j_without": 0.2779527008116429
+    },
+    "verdict": "rejected at G3 (no improvement)"
+   },
+   "lseq": 22,
+   "id": "prop_00022",
+   "timestamp": "2026-07-26T14:32:37Z",
+   "config": "DSS1-EV1-GA1-U12:1-U3:1"
+  },
+  {
+   "situation": {
+    "fire_threat_level": 0.3476,
+    "asset_exposure_risk": 0.5861,
+    "suppression_feasibility": 0.7912,
+    "intervention_urgency": 0.3305,
+    "evacuation_pressure": 0.5035
+   },
+   "coverage_gap": true,
+   "cov_w": 0.7231,
+   "step": 29,
+   "accepted": false,
+   "gate": "G3",
+   "detail": "rejected at G3 (claude)",
+   "dJ": 0.0,
+   "raw": {
+    "antecedents": [
+     [
+      "fire_threat_level",
+      "VH"
+     ],
+     [
+      "suppression_feasibility",
+      "VH"
+     ],
+     [
+      "intervention_urgency",
+      "M"
+     ]
+    ],
+    "consequents": [
+     [
+      "suppression_effort",
+      "1.0"
+     ],
+     [
+      "water_drafting",
+      "0.9"
+     ],
+     [
+      "retardant_drop",
+      "0.8"
+     ]
+    ]
+   },
+   "repaired": {
+    "antecedents": [
+     [
+      "suppression_feasibility",
+      "VH"
+     ],
+     [
+      "evacuation_pressure",
+      "M"
+     ]
+    ],
+    "consequents": [
+     [
+      "suppression_effort",
+      "1.0"
+     ],
+     [
+      "water_drafting",
+      "0.9"
+     ],
+     [
+      "retardant_drop",
+      "0.8"
+     ]
+    ]
+   },
+   "repairs": [
+    "fire_threat_level: VH -> >=VH (now VH)"
+   ],
+   "revisions": [
+    "G2c relevance (the rule does not fire in the PRESENT situation; use each concept",
+    "G2c relevance (the rule does not fire in the PRESENT situation; use each concept",
+    "G2c relevance (the rule does not fire in the PRESENT situation; use each concept"
+   ],
+   "measured": {
+    "g1_g2": "pass",
+    "g3": {
+     "j_with": 0.04067295248659641,
+     "j_without": 0.04067295248659641
+    },
+    "g4": {
+     "j_with": 0.04067295248659641,
+     "j_without": 0.06176016469377251
+    },
+    "verdict": "rejected at G3 (no improvement)"
+   },
+   "lseq": 23,
+   "id": "prop_00023",
+   "timestamp": "2026-07-26T14:33:51Z",
+   "config": "DSS1-EV1-GA1-U12:1-U3:1"
+  },
+  {
+   "situation": {
+    "fire_threat_level": 0.3603,
+    "asset_exposure_risk": 0.586,
+    "suppression_feasibility": 0.7912,
+    "intervention_urgency": 0.3394,
+    "evacuation_pressure": 0.5124
+   },
+   "coverage_gap": true,
+   "cov_w": 0.725,
+   "step": 13,
+   "accepted": false,
+   "gate": "G3",
+   "detail": "rejected at G3 (claude)",
+   "dJ": 0.0,
+   "raw": {
+    "antecedents": [
+     [
+      "fire_threat_level",
+      "M"
+     ],
+     [
+      "suppression_feasibility",
+      "VH"
+     ],
+     [
+      "asset_exposure_risk",
+      "M"
+     ]
+    ],
+    "consequents": [
+     [
+      "suppression_effort",
+      "0.95"
+     ],
+     [
+      "water_drafting",
+      "0.8"
+     ],
+     [
+      "resource_deployment",
+      "0.8"
+     ]
+    ]
+   },
+   "repaired": {
+    "antecedents": [
+     [
+      "fire_threat_level",
+      "M"
+     ],
+     [
+      "suppression_feasibility",
+      "VH"
+     ],
+     [
+      "asset_exposure_risk",
+      "M"
+     ]
+    ],
+    "consequents": [
+     [
+      "suppression_effort",
+      "0.95"
+     ],
+     [
+      "water_drafting",
+      "0.8"
+     ],
+     [
+      "resource_deployment",
+      "0.8"
+     ]
+    ]
+   },
+   "repairs": [],
+   "revisions": [],
+   "measured": {
+    "g1_g2": "pass",
+    "g3": {
+     "j_with": 0.04467541940189643,
+     "j_without": 0.03985910270671116
+    },
+    "g4": {
+     "j_with": 0.03985910270671116,
+     "j_without": 0.28302186625985254
+    },
+    "verdict": "rejected at G3 (no improvement)"
+   },
+   "lseq": 24,
+   "id": "prop_00024",
+   "timestamp": "2026-07-26T14:39:15Z",
+   "config": "DSS1-EV1-GA1-U12:1-U3:1"
+  },
+  {
+   "situation": {
+    "fire_threat_level": 0.1997,
+    "asset_exposure_risk": 0.6665,
+    "suppression_feasibility": 0.7912,
+    "intervention_urgency": 0.1971,
+    "evacuation_pressure": 0.5498
+   },
+   "coverage_gap": true,
+   "cov_w": 0.725,
+   "step": 155,
+   "accepted": false,
+   "gate": "G2",
+   "detail": "rejected at G2 duplicate cell (claude) — an active rule already sits on this antecedent cell; re-issuing it with different numbers is stage ① evFIS's job, not a new rule",
+   "dJ": 0.0,
+   "raw": {
+    "antecedents": [
+     [
+      "suppression_feasibility",
+      "VH"
+     ],
+     [
+      "asset_exposure_risk",
+      "H"
+     ],
+     [
+      "intervention_urgency",
+      "H"
+     ]
+    ],
+    "consequents": [
+     [
+      "suppression_effort",
+      "1.0"
+     ],
+     [
+      "water_drafting",
+      "0.9"
+     ],
+     [
+      "resource_deployment",
+      "0.8"
+     ]
+    ]
+   },
+   "repaired": {
+    "antecedents": [
+     [
+      "suppression_feasibility",
+      "VH"
+     ],
+     [
+      "asset_exposure_risk",
+      "H"
+     ]
+    ],
+    "consequents": [
+     [
+      "suppression_effort",
+      "1.0"
+     ],
+     [
+      "water_drafting",
+      "0.9"
+     ],
+     [
+      "resource_deployment",
+      "0.8"
+     ]
+    ]
+   },
+   "repairs": [
+    "intervention_urgency: H -> >=H (now H)"
+   ],
+   "revisions": [
+    "G2c relevance (the rule does not fire in the PRESENT situation; use each concept",
+    "G2c relevance (the rule does not fire in the PRESENT situation; use each concept",
+    "G2c relevance (the rule does not fire in the PRESENT situation; use each concept"
+   ],
+   "measured": {},
+   "lseq": 25,
+   "id": "prop_00025",
+   "timestamp": "2026-07-26T14:41:43Z",
+   "config": "DSS1-EV1-GA1-U12:1-U3:1"
+  },
+  {
+   "situation": {
+    "fire_threat_level": 0.3603,
+    "asset_exposure_risk": 0.586,
+    "suppression_feasibility": 0.7912,
+    "intervention_urgency": 0.3394,
+    "evacuation_pressure": 0.5124
+   },
+   "coverage_gap": true,
+   "cov_w": 0.725,
+   "step": 15,
+   "accepted": false,
+   "gate": "G3",
+   "detail": "rejected at G3 (claude)",
+   "dJ": 0.0,
+   "raw": {
+    "antecedents": [
+     [
+      "suppression_feasibility",
+      "VH"
+     ],
+     [
+      "fire_threat_level",
+      "M"
+     ],
+     [
+      "intervention_urgency",
+      "M"
+     ]
+    ],
+    "consequents": [
+     [
+      "suppression_effort",
+      0.9
+     ],
+     [
+      "water_drafting",
+      0.8
+     ],
+     [
+      "retardant_drop",
+      0.7
+     ]
+    ]
+   },
+   "repaired": {
+    "antecedents": [
+     [
+      "suppression_feasibility",
+      "VH"
+     ],
+     [
+      "fire_threat_level",
+      "M"
+     ],
+     [
+      "intervention_urgency",
+      "M"
+     ]
+    ],
+    "consequents": [
+     [
+      "suppression_effort",
+      0.9
+     ],
+     [
+      "water_drafting",
+      0.8
+     ],
+     [
+      "retardant_drop",
+      0.7
+     ]
+    ]
+   },
+   "repairs": [],
+   "revisions": [],
+   "measured": {
+    "g1_g2": "pass",
+    "g3": {
+     "j_with": 0.03985910270671116,
+     "j_without": 0.03985910270671116
+    },
+    "g4": {
+     "j_with": 0.03985910270671116,
+     "j_without": 0.09649910233393177
+    },
+    "verdict": "rejected at G3 (no improvement)"
+   },
+   "lseq": 26,
+   "id": "prop_00026",
+   "timestamp": "2026-07-26T14:54:10Z",
+   "config": "DSS1-EV1-GA1-U12:1-U3:1"
+  },
+  {
+   "situation": {
+    "fire_threat_level": 0.3772,
+    "asset_exposure_risk": 0.7245,
+    "suppression_feasibility": 0.858,
+    "intervention_urgency": 0.4045,
+    "evacuation_pressure": 0.326
+   },
+   "coverage_gap": false,
+   "cov_w": 0.5454,
+   "step": 15,
+   "accepted": false,
+   "gate": "G3",
+   "detail": "rejected at G3 (claude)",
+   "dJ": 0.0,
+   "raw": {
+    "antecedents": [
+     [
+      "fire_threat_level",
+      "H"
+     ],
+     [
+      "asset_exposure_risk",
+      "VH"
+     ],
+     [
+      "evacuation_pressure",
+      "VL"
+     ]
+    ],
+    "consequents": [
+     [
+      "suppression_effort",
+      "1.0"
+     ],
+     [
+      "water_drafting",
+      "0.8"
+     ],
+     [
+      "retardant_drop",
+      "0.8"
+     ]
+    ]
+   },
+   "repaired": {
+    "antecedents": [
+     [
+      "fire_threat_level",
+      "H"
+     ],
+     [
+      "asset_exposure_risk",
+      "VH"
+     ],
+     [
+      "evacuation_pressure",
+      "VL"
+     ]
+    ],
+    "consequents": [
+     [
+      "suppression_effort",
+      "1.0"
+     ],
+     [
+      "water_drafting",
+      "0.8"
+     ],
+     [
+      "retardant_drop",
+      "0.8"
+     ]
+    ]
+   },
+   "repairs": [],
+   "revisions": [],
+   "measured": {
+    "g1_g2": "pass",
+    "g3": {
+     "j_with": 0.03985910270671116,
+     "j_without": 0.03985910270671116
+    },
+    "g4": {
+     "j_with": 0.03985910270671116,
+     "j_without": 0.09702940737423497
+    },
+    "verdict": "rejected at G3 (no improvement)"
+   },
+   "lseq": 27,
+   "id": "prop_00027",
+   "timestamp": "2026-07-26T15:04:52Z",
+   "config": "DSS1-EV1-GA1-U12:1-U3:1"
+  },
+  {
+   "situation": {
+    "fire_threat_level": 0.3772,
+    "asset_exposure_risk": 0.7245,
+    "suppression_feasibility": 0.858,
+    "intervention_urgency": 0.4045,
+    "evacuation_pressure": 0.326
+   },
+   "coverage_gap": false,
+   "cov_w": 0.5454,
+   "step": 12,
+   "accepted": false,
+   "gate": "G3",
+   "detail": "rejected at G3 (claude)",
+   "dJ": 0.0,
+   "raw": {
+    "antecedents": [
+     [
+      "fire_threat_level",
+      "H"
+     ],
+     [
+      "asset_exposure_risk",
+      "VH"
+     ],
+     [
+      "evacuation_pressure",
+      "VL"
+     ]
+    ],
+    "consequents": [
+     [
+      "suppression_effort",
+      "0.9"
+     ],
+     [
+      "water_drafting",
+      "0.8"
+     ],
+     [
+      "retardant_drop",
+      "0.7"
+     ]
+    ]
+   },
+   "repaired": {
+    "antecedents": [
+     [
+      "fire_threat_level",
+      "H"
+     ],
+     [
+      "asset_exposure_risk",
+      "VH"
+     ],
+     [
+      "evacuation_pressure",
+      "VL"
+     ]
+    ],
+    "consequents": [
+     [
+      "suppression_effort",
+      "0.9"
+     ],
+     [
+      "water_drafting",
+      "0.8"
+     ],
+     [
+      "retardant_drop",
+      "0.7"
+     ]
+    ]
+   },
+   "repairs": [],
+   "revisions": [],
+   "measured": {
+    "g1_g2": "pass",
+    "g3": {
+     "j_with": 0.049336203803372815,
+     "j_without": 0.04467541940189643
+    },
+    "g4": {
+     "j_with": 0.049336203803372815,
+     "j_without": 0.29296989017536235
+    },
+    "verdict": "rejected at G3 (no improvement)"
+   },
+   "lseq": 28,
+   "id": "prop_00028",
+   "timestamp": "2026-07-26T15:15:25Z",
+   "config": "DSS1-EV1-GA1-U12:1-U3:1"
+  },
+  {
+   "situation": {
+    "fire_threat_level": 0.1585,
+    "asset_exposure_risk": 0.607,
+    "suppression_feasibility": 0.858,
+    "intervention_urgency": 0.2759,
+    "evacuation_pressure": 0.2731
+   },
+   "coverage_gap": false,
+   "cov_w": 0.6183,
+   "step": 0,
+   "accepted": false,
+   "gate": "G3",
+   "detail": "rejected at G3 (claude)",
+   "dJ": 0.0,
+   "raw": {
+    "antecedents": [
+     [
+      "fire_threat_level",
+      "VL"
+     ],
+     [
+      "asset_exposure_risk",
+      "VH"
+     ],
+     [
+      "evacuation_pressure",
+      "VL"
+     ]
+    ],
+    "consequents": [
+     [
+      "containment_line",
+      "0.8"
+     ],
+     [
+      "asset_protection",
+      "0.8"
+     ],
+     [
+      "retardant_drop",
+      "0.7"
+     ]
+    ]
+   },
+   "repaired": {
+    "antecedents": [
+     [
+      "fire_threat_level",
+      "VL"
+     ],
+     [
+      "asset_exposure_risk",
+      "VH"
+     ],
+     [
+      "evacuation_pressure",
+      "VL"
+     ]
+    ],
+    "consequents": [
+     [
+      "containment_line",
+      "0.8"
+     ],
+     [
+      "asset_protection",
+      "0.8"
+     ],
+     [
+      "retardant_drop",
+      "0.7"
+     ]
+    ]
+   },
+   "repairs": [],
+   "revisions": [],
+   "measured": {
+    "g1_g2": "pass",
+    "g3": {
+     "j_with": 0.23168900256911062,
+     "j_without": 0.23168900256911062
+    },
+    "g4": {
+     "j_with": 0.23076901625541188,
+     "j_without": 0.23076901625541188
+    },
+    "verdict": "rejected at G3 (no improvement)"
+   },
+   "lseq": 29,
+   "id": "prop_00029",
+   "timestamp": "2026-07-26T15:22:19Z",
+   "config": "DSS1-EV1-GA1-U12:1-U3:1"
+  },
+  {
+   "situation": {
+    "fire_threat_level": 0.1646,
+    "asset_exposure_risk": 0.6033,
+    "suppression_feasibility": 0.6813,
+    "intervention_urgency": 0.277,
+    "evacuation_pressure": 0.2715
+   },
+   "coverage_gap": false,
+   "cov_w": 0.6003,
+   "step": 4,
+   "accepted": false,
+   "gate": "G3",
+   "detail": "rejected at G3 (claude)",
+   "dJ": 0.0,
+   "raw": {
+    "antecedents": [
+     [
+      "asset_exposure_risk",
+      "VH"
+     ],
+     [
+      "suppression_feasibility",
+      "M"
+     ],
+     [
+      "intervention_urgency",
+      "VL"
+     ]
+    ],
+    "consequents": [
+     [
+      "containment_line",
+      "0.8"
+     ],
+     [
+      "retardant_drop",
+      "0.7"
+     ],
+     [
+      "asset_protection",
+      "0.7"
+     ]
+    ]
+   },
+   "repaired": {
+    "antecedents": [
+     [
+      "asset_exposure_risk",
+      "VH"
+     ],
+     [
+      "suppression_feasibility",
+      "M"
+     ],
+     [
+      "intervention_urgency",
+      "VL"
+     ]
+    ],
+    "consequents": [
+     [
+      "containment_line",
+      "0.8"
+     ],
+     [
+      "retardant_drop",
+      "0.7"
+     ],
+     [
+      "asset_protection",
+      "0.7"
+     ]
+    ]
+   },
+   "repairs": [],
+   "revisions": [],
+   "measured": {
+    "g1_g2": "pass",
+    "g3": {
+     "j_with": 0.29348848638890795,
+     "j_without": 0.21806680619192043
+    },
+    "g4": {
+     "j_with": 0.2670373745769859,
+     "j_without": 0.29475357816096126
+    },
+    "verdict": "rejected at G3 (no improvement)"
+   },
+   "lseq": 30,
+   "id": "prop_00030",
+   "timestamp": "2026-07-26T15:26:22Z",
+   "config": "DSS1-EV1-GA1-U12:1-U3:1"
+  },
+  {
+   "situation": {
+    "fire_threat_level": 0.2527,
+    "asset_exposure_risk": 0.6912,
+    "suppression_feasibility": 0.4837,
+    "intervention_urgency": 0.3248,
+    "evacuation_pressure": 0.5264
+   },
+   "coverage_gap": true,
+   "cov_w": 0.6779,
+   "step": 20,
+   "accepted": false,
+   "gate": "G2",
+   "detail": "rejected at G2 duplicate cell (claude) — an active rule already sits on this antecedent cell; re-issuing it with different numbers is stage ① evFIS's job, not a new rule",
+   "dJ": 0.0,
+   "raw": {
+    "antecedents": [
+     [
+      "fire_threat_level",
+      ">=H"
+     ],
+     [
+      "asset_exposure_risk",
+      "VH"
+     ],
+     [
+      "suppression_feasibility",
+      "VL"
+     ]
+    ],
+    "consequents": [
+     [
+      "retardant_drop",
+      "0.9"
+     ],
+     [
+      "containment_line",
+      "0.8"
+     ],
+     [
+      "water_drafting",
+      "0.7"
+     ]
+    ]
+   },
+   "repaired": {
+    "antecedents": [
+     [
+      "asset_exposure_risk",
+      "VH"
+     ]
+    ],
+    "consequents": [
+     [
+      "retardant_drop",
+      "0.9"
+     ],
+     [
+      "water_drafting",
+      "0.8"
+     ],
+     [
+      "containment_line",
+      "0.7"
+     ]
+    ]
+   },
+   "repairs": [],
+   "revisions": [
+    "G2c relevance (the rule does not fire in the PRESENT situation; use each concept",
+    "G2c relevance (the rule does not fire in the PRESENT situation; use each concept",
+    "G2c relevance (the rule does not fire in the PRESENT situation; use each concept"
+   ],
+   "measured": {},
+   "lseq": 31,
+   "id": "prop_00031",
+   "timestamp": "2026-07-26T15:27:26Z",
+   "config": "DSS1-EV1-GA1-U12:1-U3:1"
+  },
+  {
+   "situation": {
+    "fire_threat_level": 0.2704,
+    "asset_exposure_risk": 0.6778,
+    "suppression_feasibility": 0.4837,
+    "intervention_urgency": 0.3422,
+    "evacuation_pressure": 0.5283
+   },
+   "coverage_gap": true,
+   "cov_w": 0.6779,
+   "step": 20,
+   "accepted": false,
+   "gate": "G2c",
+   "detail": "rejected at G2c relevance (the rule does not fire in the PRESENT situation; use each concept's CURRENT dominant term from the situation line) (claude)",
+   "dJ": 0.0,
+   "raw": {
+    "antecedents": [
+     [
+      "fire_threat_level",
+      ">=H"
+     ],
+     [
+      "asset_exposure_risk",
+      "VH"
+     ],
+     [
+      "suppression_feasibility",
+      "VL"
+     ]
+    ],
+    "consequents": [
+     [
+      "retardant_drop",
+      "0.9"
+     ],
+     [
+      "containment_line",
+      "0.8"
+     ],
+     [
+      "water_drafting",
+      "0.7"
+     ]
+    ]
+   },
+   "repaired": {
+    "antecedents": [
+     [
+      "asset_exposure_risk",
+      ">=H"
+     ],
+     [
+      "intervention_urgency",
+      ">=H"
+     ]
+    ],
+    "consequents": [
+     [
+      "retardant_drop",
+      "0.9"
+     ],
+     [
+      "containment_line",
+      "0.8"
+     ],
+     [
+      "water_drafting",
+      "0.7"
+     ]
+    ]
+   },
+   "repairs": [],
+   "revisions": [
+    "G2c relevance (the rule does not fire in the PRESENT situation; use each concept",
+    "G2c relevance (the rule does not fire in the PRESENT situation; use each concept",
+    "G2c relevance (the rule does not fire in the PRESENT situation; use each concept"
+   ],
+   "measured": {},
+   "lseq": 32,
+   "id": "prop_00032",
+   "timestamp": "2026-07-26T15:27:36Z",
+   "config": "DSS1-EV1-GA1-U12:1-U3:1"
+  },
+  {
+   "situation": {
+    "fire_threat_level": 0.2726,
+    "asset_exposure_risk": 0.6672,
+    "suppression_feasibility": 0.4837,
+    "intervention_urgency": 0.342,
+    "evacuation_pressure": 0.5241
+   },
+   "coverage_gap": true,
+   "cov_w": 0.6779,
+   "step": 204,
+   "accepted": false,
+   "gate": "G2c",
+   "detail": "rejected at G2c relevance (the rule does not fire in the PRESENT situation; use each concept's CURRENT dominant term from the situation line) (claude)",
+   "dJ": 0.0,
+   "raw": {
+    "antecedents": [
+     [
+      "fire_threat_level",
+      ">=H"
+     ],
+     [
+      "asset_exposure_risk",
+      "VH"
+     ],
+     [
+      "suppression_feasibility",
+      "VL"
+     ]
+    ],
+    "consequents": [
+     [
+      "retardant_drop",
+      "0.9"
+     ],
+     [
+      "containment_line",
+      "0.8"
+     ],
+     [
+      "water_drafting",
+      "0.7"
+     ]
+    ]
+   },
+   "repaired": {
+    "antecedents": [
+     [
+      "asset_exposure_risk",
+      "H"
+     ],
+     [
+      "suppression_feasibility",
+      "M"
+     ]
+    ],
+    "consequents": [
+     [
+      "retardant_drop",
+      "0.9"
+     ],
+     [
+      "containment_line",
+      "0.8"
+     ],
+     [
+      "water_drafting",
+      "0.7"
+     ]
+    ]
+   },
+   "repairs": [],
+   "revisions": [
+    "G2c relevance (the rule does not fire in the PRESENT situation; use each concept",
+    "G2c relevance (the rule does not fire in the PRESENT situation; use each concept",
+    "G2c relevance (the rule does not fire in the PRESENT situation; use each concept"
+   ],
+   "measured": {},
+   "lseq": 33,
+   "id": "prop_00033",
+   "timestamp": "2026-07-26T15:28:40Z",
+   "config": "DSS1-EV1-GA1-U12:1-U3:1"
+  },
+  {
+   "situation": {
+    "fire_threat_level": 0.3917,
+    "asset_exposure_risk": 0.7255,
+    "suppression_feasibility": 0.8599,
+    "intervention_urgency": 0.4106,
+    "evacuation_pressure": 0.3265
+   },
+   "coverage_gap": false,
+   "cov_w": 0.54,
+   "step": 0,
+   "accepted": false,
+   "gate": "G3",
+   "detail": "rejected at G3 (claude)",
+   "dJ": 0.0,
+   "raw": {
+    "antecedents": [
+     [
+      "fire_threat_level",
+      "H"
+     ],
+     [
+      "asset_exposure_risk",
+      "VH"
+     ],
+     [
+      "evacuation_pressure",
+      "VL"
+     ]
+    ],
+    "consequents": [
+     [
+      "suppression_effort",
+      "0.9"
+     ],
+     [
+      "retardant_drop",
+      "0.8"
+     ],
+     [
+      "containment_line",
+      "0.7"
+     ]
+    ]
+   },
+   "repaired": {
+    "antecedents": [
+     [
+      "fire_threat_level",
+      "H"
+     ],
+     [
+      "asset_exposure_risk",
+      "VH"
+     ],
+     [
+      "evacuation_pressure",
+      "VL"
+     ]
+    ],
+    "consequents": [
+     [
+      "suppression_effort",
+      "0.9"
+     ],
+     [
+      "retardant_drop",
+      "0.8"
+     ],
+     [
+      "containment_line",
+      "0.7"
+     ]
+    ]
+   },
+   "repairs": [],
+   "revisions": [],
+   "measured": {
+    "g1_g2": "pass",
+    "g3": {
+     "j_with": 0.28027277327808336,
+     "j_without": 0.28027277327808336
+    },
+    "g4": {
+     "j_with": 0.2156005527305532,
+     "j_without": 0.21522516829127483
+    },
+    "verdict": "rejected at G3 (no improvement)"
+   },
+   "lseq": 34,
+   "id": "prop_00034",
+   "timestamp": "2026-07-26T22:09:36Z",
+   "config": "DSS1-EV1-GA1-U12:1-U3:1"
+  },
+  {
+   "situation": {
+    "fire_threat_level": 0.2605,
+    "asset_exposure_risk": 0.5243,
+    "suppression_feasibility": 1.0,
+    "intervention_urgency": 0.2876,
+    "evacuation_pressure": 0.236
+   },
+   "coverage_gap": false,
+   "cov_w": 0.6174,
+   "step": 459,
+   "accepted": false,
+   "gate": "G3",
+   "detail": "rejected at G3 (claude)",
+   "dJ": 0.0,
+   "raw": {
+    "antecedents": [
+     [
+      "suppression_feasibility",
+      "VH"
+     ],
+     [
+      "asset_exposure_risk",
+      "H"
+     ],
+     [
+      "fire_threat_level",
+      "VL"
+     ]
+    ],
+    "consequents": [
+     [
+      "suppression_effort",
+      "1.0"
+     ],
+     [
+      "water_drafting",
+      "0.8"
+     ],
+     [
+      "containment_line",
+      "0.7"
+     ]
+    ]
+   },
+   "repaired": {
+    "antecedents": [
+     [
+      "suppression_feasibility",
+      "VH"
+     ],
+     [
+      "asset_exposure_risk",
+      "H"
+     ],
+     [
+      "fire_threat_level",
+      "VL"
+     ]
+    ],
+    "consequents": [
+     [
+      "suppression_effort",
+      "1.0"
+     ],
+     [
+      "water_drafting",
+      "0.8"
+     ],
+     [
+      "containment_line",
+      "0.7"
+     ]
+    ]
+   },
+   "repairs": [],
+   "revisions": [],
+   "measured": {
+    "g1_g2": "pass",
+    "g3": {
+     "j_with": 0.11165282806261721,
+     "j_without": 0.11165282806261721
+    },
+    "g4": {
+     "j_with": 0.11189799342638396,
+     "j_without": 0.11149954001839928
+    },
+    "verdict": "rejected at G3 (no improvement)"
+   },
+   "lseq": 35,
+   "id": "prop_00035",
+   "timestamp": "2026-07-26T22:50:46Z",
+   "config": "DSS1-EV1-GA1-U12:1-U3:1"
+  },
+  {
+   "situation": {
+    "fire_threat_level": 0.2392,
+    "asset_exposure_risk": 0.1577,
+    "suppression_feasibility": 0.8313,
+    "intervention_urgency": 0.1578,
+    "evacuation_pressure": 0.3826
+   },
+   "coverage_gap": true,
+   "cov_w": 0.5752,
+   "step": 464,
+   "accepted": false,
+   "gate": "G3",
+   "detail": "rejected at G3 (claude)",
+   "dJ": 0.0,
+   "raw": {
+    "antecedents": [
+     [
+      "suppression_feasibility",
+      "VH"
+     ],
+     [
+      "evacuation_pressure",
+      "H"
+     ],
+     [
+      "fire_threat_level",
+      "L"
+     ]
+    ],
+    "consequents": [
+     [
+      "suppression_effort",
+      "1.0"
+     ],
+     [
+      "water_drafting",
+      "0.8"
+     ],
+     [
+      "resource_deployment",
+      "0.7"
+     ]
+    ]
+   },
+   "repaired": {
+    "antecedents": [
+     [
+      "suppression_feasibility",
+      "VH"
+     ],
+     [
+      "evacuation_pressure",
+      "H"
+     ],
+     [
+      "fire_threat_level",
+      "L"
+     ]
+    ],
+    "consequents": [
+     [
+      "suppression_effort",
+      "1.0"
+     ],
+     [
+      "water_drafting",
+      "0.8"
+     ],
+     [
+      "resource_deployment",
+      "0.7"
+     ]
+    ]
+   },
+   "repairs": [],
+   "revisions": [],
+   "measured": {
+    "g1_g2": "pass",
+    "g3": {
+     "j_with": 0.11142651921083992,
+     "j_without": 0.11142651921083992
+    },
+    "g4": {
+     "j_with": 0.11150854269969575,
+     "j_without": 0.11189394053125161
+    },
+    "verdict": "rejected at G3 (no improvement)"
+   },
+   "lseq": 36,
+   "id": "prop_00036",
+   "timestamp": "2026-07-26T22:51:05Z",
+   "config": "DSS1-EV1-GA1-U12:1-U3:1"
+  },
+  {
+   "situation": {
+    "fire_threat_level": 0.4177,
+    "asset_exposure_risk": 0.1815,
+    "suppression_feasibility": 0.3313,
+    "intervention_urgency": 0.317,
+    "evacuation_pressure": 0.4253
+   },
+   "coverage_gap": true,
+   "cov_w": 0.5477,
+   "step": 52,
+   "accepted": false,
+   "gate": "G3",
+   "detail": "rejected at G3 (claude)",
+   "dJ": 0.0,
+   "raw": {
+    "antecedents": [
+     [
+      "fire_threat_level",
+      "VH"
+     ],
+     [
+      "suppression_feasibility",
+      "VL"
+     ],
+     [
+      "evacuation_pressure",
+      "H"
+     ]
+    ],
+    "consequents": [
+     [
+      "retardant_drop",
+      0.9
+     ],
+     [
+      "containment_line",
+      0.8
+     ],
+     [
+      "water_drafting",
+      0.7
+     ]
+    ]
+   },
+   "repaired": {
+    "antecedents": [
+     [
+      "fire_threat_level",
+      "VH"
+     ],
+     [
+      "suppression_feasibility",
+      "VL"
+     ],
+     [
+      "evacuation_pressure",
+      "H"
+     ]
+    ],
+    "consequents": [
+     [
+      "retardant_drop",
+      0.9
+     ],
+     [
+      "containment_line",
+      0.8
+     ],
+     [
+      "water_drafting",
+      0.7
+     ]
+    ]
+   },
+   "repairs": [],
+   "revisions": [],
+   "measured": {
+    "g1_g2": "pass",
+    "g3": {
+     "j_with": 0.16431987830255088,
+     "j_without": 0.16431987830255088
+    },
+    "g4": {
+     "j_with": 0.16431987830255088,
+     "j_without": 0.16437005939949811
+    },
+    "verdict": "rejected at G3 (no improvement)"
+   },
+   "lseq": 37,
+   "id": "prop_00037",
+   "timestamp": "2026-07-26T22:59:58Z",
+   "config": "DSS1-EV1-GA1-U12:1-U3:1"
+  },
+  {
+   "situation": {
+    "fire_threat_level": 0.4641,
+    "asset_exposure_risk": 0.1866,
+    "suppression_feasibility": 0.3313,
+    "intervention_urgency": 0.3522,
+    "evacuation_pressure": 0.4292
+   },
+   "coverage_gap": true,
+   "cov_w": 0.5505,
+   "step": 54,
+   "accepted": false,
+   "gate": "G5",
+   "detail": "rejected at G5 package margin (claude)",
+   "dJ": 0.0,
+   "raw": {
+    "new_intervention": {
+     "name": "drafted_retardant_press",
+     "composition": [
+      [
+       "retardant_drop",
+       1.0
+      ],
+      [
+       "water_drafting",
+       0.8
+      ]
+     ]
+    },
+    "antecedents": [
+     [
+      "fire_threat_level",
+      "VH"
+     ],
+     [
+      "suppression_feasibility",
+      "VL"
+     ]
+    ],
+    "consequents": [
+     [
+      "drafted_retardant_press",
+      0.9
+     ],
+     [
+      "containment_line",
+      0.7
+     ]
+    ]
+   },
+   "repaired": {
+    "new_intervention": {
+     "name": "drafted_retardant_press",
+     "composition": [
+      [
+       "retardant_drop",
+       1.0
+      ],
+      [
+       "water_drafting",
+       0.8
+      ]
+     ]
+    },
+    "antecedents": [
+     [
+      "fire_threat_level",
+      "VH"
+     ],
+     [
+      "suppression_feasibility",
+      "VL"
+     ]
+    ],
+    "consequents": [
+     [
+      "drafted_retardant_press",
+      0.9
+     ],
+     [
+      "containment_line",
+      0.7
+     ]
+    ]
+   },
+   "repairs": [],
+   "revisions": [],
+   "measured": {
+    "g1_g2": "pass",
+    "g3": {
+     "j_with": 0.1645035448858601,
+     "j_without": 0.1644865449687308
+    },
+    "g4": {
+     "j_with": 0.1645035448858601,
+     "j_without": 0.1644865449687308
+    },
+    "verdict": "rejected at G5 (package margin)"
+   },
+   "lseq": 38,
+   "id": "prop_00038",
+   "timestamp": "2026-07-26T23:00:03Z",
+   "config": "DSS1-EV1-GA1-U12:1-U3:1"
+  },
+  {
+   "situation": {
+    "fire_threat_level": 0.1998,
+    "asset_exposure_risk": 0.1046,
+    "suppression_feasibility": 0.3313,
+    "intervention_urgency": 0.1516,
+    "evacuation_pressure": 0.3883
+   },
+   "coverage_gap": true,
+   "cov_w": 0.5455,
+   "step": 63,
+   "accepted": false,
+   "gate": "G3",
+   "detail": "rejected at G3 (claude)",
+   "dJ": 0.0,
+   "raw": null,
+   "repaired": {
+    "antecedents": [
+     [
+      "suppression_feasibility",
+      "VL"
+     ],
+     [
+      "asset_exposure_risk",
+      "VL"
+     ]
+    ],
+    "consequents": [
+     [
+      "containment_line",
+      0.9
+     ],
+     [
+      "retardant_drop",
+      0.8
+     ],
+     [
+      "water_drafting",
+      0.7
+     ]
+    ]
+   },
+   "repairs": [],
+   "revisions": [],
+   "measured": {
+    "g1_g2": "pass",
+    "g3": {
+     "j_with": 0.1665319114527956,
+     "j_without": 0.1665319114527956
+    },
+    "g4": {
+     "j_with": 0.1665319114527956,
+     "j_without": 0.1665319114527956
+    },
+    "verdict": "rejected at G3 (no improvement)"
+   },
+   "lseq": 39,
+   "id": "prop_00039",
+   "timestamp": "2026-07-26T23:01:17Z",
+   "config": "DSS1-EV1-GA1-U12:1-U3:1"
+  },
+  {
+   "situation": {
+    "fire_threat_level": 0.1456,
+    "asset_exposure_risk": 0.0888,
+    "suppression_feasibility": 0.3313,
+    "intervention_urgency": 0.1105,
+    "evacuation_pressure": 0.3787
+   },
+   "coverage_gap": true,
+   "cov_w": 0.5455,
+   "step": 70,
+   "accepted": false,
+   "gate": "G2",
+   "detail": "rejected at G2 duplicate cell (claude) — an active rule already sits on this antecedent cell; re-issuing it with different numbers is stage ① evFIS's job, not a new rule",
+   "dJ": 0.0,
+   "raw": {
+    "antecedents": [
+     [
+      "fire_threat_level",
+      "VH"
+     ],
+     [
+      "suppression_feasibility",
+      "VL"
+     ],
+     [
+      "evacuation_pressure",
+      "VL"
+     ]
+    ],
+    "consequents": [
+     [
+      "water_drafting",
+      0.9
+     ],
+     [
+      "containment_line",
+      0.8
+     ],
+     [
+      "retardant_drop",
+      0.7
+     ]
+    ]
+   },
+   "repaired": {
+    "antecedents": [
+     [
+      "evacuation_pressure",
+      "H"
+     ]
+    ],
+    "consequents": [
+     [
+      "containment_line",
+      0.8
+     ],
+     [
+      "water_drafting",
+      0.8
+     ],
+     [
+      "retardant_drop",
+      0.7
+     ]
+    ]
+   },
+   "repairs": [
+    "fire_threat_level: VH -> >=VH (now VH)",
+    "fire_threat_level: VH -> >=VH (now VH)"
+   ],
+   "revisions": [
+    "G2c relevance (the rule does not fire in the PRESENT situation; use each concept",
+    "G2c relevance (the rule does not fire in the PRESENT situation; use each concept"
+   ],
+   "measured": {},
+   "lseq": 40,
+   "id": "prop_00040",
+   "timestamp": "2026-07-26T23:01:35Z",
+   "config": "DSS1-EV1-GA1-U12:1-U3:1"
+  },
+  {
+   "situation": {
+    "fire_threat_level": 0.1311,
+    "asset_exposure_risk": 0.0876,
+    "suppression_feasibility": 0.3313,
+    "intervention_urgency": 0.0995,
+    "evacuation_pressure": 0.3772
+   },
+   "coverage_gap": true,
+   "cov_w": 0.5455,
+   "step": 1,
+   "accepted": false,
+   "gate": "G2c",
+   "detail": "rejected at G2c relevance (the rule does not fire in the PRESENT situation; use each concept's CURRENT dominant term from the situation line) (claude)",
+   "dJ": 0.0,
+   "raw": {
+    "antecedents": [
+     [
+      "fire_threat_level",
+      "VH"
+     ],
+     [
+      "suppression_feasibility",
+      "VL"
+     ],
+     [
+      "evacuation_pressure",
+      "VL"
+     ]
+    ],
+    "consequents": [
+     [
+      "water_drafting",
+      0.9
+     ],
+     [
+      "containment_line",
+      0.8
+     ],
+     [
+      "retardant_drop",
+      0.7
+     ]
+    ]
+   },
+   "repaired": {
+    "antecedents": [
+     [
+      "fire_threat_level",
+      ">=VH"
+     ],
+     [
+      "suppression_feasibility",
+      "VL"
+     ]
+    ],
+    "consequents": [
+     [
+      "water_drafting",
+      0.9
+     ],
+     [
+      "containment_line",
+      0.8
+     ],
+     [
+      "retardant_drop",
+      0.7
+     ]
+    ]
+   },
+   "repairs": [
+    "fire_threat_level: VH -> >=VH (now VH)",
+    "fire_threat_level: VH -> >=VH (now VH)",
+    "fire_threat_level: VH -> >=VH (now VH)"
+   ],
+   "revisions": [
+    "G2c relevance (the rule does not fire in the PRESENT situation; use each concept",
+    "G2c relevance (the rule does not fire in the PRESENT situation; use each concept",
+    "G2c relevance (the rule does not fire in the PRESENT situation; use each concept"
+   ],
+   "measured": {},
+   "lseq": 41,
+   "id": "prop_00041",
+   "timestamp": "2026-07-26T23:01:56Z",
+   "config": "DSS1-EV1-GA1-U12:1-U3:1"
+  },
+  {
+   "situation": {
+    "fire_threat_level": 0.1618,
+    "asset_exposure_risk": 0.0916,
+    "suppression_feasibility": 0.3313,
+    "intervention_urgency": 0.1228,
+    "evacuation_pressure": 0.3809
+   },
+   "coverage_gap": true,
+   "cov_w": 0.5455,
+   "step": 64,
+   "accepted": false,
+   "gate": "transport",
+   "detail": "the wait budget of 90 s for this attempt ran out during revision 3",
+   "dJ": 0.0,
+   "raw": {
+    "antecedents": [
+     [
+      "fire_threat_level",
+      "VH"
+     ],
+     [
+      "suppression_feasibility",
+      "VL"
+     ],
+     [
+      "evacuation_pressure",
+      "VL"
+     ]
+    ],
+    "consequents": [
+     [
+      "water_drafting",
+      0.9
+     ],
+     [
+      "containment_line",
+      0.8
+     ],
+     [
+      "retardant_drop",
+      0.7
+     ]
+    ]
+   },
+   "repaired": {
+    "antecedents": [
+     [
+      "asset_exposure_risk",
+      "VL"
+     ],
+     [
+      "suppression_feasibility",
+      "VL"
+     ]
+    ],
+    "consequents": [
+     [
+      "water_drafting",
+      0.9
+     ],
+     [
+      "containment_line",
+      0.8
+     ],
+     [
+      "retardant_drop",
+      0.7
+     ]
+    ]
+   },
+   "repairs": [
+    "fire_threat_level: VH -> >=VH (now VH)",
+    "fire_threat_level: VH -> >=VH (now VH)",
+    "fire_threat_level: VH -> >=VH (now VH)"
+   ],
+   "revisions": [
+    "G2c relevance (the rule does not fire in the PRESENT situation; use each concept",
+    "G2c relevance (the rule does not fire in the PRESENT situation; use each concept",
+    "G2c relevance (the rule does not fire in the PRESENT situation; use each concept"
+   ],
+   "measured": {},
+   "lseq": 42,
+   "id": "prop_00042",
+   "timestamp": "2026-07-26T23:02:07Z",
+   "config": "DSS1-EV1-GA1-U12:1-U3:1"
+  },
+  {
+   "situation": {
+    "fire_threat_level": 0.3312,
+    "asset_exposure_risk": 0.1821,
+    "suppression_feasibility": 0.3313,
+    "intervention_urgency": 0.2501,
+    "evacuation_pressure": 0.441
+   },
+   "coverage_gap": true,
+   "cov_w": 0.5,
+   "step": 34,
+   "accepted": false,
+   "gate": "G2",
+   "detail": "rejected at G2 duplicate cell (claude) — an active rule already sits on this antecedent cell; re-issuing it with different numbers is stage ① evFIS's job, not a new rule",
+   "dJ": 0.0,
+   "raw": null,
+   "repaired": {
+    "antecedents": [
+     [
+      "evacuation_pressure",
+      "H"
+     ],
+     [
+      "suppression_feasibility",
+      "VL"
+     ]
+    ],
+    "consequents": [
+     [
+      "retardant_drop",
+      0.9
+     ],
+     [
+      "containment_line",
+      0.8
+     ],
+     [
+      "resource_deployment",
+      0.6
+     ]
+    ]
+   },
+   "repairs": [],
+   "revisions": [],
+   "measured": {},
+   "lseq": 43,
+   "id": "prop_00043",
+   "timestamp": "2026-07-26T23:03:19Z",
+   "config": "DSS1-EV1-GA1-U12:1-U3:1"
+  },
+  {
+   "situation": {
+    "fire_threat_level": 0.176,
+    "asset_exposure_risk": 0.1071,
+    "suppression_feasibility": 0.3313,
+    "intervention_urgency": 0.1329,
+    "evacuation_pressure": 0.411
+   },
+   "coverage_gap": true,
+   "cov_w": 0.6165,
+   "step": 36,
+   "accepted": false,
+   "gate": "G2",
+   "detail": "rejected at G2 duplicate cell (claude) — an active rule already sits on this antecedent cell; re-issuing it with different numbers is stage ① evFIS's job, not a new rule",
+   "dJ": 0.0,
+   "raw": {
+    "antecedents": [
+     [
+      "evacuation_pressure",
+      "H"
+     ],
+     [
+      "suppression_feasibility",
+      "VL"
+     ]
+    ],
+    "consequents": [
+     [
+      "retardant_drop",
+      0.9
+     ],
+     [
+      "containment_line",
+      0.8
+     ],
+     [
+      "resource_deployment",
+      0.6
+     ]
+    ]
+   },
+   "repaired": {
+    "antecedents": [
+     [
+      "evacuation_pressure",
+      "H"
+     ],
+     [
+      "suppression_feasibility",
+      "VL"
+     ]
+    ],
+    "consequents": [
+     [
+      "retardant_drop",
+      0.9
+     ],
+     [
+      "containment_line",
+      0.8
+     ],
+     [
+      "resource_deployment",
+      0.6
+     ]
+    ]
+   },
+   "repairs": [],
+   "revisions": [],
+   "measured": {},
+   "lseq": 44,
+   "id": "prop_00044",
+   "timestamp": "2026-07-26T23:03:22Z",
+   "config": "DSS1-EV1-GA1-U12:1-U3:1"
+  },
+  {
+   "situation": {
+    "fire_threat_level": 0.1956,
+    "asset_exposure_risk": 0.1124,
+    "suppression_feasibility": 0.3313,
+    "intervention_urgency": 0.1477,
+    "evacuation_pressure": 0.4156
+   },
+   "coverage_gap": true,
+   "cov_w": 0.6143,
+   "step": 41,
+   "accepted": false,
+   "gate": "G2",
+   "detail": "rejected at G2 duplicate cell (claude) — an active rule already sits on this antecedent cell; re-issuing it with different numbers is stage ① evFIS's job, not a new rule",
+   "dJ": 0.0,
+   "raw": {
+    "antecedents": [
+     [
+      "evacuation_pressure",
+      "H"
+     ]
+    ],
+    "consequents": [
+     [
+      "retardant_drop",
+      0.9
+     ],
+     [
+      "containment_line",
+      0.8
+     ],
+     [
+      "resource_deployment",
+      0.6
+     ]
+    ]
+   },
+   "repaired": {
+    "antecedents": [
+     [
+      "evacuation_pressure",
+      "H"
+     ]
+    ],
+    "consequents": [
+     [
+      "retardant_drop",
+      0.9
+     ],
+     [
+      "containment_line",
+      0.8
+     ],
+     [
+      "resource_deployment",
+      0.6
+     ]
+    ]
+   },
+   "repairs": [],
+   "revisions": [
+    "G2c relevance (the rule does not fire in the PRESENT situation; use each concept",
+    "G2c relevance (the rule does not fire in the PRESENT situation; use each concept",
+    "G2c relevance (the rule does not fire in the PRESENT situation; use each concept"
+   ],
+   "measured": {},
+   "lseq": 45,
+   "id": "prop_00045",
+   "timestamp": "2026-07-26T23:03:37Z",
+   "config": "DSS1-EV1-GA1-U12:1-U3:1"
+  },
+  {
+   "situation": {
+    "fire_threat_level": 0.0682,
+    "asset_exposure_risk": 0.0878,
+    "suppression_feasibility": 0.3313,
+    "intervention_urgency": 0.0515,
+    "evacuation_pressure": 0.3877
+   },
+   "coverage_gap": true,
+   "cov_w": 0.5641,
+   "step": 41,
+   "accepted": true,
+   "gate": null,
+   "detail": "G35: G35: IF evacuation pressure is H AND asset exposure risk is VL THEN containment line 0.9, retardant drop 0.8, resource deployment 0.6 (adaptation-born: generative (claude), gates G1-G4)",
+   "dJ": -0.001162,
+   "raw": {
+    "antecedents": [
+     [
+      "evacuation_pressure",
+      "H"
+     ]
+    ],
+    "consequents": [
+     [
+      "retardant_drop",
+      0.9
+     ],
+     [
+      "containment_line",
+      0.8
+     ],
+     [
+      "resource_deployment",
+      0.6
+     ]
+    ]
+   },
+   "repaired": {
+    "antecedents": [
+     [
+      "evacuation_pressure",
+      "H"
+     ]
+    ],
+    "consequents": [
+     [
+      "retardant_drop",
+      0.9
+     ],
+     [
+      "containment_line",
+      0.8
+     ],
+     [
+      "resource_deployment",
+      0.6
+     ]
+    ]
+   },
+   "repairs": [],
+   "revisions": [
+    "G2c relevance (the rule does not fire in the PRESENT situation; use each concept",
+    "G2c relevance (the rule does not fire in the PRESENT situation; use each concept"
+   ],
+   "measured": {
+    "g1_g2": "pass",
+    "g3": {
+     "j_with": 0.15832381123733855,
+     "j_without": 0.15858921538155418
+    },
+    "g4": {
+     "j_with": 0.15853619752863135,
+     "j_without": 0.15932817763633325
+    },
+    "verdict": "admitted (improves G3 + G4)"
+   },
+   "lseq": 46,
+   "id": "prop_00046",
+   "timestamp": "2026-07-26T23:03:39Z",
+   "config": "DSS1-EV1-GA1-U12:1-U3:1"
+  },
+  {
+   "situation": {
+    "fire_threat_level": 0.2683,
+    "asset_exposure_risk": 0.1584,
+    "suppression_feasibility": 0.3313,
+    "intervention_urgency": 0.2026,
+    "evacuation_pressure": 0.4365
+   },
+   "coverage_gap": true,
+   "cov_w": 0.5753,
+   "step": 46,
+   "accepted": false,
+   "gate": "G2",
+   "detail": "rejected at G2 duplicate cell (claude) — an active rule already sits on this antecedent cell; re-issuing it with different numbers is stage ① evFIS's job, not a new rule",
+   "dJ": 0.0,
+   "raw": {
+    "antecedents": [
+     [
+      "evacuation_pressure",
+      "H"
+     ]
+    ],
+    "consequents": [
+     [
+      "retardant_drop",
+      0.9
+     ],
+     [
+      "containment_line",
+      0.8
+     ],
+     [
+      "resource_deployment",
+      0.6
+     ]
+    ]
+   },
+   "repaired": {
+    "antecedents": [
+     [
+      "suppression_feasibility",
+      "VL"
+     ]
+    ],
+    "consequents": [
+     [
+      "retardant_drop",
+      0.9
+     ],
+     [
+      "containment_line",
+      0.8
+     ],
+     [
+      "resource_deployment",
+      0.6
+     ]
+    ]
+   },
+   "repairs": [],
+   "revisions": [
+    "G2c relevance (the rule does not fire in the PRESENT situation; use each concept",
+    "G2c relevance (the rule does not fire in the PRESENT situation; use each concept"
+   ],
+   "measured": {},
+   "lseq": 47,
+   "id": "prop_00047",
+   "timestamp": "2026-07-26T23:03:46Z",
+   "config": "DSS1-EV1-GA1-U12:1-U3:1"
+  },
+  {
+   "situation": {
+    "fire_threat_level": 0.2173,
+    "asset_exposure_risk": 0.1221,
+    "suppression_feasibility": 0.3313,
+    "intervention_urgency": 0.1641,
+    "evacuation_pressure": 0.4213
+   },
+   "coverage_gap": true,
+   "cov_w": 0.6095,
+   "step": 47,
+   "accepted": false,
+   "gate": "G2c",
+   "detail": "rejected at G2c relevance (the rule does not fire in the PRESENT situation; use each concept's CURRENT dominant term from the situation line) (claude)",
+   "dJ": 0.0,
+   "raw": {
+    "antecedents": [
+     [
+      "evacuation_pressure",
+      "H"
+     ]
+    ],
+    "consequents": [
+     [
+      "retardant_drop",
+      0.9
+     ],
+     [
+      "containment_line",
+      0.8
+     ],
+     [
+      "resource_deployment",
+      0.6
+     ]
+    ]
+   },
+   "repaired": {
+    "antecedents": [
+     [
+      "fire_threat_level",
+      ">=H"
+     ],
+     [
+      "suppression_feasibility",
+      "VL"
+     ]
+    ],
+    "consequents": [
+     [
+      "retardant_drop",
+      0.9
+     ],
+     [
+      "containment_line",
+      0.8
+     ],
+     [
+      "resource_deployment",
+      0.6
+     ]
+    ]
+   },
+   "repairs": [],
+   "revisions": [
+    "G2c relevance (the rule does not fire in the PRESENT situation; use each concept",
+    "G2c relevance (the rule does not fire in the PRESENT situation; use each concept",
+    "G2c relevance (the rule does not fire in the PRESENT situation; use each concept"
+   ],
+   "measured": {},
+   "lseq": 48,
+   "id": "prop_00048",
+   "timestamp": "2026-07-26T23:04:22Z",
+   "config": "DSS1-EV1-GA1-U12:1-U3:1"
+  },
+  {
+   "situation": {
+    "fire_threat_level": 0.2415,
+    "asset_exposure_risk": 0.1422,
+    "suppression_feasibility": 0.3313,
+    "intervention_urgency": 0.1823,
+    "evacuation_pressure": 0.4308
+   },
+   "coverage_gap": true,
+   "cov_w": 0.5989,
+   "step": 47,
+   "accepted": false,
+   "gate": "G2",
+   "detail": "rejected at G2 duplicate cell (claude) — an active rule already sits on this antecedent cell; re-issuing it with different numbers is stage ① evFIS's job, not a new rule",
+   "dJ": 0.0,
+   "raw": {
+    "antecedents": [
+     [
+      "evacuation_pressure",
+      "H"
+     ]
+    ],
+    "consequents": [
+     [
+      "retardant_drop",
+      0.9
+     ],
+     [
+      "containment_line",
+      0.8
+     ],
+     [
+      "resource_deployment",
+      0.6
+     ]
+    ]
+   },
+   "repaired": {
+    "antecedents": [
+     [
+      "evacuation_pressure",
+      "H"
+     ]
+    ],
+    "consequents": [
+     [
+      "retardant_drop",
+      0.9
+     ],
+     [
+      "containment_line",
+      0.8
+     ],
+     [
+      "resource_deployment",
+      0.6
+     ]
+    ]
+   },
+   "repairs": [],
+   "revisions": [
+    "G2c relevance (the rule does not fire in the PRESENT situation; use each concept",
+    "G2c relevance (the rule does not fire in the PRESENT situation; use each concept",
+    "G2c relevance (the rule does not fire in the PRESENT situation; use each concept"
+   ],
+   "measured": {},
+   "lseq": 49,
+   "id": "prop_00049",
+   "timestamp": "2026-07-26T23:04:27Z",
+   "config": "DSS1-EV1-GA1-U12:1-U3:1"
+  }
+ ],
  "evfis_rule_modifications": [
   {
    "base_rule_id": "A1",
@@ -6850,6 +11074,1989 @@
     "genai_active": true
    },
    "timestamp": "2026-07-26T00:22:33Z"
+  },
+  {
+   "base_rule_id": "G5",
+   "base_rule_set": "minimal",
+   "modification_type": "consequent_update",
+   "before": {
+    "consequents": [
+     [
+      "downwind_retardant_shield",
+      0.7499999999999998
+     ],
+     [
+      "asset_protection",
+      0.7499999999999998
+     ],
+     [
+      "resource_deployment",
+      0.7499999999999998
+     ]
+    ]
+   },
+   "after": {
+    "consequents": [
+     [
+      "downwind_retardant_shield",
+      0.7999999999999998
+     ],
+     [
+      "asset_protection",
+      0.7999999999999998
+     ],
+     [
+      "resource_deployment",
+      0.7999999999999998
+     ]
+    ]
+   },
+   "trigger": {
+    "step": 5,
+    "minute": 5.0,
+    "deficit": 0.3,
+    "stage": 1
+   },
+   "id": "evfis_mod_0172",
+   "seq": 172,
+   "origin": "evfis",
+   "source_stage": 1,
+   "produced_under_flags": {
+    "use_stage12_rules": true,
+    "use_stage3_rules": true,
+    "evfis_active": true,
+    "genai_active": true
+   },
+   "timestamp": "2026-07-26T07:25:02Z"
+  },
+  {
+   "base_rule_id": "G27",
+   "base_rule_set": "minimal",
+   "modification_type": "consequent_update",
+   "before": {
+    "consequents": [
+     [
+      "retardant_drop",
+      0.8
+     ],
+     [
+      "containment_line",
+      0.7
+     ]
+    ]
+   },
+   "after": {
+    "consequents": [
+     [
+      "retardant_drop",
+      0.8500000000000001
+     ],
+     [
+      "containment_line",
+      0.75
+     ]
+    ]
+   },
+   "trigger": {
+    "step": 5,
+    "minute": 5.0,
+    "deficit": 0.3,
+    "stage": 1
+   },
+   "id": "evfis_mod_0173",
+   "seq": 173,
+   "origin": "evfis",
+   "source_stage": 1,
+   "produced_under_flags": {
+    "use_stage12_rules": true,
+    "use_stage3_rules": true,
+    "evfis_active": true,
+    "genai_active": true
+   },
+   "timestamp": "2026-07-26T07:25:02Z"
+  },
+  {
+   "base_rule_id": "G5",
+   "base_rule_set": "minimal",
+   "modification_type": "consequent_update",
+   "before": {
+    "consequents": [
+     [
+      "downwind_retardant_shield",
+      0.7999999999999998
+     ],
+     [
+      "asset_protection",
+      0.7999999999999998
+     ],
+     [
+      "resource_deployment",
+      0.7999999999999998
+     ]
+    ]
+   },
+   "after": {
+    "consequents": [
+     [
+      "downwind_retardant_shield",
+      0.7499999999999998
+     ],
+     [
+      "asset_protection",
+      0.7499999999999998
+     ],
+     [
+      "resource_deployment",
+      0.7499999999999998
+     ]
+    ]
+   },
+   "trigger": {
+    "step": 10,
+    "minute": 10.0,
+    "deficit": 0.3,
+    "stage": 1
+   },
+   "id": "evfis_mod_0174",
+   "seq": 174,
+   "origin": "evfis",
+   "source_stage": 1,
+   "produced_under_flags": {
+    "use_stage12_rules": true,
+    "use_stage3_rules": true,
+    "evfis_active": true,
+    "genai_active": true
+   },
+   "timestamp": "2026-07-26T07:25:07Z"
+  },
+  {
+   "base_rule_id": "A12",
+   "base_rule_set": "minimal",
+   "modification_type": "rule_add",
+   "before": {
+    "rule": null
+   },
+   "after": {
+    "rule": {
+     "name": "A12",
+     "antecedents": [
+      [
+       "evacuation_pressure",
+       "VL"
+      ],
+      [
+       "fire_threat_level",
+       "VL"
+      ]
+     ],
+     "consequents": [
+      [
+       "evacuation",
+       0.5412541754009672
+      ],
+      [
+       "suppression_effort",
+       0.29224274420706947
+      ],
+      [
+       "resource_deployment",
+       0.2433105338089375
+      ]
+     ],
+     "note": "adaptation-born: resolution increase (instantiated antecedent cell)",
+     "strength": 0.0
+    }
+   },
+   "trigger": {
+    "step": 15,
+    "minute": 15.0,
+    "deficit": 0.3,
+    "stage": 2
+   },
+   "id": "evfis_mod_0175",
+   "seq": 175,
+   "origin": "evfis",
+   "source_stage": 2,
+   "produced_under_flags": {
+    "use_stage12_rules": true,
+    "use_stage3_rules": true,
+    "evfis_active": true,
+    "genai_active": true
+   },
+   "timestamp": "2026-07-26T07:25:13Z"
+  },
+  {
+   "base_rule_id": "A13",
+   "base_rule_set": "minimal",
+   "modification_type": "rule_add",
+   "before": {
+    "rule": null
+   },
+   "after": {
+    "rule": {
+     "name": "A13",
+     "antecedents": [
+      [
+       "evacuation_pressure",
+       "VL"
+      ],
+      [
+       "fire_threat_level",
+       "VH"
+      ]
+     ],
+     "consequents": [
+      [
+       "evacuation",
+       0.5416698896884808
+      ],
+      [
+       "suppression_effort",
+       0.29391427100284295
+      ],
+      [
+       "resource_deployment",
+       0.24719804366812642
+      ]
+     ],
+     "note": "adaptation-born: resolution increase (instantiated antecedent cell)",
+     "strength": 0.0
+    }
+   },
+   "trigger": {
+    "step": 25,
+    "minute": 25.0,
+    "deficit": 0.12,
+    "stage": 2
+   },
+   "id": "evfis_mod_0176",
+   "seq": 176,
+   "origin": "evfis",
+   "source_stage": 2,
+   "produced_under_flags": {
+    "use_stage12_rules": true,
+    "use_stage3_rules": true,
+    "evfis_active": true,
+    "genai_active": true
+   },
+   "timestamp": "2026-07-26T07:25:25Z"
+  },
+  {
+   "base_rule_id": "A14",
+   "base_rule_set": "minimal",
+   "modification_type": "rule_add",
+   "before": {
+    "rule": null
+   },
+   "after": {
+    "rule": {
+     "name": "A14",
+     "antecedents": [
+      [
+       "evacuation_pressure",
+       "X1"
+      ],
+      [
+       "fire_threat_level",
+       "VH"
+      ]
+     ],
+     "consequents": [
+      [
+       "evacuation",
+       0.5484849798284696
+      ],
+      [
+       "suppression_effort",
+       0.2892998919616578
+      ],
+      [
+       "resource_deployment",
+       0.24490099601299742
+      ]
+     ],
+     "note": "adaptation-born: resolution increase: term X1 inserted into evacuation_pressure at 0.55 (catalog grew)",
+     "strength": 0.0
+    }
+   },
+   "trigger": {
+    "step": 30,
+    "minute": 30.0,
+    "deficit": 0.06,
+    "stage": 2
+   },
+   "id": "evfis_mod_0177",
+   "seq": 177,
+   "origin": "evfis",
+   "source_stage": 2,
+   "produced_under_flags": {
+    "use_stage12_rules": true,
+    "use_stage3_rules": true,
+    "evfis_active": true,
+    "genai_active": true
+   },
+   "timestamp": "2026-07-26T07:25:27Z"
+  },
+  {
+   "base_rule_id": "G5",
+   "base_rule_set": "minimal",
+   "modification_type": "consequent_update",
+   "before": {
+    "consequents": [
+     [
+      "downwind_retardant_shield",
+      0.7499999999999998
+     ],
+     [
+      "asset_protection",
+      0.7499999999999998
+     ],
+     [
+      "resource_deployment",
+      0.7499999999999998
+     ]
+    ]
+   },
+   "after": {
+    "consequents": [
+     [
+      "downwind_retardant_shield",
+      0.7999999999999998
+     ],
+     [
+      "asset_protection",
+      0.7999999999999998
+     ],
+     [
+      "resource_deployment",
+      0.7999999999999998
+     ]
+    ]
+   },
+   "trigger": {
+    "step": 37,
+    "minute": 37.0,
+    "deficit": 0.16,
+    "stage": 1
+   },
+   "id": "evfis_mod_0178",
+   "seq": 178,
+   "origin": "evfis",
+   "source_stage": 1,
+   "produced_under_flags": {
+    "use_stage12_rules": true,
+    "use_stage3_rules": true,
+    "evfis_active": true,
+    "genai_active": true
+   },
+   "timestamp": "2026-07-26T07:25:29Z"
+  },
+  {
+   "base_rule_id": "A15",
+   "base_rule_set": "minimal",
+   "modification_type": "rule_add",
+   "before": {
+    "rule": null
+   },
+   "after": {
+    "rule": {
+     "name": "A15",
+     "antecedents": [
+      [
+       "evacuation_pressure",
+       "VH"
+      ],
+      [
+       "fire_threat_level",
+       "VH"
+      ]
+     ],
+     "consequents": [
+      [
+       "evacuation",
+       0.5599099073229437
+      ],
+      [
+       "suppression_effort",
+       0.2761920647230721
+      ],
+      [
+       "resource_deployment",
+       0.2388725146317145
+      ]
+     ],
+     "note": "adaptation-born: resolution increase (instantiated antecedent cell)",
+     "strength": 0.0
+    }
+   },
+   "trigger": {
+    "step": 42,
+    "minute": 42.0,
+    "deficit": 0.1,
+    "stage": 2
+   },
+   "id": "evfis_mod_0179",
+   "seq": 179,
+   "origin": "evfis",
+   "source_stage": 2,
+   "produced_under_flags": {
+    "use_stage12_rules": true,
+    "use_stage3_rules": true,
+    "evfis_active": true,
+    "genai_active": true
+   },
+   "timestamp": "2026-07-26T07:25:32Z"
+  },
+  {
+   "base_rule_id": "A16",
+   "base_rule_set": "minimal",
+   "modification_type": "rule_add",
+   "before": {
+    "rule": null
+   },
+   "after": {
+    "rule": {
+     "name": "A16",
+     "antecedents": [
+      [
+       "suppression_feasibility",
+       "X2"
+      ],
+      [
+       "evacuation_pressure",
+       "VL"
+      ]
+     ],
+     "consequents": [
+      [
+       "evacuation",
+       0.5176083226052522
+      ],
+      [
+       "suppression_effort",
+       0.22848349251786884
+      ]
+     ],
+     "note": "adaptation-born: resolution increase: term X2 inserted into suppression_feasibility at 0.59 (catalog grew)",
+     "strength": 0.0
+    }
+   },
+   "trigger": {
+    "step": 5,
+    "minute": 5.0,
+    "deficit": 0.05,
+    "stage": 2
+   },
+   "id": "evfis_mod_0180",
+   "seq": 180,
+   "origin": "evfis",
+   "source_stage": 2,
+   "produced_under_flags": {
+    "use_stage12_rules": true,
+    "use_stage3_rules": true,
+    "evfis_active": true,
+    "genai_active": true
+   },
+   "timestamp": "2026-07-26T12:57:33Z"
+  },
+  {
+   "variable": "suppression_feasibility",
+   "base_rule_set": "minimal",
+   "modification_type": "term_insert",
+   "before": {
+    "partition": {
+     "VL": [
+      0.0,
+      0.0,
+      0.15,
+      0.3
+     ],
+     "L": [
+      0.15,
+      0.3,
+      0.35,
+      0.5
+     ],
+     "M": [
+      0.35,
+      0.5,
+      0.55,
+      0.7
+     ],
+     "H": [
+      0.55,
+      0.7,
+      0.75,
+      0.9
+     ],
+     "VH": [
+      0.75,
+      0.9,
+      1.0,
+      1.0
+     ],
+     "X1": [
+      0.6711641907809384,
+      0.7411641907809383,
+      0.8411641907809384,
+      0.9111641907809384
+     ]
+    }
+   },
+   "after": {
+    "partition": {
+     "VL": [
+      0.0,
+      0.0,
+      0.15,
+      0.3
+     ],
+     "L": [
+      0.15,
+      0.3,
+      0.35,
+      0.5
+     ],
+     "M": [
+      0.35,
+      0.5,
+      0.55,
+      0.7
+     ],
+     "H": [
+      0.55,
+      0.7,
+      0.75,
+      0.9
+     ],
+     "VH": [
+      0.75,
+      0.9,
+      1.0,
+      1.0
+     ],
+     "X1": [
+      0.6711641907809384,
+      0.7411641907809383,
+      0.8411641907809384,
+      0.9111641907809384
+     ],
+     "X2": [
+      0.47449783056299155,
+      0.5444978305629915,
+      0.6444978305629916,
+      0.7144978305629915
+     ]
+    }
+   },
+   "trigger": {
+    "step": 5,
+    "minute": 5.0,
+    "deficit": 0.05,
+    "stage": 2
+   },
+   "id": "evfis_mod_0181",
+   "seq": 181,
+   "origin": "evfis",
+   "source_stage": 2,
+   "produced_under_flags": {
+    "use_stage12_rules": true,
+    "use_stage3_rules": true,
+    "evfis_active": true,
+    "genai_active": true
+   },
+   "timestamp": "2026-07-26T12:57:33Z"
+  },
+  {
+   "base_rule_id": "G5",
+   "base_rule_set": "minimal",
+   "modification_type": "consequent_update",
+   "before": {
+    "consequents": [
+     [
+      "downwind_retardant_shield",
+      0.7999999999999998
+     ],
+     [
+      "asset_protection",
+      0.7999999999999998
+     ],
+     [
+      "resource_deployment",
+      0.7999999999999998
+     ]
+    ]
+   },
+   "after": {
+    "consequents": [
+     [
+      "downwind_retardant_shield",
+      0.8499999999999999
+     ],
+     [
+      "asset_protection",
+      0.8499999999999999
+     ],
+     [
+      "resource_deployment",
+      0.8499999999999999
+     ]
+    ]
+   },
+   "trigger": {
+    "step": 231,
+    "minute": 231.0,
+    "deficit": 0.3,
+    "stage": 1
+   },
+   "id": "evfis_mod_0182",
+   "seq": 182,
+   "origin": "evfis",
+   "source_stage": 1,
+   "produced_under_flags": {
+    "use_stage12_rules": true,
+    "use_stage3_rules": true,
+    "evfis_active": true,
+    "genai_active": true
+   },
+   "timestamp": "2026-07-26T12:59:48Z"
+  },
+  {
+   "base_rule_id": "A17",
+   "base_rule_set": "minimal",
+   "modification_type": "rule_add",
+   "before": {
+    "rule": null
+   },
+   "after": {
+    "rule": {
+     "name": "A17",
+     "antecedents": [
+      [
+       "evacuation_pressure",
+       "X1"
+      ],
+      [
+       "suppression_feasibility",
+       "VH"
+      ]
+     ],
+     "consequents": [
+      [
+       "evacuation",
+       0.6160229318261994
+      ],
+      [
+       "suppression_effort",
+       0.2055911052020038
+      ]
+     ],
+     "note": "adaptation-born: resolution increase: term X1 inserted into evacuation_pressure at 0.62 (catalog grew)",
+     "strength": 0.0
+    }
+   },
+   "trigger": {
+    "step": 241,
+    "minute": 241.0,
+    "deficit": 0.05,
+    "stage": 2
+   },
+   "id": "evfis_mod_0183",
+   "seq": 183,
+   "origin": "evfis",
+   "source_stage": 2,
+   "produced_under_flags": {
+    "use_stage12_rules": true,
+    "use_stage3_rules": true,
+    "evfis_active": true,
+    "genai_active": true
+   },
+   "timestamp": "2026-07-26T13:00:01Z"
+  },
+  {
+   "base_rule_id": "G5",
+   "base_rule_set": "minimal",
+   "modification_type": "consequent_update",
+   "before": {
+    "consequents": [
+     [
+      "downwind_retardant_shield",
+      0.8499999999999999
+     ],
+     [
+      "asset_protection",
+      0.8499999999999999
+     ],
+     [
+      "resource_deployment",
+      0.8499999999999999
+     ]
+    ]
+   },
+   "after": {
+    "consequents": [
+     [
+      "downwind_retardant_shield",
+      0.8999999999999999
+     ],
+     [
+      "asset_protection",
+      0.8999999999999999
+     ],
+     [
+      "resource_deployment",
+      0.8999999999999999
+     ]
+    ]
+   },
+   "trigger": {
+    "step": 105,
+    "minute": 105.0,
+    "deficit": 0.22,
+    "stage": 1
+   },
+   "id": "evfis_mod_0184",
+   "seq": 184,
+   "origin": "evfis",
+   "source_stage": 1,
+   "produced_under_flags": {
+    "use_stage12_rules": true,
+    "use_stage3_rules": true,
+    "evfis_active": true,
+    "genai_active": true
+   },
+   "timestamp": "2026-07-26T13:00:13Z"
+  },
+  {
+   "base_rule_id": "A17",
+   "base_rule_set": "minimal",
+   "modification_type": "consequent_update",
+   "before": {
+    "consequents": [
+     [
+      "evacuation",
+      0.6160229318261994
+     ],
+     [
+      "suppression_effort",
+      0.2055911052020038
+     ]
+    ]
+   },
+   "after": {
+    "consequents": [
+     [
+      "evacuation",
+      0.6660229318261994
+     ],
+     [
+      "suppression_effort",
+      0.2555911052020038
+     ]
+    ]
+   },
+   "trigger": {
+    "step": 115,
+    "minute": 115.0,
+    "deficit": 0.2,
+    "stage": 1
+   },
+   "id": "evfis_mod_0185",
+   "seq": 185,
+   "origin": "evfis",
+   "source_stage": 1,
+   "produced_under_flags": {
+    "use_stage12_rules": true,
+    "use_stage3_rules": true,
+    "evfis_active": true,
+    "genai_active": true
+   },
+   "timestamp": "2026-07-26T13:00:18Z"
+  },
+  {
+   "base_rule_id": "A18",
+   "base_rule_set": "minimal",
+   "modification_type": "rule_add",
+   "before": {
+    "rule": null
+   },
+   "after": {
+    "rule": {
+     "name": "A18",
+     "antecedents": [
+      [
+       "suppression_feasibility",
+       "X1"
+      ],
+      [
+       "evacuation_pressure",
+       "VH"
+      ]
+     ],
+     "consequents": [
+      [
+       "evacuation",
+       0.6022121687256865
+      ],
+      [
+       "asset_protection",
+       0.5352117267882314
+      ]
+     ],
+     "note": "adaptation-born: resolution increase: term X1 inserted into suppression_feasibility at 0.79 (catalog grew)",
+     "strength": 0.0
+    }
+   },
+   "trigger": {
+    "step": 130,
+    "minute": 130.0,
+    "deficit": 0.06,
+    "stage": 2
+   },
+   "id": "evfis_mod_0187",
+   "seq": 187,
+   "origin": "evfis",
+   "source_stage": 2,
+   "produced_under_flags": {
+    "use_stage12_rules": true,
+    "use_stage3_rules": true,
+    "evfis_active": true,
+    "genai_active": true
+   },
+   "timestamp": "2026-07-26T13:00:31Z"
+  },
+  {
+   "base_rule_id": "G27",
+   "base_rule_set": "minimal",
+   "modification_type": "consequent_update",
+   "before": {
+    "consequents": [
+     [
+      "retardant_drop",
+      0.8500000000000001
+     ],
+     [
+      "containment_line",
+      0.75
+     ]
+    ]
+   },
+   "after": {
+    "consequents": [
+     [
+      "retardant_drop",
+      0.9000000000000001
+     ],
+     [
+      "containment_line",
+      0.8
+     ]
+    ]
+   },
+   "trigger": {
+    "step": 176,
+    "minute": 174.0,
+    "deficit": 0.18,
+    "stage": 1
+   },
+   "id": "evfis_mod_0190",
+   "seq": 190,
+   "origin": "evfis",
+   "source_stage": 1,
+   "produced_under_flags": {
+    "use_stage12_rules": true,
+    "use_stage3_rules": true,
+    "evfis_active": true,
+    "genai_active": true
+   },
+   "timestamp": "2026-07-26T13:02:59Z"
+  },
+  {
+   "base_rule_id": "G27",
+   "base_rule_set": "minimal",
+   "modification_type": "consequent_update",
+   "before": {
+    "consequents": [
+     [
+      "retardant_drop",
+      0.9000000000000001
+     ],
+     [
+      "containment_line",
+      0.8
+     ]
+    ]
+   },
+   "after": {
+    "consequents": [
+     [
+      "retardant_drop",
+      0.9500000000000002
+     ],
+     [
+      "containment_line",
+      0.8500000000000001
+     ]
+    ]
+   },
+   "trigger": {
+    "step": 190,
+    "minute": 190.0,
+    "deficit": 0.06,
+    "stage": 1
+   },
+   "id": "evfis_mod_0192",
+   "seq": 192,
+   "origin": "evfis",
+   "source_stage": 1,
+   "produced_under_flags": {
+    "use_stage12_rules": true,
+    "use_stage3_rules": true,
+    "evfis_active": true,
+    "genai_active": true
+   },
+   "timestamp": "2026-07-26T13:03:40Z"
+  },
+  {
+   "base_rule_id": "G5",
+   "base_rule_set": "minimal",
+   "modification_type": "consequent_update",
+   "before": {
+    "consequents": [
+     [
+      "downwind_retardant_shield",
+      0.8999999999999999
+     ],
+     [
+      "asset_protection",
+      0.8999999999999999
+     ],
+     [
+      "resource_deployment",
+      0.8999999999999999
+     ]
+    ]
+   },
+   "after": {
+    "consequents": [
+     [
+      "downwind_retardant_shield",
+      0.8499999999999999
+     ],
+     [
+      "asset_protection",
+      0.8499999999999999
+     ],
+     [
+      "resource_deployment",
+      0.8499999999999999
+     ]
+    ]
+   },
+   "trigger": {
+    "step": 221,
+    "minute": 221.0,
+    "deficit": 0.05901814985292986,
+    "stage": 1
+   },
+   "id": "evfis_mod_0193",
+   "seq": 193,
+   "origin": "evfis",
+   "source_stage": 1,
+   "produced_under_flags": {
+    "use_stage12_rules": true,
+    "use_stage3_rules": true,
+    "evfis_active": true,
+    "genai_active": true
+   },
+   "timestamp": "2026-07-26T13:05:05Z"
+  },
+  {
+   "base_rule_id": "A19",
+   "base_rule_set": "minimal",
+   "modification_type": "rule_add",
+   "before": {
+    "rule": null
+   },
+   "after": {
+    "rule": {
+     "name": "A19",
+     "antecedents": [
+      [
+       "suppression_feasibility",
+       "X1"
+      ],
+      [
+       "asset_exposure_risk",
+       "VH"
+      ]
+     ],
+     "consequents": [
+      [
+       "asset_protection",
+       0.6994379020732715
+      ],
+      [
+       "resource_deployment",
+       0.3822153503188316
+      ]
+     ],
+     "note": "adaptation-born: resolution increase: term X1 inserted into suppression_feasibility at 0.79 (catalog grew)",
+     "strength": 0.0
+    }
+   },
+   "trigger": {
+    "step": 0,
+    "minute": 0.0,
+    "deficit": 0.00343502135448448,
+    "stage": 2
+   },
+   "id": "evfis_mod_0194",
+   "seq": 194,
+   "origin": "evfis",
+   "source_stage": 2,
+   "produced_under_flags": {
+    "use_stage12_rules": true,
+    "use_stage3_rules": true,
+    "evfis_active": true,
+    "genai_active": true
+   },
+   "timestamp": "2026-07-26T14:55:24Z"
+  },
+  {
+   "base_rule_id": "A19",
+   "base_rule_set": "minimal",
+   "modification_type": "consequent_update",
+   "before": {
+    "consequents": [
+     [
+      "asset_protection",
+      0.6994379020732715
+     ],
+     [
+      "resource_deployment",
+      0.3822153503188316
+     ]
+    ]
+   },
+   "after": {
+    "consequents": [
+     [
+      "asset_protection",
+      0.7494379020732715
+     ],
+     [
+      "resource_deployment",
+      0.43221535031883157
+     ]
+    ]
+   },
+   "trigger": {
+    "step": 5,
+    "minute": 5.0,
+    "deficit": 0.06,
+    "stage": 1
+   },
+   "id": "evfis_mod_0195",
+   "seq": 195,
+   "origin": "evfis",
+   "source_stage": 1,
+   "produced_under_flags": {
+    "use_stage12_rules": true,
+    "use_stage3_rules": true,
+    "evfis_active": true,
+    "genai_active": true
+   },
+   "timestamp": "2026-07-26T14:55:28Z"
+  },
+  {
+   "base_rule_id": "A17",
+   "base_rule_set": "minimal",
+   "modification_type": "consequent_update",
+   "before": {
+    "consequents": [
+     [
+      "evacuation",
+      0.6660229318261994
+     ],
+     [
+      "suppression_effort",
+      0.2555911052020038
+     ]
+    ]
+   },
+   "after": {
+    "consequents": [
+     [
+      "evacuation",
+      0.6160229318261994
+     ],
+     [
+      "suppression_effort",
+      0.2055911052020038
+     ]
+    ]
+   },
+   "trigger": {
+    "step": 12,
+    "minute": 10.0,
+    "deficit": 0.05,
+    "stage": 1
+   },
+   "id": "evfis_mod_0196",
+   "seq": 196,
+   "origin": "evfis",
+   "source_stage": 1,
+   "produced_under_flags": {
+    "use_stage12_rules": true,
+    "use_stage3_rules": true,
+    "evfis_active": true,
+    "genai_active": true
+   },
+   "timestamp": "2026-07-26T15:15:27Z"
+  },
+  {
+   "base_rule_id": "A20",
+   "base_rule_set": "minimal",
+   "modification_type": "rule_add",
+   "before": {
+    "rule": null
+   },
+   "after": {
+    "rule": {
+     "name": "A20",
+     "antecedents": [
+      [
+       "asset_exposure_risk",
+       "X1"
+      ],
+      [
+       "evacuation_pressure",
+       "H"
+      ]
+     ],
+     "consequents": [
+      [
+       "asset_protection",
+       0.5981230941534599
+      ],
+      [
+       "evacuation",
+       0.5063331012766288
+      ]
+     ],
+     "note": "adaptation-born: resolution increase: term X1 inserted into asset_exposure_risk at 0.60 (catalog grew)",
+     "strength": 0.0
+    }
+   },
+   "trigger": {
+    "step": 38,
+    "minute": 38.0,
+    "deficit": 0.03691907450334458,
+    "stage": 2
+   },
+   "id": "evfis_mod_0197",
+   "seq": 197,
+   "origin": "evfis",
+   "source_stage": 2,
+   "produced_under_flags": {
+    "use_stage12_rules": true,
+    "use_stage3_rules": true,
+    "evfis_active": true,
+    "genai_active": true
+   },
+   "timestamp": "2026-07-26T15:22:34Z"
+  },
+  {
+   "variable": "asset_exposure_risk",
+   "base_rule_set": "minimal",
+   "modification_type": "term_insert",
+   "before": {
+    "partition": {
+     "VL": [
+      0.0,
+      0.0,
+      0.15,
+      0.3
+     ],
+     "L": [
+      0.15,
+      0.3,
+      0.35,
+      0.5
+     ],
+     "M": [
+      0.35,
+      0.5,
+      0.55,
+      0.7
+     ],
+     "H": [
+      0.55,
+      0.7,
+      0.75,
+      0.9
+     ],
+     "VH": [
+      0.75,
+      0.9,
+      1.0,
+      1.0
+     ]
+    }
+   },
+   "after": {
+    "partition": {
+     "VL": [
+      0.0,
+      0.0,
+      0.15,
+      0.3
+     ],
+     "L": [
+      0.15,
+      0.3,
+      0.35,
+      0.5
+     ],
+     "M": [
+      0.35,
+      0.5,
+      0.55,
+      0.7
+     ],
+     "H": [
+      0.55,
+      0.7,
+      0.75,
+      0.9
+     ],
+     "VH": [
+      0.75,
+      0.9,
+      1.0,
+      1.0
+     ],
+     "X1": [
+      0.4781230941534599,
+      0.5481230941534598,
+      0.6481230941534599,
+      0.7181230941534599
+     ]
+    }
+   },
+   "trigger": {
+    "step": 38,
+    "minute": 38.0,
+    "deficit": 0.03691907450334458,
+    "stage": 2
+   },
+   "id": "evfis_mod_0198",
+   "seq": 198,
+   "origin": "evfis",
+   "source_stage": 2,
+   "produced_under_flags": {
+    "use_stage12_rules": true,
+    "use_stage3_rules": true,
+    "evfis_active": true,
+    "genai_active": true
+   },
+   "timestamp": "2026-07-26T15:22:34Z"
+  },
+  {
+   "base_rule_id": "A21",
+   "base_rule_set": "minimal",
+   "modification_type": "rule_add",
+   "before": {
+    "rule": null
+   },
+   "after": {
+    "rule": {
+     "name": "A21",
+     "antecedents": [
+      [
+       "asset_exposure_risk",
+       "X1"
+      ],
+      [
+       "evacuation_pressure",
+       "VL"
+      ]
+     ],
+     "consequents": [
+      [
+       "asset_protection",
+       0.7029548993285455
+      ],
+      [
+       "evacuation",
+       0.5107072747113913
+      ]
+     ],
+     "note": "adaptation-born: resolution increase: term X1 inserted into asset_exposure_risk at 0.70 (catalog grew)",
+     "strength": 0.0
+    }
+   },
+   "trigger": {
+    "step": 5,
+    "minute": 5.0,
+    "deficit": 0.3,
+    "stage": 2
+   },
+   "id": "evfis_mod_0199",
+   "seq": 199,
+   "origin": "evfis",
+   "source_stage": 2,
+   "produced_under_flags": {
+    "use_stage12_rules": true,
+    "use_stage3_rules": true,
+    "evfis_active": true,
+    "genai_active": true
+   },
+   "timestamp": "2026-07-26T15:26:23Z"
+  },
+  {
+   "base_rule_id": "A22",
+   "base_rule_set": "minimal",
+   "modification_type": "rule_add",
+   "before": {
+    "rule": null
+   },
+   "after": {
+    "rule": {
+     "name": "A22",
+     "antecedents": [
+      [
+       "suppression_feasibility",
+       "H"
+      ],
+      [
+       "fire_threat_level",
+       "M"
+      ]
+     ],
+     "consequents": [
+      [
+       "suppression_effort",
+       0.3627320818471176
+      ],
+      [
+       "evacuation",
+       0.2996078614104231
+      ]
+     ],
+     "note": "adaptation-born: resolution increase (instantiated antecedent cell)",
+     "strength": 0.0
+    }
+   },
+   "trigger": {
+    "step": 5,
+    "minute": 5.0,
+    "deficit": 0.06,
+    "stage": 2
+   },
+   "id": "evfis_mod_0200",
+   "seq": 200,
+   "origin": "evfis",
+   "source_stage": 2,
+   "produced_under_flags": {
+    "use_stage12_rules": true,
+    "use_stage3_rules": true,
+    "evfis_active": true,
+    "genai_active": true
+   },
+   "timestamp": "2026-07-26T22:09:41Z"
+  },
+  {
+   "base_rule_id": "A23",
+   "base_rule_set": "minimal",
+   "modification_type": "rule_add",
+   "before": {
+    "rule": null
+   },
+   "after": {
+    "rule": {
+     "name": "A23",
+     "antecedents": [
+      [
+       "fire_threat_level",
+       "VH"
+      ],
+      [
+       "evacuation_pressure",
+       "H"
+      ]
+     ],
+     "consequents": [
+      [
+       "suppression_effort",
+       0.572929932203958
+      ],
+      [
+       "evacuation",
+       0.44438902248724954
+      ],
+      [
+       "resource_deployment",
+       0.43481419771728946
+      ]
+     ],
+     "note": "adaptation-born: resolution increase (instantiated antecedent cell)",
+     "strength": 0.0
+    }
+   },
+   "trigger": {
+    "step": 49,
+    "minute": 2940.0,
+    "deficit": 0.0016938060829069972,
+    "stage": 2
+   },
+   "id": "evfis_mod_0201",
+   "seq": 201,
+   "origin": "evfis",
+   "source_stage": 2,
+   "produced_under_flags": {
+    "use_stage12_rules": true,
+    "use_stage3_rules": true,
+    "evfis_active": true,
+    "genai_active": true
+   },
+   "timestamp": "2026-07-26T22:59:35Z"
+  },
+  {
+   "base_rule_id": "A24",
+   "base_rule_set": "minimal",
+   "modification_type": "rule_add",
+   "before": {
+    "rule": null
+   },
+   "after": {
+    "rule": {
+     "name": "A24",
+     "antecedents": [
+      [
+       "fire_threat_level",
+       "X1"
+      ],
+      [
+       "evacuation_pressure",
+       "H"
+      ]
+     ],
+     "consequents": [
+      [
+       "suppression_effort",
+       0.5156369389851365
+      ],
+      [
+       "evacuation",
+       0.43576933395094014
+      ],
+      [
+       "resource_deployment",
+       0.3913327779467254
+      ]
+     ],
+     "note": "adaptation-born: resolution increase: term X1 inserted into fire_threat_level at 0.52 (catalog grew)",
+     "strength": 0.0
+    }
+   },
+   "trigger": {
+    "step": 50,
+    "minute": 3000.0,
+    "deficit": 0.16,
+    "stage": 2
+   },
+   "id": "evfis_mod_0202",
+   "seq": 202,
+   "origin": "evfis",
+   "source_stage": 2,
+   "produced_under_flags": {
+    "use_stage12_rules": true,
+    "use_stage3_rules": true,
+    "evfis_active": true,
+    "genai_active": true
+   },
+   "timestamp": "2026-07-26T22:59:37Z"
+  },
+  {
+   "variable": "fire_threat_level",
+   "base_rule_set": "minimal",
+   "modification_type": "membership_shift",
+   "before": {
+    "partition": {}
+   },
+   "after": {
+    "partition": {
+     "VL": [
+      0.0,
+      0.0,
+      0.15,
+      0.3
+     ],
+     "L": [
+      0.15,
+      0.3,
+      0.35,
+      0.5
+     ],
+     "M": [
+      0.35,
+      0.5,
+      0.55,
+      0.7
+     ],
+     "H": [
+      0.55,
+      0.7,
+      0.75,
+      0.9
+     ],
+     "VH": [
+      0.75,
+      0.9,
+      1.0,
+      1.0
+     ],
+     "X1": [
+      0.3956369389851365,
+      0.46563693898513653,
+      0.5656369389851366,
+      0.6356369389851365
+     ]
+    }
+   },
+   "trigger": {
+    "step": 50,
+    "minute": 3000.0,
+    "deficit": 0.16,
+    "stage": 2
+   },
+   "id": "evfis_mod_0203",
+   "seq": 203,
+   "origin": "evfis",
+   "source_stage": 1,
+   "produced_under_flags": {
+    "use_stage12_rules": true,
+    "use_stage3_rules": true,
+    "evfis_active": true,
+    "genai_active": true
+   },
+   "timestamp": "2026-07-26T22:59:37Z"
+  },
+  {
+   "base_rule_id": "A25",
+   "base_rule_set": "minimal",
+   "modification_type": "rule_add",
+   "before": {
+    "rule": null
+   },
+   "after": {
+    "rule": {
+     "name": "A25",
+     "antecedents": [
+      [
+       "evacuation_pressure",
+       "X2"
+      ],
+      [
+       "fire_threat_level",
+       "VH"
+      ]
+     ],
+     "consequents": [
+      [
+       "evacuation",
+       0.4202387604708241
+      ],
+      [
+       "suppression_effort",
+       0.3758993285226395
+      ]
+     ],
+     "note": "adaptation-born: resolution increase: term X2 inserted into evacuation_pressure at 0.42 (catalog grew)",
+     "strength": 0.0
+    }
+   },
+   "trigger": {
+    "step": 53,
+    "minute": 3180.0,
+    "deficit": 0.1,
+    "stage": 2
+   },
+   "id": "evfis_mod_0204",
+   "seq": 204,
+   "origin": "evfis",
+   "source_stage": 2,
+   "produced_under_flags": {
+    "use_stage12_rules": true,
+    "use_stage3_rules": true,
+    "evfis_active": true,
+    "genai_active": true
+   },
+   "timestamp": "2026-07-26T23:00:00Z"
+  },
+  {
+   "base_rule_id": "A26",
+   "base_rule_set": "minimal",
+   "modification_type": "rule_add",
+   "before": {
+    "rule": null
+   },
+   "after": {
+    "rule": {
+     "name": "A26",
+     "antecedents": [
+      [
+       "evacuation_pressure",
+       "H"
+      ],
+      [
+       "suppression_feasibility",
+       "VL"
+      ]
+     ],
+     "consequents": [
+      [
+       "evacuation",
+       0.40369734231514837
+      ],
+      [
+       "suppression_effort",
+       0.2740306104954288
+      ]
+     ],
+     "note": "adaptation-born: resolution increase (instantiated antecedent cell)",
+     "strength": 0.0
+    }
+   },
+   "trigger": {
+    "step": 55,
+    "minute": 3300.0,
+    "deficit": 0.08,
+    "stage": 2
+   },
+   "id": "evfis_mod_0205",
+   "seq": 205,
+   "origin": "evfis",
+   "source_stage": 2,
+   "produced_under_flags": {
+    "use_stage12_rules": true,
+    "use_stage3_rules": true,
+    "evfis_active": true,
+    "genai_active": true
+   },
+   "timestamp": "2026-07-26T23:00:06Z"
+  },
+  {
+   "base_rule_id": "A27",
+   "base_rule_set": "minimal",
+   "modification_type": "rule_add",
+   "before": {
+    "rule": null
+   },
+   "after": {
+    "rule": {
+     "name": "A27",
+     "antecedents": [
+      [
+       "evacuation_pressure",
+       "X2"
+      ],
+      [
+       "suppression_feasibility",
+       "VL"
+      ]
+     ],
+     "consequents": [
+      [
+       "evacuation",
+       0.3959666171831422
+      ],
+      [
+       "suppression_effort",
+       0.2466275494460653
+      ]
+     ],
+     "note": "adaptation-born: resolution increase: term X2 inserted into evacuation_pressure at 0.40 (catalog grew)",
+     "strength": 0.0
+    }
+   },
+   "trigger": {
+    "step": 56,
+    "minute": 3360.0,
+    "deficit": 0.12,
+    "stage": 2
+   },
+   "id": "evfis_mod_0206",
+   "seq": 206,
+   "origin": "evfis",
+   "source_stage": 2,
+   "produced_under_flags": {
+    "use_stage12_rules": true,
+    "use_stage3_rules": true,
+    "evfis_active": true,
+    "genai_active": true
+   },
+   "timestamp": "2026-07-26T23:00:08Z"
+  },
+  {
+   "variable": "evacuation_pressure",
+   "base_rule_set": "minimal",
+   "modification_type": "term_insert",
+   "before": {
+    "partition": {
+     "VL": [
+      0.0,
+      0.0,
+      0.15,
+      0.3
+     ],
+     "L": [
+      0.15,
+      0.3,
+      0.35,
+      0.5
+     ],
+     "M": [
+      0.35,
+      0.5,
+      0.55,
+      0.7
+     ],
+     "H": [
+      0.55,
+      0.7,
+      0.75,
+      0.9
+     ],
+     "VH": [
+      0.75,
+      0.9,
+      1.0,
+      1.0
+     ],
+     "X1": [
+      0.5105229213293693,
+      0.5805229213293692,
+      0.6805229213293693,
+      0.7505229213293693
+     ]
+    }
+   },
+   "after": {
+    "partition": {
+     "VL": [
+      0.0,
+      0.0,
+      0.15,
+      0.3
+     ],
+     "L": [
+      0.15,
+      0.3,
+      0.35,
+      0.5
+     ],
+     "M": [
+      0.35,
+      0.5,
+      0.55,
+      0.7
+     ],
+     "H": [
+      0.55,
+      0.7,
+      0.75,
+      0.9
+     ],
+     "VH": [
+      0.75,
+      0.9,
+      1.0,
+      1.0
+     ],
+     "X1": [
+      0.5105229213293693,
+      0.5805229213293692,
+      0.6805229213293693,
+      0.7505229213293693
+     ],
+     "X2": [
+      0.2759666171831422,
+      0.3459666171831422,
+      0.4459666171831422,
+      0.5159666171831422
+     ]
+    }
+   },
+   "trigger": {
+    "step": 56,
+    "minute": 3360.0,
+    "deficit": 0.12,
+    "stage": 2
+   },
+   "id": "evfis_mod_0207",
+   "seq": 207,
+   "origin": "evfis",
+   "source_stage": 2,
+   "produced_under_flags": {
+    "use_stage12_rules": true,
+    "use_stage3_rules": true,
+    "evfis_active": true,
+    "genai_active": true
+   },
+   "timestamp": "2026-07-26T23:00:08Z"
+  },
+  {
+   "base_rule_id": "A28",
+   "base_rule_set": "minimal",
+   "modification_type": "rule_add",
+   "before": {
+    "rule": null
+   },
+   "after": {
+    "rule": {
+     "name": "A28",
+     "antecedents": [
+      [
+       "evacuation_pressure",
+       "VL"
+      ],
+      [
+       "suppression_feasibility",
+       "VL"
+      ]
+     ],
+     "consequents": [
+      [
+       "evacuation",
+       0.37629822298915055
+      ],
+      [
+       "suppression_effort",
+       0.09554856580753478
+      ]
+     ],
+     "note": "adaptation-born: resolution increase (instantiated antecedent cell)",
+     "strength": 0.0
+    }
+   },
+   "trigger": {
+    "step": 64,
+    "minute": 3840.0,
+    "deficit": 0.06,
+    "stage": 2
+   },
+   "id": "evfis_mod_0208",
+   "seq": 208,
+   "origin": "evfis",
+   "source_stage": 2,
+   "produced_under_flags": {
+    "use_stage12_rules": true,
+    "use_stage3_rules": true,
+    "evfis_active": true,
+    "genai_active": true
+   },
+   "timestamp": "2026-07-26T23:01:27Z"
+  },
+  {
+   "base_rule_id": "A29",
+   "base_rule_set": "minimal",
+   "modification_type": "rule_add",
+   "before": {
+    "rule": null
+   },
+   "after": {
+    "rule": {
+     "name": "A29",
+     "antecedents": [
+      [
+       "asset_exposure_risk",
+       "H"
+      ],
+      [
+       "suppression_feasibility",
+       "VL"
+      ]
+     ],
+     "consequents": [
+      [
+       "asset_protection",
+       0.6062825918758171
+      ],
+      [
+       "suppression_effort",
+       0.40632721415458495
+      ]
+     ],
+     "note": "adaptation-born: resolution increase (instantiated antecedent cell)",
+     "strength": 0.0
+    }
+   },
+   "trigger": {
+    "step": 0,
+    "minute": 0.0,
+    "deficit": 0.0026632334686656515,
+    "stage": 2
+   },
+   "id": "evfis_mod_0209",
+   "seq": 209,
+   "origin": "evfis",
+   "source_stage": 2,
+   "produced_under_flags": {
+    "use_stage12_rules": true,
+    "use_stage3_rules": true,
+    "evfis_active": true,
+    "genai_active": true
+   },
+   "timestamp": "2026-07-26T23:01:52Z"
+  },
+  {
+   "base_rule_id": "G27",
+   "base_rule_set": "minimal",
+   "modification_type": "consequent_update",
+   "before": {
+    "consequents": [
+     [
+      "retardant_drop",
+      0.9500000000000002
+     ],
+     [
+      "containment_line",
+      0.8500000000000001
+     ]
+    ]
+   },
+   "after": {
+    "consequents": [
+     [
+      "retardant_drop",
+      1.0
+     ],
+     [
+      "containment_line",
+      0.9000000000000001
+     ]
+    ]
+   },
+   "trigger": {
+    "step": 47,
+    "minute": 2820.0,
+    "deficit": 0.3,
+    "stage": 1
+   },
+   "id": "evfis_mod_0211",
+   "seq": 211,
+   "origin": "evfis",
+   "source_stage": 1,
+   "produced_under_flags": {
+    "use_stage12_rules": true,
+    "use_stage3_rules": true,
+    "evfis_active": true,
+    "genai_active": true
+   },
+   "timestamp": "2026-07-26T23:03:51Z"
   }
  ],
  "genai_rules": [
@@ -8339,6 +14546,249 @@
     "genai_active": true
    },
    "timestamp": "2026-07-26T00:22:33Z"
+  },
+  {
+   "name": "G31",
+   "antecedents": [
+    [
+     "fire_threat_level",
+     "VH"
+    ],
+    [
+     "suppression_feasibility",
+     "VH"
+    ],
+    [
+     "asset_exposure_risk",
+     "M"
+    ]
+   ],
+   "consequents": [
+    [
+     "suppression_effort",
+     1.0
+    ],
+    [
+     "water_drafting",
+     0.9
+    ],
+    [
+     "retardant_drop",
+     0.8
+    ]
+   ],
+   "note": "adaptation-born: generative (claude), gates G1-G4",
+   "strength": 0.0,
+   "depends_on_concepts": [],
+   "trigger": {
+    "step": 116,
+    "minute": 100.0,
+    "deficit": 0.01834512224657575,
+    "stage": 3
+   },
+   "id": "gen_rule_0186",
+   "seq": 186,
+   "origin": "genai",
+   "source_stage": 3,
+   "produced_under_flags": {
+    "use_stage12_rules": true,
+    "use_stage3_rules": true,
+    "evfis_active": true,
+    "genai_active": true
+   },
+   "timestamp": "2026-07-26T13:00:22Z"
+  },
+  {
+   "name": "G32",
+   "antecedents": [
+    [
+     "suppression_feasibility",
+     "VH"
+    ],
+    [
+     "asset_exposure_risk",
+     "H"
+    ],
+    [
+     "evacuation_pressure",
+     "VH"
+    ]
+   ],
+   "consequents": [
+    [
+     "suppression_effort",
+     1.0
+    ],
+    [
+     "water_drafting",
+     0.9
+    ],
+    [
+     "retardant_drop",
+     0.8
+    ]
+   ],
+   "note": "adaptation-born: generative (claude), gates G1-G4",
+   "strength": 0.0,
+   "depends_on_concepts": [],
+   "trigger": {
+    "step": 138,
+    "minute": 138.0,
+    "deficit": 0.029920280860896376,
+    "stage": 3
+   },
+   "id": "gen_rule_0188",
+   "seq": 188,
+   "origin": "genai",
+   "source_stage": 3,
+   "produced_under_flags": {
+    "use_stage12_rules": true,
+    "use_stage3_rules": true,
+    "evfis_active": true,
+    "genai_active": true
+   },
+   "timestamp": "2026-07-26T13:00:51Z"
+  },
+  {
+   "name": "G33",
+   "antecedents": [
+    [
+     "suppression_feasibility",
+     "VH"
+    ],
+    [
+     "asset_exposure_risk",
+     "VL"
+    ]
+   ],
+   "consequents": [
+    [
+     "suppression_effort",
+     0.9
+    ],
+    [
+     "water_drafting",
+     0.8
+    ],
+    [
+     "containment_line",
+     0.7
+    ]
+   ],
+   "note": "adaptation-born: generative (claude), gates G1-G4",
+   "strength": 0.0,
+   "depends_on_concepts": [],
+   "trigger": {
+    "step": 173,
+    "minute": 168.0,
+    "deficit": 0.042532150582870465,
+    "stage": 3
+   },
+   "id": "gen_rule_0189",
+   "seq": 189,
+   "origin": "genai",
+   "source_stage": 3,
+   "produced_under_flags": {
+    "use_stage12_rules": true,
+    "use_stage3_rules": true,
+    "evfis_active": true,
+    "genai_active": true
+   },
+   "timestamp": "2026-07-26T13:02:50Z"
+  },
+  {
+   "name": "G34",
+   "antecedents": [
+    [
+     "suppression_feasibility",
+     ">=M"
+    ],
+    [
+     "evacuation_pressure",
+     "H"
+    ]
+   ],
+   "consequents": [
+    [
+     "containment_line",
+     0.9
+    ],
+    [
+     "retardant_drop",
+     0.8
+    ],
+    [
+     "resource_deployment",
+     0.7
+    ]
+   ],
+   "note": "adaptation-born: generative (claude), gates G1-G4",
+   "strength": 0.0,
+   "depends_on_concepts": [],
+   "trigger": {
+    "step": 190,
+    "minute": 180.0,
+    "deficit": 0.0461273417120141,
+    "stage": 3
+   },
+   "id": "gen_rule_0191",
+   "seq": 191,
+   "origin": "genai",
+   "source_stage": 3,
+   "produced_under_flags": {
+    "use_stage12_rules": true,
+    "use_stage3_rules": true,
+    "evfis_active": true,
+    "genai_active": true
+   },
+   "timestamp": "2026-07-26T13:03:38Z"
+  },
+  {
+   "name": "G35",
+   "antecedents": [
+    [
+     "evacuation_pressure",
+     "H"
+    ],
+    [
+     "asset_exposure_risk",
+     "VL"
+    ]
+   ],
+   "consequents": [
+    [
+     "containment_line",
+     0.9
+    ],
+    [
+     "retardant_drop",
+     0.8
+    ],
+    [
+     "resource_deployment",
+     0.6
+    ]
+   ],
+   "note": "adaptation-born: generative (claude), gates G1-G4",
+   "strength": 0.0,
+   "depends_on_concepts": [],
+   "trigger": {
+    "step": 41,
+    "minute": 2460.0,
+    "deficit": 0.2,
+    "stage": 3
+   },
+   "id": "gen_rule_0210",
+   "seq": 210,
+   "origin": "genai",
+   "source_stage": 3,
+   "produced_under_flags": {
+    "use_stage12_rules": true,
+    "use_stage3_rules": true,
+    "evfis_active": true,
+    "genai_active": true
+   },
+   "timestamp": "2026-07-26T23:03:39Z"
   }
  ],
  "genai_concepts": [

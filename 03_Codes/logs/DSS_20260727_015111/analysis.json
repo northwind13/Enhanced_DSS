@@ -1,0 +1,49 @@
+{
+ "start_step": 469,
+ "seq0": 201,
+ "cycles": 1,
+ "satisficing_failed": 1,
+ "tried": 1,
+ "accepted": 0,
+ "rejected": 1,
+ "blocked": {},
+ "per_stage": {
+  "2": {
+   "tried": 1,
+   "accepted": 0,
+   "dJ": 0.0
+  }
+ },
+ "gates": {},
+ "reasons": {
+  "instantiated cell did not improve the physical forecast (0.113 vs 0.113, burn+asset+pop at >=45 min)": 1
+ },
+ "withheld": 1,
+ "dJ_accepted": 0.0,
+ "j_series": [
+  [
+   469,
+   0.1394636525161532,
+   0.0905937022404185,
+   0.08878182819561013
+  ]
+ ],
+ "phys_series": [
+  [
+   469,
+   0.11264066737237759,
+   0.10266411183574285
+  ]
+ ],
+ "persist_failed": 0,
+ "cooldown_refunds": 0,
+ "stage2_prefiltered": 0,
+ "stage_controller": {
+  "low|3": -0.00039000000000000005,
+  "mid+gap|3": -0.0002,
+  "mid|2": -0.0002
+ },
+ "config_id": "DSS1-EV1-GA0-U12:1-U3:1",
+ "seed_profile": "minimal",
+ "persist_errors": []
+}

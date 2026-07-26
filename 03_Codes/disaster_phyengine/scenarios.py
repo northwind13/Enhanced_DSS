@@ -39,9 +39,9 @@ def wui_interface(seed: int = 42) -> World:
     w.clear_fuel(62, 0, 64, 69)
 
     # town with assets on the eastern side
-    w.add_asset(Asset("Town center", "building", x=82, y=35, radius=8, value=1.0))
+    w.add_asset(Asset("Town centre", "building", x=82, y=35, radius=8, value=1.0))
     w.add_asset(Asset("Hospital", "critical", x=80, y=28, radius=2, value=1.0))
-    w.add_asset(Asset("Power substation", "critical", x=88, y=42, radius=1, value=1.0))
+    w.add_asset(Asset("Power station", "critical", x=88, y=42, radius=1, value=1.0))
     w.add_asset(Asset("Residents", "population", x=82, y=35, radius=8,
                       value=1.0, population=12000))
     w.add_asset(Asset("Evacuation route", "evac_route", x=99, y=35, radius=0))
@@ -60,7 +60,7 @@ def grassland_run(seed: int = 7) -> World:
     w = World.blank(cfg, default_fuel="grass", default_load=1.0, default_moisture=0.06)
     w.add_forest_disk(x=90, y=40, radius=14, fuel_type="shrub", load=0.9, moisture=0.10)
     w.add_asset(Asset("Farmstead", "building", x=95, y=40, radius=3, value=1.0))
-    w.add_asset(Asset("Farm workers", "population", x=95, y=40, radius=3,
+    w.add_asset(Asset("Residents", "population", x=95, y=40, radius=3,
                       value=1.0, population=300))
     w.set_uniform_wind(speed=14.0, direction_rad=0.0)
     w.add_ignition(x=10, y=40, step=0, radius=1)
@@ -73,8 +73,8 @@ def mountain_forest(seed: int = 13) -> World:
     w = World.blank(cfg, default_fuel="shrub", default_load=0.7, default_moisture=0.12)
     _synthetic_terrain(w)
     w.add_forest_patch(10, 10, 80, 80, fuel_type="pine_litter", load=1.0, moisture=0.09)
-    w.add_asset(Asset("Mountain lodge", "building", x=45, y=10, radius=3, value=1.0))
-    w.add_asset(Asset("Fire lookout", "critical", x=50, y=8, radius=1, value=0.7))
+    w.add_asset(Asset("Lodge", "building", x=45, y=10, radius=3, value=1.0))
+    w.add_asset(Asset("Lookout", "critical", x=50, y=8, radius=1, value=0.7))
     w.set_uniform_wind(speed=7.0, direction_rad=np.pi / 2)  # wind blowing north, upslope
     w.add_ignition(x=45, y=80, step=0, radius=1)
     return w
@@ -115,11 +115,11 @@ def city_wui(seed: int = 21) -> World:
     cfg.spread.spot_intensity_min = 0.4
 
     # assets across the city
-    w.add_asset(Asset("Downtown", "building", 88, 45, radius=10, value=1.0))
+    w.add_asset(Asset("City centre", "building", 88, 45, radius=10, value=1.0))
     w.add_asset(Asset("Residents", "population", 88, 45, radius=12,
                       value=1.0, population=45000))
-    w.add_asset(Asset("City hospital", "critical", 78, 32, radius=2, value=1.0))
-    w.add_asset(Asset("Power plant", "critical", 104, 60, radius=2, value=1.0))
+    w.add_asset(Asset("Hospital", "critical", 78, 32, radius=2, value=1.0))
+    w.add_asset(Asset("Power station", "critical", 104, 60, radius=2, value=1.0))
     w.add_asset(Asset("Water works", "critical", 100, 28, radius=1, value=0.9))
     w.add_asset(Asset("School", "building", 82, 60, radius=2, value=0.8))
     w.add_asset(Asset("Evacuation route", "evac_route", 119, 45, radius=0))

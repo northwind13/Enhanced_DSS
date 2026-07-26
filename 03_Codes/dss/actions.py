@@ -408,6 +408,25 @@ def _sector_mask(sector, fire, world, rin, rout, cosang):
     return band
 
 
+def _diggable_mask(world):
+    """Ground a dozer can cut and a firing crew may light.
+
+    Built-up cells and water are neither. A settlement in the path of a
+    fire is DEFENDED, not levelled, and the DSS was able to order a
+    containment line straight across one because the band was chosen on
+    reachability alone.
+    """
+    import numpy as _np
+    ft = _np.asarray(world.fuel.ftype)
+    ok = (ft != 5) & (ft != 6)
+    try:
+        ok &= ~((_np.asarray(world.value.vbld) > 1e-6)
+                | (_np.asarray(world.value.vcrit) > 1e-6))
+    except Exception:
+        pass
+    return ok
+
+
 def apply_actuator_clauses(out, world, fire, region_mask, clauses,
                            intensity, cap_max, workable, cosang,
                            cells_out=None):
@@ -426,6 +445,12 @@ def apply_actuator_clauses(out, world, fire, region_mask, clauses,
         m = _sector_mask(sec, fire, world, rin, rout, cosang)             & region_mask
         if eff in ("wet", "clear", "ignite", "coat"):
             m &= workable if eff in ("wet", "clear") else m
+        # NOT THROUGH A SETTLEMENT, AND NOT ON WATER. Clearing digs ground
+        # and lighting sets it alight; neither belongs on built-up cells,
+        # and a generated actuator must not be able to order what the base
+        # containment channel is forbidden to order.
+        if eff in ("clear", "ignite"):
+            m &= _diggable_mask(world)
         if not m.any():
             continue
         if cells_out is not None:
@@ -556,6 +581,13 @@ def decision_to_resources(world, burning, regions_intensities, base=None,
         # waste the budget of the active front
         _mopup = int(fire.sum()) < 50
         _workable = (_reach0 > 0.05) | _mopup
+        # YOU DO NOT BULLDOZE A FUEL BREAK THROUGH A TOWN. A containment
+        # line is dug ground: it needs terrain a dozer can cut. Built-up
+        # cells and water are not that, and a settlement in the path of a
+        # fire is DEFENDED (asset protection) rather than levelled. The
+        # band was previously chosen on reachability alone, so the DSS
+        # could and did order a line straight across a settlement.
+        _diggable = _workable & _diggable_mask(world)
         m = at_fire_all & rb & _workable
         # DIRECT-ATTACK DOCTRINE: a burning cell that is worked at
         # all is worked at FULL strength; you do not send half a
@@ -575,7 +607,7 @@ def decision_to_resources(world, burning, regions_intensities, base=None,
                                    0.3 + 0.7 * _u1_eff)
         if u1 > 0.05:
             m_supp |= m
-        m = band_all & rb & _workable
+        m = band_all & rb & _diggable
         out.rcap[m] = np.maximum(out.rcap[m], u3 * cap_max)
         if u3 > 0.05:
             m_cont |= m
@@ -670,7 +702,7 @@ def decision_to_resources(world, burning, regions_intensities, base=None,
                     if _bi == "suppression_effort":
                         _mc |= at_fire_all & rb & _workable
                     elif _bi == "containment_line":
-                        _mc |= band_all & rb & _workable
+                        _mc |= band_all & rb & _diggable
                     elif _bi in ("evacuation", "public_warning"):
                         _mc |= rb & (np.asarray(world.value.vpop)
                                      > 1e-6)
@@ -784,8 +816,18 @@ def decision_to_resources(world, burning, regions_intensities, base=None,
         m_supp &= funded
         m_cont &= funded
         m_prot &= funded
+        # WHAT THE ORDERS ASKED FOR AGAINST WHAT THERE WAS. Capacity here
+        # is a FLOW, how much force can act per minute, so it does not
+        # deplete; scarcity shows as demand exceeding the budget and cells
+        # going unfunded. Without these two numbers the reader could not
+        # tell a comfortable response from one that is already short.
+        _demand = committed
+        _budget = budget
+    else:
+        _demand = _budget = None
     if return_actions:
         return out, dict(supp=m_supp, cont=m_cont, prot=m_prot,
+                         demand=_demand, budget=_budget,
                          regions=region_orders,
                          macro_cells={k: v for k, v in
                                       _macro_cells.items()

@@ -66,4 +66,4 @@ __all__ = ["Region", "partition", "partition_n", "ten_features",
            "counterfactual"]
 
 # bumped on every dss change; checked by the app freshness gate
-DSS_BUILD = 89
+DSS_BUILD = 90

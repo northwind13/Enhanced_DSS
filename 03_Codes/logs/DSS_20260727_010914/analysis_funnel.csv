@@ -1,0 +1,16 @@
+﻿quantity;value
+cycles;17
+satisficing_failed;7
+tried;2
+accepted;1
+rejected;1
+withheld;0
+persist_failed;0
+dJ_accepted;-0.185225
+stage2_tried;1
+stage2_accepted;1
+stage3_tried;1
+stage3_accepted;0
+blocked: cooldown between adaptation trials;5
+gate: rejected at G3 (no improvement);1
+rejected: rejected at G3 (claude);1

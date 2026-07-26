@@ -1,0 +1,3 @@
+step,t_min,burning,burned,j_total,j_physical,j_burn,j_asset,j_pop,j_resp,wws_mean,prec_mean,fmoist_mean,alloc_cells,alloc_rcap_sum
+51,51.0,51,55,0.09673,0.04934,0.14801,0.00000,0.00000,0.67699,8.27,0.00,0.074,296,349.0
+52,52.0,51,55,0.09761,0.04934,0.14801,0.00000,0.00000,0.69159,8.27,0.00,0.074,296,348.9

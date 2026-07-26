@@ -1,0 +1,13 @@
+﻿step;t_min;region;story;stage_tried;stage_accepted;fired_rules;suppression;deployment;containment;protection;evacuation;warning;quality;gate_min;J_forecast;J_noaction;attended
+171;171;Agent_1;orders came from the seed rule base (rules as-is);0;0;R7[0.02] R20[0.19] G1[0.32] G2[0.19] G3[0.19] G4[0.19];0.92;0.77;0.78;0.77;0.68;0.00;0.68;0.03;0.1065;0.1065;1
+171;171;Agent_2;orders came from the seed rule base (rules as-is);0;0;R7[0.12] R11[0.23] R15[0.20] R20[0.12] R26[0.20] G1[0.22];0.67;0.73;0.58;0.71;0.66;0.38;0.59;0.03;0.1065;0.1065;1
+171;171;Agent_3;orders came from the seed rule base (rules as-is);0;0;G1[0.11] G6[0.11] G7[0.11] G9[0.11] G10[0.27] G21[0.04];0.91;0.52;0.74;0.61;0.53;0.00;0.72;0.03;0.1065;0.1065;1
+172;172;Agent_1;orders came from the seed rule base (rules as-is);0;0;R7[0.02] R20[0.17] G1[0.29] G2[0.17] G3[0.17] G4[0.17];0.92;0.77;0.78;0.76;0.67;0.00;0.69;0.03;0.1193;0.1065;1
+172;172;Agent_2;orders came from the seed rule base (rules as-is);0;0;R7[0.12] R11[0.23] R15[0.18] R20[0.11] R26[0.18] G1[0.20];0.68;0.75;0.59;0.72;0.69;0.37;0.60;0.03;0.1193;0.1065;1
+172;172;Agent_3;orders came from the seed rule base (rules as-is);0;0;R7[0.04] R26[0.01] G1[0.10] G5[0.08] G6[0.10] G7[0.10];0.91;0.75;0.74;0.63;0.54;0.00;0.71;0.03;0.1193;0.1065;1
+171;171;Agent_1;orders came from the seed rule base (rules as-is);0;0;R7[0.02] R20[0.19] G1[0.32] G2[0.19] G3[0.19] G4[0.19];0.92;0.77;0.78;0.77;0.68;0.00;0.68;0.03;0.1065;0.1065;1
+171;171;Agent_2;orders came from the seed rule base (rules as-is);0;0;R7[0.12] R11[0.23] R15[0.20] R20[0.12] R26[0.20] G1[0.22];0.67;0.73;0.58;0.71;0.66;0.38;0.59;0.03;0.1065;0.1065;1
+171;171;Agent_3;orders came from the seed rule base (rules as-is);0;0;G1[0.11] G6[0.11] G7[0.11] G9[0.11] G10[0.27] G21[0.04];0.91;0.52;0.74;0.61;0.53;0.00;0.72;0.03;0.1065;0.1065;1
+171;171;Agent_1;stage controller selected stage 3 [GenAI] (deficit bucket: low) → rejected (rejected at G3 (claude) | seed-base decision stands, its orders are applied);3;0;R7[0.02] R20[0.19] G1[0.32] G2[0.19] G3[0.19] G4[0.19];0.92;0.77;0.78;0.77;0.68;0.00;0.68;0.03;0.1065;0.1065;1
+171;171;Agent_2;stage controller selected stage 3 [GenAI] (deficit bucket: low) → rejected (rejected at G3 (claude) | seed-base decision stands, its orders are applied);3;0;R7[0.12] R11[0.23] R15[0.20] R20[0.12] R26[0.20] G1[0.22];0.67;0.73;0.58;0.71;0.66;0.38;0.59;0.03;0.1065;0.1065;1
+171;171;Agent_3;stage controller selected stage 3 [GenAI] (deficit bucket: low) → rejected (rejected at G3 (claude) | seed-base decision stands, its orders are applied);3;0;G1[0.11] G6[0.11] G7[0.11] G9[0.11] G10[0.27] G21[0.04];0.91;0.52;0.74;0.61;0.53;0.00;0.72;0.03;0.1065;0.1065;1

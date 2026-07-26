@@ -32,7 +32,7 @@ import copy
 import json
 import os
 from dataclasses import dataclass, field
-from typing import Dict, List, Optional, Tuple
+from typing import Any, Dict, List, Optional, Tuple
 
 import numpy as np
 
@@ -1049,6 +1049,75 @@ def _fires_now(prop: dict, eff) -> Optional[str]:
     return None
 
 
+RELEVANCE_FLOOR = 0.20        # the bar _fires_now applies
+
+
+def _repair_relevance(prop: dict, eff) -> List[str]:
+    """Make the antecedents hold NOW, without asking the model again.
+
+    G2c turns a proposal away when one of its antecedents does not fire in
+    the present situation. Measured over 62 runs that accounted for 17 of
+    155 stage 3 rejections, and with G2 and G2b another 32 together: a fifth
+    of everything the stage produced was thrown out on FORM, each one having
+    already cost a model call and a slot of the wait budget.
+
+    The fix does not need a model. The situation is known here, so a term
+    that does not hold can be rewritten to one that does, in the direction
+    the proposal was already going: ">=T" where T is the LOWER of the
+    proposed term and the concept's current dominant term. Reading it as
+    "T or worse" keeps the intent of a protective antecedent (it stays in
+    force as the situation escalates, which is what the >= form is for)
+    while making it true right now.
+
+    Only ordered catalog terms are touched. A refined term inserted by
+    stage 2, and an antecedent on a concept the proposal is itself
+    introducing, are left exactly as they are: neither has a position in
+    the ordering to compare against. Every rewrite is returned so the
+    ledger records what was changed and the rule can say so in its note.
+    """
+    from .rules import _membership
+    ants = prop.get("antecedents") or []
+    if not ants:
+        return []
+    ncn = (prop.get("new_concept") or {}).get("name")
+    repairs: List[str] = []
+    out = []
+    for pair in ants:
+        try:
+            v, t = str(pair[0]), str(pair[1])
+        except Exception:
+            out.append(pair)
+            continue
+        base = t[2:] if t.startswith(">=") else t
+        if v == ncn or v not in eff or base not in TERMS:
+            out.append(pair)
+            continue
+        try:
+            if float(_membership(v, t, eff, {})) >= RELEVANCE_FLOOR:
+                out.append(pair)
+                continue
+        except Exception:
+            out.append(pair)
+            continue
+        dom = TERMS[int(np.argmax(eff[v]))]
+        keep = TERMS[min(TERMS.index(base), TERMS.index(dom))]
+        new_t = ">=" + keep
+        # NEVER REPAIR INTO A VACUOUS ANTECEDENT. ">=" is read as "that term
+        # or worse", so ">=" + the lowest term is true of every situation:
+        # the concept would stop discriminating and the rule would fire
+        # everywhere, on situations the gates never tested it against. A
+        # proposal that far below the present situation is not a form slip,
+        # it describes a different regime, so it is left for G2c to refuse.
+        if new_t == t or keep == TERMS[0]:
+            out.append(pair)
+            continue
+        out.append([v, new_t])
+        repairs.append(f"{v}: {t} -> {new_t} (now {dom})")
+    if repairs:
+        prop["antecedents"] = out
+    return repairs
+
+
 def _nearest_cases(engine, crisp_c, k: int = 3) -> str:
     """CHRONICLE RETRIEVAL: the k past cycles whose decision-concept
     situation is nearest (Euclidean over the five crisps) to the
@@ -1092,11 +1161,85 @@ def _nearest_cases(engine, crisp_c, k: int = 3) -> str:
     return "\n".join(lines)
 
 
+# WHAT THIS ATTEMPT PROPOSED, filled as the stage runs. The stage has
+# fourteen exit points; threading the ledger through every one of them would
+# be a change waiting to be forgotten at the fifteenth, so the trace is
+# collected here and written once, by the wrapper below.
+LAST_PROPOSAL: Dict[str, Any] = {}
+
+
+def _reset_proposal_trace() -> None:
+    LAST_PROPOSAL.clear()
+    LAST_PROPOSAL.update(raw=None, repaired=None, revisions=[], repairs=[])
+
+
 def stage3_generative(build_override, sim, rules: List[Rule],
                       eff, crisp_c, horizon: int,
                       coverage_gap: bool = False,
                       cov_w: float = 1.0,
                       engine=None) -> AdaptOutcome:
+    """Run the generative stage and FILE the attempt, whatever it did.
+
+    The ledger entry is written for accepted and rejected attempts alike: a
+    proposal the gates turned away is the more informative of the two, and
+    until now it was the one being thrown away.
+    """
+    _reset_proposal_trace()
+    out = _stage3_generative(build_override, sim, rules, eff, crisp_c,
+                             horizon, coverage_gap=coverage_gap,
+                             cov_w=cov_w, engine=engine)
+    try:
+        _file_proposal(engine, out, crisp_c, coverage_gap, cov_w, sim)
+    except Exception as exc:      # the ledger must never break a decision
+        try:
+            engine.persist_errors.append(
+                f"proposal ledger: {type(exc).__name__}: {exc}")
+        except Exception:
+            pass
+    return out
+
+
+def _file_proposal(engine, out: AdaptOutcome, crisp_c, coverage_gap,
+                   cov_w, sim=None) -> None:
+    """One row of the corpus: the situation, what was proposed, what the
+    gate said about it, and what the simulation measured."""
+    gst = getattr(engine, "gstate", None)
+    if gst is None or not getattr(engine, "state_path", None):
+        return
+    import re as _re_p
+    info = out.info or {}
+    gates = info.get("gates") or {}
+    det = str(out.detail or "")
+    gate = None
+    if not out.accepted:
+        _m = _re_p.search(r"rejected at (G\S+(?: A/B)?)", det)
+        gate = (_m.group(1).rstrip(",;") if _m
+                else ("transport" if info.get("reason") in
+                      ("model timeout", "model unreachable",
+                       "budget exhausted") else "other"))
+    gst.append_proposal(dict(
+        situation={c: round(float(crisp_c.get(c, 0.0)), 4)
+                   for c in DECISION_CONCEPTS},
+        coverage_gap=bool(coverage_gap), cov_w=round(float(cov_w), 4),
+        step=int(getattr(getattr(sim, "state", None), "step", 0) or 0),
+        accepted=bool(out.accepted),
+        gate=gate,
+        detail=det[:300],
+        dJ=round(float(out.dJ or 0.0), 6),
+        raw=LAST_PROPOSAL.get("raw"),
+        repaired=LAST_PROPOSAL.get("repaired"),
+        repairs=list(LAST_PROPOSAL.get("repairs") or []),
+        revisions=[str(r.get("gate"))[:80] for r in
+                   (LAST_PROPOSAL.get("revisions") or [])],
+        measured={k: v for k, v in gates.items() if k != "trace"},
+    ), save=True)
+
+
+def _stage3_generative(build_override, sim, rules: List[Rule],
+                       eff, crisp_c, horizon: int,
+                       coverage_gap: bool = False,
+                       cov_w: float = 1.0,
+                       engine=None) -> AdaptOutcome:
     _mb = ""
     if engine is not None and hasattr(engine, "mission"):
         try:
@@ -1266,6 +1409,7 @@ def stage3_generative(build_override, sim, rules: List[Rule],
 
     prop = _genai_propose(situation, timeout=max(1.0, _left()),
                           engine=engine, mission=_mb)
+    LAST_PROPOSAL["raw"] = copy.deepcopy(prop) if prop else None
     src = "claude"
     # The generative stage REQUIRES a reachable model: there is no offline
     # stand-in. If the model cannot be reached (or returns nothing usable)
@@ -1290,10 +1434,16 @@ def stage3_generative(build_override, sim, rules: List[Rule],
             + "; install Claude Code and run /login",
             info=dict(source="none", reason="model unreachable",
                       error=_err))
+    # REPAIR BEFORE JUDGING. A form defect the situation itself can settle
+    # should not cost a gate rejection, a revision and another model call.
+    LAST_PROPOSAL.setdefault("repairs", []).extend(
+        _repair_relevance(prop, eff))
+    LAST_PROPOSAL["repaired"] = copy.deepcopy(prop)
     err = (_g1_g2(prop, engine=engine) or _fires_now(prop, eff)
            or _availability(prop, sim))
     while err and len(_revisions) < _budget:
         _revisions.append(dict(proposal=prop, gate=err))
+        LAST_PROPOSAL["revisions"] = list(_revisions)
         retry = (situation
                  + f"\nYour previous proposal was rejected at gate "
                  f"{err}. Revise it: fix exactly that defect and "
@@ -1330,7 +1480,12 @@ def stage3_generative(build_override, sim, rules: List[Rule],
                           reason=("model timeout" if _tmo
                                   else "model unreachable"),
                           error=_err, revisions=_revisions))
-        err = (_g1_g2(prop, engine=engine) or _fires_now(prop, eff)
+        # REPAIR BEFORE JUDGING. A form defect the situation itself can settle
+    # should not cost a gate rejection, a revision and another model call.
+    LAST_PROPOSAL.setdefault("repairs", []).extend(
+        _repair_relevance(prop, eff))
+    LAST_PROPOSAL["repaired"] = copy.deepcopy(prop)
+    err = (_g1_g2(prop, engine=engine) or _fires_now(prop, eff)
                or _availability(prop, sim))
     if err:
         return AdaptOutcome(3, False, f"rejected at {err} ({src})",
@@ -1375,7 +1530,11 @@ def stage3_generative(build_override, sim, rules: List[Rule],
             f"rejected at G2 duplicate cell ({src}) \u2014 an "
             "active rule already sits on this antecedent cell; "
             "re-issuing it with different numbers is stage \u2460 "
-            "evFIS's job, not a new rule",
+            "evFIS's job, not a new rule. TWO LEGAL ESCAPES: cite a "
+            "DIFFERENT antecedent cell that also holds right now, or "
+            "bring NEW VOCABULARY (new_intervention: a composite or "
+            "a clause actuator) \u2014 a package rule sits on a new "
+            "axis and this gate passes it",
             info=dict(source=src, proposal=prop,
                       gate="G2 duplicate cell"))
     coverage_gap = True     # by definition: the cell was uncovered
@@ -1385,6 +1544,11 @@ def stage3_generative(build_override, sim, rules: List[Rule],
                 [(i, float(x)) for i, x in prop["consequents"]],
                 note=(f"adaptation-born: generative ({src}), gates "
                       "G1-G4"
+                      # a repaired antecedent is not what the model wrote,
+                      # so the rule says so and the claim stays auditable
+                      + (" | REPAIRED: "
+                         + "; ".join(LAST_PROPOSAL.get("repairs") or [])
+                         if LAST_PROPOSAL.get("repairs") else "")
                       + (" | WHY: "
                          + str(prop.get("rationale"))[:180]
                          if prop.get("rationale") else "")))

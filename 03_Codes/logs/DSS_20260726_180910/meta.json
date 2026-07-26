@@ -1,0 +1,118 @@
+{
+ "map": {
+  "nx": 100,
+  "ny": 70,
+  "cell_m": 30.0,
+  "step_min": 1.0
+ },
+ "engine": {
+  "regions": 3,
+  "cycle_min": 1.0,
+  "horizon_min": 45.0,
+  "j_th": 0.25,
+  "eta": 0.75,
+  "adapt": true,
+  "genai": true,
+  "evfis": true,
+  "evfis_step": 0.05,
+  "ctrl_eps": 0.1,
+  "ctrl_lr": 0.05,
+  "attn": 0.35,
+  "min_gain": 0.02,
+  "seed_profile": "minimal",
+  "use_stage12": true,
+  "use_stage3": true
+ },
+ "weather": {
+  "wx_mode": "Manual",
+  "emc_on": true,
+  "dr_start": 12.0,
+  "dr_tday": 34.0,
+  "dr_tnight": 22.0,
+  "dr_rhday": 20.0,
+  "dr_rhnight": 70.0,
+  "dr_rain_mm": 0.0,
+  "dr_rain_start": 18.0,
+  "dr_rain_dur": 3.0
+ },
+ "sensors": [
+  {
+   "kind": "satellite",
+   "x": 0,
+   "y": 0
+  },
+  {
+   "kind": "aerial",
+   "x": 47,
+   "y": 3
+  },
+  {
+   "kind": "public_report",
+   "x": 2,
+   "y": 1
+  },
+  {
+   "kind": "public_report",
+   "x": 8,
+   "y": 69
+  }
+ ],
+ "depots": [
+  {
+   "kind": "depot",
+   "x": 6,
+   "y": 69,
+   "radius": 5,
+   "cap": 0.8,
+   "avail": 1.0,
+   "t_disp": 10.0,
+   "label": "Fire station (Village 1)"
+  },
+  {
+   "kind": "road_corridor",
+   "cap": 0.4,
+   "avail": 1.0,
+   "label": "road corridor"
+  },
+  {
+   "kind": "helibase",
+   "x": 2,
+   "y": 1,
+   "radius": 17,
+   "cap": 0.6,
+   "avail": 1.0,
+   "t_disp": 6.0,
+   "label": "helibase (aerial)"
+  },
+  {
+   "kind": "helibase",
+   "x": 89,
+   "y": 69,
+   "radius": 8,
+   "cap": 0.7,
+   "avail": 1.0,
+   "t_disp": 8.0,
+   "label": "helibase 2 (target 50%)"
+  },
+  {
+   "kind": "helibase",
+   "x": 98,
+   "y": 0,
+   "radius": 8,
+   "cap": 0.7,
+   "avail": 1.0,
+   "t_disp": 8.0,
+   "label": "helibase 3 (target 50%)"
+  },
+  {
+   "kind": "helibase",
+   "x": 52,
+   "y": 31,
+   "radius": 8,
+   "cap": 0.7,
+   "avail": 1.0,
+   "t_disp": 8.0,
+   "label": "helibase 4 (target 50%)"
+  }
+ ]
+}

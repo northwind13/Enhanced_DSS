@@ -1,0 +1,12 @@
+{
+ "applied": [
+  "rule -> rule G26 (The VH-gated attack battery never fired; Agent_3 (614 fire cells) only reaches urgency ~0.36 and feasibility 0.42=M, so an M-level trigger is what actually orde)",
+  "rule -> rule G27 (Ground logistics in Agent_3 are 0.25; asset_exposure_risk reaches H(0.75)/M(0.60), and air-delivered retardant coats the head without needing road access.)",
+  "sensor aerial @ (19,45) (Sensors sit only at corners; the fire body at centroid (19,45) had no coverage, which is why fire_threat_level read L across a 605-cell fire.)",
+  "depot helibase @ (20,46) (36-min travel and Agent_3 logistics 0.25 starved the fire region; a helibase on the body enables aerial retardant and raises feasibility where it burns.)",
+  "setting horizon_min -> 45 (A 30-min horizon is shorter than the 45-min physical forecast; extending it lets retardant lead a fast-spreading head.)",
+  "setting min_gain -> 0.02 (11 no-harm vetoes at steps 31–52 blocked adaptation during growth-to-peak; a lower gain floor admits incremental offensive gains.)"
+ ],
+ "skipped": [],
+ "at": "2026-07-26 03:18:54"
+}

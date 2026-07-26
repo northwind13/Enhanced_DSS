@@ -19,7 +19,8 @@ sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
 import dataclasses
 
 from disaster_phyengine import (Simulator, World, SimConfig, Asset, compute_costs,
-                           scenarios, io_utils, terrain, viz, FUEL_MODELS,
+                           scenarios, io_utils, maplib, terrain, viz,
+                           FUEL_MODELS,
                            FUEL_NAME_TO_ID, SpreadParams, SuppressionParams,
                            IntensityParams, ValueWeights, CostParams)
 
@@ -97,10 +98,26 @@ FIREBREAK_TYPES = {"Water": 5, "Bare ground": 0}
 
 
 # --------------------------------------------------------------------- state
-def _resize_world(w: World, nx2: int, ny2: int) -> World:
-    """Resample the whole world to a new grid size (nearest neighbour). All
-    layers, roads, assets and ignitions are carried over; slope and aspect are
-    recomputed from the resampled elevation."""
+def _resize_world(w: World, nx2: int, ny2: int,
+                  keep_extent: bool = True) -> World:
+    """Resample the world onto a new grid. All layers, roads, assets and
+    ignitions come with it; slope and aspect are recomputed.
+
+    `keep_extent` makes this a change of RESOLUTION rather than of area: the
+    cell size is divided by the same factor the grid is multiplied by, so
+    the landscape covers the same ground at a finer or coarser sampling.
+    Without it, doubling nx doubled the map's physical width, which is why
+    a resized map came out looking stretched and wrong: the fire then had
+    twice as far to travel, the service radii covered half as much of the
+    map, and the population per square kilometre stayed put while the
+    square kilometres doubled.
+
+    Asset footprints are scaled with the grid for the same reason. They are
+    measured in CELLS, so a radius-6 town left alone on a doubled grid is
+    physically half the town it was, while the built-up cells it painted
+    were resampled and doubled: the block and the value written into it
+    stopped describing the same place.
+    """
     import dataclasses as _dc
     from disaster_phyengine.layers import (MeteoLayer, TopoLayer, FuelLayer,
                                       ValueLayer, ResourceLayer)
@@ -111,8 +128,15 @@ def _resize_world(w: World, nx2: int, ny2: int) -> World:
     def R(a):
         return np.asarray(a)[yi][:, xi].copy()
 
+    _cell2 = float(w.config.cell_size_m)
+    if keep_extent:
+        # one factor for both axes: a non-uniform change would stretch the
+        # ground, so the mean keeps the cell square and the area honest
+        _f = 0.5 * (nx2 / float(nx1) + ny2 / float(ny1))
+        _cell2 = float(w.config.cell_size_m) / max(_f, 1e-9)
     cfg2 = SimConfig.from_dict({**w.config.to_dict(),
-                                "nx": int(nx2), "ny": int(ny2)})
+                                "nx": int(nx2), "ny": int(ny2),
+                                "cell_size_m": _cell2})
     w2 = World.blank(cfg2)
     w2.meteo = MeteoLayer(**{k: R(getattr(w.meteo, k))
                              for k in ("temp", "rh", "wws", "wwd",
@@ -132,12 +156,37 @@ def _resize_world(w: World, nx2: int, ny2: int) -> World:
     if getattr(w, "roads", None) is not None:
         w2.roads = R(w.roads)
     sx, sy = nx2 / nx1, ny2 / ny1
-    w2.assets = [_dc.replace(a, x=int(a.x * sx), y=int(a.y * sy))
+    _rs = 0.5 * (sx + sy)          # footprints are in cells, so they scale
+    w2.assets = [_dc.replace(a, x=int(a.x * sx), y=int(a.y * sy),
+                             radius=max(0, int(round(
+                                 getattr(a, "radius", 0) * _rs))))
                  for a in w.assets]
     w2.ignitions = [_dc.replace(e, x=int(e.x * sx), y=int(e.y * sy))
                     for e in w.ignitions]
     w2.recompute_slope_aspect()
+    # the value layers are DERIVED from the assets, and the assets have just
+    # moved and changed size, so they are rebuilt rather than resampled: a
+    # resampled disc does not match the disc the new radius describes
+    try:
+        w2.rebuild_value_layers()
+    except Exception:
+        pass
     return w2
+
+
+def _map_card():
+    """Every map view sits in one bordered block of fixed width.
+
+    The frames the animation writes were drawn at their natural pixel size
+    while the paused view is a chart stretched to the column, so the map
+    jumped in size on every play/pause and the page reflowed around it. The
+    block gives all of them the same frame, and the images are stretched to
+    it, so what changes between views is the content and not the layout.
+    """
+    try:
+        return st.container(border=True)
+    except TypeError:          # older streamlit: no border, same block
+        return st.container()
 
 
 def _new_simulator(world: World) -> None:
@@ -200,10 +249,25 @@ def _restore_rca_applied() -> None:
 def _ensure_state() -> None:
     _restore_rca_applied()
     if "sim" not in st.session_state:
-        _new_simulator(terrain.generate_landscape(
-            SimConfig(nx=100, ny=70, cell_size_m=30.0), seed=42,
-            preset="Mountain forest"))
-        st.session_state.world.add_ignition(25, 35, step=0, radius=2)
+        # THE OPERATOR'S OWN MAP OPENS FIRST. The app always started on the
+        # same procedural mountain landscape, so whatever had been built in
+        # the editor had to be rebuilt or re-uploaded at the start of every
+        # session. A map marked as the default in the library opens instead;
+        # if none is marked, or the file will not open, the generated one
+        # is still there to fall back on.
+        _dw = None
+        try:
+            _dw = maplib.load_default()
+        except Exception:
+            _dw = None
+        if _dw is not None:
+            _new_simulator(_dw)
+            st.session_state["_opened_map"] = maplib.default_name()
+        else:
+            _new_simulator(terrain.generate_landscape(
+                SimConfig(nx=100, ny=70, cell_size_m=30.0), seed=42,
+                preset="Mountain forest"))
+            st.session_state.world.add_ignition(25, 35, step=0, radius=2)
     st.session_state.setdefault("tool", "Fuel")
     st.session_state.setdefault("cost_series", [])
     st.session_state.setdefault("anim_on", False)
@@ -686,9 +750,10 @@ _AGENT_COL_HELP = (
     "- **share** — the attention share it assigned. It multiplies the "
     "offensive orders and steers the budget concentration in the "
     "allocator.\n"
-    "- **fired** — the rules that fired for THIS agent, with their weights, "
-    "strongest first. Agents see different situations, so they fire "
-    "different rules.\n"
+    "- **fired** — the rules that fired for THIS agent, with their "
+    "weights (strongest first) and the interventions each rule orders "
+    "(rule \u2192 orders). Agents see different situations, so they "
+    "fire different rules.\n"
     "- **orders_from_rules → orders_final** — the agent's own decision "
     "before coordination, and what it became after the share was applied. "
     "The gap between the two IS the coordinator's intervention.\n"
@@ -851,6 +916,23 @@ def build_agent_rows(_cycA):
     Both halves of that are here, side by side, so the attenuation is
     visible as the difference between orders_from_rules and orders_final.
     """
+    # rule name -> its ordered interventions, so the fired cell says
+    # WHAT each rule ordered, not only that it fired
+    _rc_map = {}
+    try:
+        # the step-view test harness runs this function without the
+        # streamlit runtime, so the engine lookup must be optional
+        _eng_fb = st.session_state.get("dss_engine")
+    except Exception:
+        _eng_fb = None
+    if _eng_fb is not None:
+        for _ru in (getattr(_eng_fb, "rules", None) or []):
+            try:
+                _rc_map[_ru.name] = ", ".join(
+                    f"{str(_cch).split('_')[0]} {float(_cv):.2f}"
+                    for _cch, _cv in (_ru.consequents or [])[:3])
+            except Exception:
+                pass
     _rows = []
     for _i, _c in enumerate(_cycA, start=1):
         _gl = _c.get("global_dss") or {}
@@ -858,8 +940,10 @@ def build_agent_rows(_cycA):
         _att = set(_gl.get("attended") or [])
         _hot = _gl.get("hotspot")
         for _name, _r in (_c.get("regions") or {}).items():
-            _fired = ", ".join(
+            _fired = "; ".join(
                 f"{_rn} {float(_w):.2f}"
+                + (f" → {_rc_map[_rn]}"
+                   if _rc_map.get(_rn) else "")
                 for _rn, _w in (_r.get("fired") or [])[:4]
                 if float(_w) > 0.05) or "none above 0.05"
             _rows.append(dict(
@@ -1064,6 +1148,39 @@ def _gstate_counts(path: str | None = None) -> dict:
              "genai_concepts", "genai_interventions")}
 
 
+def _ignition_warning(world, gx: int, gy: int, radius: int = 0):
+    """Say so when an ignition lands where nothing can burn.
+
+    A road, a rock outcrop or open water cannot carry fire, and roads ring
+    every settlement: measured on a generated landscape, 38% of the ring of
+    cells immediately around the towns is unburnable. Clicking there is a
+    perfectly reasonable thing to do and the map used to answer with
+    silence, which reads as a broken click rather than as a fuel break
+    doing its job.
+    """
+    try:
+        import numpy as _np
+        fl0 = _np.asarray(world.fuel.fload0)
+        eps = float(world.config.spread.eps_fuel)
+        ny, nx = fl0.shape
+        r = max(0, int(radius))
+        y0, y1 = max(0, int(gy) - r), min(ny, int(gy) + r + 1)
+        x0, x1 = max(0, int(gx) - r), min(nx, int(gx) + r + 1)
+        patch = fl0[y0:y1, x0:x1]
+        if patch.size and float(patch.max()) > eps:
+            return None
+        from disaster_phyengine.config import FUEL_MODELS
+        _ft = int(_np.asarray(world.fuel.ftype)[int(gy), int(gx)])
+        _nm = FUEL_MODELS[_ft].name if _ft in FUEL_MODELS else "this cover"
+        return (f"Nothing to burn at ({int(gx)}, {int(gy)}): "
+                f"{_nm.replace('_', ' ')} carries no fuel, so the ignition "
+                "cannot take. Roads and bare ground ring most settlements "
+                "and act as fuel breaks; place the ignition on vegetation "
+                "or inside the built-up area itself.")
+    except Exception:
+        return None
+
+
 def _reset_dss_state(drop_engine: bool = False) -> None:
     """A fire reset clears the DECISION state (gating priors, feature
     histories, per-run transients) but the engine SURVIVES: learned
@@ -1140,69 +1257,118 @@ def _iv_bar(label: str, value: float, color: str) -> str:
         "height:7px;border-radius:3px'></div></div></div>")
 
 
-def _legend_swatch(hexc: str, glyph: str, px: int = 13) -> str:
-    """One legend swatch that mimics the MAP icon of the item."""
-    base = (f"width:{px}px;height:{px}px;display:inline-block;"
-            "flex:none;box-sizing:border-box;")
-    if glyph == "sq":
-        return (f"<span style='{base}background:{hexc};"
-                "border:1px solid #555'></span>")
-    if glyph == "dot":
-        return (f"<span style='{base}background:{hexc};"
-                "border:1px solid #444;border-radius:50%'></span>")
-    if glyph == "ring":
-        return (f"<span style='{base}border:2.5px solid {hexc};"
-                "border-radius:50%;background:transparent;"
-                "box-shadow:0 0 0 1px #7773'></span>")
-    if glyph == "box":
-        return (f"<span style='{base}border:2.5px solid {hexc};"
-                "background:transparent'></span>")
-    if glyph == "tri":
-        h = px
-        return ("<span style='display:inline-block;flex:none;width:0;"
-                f"height:0;border-left:{h // 2}px solid transparent;"
-                f"border-right:{h // 2}px solid transparent;"
-                f"border-bottom:{h}px solid {hexc};"
-                "filter:drop-shadow(0 0 1px #555)'></span>")
-    if glyph == "diag":
-        # diagonal dozer strokes, matching the dug-fuel-break drawing
-        return (f"<span style='{base}background:repeating-linear-gradient("
-                f"45deg,{hexc} 0 2px,transparent 2px 4px);"
-                "border:1px solid #5553'></span>")
-    # ---- generated (macro) intervention badges: the swatch mirrors the
-    # SHAPE drawn on the map, so colour is not the only thing telling two
-    # generated interventions apart
-    if glyph == "chip":
-        return ("<span style='display:inline-block;flex:none;"
-                f"width:{px + 7}px;height:{px}px;background:{hexc};"
-                "border:1px solid #333;border-radius:5px'></span>")
-    if glyph == "bars":
-        return ("<span style='display:inline-block;flex:none;"
-                f"width:{px + 7}px;height:{px}px;background:"
-                f"repeating-linear-gradient(180deg,{hexc} 0 "
-                f"{max(2, px // 3)}px,transparent {max(2, px // 3)}px "
-                f"{max(3, px // 2)}px);border:1px solid #333'></span>")
-    _CLIP = {
-        "hex": "polygon(25% 0,75% 0,100% 50%,75% 100%,25% 100%,0 50%)",
-        "diamond": "polygon(50% 0,100% 50%,50% 100%,0 50%)",
-        "pent": "polygon(50% 0,100% 38%,82% 100%,18% 100%,0 38%)",
-        "star": ("polygon(50% 0,61% 35%,98% 35%,68% 57%,79% 91%,"
-                 "50% 70%,21% 91%,32% 57%,2% 35%,39% 35%)"),
-    }
-    if glyph in _CLIP:
-        return (f"<span style='{base}background:{hexc};"
-                f"clip-path:{_CLIP[glyph]};"
-                "filter:drop-shadow(0 0 1px #333)'></span>")
-    # literal text badge fallback
-    return ("<span style='display:inline-block;flex:none;"
-            f"background:#000c;color:{hexc};font-size:0.75em;"
-            "padding:0 3px;border-radius:2px;font-family:monospace'>"
-            f"{glyph}</span>")
+XLSX_MIME = ("application/vnd.openxmlformats-officedocument"
+             ".spreadsheetml.sheet")
 
 
-# fixed legend category order + where a block separator is drawn (used
-# EVERYWHERE the legend appears, so the simulation map and the map editor
-# stay consistent).
+def _xlsx_bytes(sheets: dict, meta: dict | None = None) -> bytes:
+    """Rows to a formatted workbook, one sheet per entry.
+
+    The tables were offered as TSV, which Excel opens as one column unless
+    the reader knows to run the import wizard, and which loses every number
+    to text. A workbook keeps the columns, keeps the numbers as numbers so
+    they sort and chart, and can carry the related tables side by side
+    instead of as three files to line up by hand.
+
+    `sheets` maps a sheet name to a list of row dicts. `meta` becomes a
+    leading sheet recording what the numbers describe, because a table
+    detached from its run configuration is not evidence.
+    """
+    from io import BytesIO
+    from openpyxl import Workbook
+    from openpyxl.styles import Alignment, Font, PatternFill
+    from openpyxl.utils import get_column_letter
+
+    wb = Workbook()
+    wb.remove(wb.active)
+    head_font = Font(bold=True, color="FFFFFF")
+    head_fill = PatternFill("solid", fgColor="44546A")
+
+    if meta:
+        ws = wb.create_sheet("Run")
+        ws.append(["field", "value"])
+        for c in (1, 2):
+            ws.cell(row=1, column=c).font = head_font
+            ws.cell(row=1, column=c).fill = head_fill
+        for k, v in meta.items():
+            ws.append([str(k), str(v)])
+        ws.column_dimensions["A"].width = 26
+        ws.column_dimensions["B"].width = 80
+        ws.freeze_panes = "A2"
+
+    for name, rows in sheets.items():
+        ws = wb.create_sheet(str(name)[:31])
+        rows = list(rows or [])
+        if not rows:
+            ws.append(["(nothing recorded yet)"])
+            continue
+        cols = list(rows[0].keys())
+        ws.append(cols)
+        for i in range(1, len(cols) + 1):
+            c = ws.cell(row=1, column=i)
+            c.font, c.fill = head_font, head_fill
+            c.alignment = Alignment(vertical="center", wrap_text=True)
+        for r in rows:
+            ws.append([_xl_cell(r.get(k)) for k in cols])
+        ws.freeze_panes = "A2"
+        ws.auto_filter.ref = (f"A1:{get_column_letter(len(cols))}"
+                              f"{len(rows) + 1}")
+        for i, k in enumerate(cols, start=1):
+            # width from the CONTENT, capped: a reason column carries whole
+            # sentences and would otherwise push everything off the screen
+            w = max(len(str(k)),
+                    *(len(str(r.get(k, ""))) for r in rows[:400]))
+            ws.column_dimensions[get_column_letter(i)].width = \
+                min(60, max(9, w + 2))
+    buf = BytesIO()
+    wb.save(buf)
+    return buf.getvalue()
+
+
+def _xl_cell(v):
+    """Numbers stay numbers so the sheet can sort and chart them."""
+    if isinstance(v, bool) or v is None:
+        return "" if v is None else v
+    if isinstance(v, (int, float)):
+        return v
+    return str(v)
+
+
+_SWATCH_CACHE: dict = {}
+
+
+def _legend_swatch(hexc: str, glyph: str, px: int = 16) -> str:
+    """One legend swatch, drawn by the MAP's own code.
+
+    These used to be hand-written CSS shapes living in this file while the
+    map was drawn with PIL in viz.py. Two definitions of one symbol drift
+    apart by construction, and they had: the reader was left matching a
+    coloured blob in the legend against a different glyph on the map. The
+    swatch is now the same function call the renderer makes, at a smaller
+    radius, embedded as a PNG. There is one definition of every symbol.
+    """
+    key = (hexc, glyph, px)
+    if key in _SWATCH_CACHE:
+        return _SWATCH_CACHE[key]
+    try:
+        import base64 as _b64
+        from disaster_phyengine.viz import legend_icon_png
+        _h = hexc.lstrip("#")
+        rgb = tuple(int(_h[k:k + 2], 16) for k in (0, 2, 4))
+        png = legend_icon_png(glyph, rgb, px=px)
+        html = ("<img alt='' style='width:%dpx;height:%dpx;flex:none;"
+                "vertical-align:middle;image-rendering:auto' "
+                "src='data:image/png;base64,%s'>"
+                % (px, px, _b64.b64encode(png).decode()))
+    except Exception:
+        # a legend that cannot draw itself must not take the page with it
+        html = ("<span style='width:%dpx;height:%dpx;display:inline-block;"
+                "flex:none;background:%s;border:1px solid #555'></span>"
+                % (px, px, hexc))
+    _SWATCH_CACHE[key] = html
+    return html
+
+
 _LEGEND_ORDER = ["Land cover", "Assets",
                  "Fire", "Markers",
                  "Sensors (+ coverage fill)", "Resources",
@@ -1311,7 +1477,7 @@ def legend_html(horizontal: bool = False, macros=None) -> str:
             for lab, hexc, glyph in groups[grp]:
                 html += ("<span style='display:inline-flex;align-items:"
                          "center;gap:4px'>"
-                         + _legend_swatch(hexc, glyph, px=11)
+                         + _legend_swatch(hexc, glyph, px=14)
                          + f"<span>{lab}</span></span>")
             html += "</div>"
         return html + "</div>"
@@ -1334,8 +1500,8 @@ def legend_html(horizontal: bool = False, macros=None) -> str:
 # surfaces as confusing TypeErrors deep inside the pages ----
 import disaster_phyengine as _dpe
 import dss as _dss_pkg
-_EXPECTED_ENGINE_BUILD = 37
-_EXPECTED_DSS_BUILD = 89
+_EXPECTED_ENGINE_BUILD = 48
+_EXPECTED_DSS_BUILD = 90
 if (getattr(_dpe, "ENGINE_BUILD", 0) != _EXPECTED_ENGINE_BUILD
         or getattr(_dss_pkg, "DSS_BUILD", 0) != _EXPECTED_DSS_BUILD):
     st.error(
@@ -1400,6 +1566,22 @@ def _do_point(gx, gy, kw):
         name = kw["aname"] or ASSET_LABELS.get(kw["akind"], "Asset")
         world.add_asset(Asset(name, kw["akind"], gx, gy, kw["aradius"],
                               kw["avalue"], kw["apop"]))
+    elif tool == "Settlement":
+        # A WHOLE TOWN, NOT A MARKER. The Asset tool drops one point; a
+        # settlement is a painted block of built-up ground with a street
+        # grid, its people spread across it and civic facilities around the
+        # centre. It is built by the SAME function the generator uses, so a
+        # hand-placed town and a generated one are the same kind of thing.
+        from disaster_phyengine import terrain as _terr
+        _terr.place_settlement(
+            world, int(gx), int(gy), int(kw.get("spop", 5000)),
+            building_scale=float(kw.get("sdens", 1.0)),
+            rng=np.random.default_rng(int(kw.get("sseed", 0)) or None),
+            main=bool(kw.get("smain", False)),
+            name=(kw.get("sname") or None),
+            label_index=1 + sum(1 for a in world.assets
+                                if getattr(a, "kind", "") == "population"))
+        world.rebuild_value_layers()
     elif tool == "Elevation":
         world.bump_terrain(gx, gy, kw.get("brush", 3),
                            kw.get("elev_delta", 40.0), recompute=False)
@@ -2337,6 +2519,198 @@ def page_simulation():
         return st.session_state.get(key, default)
 
     with side_col:
+        # ---- SITUATIONAL AWARENESS BOARD (cockpit) ----
+        # The live picture a jury reads at a glance: the fire, every
+        # cost term, the capacity flow, each agent's current decision
+        # and the coordinator's word. Fed by the SAME cycle record the
+        # chronicle logs (engine.cycles[-1]), so the board can never
+        # disagree with the log.
+        _engSA = st.session_state.get("dss_engine")
+        _cylSA = (getattr(_engSA, "cycles", None) or []) \
+            if _engSA is not None else []
+        _cySA = _cylSA[-1] if _cylSA else None
+        with st.expander("DSS Dashboard — situational awareness",
+                         expanded=True):
+            if st.button("Cost settings & charts",
+                         key="sa_cost_dlg", use_container_width=True,
+                         help="The J_k equation, the operational "
+                              "priority and protection weights, the "
+                              "advanced thresholds and the per-term "
+                              "cost charts, in a popup."):
+                _cost_dialog()
+            # THE SITUATION IS NOT THE DSS's TO REPORT. What is burning,
+            # what it has cost, the wind and the fuel moisture are
+            # properties of the SIMULATION; only the agent rows and the
+            # coordinator's word need a decision cycle. The board used to
+            # refuse to show any of it without the DSS, so a free-running
+            # fire had no situational awareness at all.
+            # ALWAYS THE LIVE SIMULATION, never the last decision cycle.
+            # The board used to read engine.cycles[-1], which is a SNAPSHOT
+            # taken when that cycle ran. Switch the DSS off, or let it fall
+            # silent, and the chronicle stops while the fire goes on: the
+            # board then froze at the moment of the last cycle and reported
+            # assets 0.00 and population 0.00 for a town that had since
+            # burned to the ground, while the Cost panel, which reads the
+            # simulator, showed the losses correctly. Only the agent rows
+            # and the coordinator's word belong to a cycle.
+            _simSA = st.session_state.get("sim")
+            _smS = _coS = _poS = {}
+            if _simSA is not None:
+                try:
+                    _wSA = _simSA.world
+                    _smS = dict(
+                        burning=int((_simSA.state.burning > 0.5).sum()),
+                        burned=int(_simSA.ever_burned.sum()),
+                        wws_mean=float(_wSA.meteo.wws.mean()),
+                        fmoist_mean=float(_wSA.fuel.fmoist.mean()))
+                    _rSA = compute_costs(_simSA)
+                    _coS = dict(j_total=_rSA.j_total,
+                                j_physical=_rSA.j_physical,
+                                j_burn=_rSA.j_burn,
+                                j_asset=_rSA.j_asset,
+                                j_pop=_rSA.j_pop,
+                                j_resp=_rSA.j_resp,
+                                j_delay=_rSA.j_delay)
+                except Exception:
+                    pass
+            _bp = st.session_state.get("dss_res_base")
+            if _bp is not None:
+                try:
+                    _poS = dict(rcap_total=float(np.asarray(_bp.rcap).sum()))
+                except Exception:
+                    pass
+            if not _poS:
+                _poS = (_cySA.get("pool") or {}) if _cySA else {}
+            if True:
+                # A GAUGE THAT EMPTIES, AND NEVER PASSES FULL. The meter
+                # used to divide fielded capacity by staged capacity with
+                # neither side weighted by availability, a ratio the engine
+                # never forms, so it read 138% and told the reader nothing.
+                #
+                # Capacity here is a FLOW, how much force can act per
+                # minute, not a stock that drains: the same pool is there
+                # next step. Scarcity therefore shows up as DEMAND, what
+                # the orders asked for, running past the BUDGET the
+                # allocator has to spend. So the gauge is what is left of
+                # the budget this step: it falls to zero exactly when the
+                # response saturates, and when the orders want more than
+                # exists the shortfall is named instead of being hidden
+                # behind a number above 100%.
+                _actS = getattr(_engSA, "last_actions", None) or {}
+                _demS = _actS.get("demand")
+                _budS = _actS.get("budget")
+                _stagS = _rawS = 0.0
+                try:
+                    _bpS = st.session_state.get("dss_res_base")
+                    if _bpS is not None:
+                        _stagS = float(np.asarray(_bpS.rcap).sum())
+                    _resS = getattr(st.session_state.get("sim"),
+                                    "last_applied_resource", None)
+                    if _resS is not None:
+                        _rawS = float(np.asarray(_resS.rcap).sum())
+                except Exception:
+                    pass
+                if not _stagS:
+                    _stagS = float(_poS.get("rcap_total") or 0.0)
+                _freeS = None
+                _shortS = 0.0
+                if _demS is not None and _budS:
+                    _useS = float(_demS) / float(_budS)
+                    _freeS = max(0.0, min(1.0, 1.0 - _useS))
+                    _shortS = max(0.0, _useS - 1.0)
+                mS1, mS2, mS3 = st.columns(3)
+                mS1.metric("burning", int(_smS.get("burning", 0)))
+                mS2.metric("burned", int(_smS.get("burned", 0)))
+                mS3.metric(
+                    "capacity free",
+                    ("—" if _freeS is None else f"{100.0 * _freeS:.0f}%"),
+                    delta=(None if _shortS <= 0.0
+                           else f"short {100.0 * _shortS:.0f}%"),
+                    delta_color="inverse",
+                    help="How much of this step's allocation budget the "
+                         "orders did NOT need. It falls toward zero as the "
+                         "response commits, and it cannot pass 100%.\n\n"
+                         "Capacity is a RATE, not a stock: the pool does "
+                         "not empty, the same force is available next "
+                         "minute. What runs short is the amount that can "
+                         "act at once. At 0% every cell the orders asked "
+                         "for cannot be funded, so the allocator pays for "
+                         "the highest-value ones and the rest get nothing "
+                         "— which is how an under-resourced fire escapes "
+                         "in this model.\n\n"
+                         "The red figure is the shortfall: how much more "
+                         "capacity the orders wanted than exists. While it "
+                         "shows, the fire is being fought with less than "
+                         "it asked for.")
+                if _shortS > 0.0:
+                    st.markdown(
+                        "<div style='font-size:0.84em;color:#c0392b'>"
+                        "&#9888; response saturated — the orders want "
+                        f"{100.0 * (1.0 + _shortS):.0f}% of the budget; "
+                        "the lowest-value cells are going unfunded"
+                        "</div>", unsafe_allow_html=True)
+                # THE WHOLE COST, NOT PART OF IT. The delay term was never
+                # shown and the physical outcome had nowhere to sit beside
+                # the decision cost, so a reader could not check the total
+                # against its parts nor tell a good FIRE from a cheap one.
+                _barsS = [
+                    ("J total (decision)", _coS.get("j_total"), "#8c8c8c"),
+                    ("J phys (outcome)", _coS.get("j_physical"), "#5c5c5c"),
+                    ("burned area", _coS.get("j_burn"), "#ff5a1e"),
+                    ("assets", _coS.get("j_asset"), "#b42828"),
+                    ("population", _coS.get("j_pop"), "#2878ff"),
+                    ("response", _coS.get("j_resp"), "#a08cff"),
+                    ("delay", _coS.get("j_delay"), "#c8a0ff")]
+                st.markdown(
+                    "".join(_iv_bar(_lb, float(_vb or 0.0), _cb)
+                            for _lb, _vb, _cb in _barsS),
+                    unsafe_allow_html=True)
+                st.caption(
+                    f"wind {float(_smS.get('wws_mean') or 0):.1f} m/s"
+                    f" · fuel moisture "
+                    f"{float(_smS.get('fmoist_mean') or 0):.2f}"
+                    f" · staged pool {_stagS:.0f}"
+                    f" · fielded {_rawS:.0f}"
+                    + (f" · asked {float(_demS):.0f} of {float(_budS):.0f}"
+                       if (_demS is not None and _budS) else ""))
+                # the agents and the coordinator ARE the DSS, so these
+                # stay empty until a decision cycle has run
+                if not _cySA:
+                    st.caption("No decision cycle yet — the agent rows and "
+                               "the coordinator's ranking appear once the "
+                               "DSS runs. The situation above is the "
+                               "simulation's own.")
+                _glS = (_cySA.get("global_dss") or {}) if _cySA else {}
+                _hotS = _glS.get("hotspot")
+                for _nS, _rS in ((_cySA.get("regions") or {})
+                                 if _cySA else {}).items():
+                    _uS = _rS.get("orders_final") or {}
+                    _topS = sorted(
+                        ((k, float(v)) for k, v in _uS.items()
+                         if k != "_share" and float(v) > 0.05),
+                        key=lambda t: -t[1])[:3]
+                    _roleS = ("FOCUS" if _nS == _hotS
+                              else ("attended" if _rS.get("attended")
+                                    else "monitor"))
+                    st.markdown(
+                        "<div style='font-size:0.84em;margin:2px 0'>"
+                        f"<b>{_nS}</b> · {_roleS} · share "
+                        f"{float(_rS.get('coord_share') or 0):.2f} · "
+                        f"Q {float(_rS.get('quality') or 0):.2f}"
+                        + (" · <b style='color:#c00'>FAIL-SAFE</b>"
+                           if _rS.get("failsafe") else "")
+                        + "<br>"
+                        + (", ".join(f"{k.split('_')[0]} {v:.2f}"
+                                     for k, v in _topS)
+                           or "no offensive orders")
+                        + "</div>", unsafe_allow_html=True)
+                if _glS.get("statement"):
+                    st.caption(str(_glS.get("statement")))
+                for _dS in (_glS.get("directives") or []):
+                    st.markdown(
+                        "<div style='font-size:0.82em;color:#c40'>"
+                        f"\u25c6 {_dS}</div>",
+                        unsafe_allow_html=True)
         # one panel at a time: no scrolling, DSS first
         # panels laid out in fixed rows (a button grid, so the grouping is
         # stable): row 1 environment/time/ignition, rows 2-3 the DSS layers,
@@ -4427,13 +4801,13 @@ def page_simulation():
                         st.caption(
                             f"{len(_rows)} cycle(s). Columns are explained "
                             "under the preview table on the panel.")
-                        _csvA = ("\t".join(_COLS_A) + "\n" + "\n".join(
-                            "\t".join(str(r.get(c, "")) for c in _COLS_A)
-                            for r in _rows))
                         st.download_button(
-                            "Download as TSV", _csvA,
-                            file_name="layer4_steps.tsv", mime="text/tab-"
-                            "separated-values", key="dl_steps_tsv")
+                            "⬇ Download as Excel",
+                            _xlsx_bytes({"Adaptation": [
+                                {c: r.get(c) for c in _COLS_A}
+                                for r in _rows]}),
+                            file_name="layer4_steps.xlsx", mime=XLSX_MIME,
+                            key="dl_steps_xlsx")
                     if _ob1.button("Open in a window", key="open_steps",
                                    use_container_width=True,
                                    help="Shows the full table with every "
@@ -5016,21 +5390,16 @@ def page_simulation():
                     return d
                 _tbl = [_row(r) for r in _eng4.log.records]
                 st.dataframe(_tbl, use_container_width=True, height=280)
-                import io as _io_l
-                import csv as _csv_l
                 import json as _js_all
-                _buf_l = _io_l.StringIO()
-                _wr = _csv_l.DictWriter(
-                    _buf_l, fieldnames=list(_tbl[0].keys()) if _tbl else [],
-                    delimiter=";")
-                _wr.writeheader()
-                _wr.writerows(_tbl)
                 _dlc1, _dlc2 = st.columns(2)
+                # a semicolon CSV "that opens in Excel" still arrives as
+                # text in every column and depends on the reader's locale
+                # separator; a workbook does not
                 _dlc1.download_button(
-                    "Download trace (CSV, opens in Excel)",
-                    _buf_l.getvalue().encode("utf-8-sig"),
-                    file_name="dss_decision_trace.csv",
-                    mime="text/csv")
+                    "⬇ Download trace (Excel)",
+                    _xlsx_bytes({"Decision trace": _tbl}),
+                    file_name="dss_decision_trace.xlsx", mime=XLSX_MIME,
+                    key="trace_xlsx")
                 _dlc2.download_button(
                     "Download ALL cycles (JSON, full detail)",
                     _js_all.dumps(_eng4.cycles, indent=1).encode(),
@@ -5479,10 +5848,11 @@ def page_simulation():
                        "zoom; the camera survives the steps. To place "
                        "ignitions, switch to the 2D map and tick 'Click map "
                        "to place ignition'.")
-            fig = viz.fire_surface_figure(world, sim=sim)
-            key3d = f"plot3d_{st.session_state.map_version}"
-            st.plotly_chart(fig, use_container_width=True,
-                            config={"scrollZoom": True}, key=key3d)
+            with _map_card():
+                fig = viz.fire_surface_figure(world, sim=sim)
+                key3d = f"plot3d_{st.session_state.map_version}"
+                st.plotly_chart(fig, use_container_width=True,
+                                config={"scrollZoom": True}, key=key3d)
         else:
             place = st.checkbox(
                 "Click map to place ignition", value=False, key="sim_place",
@@ -5501,7 +5871,15 @@ def page_simulation():
             # Layer 2 version carries an extra attendance flag per region;
             # it is kept when it still matches the current count.
             _rall = None
-            if bool(_sv("ly_agents_v", True)):
+            # NOT BEFORE THERE ARE ANY. The default agent count is one, so
+            # the map drew a single region over the whole world labelled
+            # "Agent_1" on a scenario where no DSS had been set up at all:
+            # a box around everything, named after a decision-maker that
+            # does not exist yet. The overlay says something only once the
+            # world is actually split, or once an engine is running.
+            _eng_r = st.session_state.get("dss_engine")
+            if bool(_sv("ly_agents_v", True)) and (
+                    int(_sv("dss_n", 1)) > 1 or _eng_r is not None):
                 _nreg = int(_sv("dss_n", 1))
                 _rall = st.session_state.get("dss_regions_all")
                 if bool(_sv("dss_show_all", True)):
@@ -5550,31 +5928,38 @@ def page_simulation():
             if playing:
                 # fast image frames while animating (keeps the loop
                 # responsive); pause to pan / zoom
-                st.image(viz.render_pil(world, sim=sim, scale=scale,
-                                        show_labels=True, clock_text=_clk,
-                                        night_factor=_nf, region_box=_rb,
-                                        region_label=_rl, regions=_rall,
-                                        sensors=_sens, depots=_deps,
-                                        alloc=_alloc, actions=_acts,
-                                        **flags))
+                with _map_card():
+                    st.image(viz.render_pil(world, sim=sim, scale=scale,
+                                            show_labels=True,
+                                            clock_text=_clk,
+                                            night_factor=_nf, region_box=_rb,
+                                            region_label=_rl, regions=_rall,
+                                            sensors=_sens, depots=_deps,
+                                            alloc=_alloc, actions=_acts,
+                                            **flags),
+                             use_container_width=True)
             elif place and HAS_CANVAS:
                 # ignition placement works exactly like the Map editor:
                 # a click canvas over the rendered map; each click drops a
                 # marker that is applied as an ignition
                 bg = viz.render_pil(world, sim=sim, scale=scale,
+
                                     show_labels=True, clock_text=_clk,
                                     night_factor=_nf, region_box=_rb,
                                     region_label=_rl, regions=_rall,
                                     sensors=_sens, depots=_deps,
                                     alloc=_alloc, actions=_acts,
                                     **flags)
-                res = st_canvas(stroke_width=2, stroke_color="#a200de",
-                                background_image=bg, update_streamlit=True,
-                                height=cfg.ny * scale, width=cfg.nx * scale,
-                                drawing_mode="point", display_toolbar=False,
-                                point_display_radius=max(3, scale // 2),
-                                key=(f"simc_{st.session_state.canvas_key}_"
-                                     f"{scale}"))
+                with _map_card():
+                    res = st_canvas(stroke_width=2, stroke_color="#a200de",
+                                    background_image=bg, update_streamlit=True,
+                                    height=cfg.ny * scale, width=cfg.nx * scale,
+                                    drawing_mode="point", display_toolbar=False,
+                                    point_display_radius=max(3, scale // 2),
+                                    key=(f"simc_{st.session_state.canvas_key}_"
+                                         f"{scale}"))
+                if st.session_state.get("ign_warn"):
+                    st.warning(st.session_state.pop("ign_warn"))
                 if world.ignitions and st.button(
                         "Remove last ignition",
                         help="Deletes the most recently placed ignition "
@@ -5591,6 +5976,10 @@ def page_simulation():
                             rad = o.get("radius", 0)
                             gx, gy = _clip((o["left"] + rad) / scale,
                                            (o["top"] + rad) / scale)
+                            _wign2 = _ignition_warning(world, gx, gy,
+                                                       int(ig_rad))
+                            if _wign2:
+                                st.session_state["ign_warn"] = _wign2
                             world.add_ignition(gx, gy, step=ig_step,
                                                radius=int(ig_rad))
                     # the canvas is NOT remounted between clicks (a
@@ -5604,19 +5993,34 @@ def page_simulation():
                 # plotly map exactly like the 3D view: top-right modebar
                 # (zoom / pan / reset), drag to pan, wheel to zoom; the view
                 # survives the steps via the figure uirevision
-                st.plotly_chart(
-                    viz.map_figure_2d(world, sim=sim, scale=scale,
-                                      clock_text=_clk, night_factor=_nf,
-                                      region_box=_rb, region_label=_rl,
-                                      regions=_rall, sensors=_sens,
-                                      depots=_deps, alloc=_alloc,
-                                      actions=_acts,
-                                      uirevision=f"m{st.session_state.map_version}",
-                                      **flags),
-                    use_container_width=True,
-                    key=f"plot2d_{st.session_state.map_version}",
-                    config={"scrollZoom": True,
-                            "modeBarButtonsToRemove": ["lasso2d", "select2d"]})
+                _hov = st.checkbox(
+                    "Cell tooltip on hover", value=True, key="map_hover",
+                    help="Point at a cell to read its fuel, its burn "
+                         "state, the assets on it, the DSS orders that "
+                         "landed there and which agent owns it. It sends "
+                         "one line per cell to the browser, so turn it off "
+                         "if the page feels heavy on a large map.")
+                # the plotly raster layer smooths on scale; pixelated
+                # keeps cell edges honest, and the supersampled source
+                # keeps them from looking jagged
+                st.markdown("<style>.js-plotly-plot image "
+                            "{ image-rendering: pixelated; }</style>",
+                            unsafe_allow_html=True)
+                with _map_card():
+                    st.plotly_chart(
+                        viz.map_figure_2d(world, sim=sim, scale=scale,
+                                          hover=bool(_hov), engine=_eng_m,
+                                          clock_text=_clk, night_factor=_nf,
+                                          region_box=_rb, region_label=_rl,
+                                          regions=_rall, sensors=_sens,
+                                          depots=_deps, alloc=_alloc,
+                                          actions=_acts,
+                                          uirevision=f"m{st.session_state.map_version}",
+                                          **flags),
+                        use_container_width=True,
+                        key=f"plot2d_{st.session_state.map_version}",
+                        config={"scrollZoom": True,
+                                "modeBarButtonsToRemove": ["lasso2d", "select2d"]})
                 if world.ignitions and st.button(
                         "Remove last ignition",
                         help="Deletes the most recently placed ignition "
@@ -5688,13 +6092,12 @@ def page_simulation():
                                      height=620)
                         _cd = list(_rows_dl[0].keys()) if _rows_dl else []
                         st.download_button(
-                            "Download as TSV",
-                            ("\t".join(_cd) + "\n" + "\n".join(
-                                "\t".join(str(r.get(c, "")) for c in _cd)
-                                for r in _rows_dl)),
-                            file_name="decision_log.tsv",
-                            mime="text/tab-separated-values",
-                            key="dl_declog_tsv")
+                            "⬇ Download as Excel",
+                            _xlsx_bytes({"Decision log": [
+                                {c: r.get(c) for c in _cd}
+                                for r in _rows_dl]}),
+                            file_name="decision_log.xlsx", mime=XLSX_MIME,
+                            key="dl_declog_xlsx")
                     if st.button("Open in a window", key="open_dlog",
                                  use_container_width=True):
                         _dlog_window()
@@ -5710,7 +6113,9 @@ def page_simulation():
                     "offensive allocation for that whole cycle. "
                     "**global_dss** is the coordinator's statement in its "
                     "own words.")
-        _cost_panel()
+        # the cost panel moved into a dialog opened from the DSS
+        # Dashboard (see _cost_dialog): the jury view keeps the map
+        # tall and the numbers one click away
 
 
 def _selection_points(ev):
@@ -5738,6 +6143,9 @@ def _place_from_selection(ev, ig_step, ig_rad, scale=None):
     if st.session_state.get("last_sel_sig") == sig:
         return
     st.session_state["last_sel_sig"] = sig
+    _wign = _ignition_warning(world, gx, gy, ig_rad)
+    if _wign:
+        st.warning(_wign)
     world.add_ignition(gx, gy, step=ig_step, radius=ig_rad)
     st.toast(f"Ignition at ({gx}, {gy})")
     st.rerun()
@@ -5750,6 +6158,15 @@ _J_TERMS = [
     ("Jʳᵉˢᵖ", "j_resp", "#2c3e50", "response cost"),
     ("Jᵈᵉˡ", "j_delay", "#7f8c8d", "response delay"),
 ]
+
+
+@st.dialog("Cost function — settings & charts", width="large")
+def _cost_dialog():
+    """The whole cost story in a popup: the J_k equation, the
+    operational priority weights, the protection targeting weights,
+    the advanced thresholds and the per-term time charts. Opened from
+    the DSS Dashboard so the map page itself stays uncluttered."""
+    _cost_panel()
 
 
 def _cost_panel():
@@ -5778,11 +6195,11 @@ def _cost_panel():
     _wpre = {
         "Balanced (default)":            (0.294, 0.294, 0.294,
                                           0.059, 0.059),
-        "Life first \u2014 \u00f6nce insan":  (0.20, 0.20, 0.45,
+        "Life first":                    (0.20, 0.20, 0.45,
                                           0.075, 0.075),
         "Assets & infrastructure first": (0.20, 0.45, 0.25,
                                           0.05, 0.05),
-        "Environment first \u2014 forest":    (0.45, 0.20, 0.25,
+        "Environment first":             (0.45, 0.20, 0.25,
                                           0.05, 0.05),
         "Custom":                        None,
     }
@@ -5909,17 +6326,39 @@ def _cost_panel():
     d = rep.to_dict()
 
     # physical impact
-    m = st.columns(5)
+    _pref = float(getattr(rep, "population_reference", 0.0) or 0.0)
+    _pev = float(getattr(rep, "population_evacuated", 0.0) or 0.0)
+    m = st.columns(6)
     m[0].metric("Burned area (ha)", f"{rep.burned_area_ha:,.1f}")
     m[1].metric("Burned forest (ha)", f"{rep.burned_forest_ha:,.1f}")
-    m[2].metric("Population exposed", f"{rep.population_exposed:,.0f}")
-    m[3].metric("Evacuated (safe)",
-                f"{getattr(rep, 'population_evacuated', 0.0):,.0f}",
-                help="People moved out by evacuation orders; they "
-                     "leave the exposure and J_pop accounting. Cells "
-                     "in or beside active flame empty at ~30%/min "
-                     "under an order, elsewhere ~5%/min.")
-    m[4].metric("Asset value lost",
+    # THE DENOMINATOR BELONGS ON SCREEN. "exposed 4,417" and "evacuated
+    # 1,426" were shown with nothing to read them against, so neither could
+    # be judged and the two looked like they should add up to something.
+    m[2].metric("Population at risk", f"{_pref:,.0f}",
+                help="The population the fire started with. J_pop is "
+                     "normalized by this, so it is the denominator for "
+                     "both figures beside it.")
+    m[3].metric("Population exposed",
+                f"{rep.population_exposed:,.0f}"
+                + (f"  ({100.0 * rep.population_exposed / _pref:.0f}%)"
+                   if _pref > 0 else ""),
+                help="People inside cells that have burned. A HEADCOUNT: "
+                     "J_pop is not this number, it is the exposure "
+                     "integrated over time (person-steps), so a short "
+                     "exposure of many people and a long exposure of few "
+                     "can cost the same.")
+    m[4].metric("Evacuated (safe)",
+                f"{_pev:,.0f}"
+                + (f"  ({100.0 * _pev / _pref:.0f}%)" if _pref > 0 else ""),
+                help="People moved out by evacuation orders; they leave "
+                     "vpop, so they stop accumulating exposure from that "
+                     "moment. It cannot undo the person-steps already "
+                     "accrued before the order landed, which is why a late "
+                     "evacuation shows a large evacuated count and still "
+                     "leaves J_pop high. Cells in or beside active flame "
+                     "empty at ~30%/min under an order, elsewhere ~5%/min, "
+                     "and a public warning roughly doubles that tempo.")
+    m[5].metric("Asset value lost",
                 f"{rep.asset_value_lost:,.1f} / {rep.asset_value_total:,.1f}")
 
     with st.expander("How each term is computed \u2014 actual "
@@ -5947,9 +6386,13 @@ def _cost_panel():
              "lost / total", rep.j_asset, _cw.w_asset),
             ("J_pop", f"{rep.population_person_steps:,.0f} "
              "person-steps in burning cells "
-             f"(now exposed: {rep.population_exposed:,.0f})",
-             f"total population \u00d7 H={_H:g} steps",
-             "\u03a3 exposed / (pop \u00d7 H)", rep.j_pop,
+             f"(exposed now {rep.population_exposed:,.0f}, "
+             f"evacuated {float(getattr(rep, 'population_evacuated', 0)):,.0f}"
+             " and no longer accumulating)",
+             f"population AT RISK "
+             f"{float(getattr(rep, 'population_reference', 0)):,.0f} "
+             f"\u00d7 H={_H:g} steps",
+             "\u03a3 exposed / (pop_at_risk \u00d7 H)", rep.j_pop,
              _cw.w_pop),
             ("J_resp", f"{rep.committed_capacity:,.0f} capacity now "
              "fielded (effort integrates over time)",
@@ -6023,7 +6466,267 @@ def _cost_panel():
 
 
 # =============================================================== MAP EDITOR ==
+#: what the manager may edit, and what it is called on screen
+_ASSET_COLS = ["keep", "kind", "name", "x", "y", "radius", "value",
+               "population"]
+
+
+def _asset_manager(world) -> None:
+    """List, rename, move and delete everything the map holds.
+
+    A generated map arrives with a couple of dozen assets and no way to
+    touch any of them: the only tool was to paint another one on top. So a
+    hospital in the wrong place stayed there, a name could not be corrected,
+    and a settlement could not be thinned out.
+
+    Deleting or moving is not a matter of the list alone. add_asset WRITES
+    into the value layers with np.maximum and nothing takes a written value
+    back out, so the layers are rebuilt from the edited list; otherwise a
+    deleted hospital goes on being worth protecting where it used to stand.
+    """
+    _as = list(getattr(world, "assets", []) or [])
+    with st.expander(f"Assets on this map ({len(_as)})", expanded=False):
+        if not _as:
+            st.caption("None yet. Click the map to place one.")
+            return
+        _rows = [dict(keep=True, kind=str(getattr(a, "kind", "")),
+                      name=str(getattr(a, "name", "")),
+                      x=int(getattr(a, "x", 0)), y=int(getattr(a, "y", 0)),
+                      radius=int(getattr(a, "radius", 0)),
+                      value=float(getattr(a, "value", 0.0) or 0.0),
+                      population=float(getattr(a, "population", 0.0) or 0.0))
+                 for a in _as]
+        st.caption("Untick **keep** to delete. Edit a name, a position, a "
+                   "radius or a value in place. Nothing changes until you "
+                   "press Apply.")
+        _ed = st.data_editor(
+            _rows, key="asset_mgr", use_container_width=True, height=280,
+            column_order=_ASSET_COLS, hide_index=True,
+            disabled=["kind"],
+            column_config={
+                "keep": st.column_config.CheckboxColumn("keep", width="small"),
+                "kind": st.column_config.TextColumn("kind", width="small"),
+                "name": st.column_config.TextColumn("name", width="medium"),
+                "x": st.column_config.NumberColumn(
+                    "x", min_value=0, max_value=int(world.config.nx) - 1,
+                    step=1, width="small"),
+                "y": st.column_config.NumberColumn(
+                    "y", min_value=0, max_value=int(world.config.ny) - 1,
+                    step=1, width="small"),
+                "radius": st.column_config.NumberColumn(
+                    "radius", min_value=0, max_value=60, step=1,
+                    width="small"),
+                "value": st.column_config.NumberColumn(
+                    "value", min_value=0.0, max_value=1.0, step=0.05,
+                    width="small"),
+                "population": st.column_config.NumberColumn(
+                    "population", min_value=0.0, step=100.0,
+                    width="small")})
+        c1, c2 = st.columns([1, 2])
+        if c1.button("Apply asset edits", use_container_width=True,
+                     type="primary", key="asset_mgr_apply"):
+            from disaster_phyengine.world import Asset
+            _new = []
+            # the rows and the assets are 1:1 (the editor adds no rows), so
+            # the settlement tag rides along instead of being dropped and
+            # breaking every town on the map into loose markers
+            for r, _src in zip(_ed, _as):
+                if not bool(r.get("keep", True)):
+                    continue
+                _new.append(Asset(
+                    str(r.get("name") or "Asset"),
+                    str(r.get("kind") or "building"),
+                    int(np.clip(int(r.get("x", 0)), 0,
+                                int(world.config.nx) - 1)),
+                    int(np.clip(int(r.get("y", 0)), 0,
+                                int(world.config.ny) - 1)),
+                    int(max(0, int(r.get("radius", 0)))),
+                    value=float(r.get("value", 0.0) or 0.0),
+                    population=float(r.get("population", 0.0) or 0.0),
+                    group=str(getattr(_src, "group", "") or "")))
+            _dropped = len(_as) - len(_new)
+            world.assets = _new
+            # THE LAYERS ARE DERIVED, so they are rebuilt rather than patched
+            world.rebuild_value_layers()
+            st.session_state.map_version = \
+                st.session_state.get("map_version", 0) + 1
+            _reset_dss_state(drop_engine=True)
+            c2.success(f"{len(_new)} asset(s) kept"
+                       + (f", {_dropped} deleted" if _dropped else "")
+                       + " — value layers rebuilt.")
+            st.rerun()
+        c2.caption("Deleting or moving rebuilds the protection value from "
+                   "the list, so nothing is left behind at the old place. "
+                   "The DSS is reset because its regions and its learned "
+                   "targets refer to what was there before.")
+
+
+def _settlement_manager(world) -> None:
+    """List, rename, move and delete whole settlements.
+
+    A town is not a marker. It is a block of built-up fuel, a street grid,
+    its residents and its civic facilities, and the asset list could only
+    ever delete those one at a time: the block of urban ground stayed
+    behind, so the map kept a town-shaped patch that still burned like a
+    town and no longer cost anything when it did. Here a settlement is one
+    row, and removing it takes the ground back to the cover around it.
+    """
+    from disaster_phyengine import terrain as _tr
+    _sets = _tr.settlements(world)
+    with st.expander(f"Settlements on this map ({len(_sets)})",
+                     expanded=False):
+        if not _sets:
+            st.caption("None. Place one with the Settlement tool.")
+            return
+        _rows = [dict(keep=True, name=str(v["name"]), x=int(v["x"]),
+                      y=int(v["y"]), population=float(v["population"]),
+                      facilities=int(v["facilities"]), parts=int(v["parts"]))
+                 for v in _sets.values()]
+        st.caption("Untick **keep** to remove the town, its people, its "
+                   "facilities and its built-up ground. Change x/y to move "
+                   "it (the block is repainted at the new place). Rename in "
+                   "place. Nothing changes until you press Apply.")
+        _ed = st.data_editor(
+            _rows, key="sett_mgr", use_container_width=True, height=210,
+            column_order=["keep", "name", "x", "y", "population",
+                          "facilities", "parts"],
+            hide_index=True, disabled=["facilities", "parts"],
+            column_config={
+                "keep": st.column_config.CheckboxColumn("keep", width="small"),
+                "name": st.column_config.TextColumn("name", width="medium"),
+                "x": st.column_config.NumberColumn(
+                    "x", min_value=0, max_value=int(world.config.nx) - 1,
+                    step=1, width="small"),
+                "y": st.column_config.NumberColumn(
+                    "y", min_value=0, max_value=int(world.config.ny) - 1,
+                    step=1, width="small"),
+                "population": st.column_config.NumberColumn(
+                    "people", min_value=0.0, step=100.0, width="small"),
+                "facilities": st.column_config.NumberColumn(
+                    "facilities", width="small"),
+                "parts": st.column_config.NumberColumn(
+                    "assets", width="small")})
+        c1, c2 = st.columns([1, 2])
+        if c1.button("Apply settlement edits", use_container_width=True,
+                     type="primary", key="sett_mgr_apply"):
+            _keys = list(_sets)
+            _rm = _mv = _rn = 0
+            for _k, r in zip(_keys, _ed):
+                _old = _sets[_k]
+                if not bool(r.get("keep", True)):
+                    _tr.remove_settlement(world, _k)
+                    _rm += 1
+                    continue
+                _nx = int(np.clip(int(r.get("x", _old["x"])), 0,
+                                  int(world.config.nx) - 1))
+                _ny = int(np.clip(int(r.get("y", _old["y"])), 0,
+                                  int(world.config.ny) - 1))
+                _nm = str(r.get("name") or _k)
+                if _nx != int(_old["x"]) or _ny != int(_old["y"]):
+                    # MOVING IS A REBUILD. The block, the streets and the
+                    # facility ring are painted onto the terrain, so they
+                    # have to be unpainted here and painted there.
+                    _tr.move_settlement(world, _k, _nx, _ny, name=_nm)
+                    _mv += 1
+                elif _nm != _k:
+                    for _a in world.assets:
+                        if str(getattr(_a, "group", "")) == _k:
+                            _a.name = str(_a.name).replace(_k, _nm)
+                            _a.group = _nm
+                    _rn += 1
+            world.rebuild_value_layers()
+            st.session_state.map_version = \
+                st.session_state.get("map_version", 0) + 1
+            _reset_dss_state(drop_engine=True)
+            c2.success(f"{_rm} removed, {_mv} moved, {_rn} renamed.")
+            st.rerun()
+        c2.caption("Removing a settlement returns its ground to the cover "
+                   "around it and rebuilds the protection value. The roads "
+                   "stay: the road through a town is also the road past it.")
+
+
+def _map_library(world) -> None:
+    """Save the map under a name, open a saved one, pick the default.
+
+    A generated landscape used to be a throwaway: the only way to keep one
+    was to download a scenario file and upload it again next session, and
+    the app always opened on the same procedural mountain map whatever had
+    been built in the editor.
+    """
+    from disaster_phyengine import maplib as _ml
+    try:
+        _maps = _ml.list_maps()
+    except Exception as _e:
+        st.warning(f"Map library unavailable: {_e}")
+        return
+    _cur = st.session_state.get("_opened_map") or ""
+    with st.expander(f"Map library ({len(_maps)} saved)"
+                     + (f" \u2014 open: {_cur}" if _cur else ""),
+                     expanded=False):
+        c1, c2, c3 = st.columns([2, 2, 1])
+        _nm = c1.text_input("Name", value=_cur, key="lib_name",
+                            placeholder="e.g. Marmaris kiyisi")
+        _nt = c2.text_input("Note (optional)", key="lib_note",
+                            placeholder="what this map is for")
+        c3.markdown("&nbsp;", unsafe_allow_html=True)
+        if c3.button("Save map", use_container_width=True, type="primary",
+                     key="lib_save"):
+            if not _nm.strip():
+                c3.error("Name?")
+            else:
+                _r = _ml.save_map(world, _nm, _nt)
+                st.session_state["_opened_map"] = _r["name"]
+                st.success(f"Saved **{_r['name']}** "
+                           f"({_r['nx']}x{_r['ny']} at {_r['cell_m']:.0f} m, "
+                           f"{_r['settlements']} settlement(s), "
+                           f"{_r['assets']} asset(s)).")
+                st.rerun()
+        st.caption("Saving writes the WHOLE map: terrain, cover, roads, "
+                   "assets, settlements and scheduled ignitions. Saving "
+                   "under a name that already exists replaces it.")
+
+        if not _maps:
+            st.info("Nothing saved yet.")
+            return
+        st.divider()
+        st.dataframe(
+            [{"default": bool(m.get("default")), "name": m.get("name"),
+              "size": f"{m.get('nx', '?')}x{m.get('ny', '?')}"
+                      f" @ {float(m.get('cell_m', 0)):.0f} m",
+              "extent": f"{m.get('km', '?')} km", "towns": m.get("settlements"),
+              "assets": m.get("assets"), "saved": m.get("saved"),
+              "note": m.get("note")} for m in _maps],
+            use_container_width=True, hide_index=True)
+        _names = [str(m.get("name")) for m in _maps]
+        _pick = st.selectbox("Map", _names, key="lib_pick")
+        d1, d2, d3 = st.columns(3)
+        if d1.button("Open", use_container_width=True, key="lib_open"):
+            _new_simulator(_ml.load_map(_pick))
+            st.session_state["_opened_map"] = _pick
+            st.rerun()
+        _isdef = any(m.get("default") and str(m.get("name")) == _pick
+                     for m in _maps)
+        if d2.button("Unset default" if _isdef else "Make default",
+                     use_container_width=True, key="lib_def",
+                     help="The default map opens with the app."):
+            _ml.set_default(None if _isdef else _pick)
+            st.rerun()
+        if d3.button("Delete", use_container_width=True, key="lib_del"):
+            # TWO PRESSES, NOT ONE. A map can be an afternoon's editing and
+            # the button sits next to Open.
+            if st.session_state.get("_lib_del_armed") == _pick:
+                _ml.delete_map(_pick)
+                st.session_state.pop("_lib_del_armed", None)
+                st.rerun()
+            st.session_state["_lib_del_armed"] = _pick
+        if st.session_state.get("_lib_del_armed") == _pick:
+            st.warning(f"Press Delete again to remove **{_pick}** "
+                       "from the library.")
+        st.caption(f"Files: `{_ml.library_dir()}`")
+
+
 def page_editor():
+    _map_library(world)
     with st.expander("New map / scenario \u2014 generate, load, import",
                      expanded=False):
         st.caption("Procedural landscapes for experiments. For a real region "
@@ -6059,7 +6762,6 @@ def page_editor():
                     "scenarios 30 m cells are recommended; increase "
                     "nx/ny instead if you need a larger area.")
         if src == "Landscape type":
-            seed = st.number_input("Seed", 0, 99999, 42)
             _D2R = 0.017453292519943295
 
             st.markdown("**Terrain — $U_{Geo}$**")
@@ -6125,12 +6827,25 @@ def page_editor():
                      "largest part, villages get smaller shares; the parts "
                      "sum exactly to this value.")
             bscale = st.slider(
-                "Building / critical facility density", 0.2, 2.0, 1.0, 0.1,
+                "Building / critical facility density", 0.0, 2.0, 1.0, 0.1,
                 help="Scales the footprint of buildings and critical "
-                     "facilities (hospital, power substation).")
+                     "facilities AND how many a settlement carries. At 0 "
+                     "the settlements are houses only.")
+            farmv = st.checkbox(
+                "Farmland around settlements", value=True, key="gen_farm",
+                help="Rectangular cultivated parcels on the flat low ground "
+                     "near settlements. A worked field carries about half "
+                     "the fine fuel of natural grass and a little more "
+                     "moisture, so it slows a front, which is why it is on "
+                     "by default. Turn it off for a pure wildland scenario.")
 
-            if st.button("Generate map", use_container_width=True,
-                         type="primary"):
+            # the seed sits NEXT TO the generate button: it is what one
+            # changes between quick trials, so no scrolling in between
+            _sgA, _sgB = st.columns([1, 1.6],
+                                    vertical_alignment="bottom")
+            seed = _sgA.number_input("Seed", 0, 99999, 42)
+            if _sgB.button("Generate map", use_container_width=True,
+                           type="primary"):
                 _new_simulator(terrain.generate_landscape(
                     SimConfig(nx=int(nx), ny=int(ny), cell_size_m=float(cell)),
                     seed=int(seed), relief_m=float(relief),
@@ -6142,6 +6857,7 @@ def page_editor():
                     n_settlements=int(nvill),
                     population_per_settlement=int(popv),
                     building_scale=float(bscale), accessibility=float(access),
+                    farmland=bool(farmv),
                     coast=bool(coast), river=bool(river)))
                 st.rerun()
         elif src == "Built in scenario":
@@ -6159,6 +6875,14 @@ def page_editor():
         st.divider()
         st.markdown("**Resize current map** \u2014 keeps everything on it, "
                     "resamples the grid")
+        _keep_ext = st.checkbox(
+            "Keep the physical extent (change the RESOLUTION)", value=True,
+            key="res_keep",
+            help="On: the cell size is divided by the same factor the grid "
+                 "is multiplied by, so the same ground is sampled more "
+                 "finely. Off: the cell size is kept and the map covers "
+                 "more ground, which makes the fire travel further and the "
+                 "service radii cover less of it.")
         rz1, rz2, rz3 = st.columns([1, 1, 1])
         rnx = rz1.number_input("nx", 20, 600, int(cfg.nx), 10, key="res_nx")
         rny = rz2.number_input("ny", 20, 600, int(cfg.ny), 10, key="res_ny")
@@ -6166,7 +6890,8 @@ def page_editor():
                      unsafe_allow_html=True)
         if rz3.button("Resize", use_container_width=True,
                       disabled=(int(rnx) == cfg.nx and int(rny) == cfg.ny)):
-            _new_simulator(_resize_world(world, int(rnx), int(rny)))
+            _new_simulator(_resize_world(world, int(rnx), int(rny),
+                                         keep_extent=bool(_keep_ext)))
             st.rerun()
         st.divider()
         up = st.file_uploader("Load scenario file", type=["json", "yaml", "yml"])
@@ -6179,7 +6904,8 @@ def page_editor():
     tools_col, view_col, legend_col = st.columns([1.2, 3.0, 0.9])
     with tools_col:
         st.markdown("**Tool palette**")
-        _tools = ["Fuel", "Firebreak", "Access", "Asset", "Elevation"]
+        _tools = ["Fuel", "Firebreak", "Access", "Asset", "Settlement",
+                  "Elevation"]
         _cur = st.session_state.get("tool", "Fuel")
         if _cur not in _tools:
             _cur = "Fuel"
@@ -6224,12 +6950,35 @@ def page_editor():
             kw["brush"] = st.slider("Road width", 1, 8, 1)
             shape = st.radio("Shape", ["Brush", "Rectangle"], horizontal=True)
         elif tool == "Asset":
+            _settlement_manager(world)
+            _asset_manager(world)
             kw["akind"] = st.selectbox("Asset kind", ASSET_KINDS,
                                        format_func=lambda k: ASSET_LABELS[k])
             kw["aname"] = st.text_input("Name (blank = kind)", "")
             kw["aradius"] = st.number_input("Radius (cells)", 0, 40, 3)
             kw["avalue"] = st.slider("Value", 0.0, 1.0, 1.0, 0.05)
             kw["apop"] = st.number_input("Population", 0, 1_000_000, 0)
+            shape = "Point"
+        elif tool == "Settlement":
+            _settlement_manager(world)
+            st.caption("Click the map to build a whole settlement: built-up "
+                       "ground with streets, its people spread across it, "
+                       "and civic facilities around the centre. The same "
+                       "builder the map generator uses.")
+            kw["sname"] = st.text_input("Name (blank = auto)", "",
+                                        key="set_name")
+            kw["spop"] = st.number_input("Population", 0, 1_000_000, 5000,
+                                         500, key="set_pop")
+            kw["sdens"] = st.slider(
+                "Building / critical facility density", 0.0, 2.0, 1.0, 0.1,
+                key="set_dens",
+                help="Scales the footprint AND how many civic facilities "
+                     "the settlement carries. At 0 it is houses only.")
+            kw["smain"] = st.checkbox(
+                "Main town (gets the full set of facilities)", value=False,
+                key="set_main")
+            kw["sseed"] = st.number_input("Seed (0 = random)", 0, 10 ** 6, 0,
+                                          1, key="set_seed")
             shape = "Point"
         else:  # Elevation
             st.caption("Raise or lower the ground. Uphill slope speeds the fire.")
@@ -6273,13 +7022,14 @@ def page_editor():
             st.caption("Inspect view \u00b7 drag to pan, wheel to zoom, "
                        "toolbar top-right. Switch back to the 2D canvas "
                        "to edit.")
-            st.plotly_chart(
-                viz.map_figure_2d(world, sim=sim,
-                                  scale=_fit_scale(cfg.nx), **eflags),
-                use_container_width=True,
-                key=f"edpz_{st.session_state.map_version}",
-                config={"scrollZoom": True,
-                        "modeBarButtonsToRemove": ["lasso2d", "select2d"]})
+            with _map_card():
+                st.plotly_chart(
+                    viz.map_figure_2d(world, sim=sim,
+                                      scale=_fit_scale(cfg.nx), **eflags),
+                    use_container_width=True,
+                    key=f"edpz_{st.session_state.map_version}",
+                    config={"scrollZoom": True,
+                            "modeBarButtonsToRemove": ["lasso2d", "select2d"]})
         elif vmode == "3D terrain":
             # 3D is a pure preview: all editing happens on the 2D canvas
             _e = world.topo.elev
@@ -6287,10 +7037,11 @@ def page_editor():
                        f"{_e.max():.0f} m \u00b7 drag to rotate, scroll to "
                        "zoom. All tools work on the 2D canvas view; switch "
                        "back there to edit.")
-            fig3 = viz.fire_surface_figure(world, sim=sim)
-            key3e = f"edit3d_{st.session_state.map_version}"
-            st.plotly_chart(fig3, use_container_width=True,
-                            config={"scrollZoom": True}, key=key3e)
+            with _map_card():
+                fig3 = viz.fire_surface_figure(world, sim=sim)
+                key3e = f"edit3d_{st.session_state.map_version}"
+                st.plotly_chart(fig3, use_container_width=True,
+                                config={"scrollZoom": True}, key=key3e)
         else:
             from io import BytesIO
             scale = _fit_scale(cfg.nx)
@@ -6316,20 +7067,25 @@ def page_editor():
                          "the map itself never changes."):
                 st.session_state.canvas_key += 1; st.rerun()
             if HAS_CANVAS:
+                # .get, not [tool]: adding the Settlement tool to the
+                # palette without a colour here would have raised a
+                # KeyError the moment it was selected.
                 stroke = {"Fuel": "#1f7a1f", "Firebreak": "#3070b0",
                           "Access": "#b08020", "Asset": "#ffd000",
-                          "Elevation": "#7a5230"}[tool]
+                          "Settlement": "#ff8c00",
+                          "Elevation": "#7a5230"}.get(tool, "#a200de")
                 sw = kw.get("brush", 2) * scale if drawing_mode == "freedraw" else 2
                 flagsig = abs(hash(tuple(sorted(eflags.items())))) % 100000
                 ckey = f"canvas_{st.session_state.canvas_key}_{scale}_{flagsig}"
-                result = st_canvas(fill_color="rgba(255,160,0,0.20)",
-                                   stroke_width=int(sw), stroke_color=stroke,
-                                   background_image=bg, update_streamlit=True,
-                                   height=cfg.ny * scale, width=cfg.nx * scale,
-                                   drawing_mode=drawing_mode,
-                                   display_toolbar=False,
-                                   point_display_radius=max(3, scale // 2),
-                                   key=ckey)
+                with _map_card():
+                    result = st_canvas(fill_color="rgba(255,160,0,0.20)",
+                                       stroke_width=int(sw), stroke_color=stroke,
+                                       background_image=bg, update_streamlit=True,
+                                       height=cfg.ny * scale, width=cfg.nx * scale,
+                                       drawing_mode=drawing_mode,
+                                       display_toolbar=False,
+                                       point_display_radius=max(3, scale // 2),
+                                       key=ckey)
                 objs = (result.json_data or {}).get("objects", []) if result else []
                 if live and objs:
                     _push_snapshot(); _apply_edits(objs, scale, kw)
@@ -6345,7 +7101,8 @@ def page_editor():
                         _simP._fmoist0 = world.fuel.fmoist.copy()
                     st.session_state.canvas_key += 1; st.rerun()
             else:
-                st.image(bg)
+                with _map_card():
+                    st.image(bg, use_container_width=True)
 
     st.divider()
     e1, e2 = st.columns(2)
@@ -6476,12 +7233,14 @@ def page_layers():
     tc1, tc2 = st.columns(2)
     with tc1:
         st.markdown("**2D relief**")
-        st.image(viz.terrain_pil(world, scale=max(4, 600 // max(cfg.nx, 1))))
+        with _map_card():
+            st.image(viz.terrain_pil(world, scale=max(4, 600 // max(cfg.nx, 1))))
     with tc2:
         st.markdown("**3D surface** (drag to rotate, scroll to zoom)")
         try:
-            st.plotly_chart(viz.fire_surface_figure(world, sim=sim),
-                            use_container_width=True)
+            with _map_card():
+                st.plotly_chart(viz.fire_surface_figure(world, sim=sim),
+                                use_container_width=True)
         except Exception as exc:
             st.info(f"3D needs plotly. {exc}")
 
@@ -6496,7 +7255,8 @@ def page_layers():
     if key == "tign":
         st.caption("Red = ignites first, blue = ignites later; grey = never "
                    "ignited in this run.")
-        st.image(viz.ignition_time_pil(sim, scale=max(4, 700 // max(cfg.nx, 1))))
+        with _map_card():
+            st.image(viz.ignition_time_pil(sim, scale=max(4, 700 // max(cfg.nx, 1))))
     else:
         field = _field_array(key)
         _u = unit
@@ -6528,8 +7288,9 @@ def page_layers():
                 "Flame length": "flame_length",
                 "Rate of spread (m/min)": "rate_of_spread",
                 "Crown fire": "crown_fire"}
-        st.image(viz.behavior_pil(sim, kind=bmap[bkind],
-                                  scale=max(4, 700 // max(cfg.nx, 1))))
+        with _map_card():
+            st.image(viz.behavior_pil(sim, kind=bmap[bkind],
+                                      scale=max(4, 700 // max(cfg.nx, 1))))
 
 
 # ============================================================== PARAMETERS ===
@@ -7662,12 +8423,14 @@ def page_validation():
             _figm.update_yaxes(visible=False)
             _figm.update_layout(height=640, dragmode="pan",
                                 margin=dict(l=0, r=0, t=6, b=0))
-            st.plotly_chart(_figm, use_container_width=True,
-                            config={"scrollZoom": True,
-                                    "displayModeBar": True,
-                                    "displaylogo": False})
+            with _map_card():
+                st.plotly_chart(_figm, use_container_width=True,
+                                config={"scrollZoom": True,
+                                        "displayModeBar": True,
+                                        "displaylogo": False})
         except Exception:
-            st.image(img, use_container_width=True)
+            with _map_card():
+                st.image(img, use_container_width=True)
         st.caption("Agreement map on the real terrain \u2014 green: correctly "
                    "predicted burn, red: simulated only, blue: observed only, "
                    "yellow: ignition. Scroll or use the toolbar to zoom and "
@@ -8062,11 +8825,26 @@ def page_steps():
                     f"latest first")
         st.dataframe(_view, use_container_width=True, height=560,
                      column_order=STEP_COLS, column_config=_STEP_COL_CONFIG)
-        _tsv = ("\t".join(STEP_COLS) + "\n" + "\n".join(
-            "\t".join(str(r.get(c, "")) for c in STEP_COLS) for r in _view))
-        st.download_button("Download as TSV", _tsv,
-                           file_name="layer4_steps.tsv",
-                           mime="text/tab-separated-values", key="steps_tsv")
+        # ONE WORKBOOK, ALL THREE TABLES. They describe the same cycles
+        # from three angles, so shipping them as three files left the
+        # reader lining up cycle numbers by hand.
+        st.download_button(
+            "⬇ Download all three tables (Excel)",
+            _xlsx_bytes({"Adaptation": [{c: r.get(c) for c in STEP_COLS}
+                                        for r in _view],
+                         "Agents": [{c: r.get(c) for c in AGENT_COLS}
+                                    for r in build_agent_rows(_cyc)],
+                         "Global DSS": [{c: r.get(c) for c in GLOBAL_COLS}
+                                        for r in build_global_rows(_cyc)]},
+                        meta={"cycles": len(_cyc),
+                              "adaptations accepted": _acc,
+                              "seed base": st.session_state.get(
+                                  "dss_seed_profile", "minimal"),
+                              "configuration": _dss_pkg.config_id(
+                                  _gd.get("runtime_flags") or {}),
+                              "rows shown (Adaptation)": len(_view)}),
+            file_name="layer4_step_analysis.xlsx", mime=XLSX_MIME,
+            key="steps_xlsx")
         with st.expander("What the columns mean", expanded=False):
             st.markdown(_STEP_COL_HELP)
         with st.expander("What the gates G1 to G5 mean", expanded=False):
@@ -8092,12 +8870,12 @@ def page_steps():
         st.dataframe(_av, use_container_width=True, height=560,
                      column_order=AGENT_COLS,
                      column_config=_STEP_COL_CONFIG)
-        _tsvB = ("\t".join(AGENT_COLS) + "\n" + "\n".join(
-            "\t".join(str(r.get(c, "")) for c in AGENT_COLS) for r in _av))
-        st.download_button("Download as TSV", _tsvB,
-                           file_name="layer4_agents.tsv",
-                           mime="text/tab-separated-values",
-                           key="steps_agents_tsv")
+        st.download_button(
+            "⬇ Download this table (Excel)",
+            _xlsx_bytes({"Agents": [{c: r.get(c) for c in AGENT_COLS}
+                                    for r in _av]}),
+            file_name="layer4_agents.xlsx", mime=XLSX_MIME,
+            key="steps_agents_xlsx")
         st.markdown(_AGENT_COL_HELP)
 
     with _tabC:
@@ -8110,13 +8888,12 @@ def page_steps():
         st.dataframe(_grows, use_container_width=True, height=560,
                      column_order=GLOBAL_COLS,
                      column_config=_STEP_COL_CONFIG)
-        _tsvC = ("\t".join(GLOBAL_COLS) + "\n" + "\n".join(
-            "\t".join(str(r.get(c, "")) for c in GLOBAL_COLS)
-            for r in _grows))
-        st.download_button("Download as TSV", _tsvC,
-                           file_name="layer4_global.tsv",
-                           mime="text/tab-separated-values",
-                           key="steps_global_tsv")
+        st.download_button(
+            "⬇ Download this table (Excel)",
+            _xlsx_bytes({"Global DSS": [{c: r.get(c) for c in GLOBAL_COLS}
+                                        for r in _grows]}),
+            file_name="layer4_global.xlsx", mime=XLSX_MIME,
+            key="steps_global_xlsx")
 
 
 PAGES = {"Simulation": page_simulation, "Map editor": page_editor,

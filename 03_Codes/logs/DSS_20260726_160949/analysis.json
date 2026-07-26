@@ -1,0 +1,98 @@
+{
+ "start_step": 0,
+ "seq0": 194,
+ "cycles": 4,
+ "satisficing_failed": 4,
+ "tried": 1,
+ "accepted": 0,
+ "rejected": 1,
+ "blocked": {
+  "cooldown between adaptation trials": 3
+ },
+ "per_stage": {
+  "3": {
+   "tried": 1,
+   "accepted": 0,
+   "dJ": 0.0
+  }
+ },
+ "gates": {
+  "rejected at G3 (no improvement)": 1
+ },
+ "reasons": {
+  "rejected at G3 (claude)": 1
+ },
+ "withheld": 0,
+ "dJ_accepted": 0.0,
+ "j_series": [
+  [
+   0,
+   0.27216346830572896,
+   0.27216346830572896,
+   0.25
+  ],
+  [
+   0,
+   0.27216346830572896,
+   0.27216346830572896,
+   0.25
+  ],
+  [
+   1,
+   0.27213782412626836,
+   0.27213782412626836,
+   0.25
+  ],
+  [
+   2,
+   0.27255092635265926,
+   0.27255092635265926,
+   0.25
+  ]
+ ],
+ "phys_series": [
+  [
+   0,
+   0.30857536089084914,
+   0.30857536089084914
+  ],
+  [
+   1,
+   0.3085462858574471,
+   0.3085462858574471
+  ],
+  [
+   2,
+   0.30901465572863857,
+   0.30901465572863857
+  ],
+  [
+   0,
+   0.30857536089084914,
+   0.30857536089084914
+  ]
+ ],
+ "persist_failed": 0,
+ "cooldown_refunds": 0,
+ "stage2_prefiltered": 1,
+ "genai_ms": [
+  23327.8
+ ],
+ "stage_controller": {
+  "high+gap|2": 0.000468,
+  "low|3": -0.0018853,
+  "high+gap|3": -0.00037,
+  "high+gap|1": 0.001594,
+  "mid+gap|1": -0.001045,
+  "mid+gap|3": -0.001144,
+  "mid+gap|2": -0.001008,
+  "low|1": -0.002147,
+  "low|2": -0.00224,
+  "mid|3": -0.000571,
+  "mid|2": -0.000571,
+  "mid|1": -0.000548
+ },
+ "config_id": "DSS1-EV1-GA1-U12:1-U3:1",
+ "seed_profile": "minimal",
+ "persist_errors": []
+}

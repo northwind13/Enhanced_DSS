@@ -69,6 +69,11 @@ class Simulator:
         # step index at which each cell first ignited (-1 = never), for the
         # time-to-burn propagation layer (Kose et al., 3D wildfire viz)
         self.first_ignition_step = np.full(world.shape, -1, dtype=int)
+        # and the step at which it stopped burning (-1 = never burned, or
+        # still alight). A cell's story is "lit at k, out at k'"; only the
+        # first half was being recorded, so a burn scar could not say how
+        # long it burned or when the front had passed.
+        self.burnout_step = np.full(world.shape, -1, dtype=int)
         # ignition influence buildup A_k: time-integrated neighbour
         # influence; a cell ignites when the buildup crosses theta_ign
         self.ign_buildup = np.zeros(world.shape, dtype=float)
@@ -83,6 +88,10 @@ class Simulator:
         # aerial drops; unlike wetting it does not rinse out with the
         # moisture model, it decays on its own slow clock
         self.retard = np.zeros(world.shape, dtype=float)
+        #: people who left ON THEIR OWN, kept apart from the ordered
+        #: evacuation so the two can be told apart in the accounting
+        self.population_self_evacuated = 0.0
+        self.evacuated_person_steps = 0.0
         self._vpop0 = np.asarray(world.value.vpop,
                                  dtype=float).copy()
         # cumulative simulated time: step lengths may CHANGE mid-run
@@ -111,6 +120,7 @@ class Simulator:
             "buildup": self.ign_buildup.astype(np.float32),
             "ever": self.ever_burned.copy(),
             "first": self.first_ignition_step.astype(np.int32),
+            "out": self.burnout_step.astype(np.int32),
             "cons": self.fuel_consumed_total.astype(np.float32),
             "supp": self.fuel_suppressed_total.astype(np.float32),
             # in-place mutables outside SimState: suppression and rain
@@ -124,6 +134,8 @@ class Simulator:
             "tmin": float(self.t_elapsed_min),
             "vpop": self.world.value.vpop.astype(np.float32),
             "nevac": float(self.population_evacuated),
+            "nself": float(self.population_self_evacuated),
+            "evps": float(self.evacuated_person_steps),
             "retard": self.retard.astype(np.float32),
         }
 
@@ -163,6 +175,8 @@ class Simulator:
         self.ign_buildup = snap["buildup"].astype(float)
         self.ever_burned = snap["ever"].copy()
         self.first_ignition_step = snap["first"].astype(int)
+        if "out" in snap:
+            self.burnout_step = snap["out"].astype(int)
         self.fuel_consumed_total = snap["cons"].astype(float)
         self.fuel_suppressed_total = snap["supp"].astype(float)
         self.world.fuel.fload = s.fload
@@ -176,6 +190,8 @@ class Simulator:
         if "vpop" in snap:
             self.world.value.vpop = snap["vpop"].astype(float)
         self.population_evacuated = float(snap.get("nevac", 0.0))
+        self.population_self_evacuated = float(snap.get("nself", 0.0))
+        self.evacuated_person_steps = float(snap.get("evps", 0.0))
         if "retard" in snap:
             self.retard = snap["retard"].astype(float)
         self.t_elapsed_min = float(snap.get(
@@ -191,6 +207,7 @@ class Simulator:
         self.fuel_consumed_total[:] = 0.0
         self.fuel_suppressed_total[:] = 0.0
         self.first_ignition_step[:] = -1
+        self.burnout_step[:] = -1
         self.ign_buildup[:] = 0.0
         self.history.clear()
         self.world.fuel.fload = self.world.fuel.fload0.copy()
@@ -203,9 +220,17 @@ class Simulator:
         self.exposure_person_steps = 0.0
         self.response_capacity_steps = 0.0
         self.population_evacuated = 0.0
+        self.population_self_evacuated = 0.0
+        self.evacuated_person_steps = 0.0
         self.retard[:] = 0.0
         self.world.value.vpop = self._vpop0.copy()
         self.t_elapsed_min = 0.0
+        # THE ORDERS GO WITH THE FIRE. compute_costs reads this field for
+        # the fielded capacity and the response DELAY, so leaving the last
+        # step of the previous fire in place made a freshly reset map report
+        # a response that was not happening: J_delay and the capacity
+        # readout carried over while everything around them read zero.
+        self.last_applied_resource = None
         self._snapshots = {0: self._snapshot()}
 
     # -------------------------------------------------------------- transition
@@ -235,6 +260,62 @@ class Simulator:
         # evacuated are SAFE: they leave vpop, so the exposure and
         # J_pop terms stop counting them; the running total is kept
         # for reporting.
+        # ---- SELF-EVACUATION: people leave without being told ----
+        # Nobody stands in a burning street waiting for an order. The model
+        # had no such term, so without an order the population sat where it
+        # was until the flame reached it. Residents leave at a rate set by
+        # how close the fire is, and only when they have somewhere to go:
+        # flight needs at least one neighbouring direction that is not
+        # alight, so a settlement the fire has surrounded does not quietly
+        # empty itself.
+        _se = getattr(cfg, "self_evac", None)
+        if (_se is not None and getattr(_se, "enabled", False)
+                and float(np.max(world.value.vpop)) > 1e-9):
+            _B_s = s.burning > 0.5
+            _adj = np.zeros_like(_B_s)
+            _adj[1:, :] |= _B_s[:-1, :]
+            _adj[:-1, :] |= _B_s[1:, :]
+            _adj[:, 1:] |= _B_s[:, :-1]
+            _adj[:, :-1] |= _B_s[:, 1:]
+            # how far the fire is, in cells, out to the awareness range
+            _near = _B_s.copy()
+            _dist = np.full(_B_s.shape, np.inf)
+            _dist[_B_s] = 0.0
+            for _d in range(1, max(1, int(_se.awareness_cells)) + 1):
+                _g = _near.copy()
+                _g[1:, :] |= _near[:-1, :]
+                _g[:-1, :] |= _near[1:, :]
+                _g[:, 1:] |= _near[:, :-1]
+                _g[:, :-1] |= _near[:, 1:]
+                _new = _g & ~_near
+                _dist[_new] = float(_d)
+                _near = _g
+            _R = int(_se.awareness_cells)
+            _rate = np.where(
+                _dist <= 0.0, float(_se.in_flame_per_min),
+                np.where(_dist <= 1.0, float(_se.adjacent_per_min),
+                         np.where(np.isfinite(_dist),
+                                  float(_se.aware_per_min)
+                                  * np.clip(1.0 - (_dist - 1.0)
+                                            / max(_R - 1, 1), 0.0, 1.0),
+                                  0.0)))
+            # SOMEWHERE TO GO. A cell whose every neighbour is alight has no
+            # open direction, so its people cannot flee on their own.
+            _open = np.zeros_like(_B_s)
+            _open[1:, :] |= ~_B_s[:-1, :]
+            _open[:-1, :] |= ~_B_s[1:, :]
+            _open[:, 1:] |= ~_B_s[:, :-1]
+            _open[:, :-1] |= ~_B_s[:, 1:]
+            _rate = _rate * _open
+            if float(_rate.max()) > 0.0:
+                _dtm_s = float(getattr(cfg, "step_minutes", 30.0))
+                _vp_s = world.value.vpop
+                _floor = (1.0 - float(_se.max_share)) * self._vpop0
+                _room = np.maximum(_vp_s - _floor, 0.0)
+                _gone = _room * np.clip(_rate * _dtm_s, 0.0, 1.0)
+                _vp_s -= _gone
+                self.population_self_evacuated += float(
+                    _gone.sum() * (cfg.cell_area_ha / 100.0))
         _rev = getattr(resource, "revac", None)
         if _rev is not None and float(np.max(_rev)) > 1e-6:
             _vp = world.value.vpop
@@ -269,6 +350,11 @@ class Simulator:
         _cell_km2 = self.cfg.cell_area_ha / 100.0
         self.exposure_person_steps += float(
             (world.value.vpop * _cell_km2)[s.burning > 0.5].sum())
+        # the ORDERED evacuees, integrated over time: they are displaced for
+        # as long as the incident lasts, and that is what the small
+        # evacuation weight in J_pop is charged against. Self-evacuation is
+        # exogenous, not a decision, so it is not charged to the DSS.
+        self.evacuated_person_steps += float(self.population_evacuated)
         self.response_capacity_steps += float(
             (resource.rcap * np.clip(resource.ravail, 0, 1)).sum())
         self.t_elapsed_min += float(getattr(cfg, "step_minutes", 30.0))
@@ -296,6 +382,105 @@ class Simulator:
                 (1.0 - c) * np.sin(meteo.wwd) + c * np.sin(topo.aspect),
                 (1.0 - c) * np.cos(meteo.wwd) + c * np.cos(topo.aspect))
             meteo = _MeteoView(meteo, meteo.wws * factor, wwd_eff)
+        # ---- DRYING, the counterpart of every wetting term below ----
+        # Rain, retardant and suppression all RAISE the moisture field. With
+        # nothing lowering it the field was monotonically non-decreasing over
+        # a run: a cell burned to ash kept its ambient moisture, the front
+        # never dried the fuel it was about to reach, and a cell wetted once
+        # stayed wet forever, so a line held once held itself for free.
+        #
+        # This runs BEFORE the wetting terms on purpose. A cell that is being
+        # rained on or actively sprayed ends the step wet, because those
+        # terms are applied after; a cell the crews have LEFT starts drying
+        # back toward what the air can hold.
+        _dry = getattr(cfg, "drying", None)
+        if _dry is not None and getattr(_dry, "enabled", False):
+            _dt_h = float(getattr(cfg, "step_minutes", 30.0)) / 60.0
+            # THE AMBIENT TARGET IS THE SCENARIO'S OWN MOISTURE FIELD.
+            # This simulator treats dead fuel moisture as an EXOGENOUS
+            # field (fuel_moisture.py says so in as many words): the
+            # scenario declares what the landscape holds, and the
+            # equilibrium model is an optional tool the dashboard applies
+            # when the weather is edited. So the recovery term restores
+            # that declared state after the model's own wetting, and
+            # nothing more. Relaxing toward the air's equilibrium instead
+            # would silently re-baseline every scenario: measured, it dried
+            # the grass test world far below its declared value until the
+            # spread rose enough to drive the adaptive substepping to its
+            # cap of 200, and it emptied a deliberately soaked landscape
+            # whose entire premise was that fuel above extinction does not
+            # carry fire. Only the FIRE may go below this level, through
+            # the preheating and combustion terms below, because that
+            # drying is caused by the fire and not by the air.
+            _meq = self._fmoist0
+            _fm = fuel.fmoist
+            _alight = s.burning > 0.5
+            # COMBUSTION DRYING APPLIES TO THE CHAR, NOT TO THE FLAME.
+            # In this engine the rate of spread is a property of the SOURCE
+            # cell, so drying a cell while it is alight raises its own rate
+            # and pushes the fire into neighbours that its own moisture
+            # should have stopped: measured, that carried a single ignition
+            # across a landscape soaked to 0.9 until all 400 cells burned.
+            # A cell that has gone OUT is ash, and ash is dry, which is
+            # what the map should report; because it is no longer a source,
+            # that costs the spread model nothing.
+            #
+            # ASH ONLY, NOT EVERY CELL THAT STOPPED BURNING. A cell can also
+            # stop burning because the crews QUENCHED it, and that cell is
+            # wet on purpose and still holds its fuel. Drying it undid the
+            # very wetting that had just saved it, and it re-lit: measured
+            # on the end-to-end test the fire stopped being extinguishable
+            # at all (273 cells still alight at the horizon, against 77
+            # cells and out in 42 minutes). So the char is identified by
+            # its FUEL being spent, not merely by its flame being gone.
+            # the engine's OWN exhaustion test, so the two cannot disagree:
+            # `has_fuel = Fload > eps_fuel` is what stops a cell burning
+            _spent = np.asarray(fuel.fload) <= float(cfg.spread.eps_fuel)
+            _burn = (self.first_ignition_step >= 0) & (~_alight) & _spent
+            # neighbour flame intensity: what preheats a cell is the fire
+            # NEXT to it, so the four-neighbour maximum drives the pull
+            _inb = np.zeros_like(_fm)
+            _ii = np.asarray(s.intensity, dtype=float) * _alight
+            _inb[1:, :] = np.maximum(_inb[1:, :], _ii[:-1, :])
+            _inb[:-1, :] = np.maximum(_inb[:-1, :], _ii[1:, :])
+            _inb[:, 1:] = np.maximum(_inb[:, 1:], _ii[:, :-1])
+            _inb[:, :-1] = np.maximum(_inb[:, :-1], _ii[:, 1:])
+            _inb = np.clip(_inb, 0.0, 1.0) * (~_alight) \
+                * (self.first_ignition_step < 0)
+            # target: ambient equilibrium, pulled DOWN where the front is
+            # radiating onto the cell, and collapsed to the char residual
+            # inside the flame itself
+            # PREHEATING MAY NOT MAKE UNBURNABLE FUEL BURNABLE. Radiant
+            # heat from the front does dry the fuel it reaches, but a flame
+            # in soaked fuel is weak and loses heat to its surroundings: it
+            # does not dry a wet landscape into carrying fire. Left
+            # unbounded it did exactly that, walking a single ignition
+            # across a deliberately soaked map cell by cell until the whole
+            # thing burned. So preheating acts only on fuel that could
+            # ALREADY carry fire, which is where it belongs: it makes a
+            # receptive fuel bed drier and faster, and it does not resurrect
+            # one that is out of the running.
+            _mext = np.asarray(
+                [FUEL_MODELS[i].m_ext if i in FUEL_MODELS else 0.3
+                 for i in range(int(np.max(fuel.ftype)) + 1)],
+                dtype=float)[np.asarray(fuel.ftype, dtype=int)]
+            _inb = _inb * (self._fmoist0 < _mext)
+            _tgt = _meq * (1.0 - float(_dry.preheat_depth) * _inb)
+            _tgt = np.where(_burn, float(_dry.burn_floor), _tgt)
+            # response time: the 1-hour timelag class, shortened by the
+            # preheating and collapsed while the cell is alight
+            _tau = np.full_like(_fm, max(1e-3, float(_dry.timelag_h)))
+            _tau = _tau / (1.0 + float(_dry.preheat_gain) * _inb)
+            _tau = np.where(_burn,
+                            max(1e-3, float(_dry.burn_timelag_min) / 60.0),
+                            _tau)
+            _k = 1.0 - np.exp(-_dt_h / _tau)
+            # DRYING ONLY. Absorption from humid air is slower and weaker
+            # than the wetting terms already modelled, and letting it run
+            # here would re-baseline every scenario that starts drier than
+            # its own equilibrium.
+            _fm += np.where(_fm > _tgt, (_tgt - _fm) * _k, 0.0)
+            np.clip(_fm, 0.0, 1.0, out=_fm)
         # precipitation wets the dead fuel: while it rains the moisture
         # relaxes toward at least 0.35 (above every extinction threshold)
         # with a ~30 min time constant scaled by rain intensity, so
@@ -589,6 +774,12 @@ class Simulator:
         active = s.burning > 0.5
         newly = burned_any & (self.first_ignition_step < 0)
         self.first_ignition_step[newly] = s.step
+        # a cell that WAS alight and no longer is has burned out at this
+        # step; recorded once, so a re-ignition does not rewrite the first
+        # time the front passed through
+        _went_out = (self.first_ignition_step >= 0) & (~active) \
+            & (self.burnout_step < 0)
+        self.burnout_step[_went_out] = s.step
         self.ever_burned |= burned_any
         self.fuel_consumed_total += comb_tot
         self.fuel_suppressed_total += red_tot

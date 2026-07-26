@@ -61,8 +61,28 @@ FUEL_MODELS: Dict[int, FuelModel] = {
     3: FuelModel("pine_litter", r_base=0.80, m_ext=0.25, a_w=6.0,  a_s=2.2, a_asp=0.20, b_base=0.15, is_forest=True,  economic_value=12.0),
     4: FuelModel("hardwood",    r_base=0.30, m_ext=0.30, a_w=4.0,  a_s=1.8, a_asp=0.15, b_base=0.08, is_forest=True,  economic_value=18.0),
     5: FuelModel("water",       r_base=0.00, m_ext=1.00, a_w=0.0,  a_s=0.0, a_asp=0.00, b_base=0.00, is_forest=False, economic_value=0.0),
-    6: FuelModel("urban",       r_base=0.40, m_ext=0.20, a_w=3.0,  a_s=1.0, a_asp=0.20, b_base=0.10, is_forest=False, economic_value=0.0),
+    # URBAN. A built-up block is a broken fuel bed (masonry, streets,
+    # gardens), so its base rate stays the lowest of the burnable covers.
+    # But a_w=3.0 made it almost DEAF to the weather: measured, doubling
+    # the wind from 7 to 15 m/s moved the burned count from 49 cells to 50,
+    # and a fire lit beside a town went out before the people in it were
+    # ever affected. Real WUI destruction is wind and ember driven, so the
+    # wind response and the burning fierceness are raised while the base
+    # rate is left alone. Measured on a grass-to-town interface, the town
+    # burns 4% / 28% / 54% at 1, 2 and 3 hours in calm air and 14% / 48% /
+    # 85% at 14 m/s, against 2% / 10% / 19% and 5% / 16% / 28% before.
+    6: FuelModel("urban",       r_base=0.40, m_ext=0.20, a_w=15.0, a_s=1.0, a_asp=0.20, b_base=0.25, is_forest=False, economic_value=0.0),
 }
+
+#: THE CULTIVATED FUEL LOADS, and nothing else may sit on them.
+#: A worked field carries about half the fine fuel of natural grass, and the
+#: renderer needs to know WHICH cells are fields so it can draw each parcel
+#: in its own colour. Reading that off a load RANGE was wrong: natural grass
+#: on poor ground runs down to 0.37, so eighty-odd wild cells per map fell
+#: inside the range and were each painted a different field colour, which
+#: rendered as confetti. A parcel takes one value off this ladder, and a
+#: continuous noise field never lands exactly on one.
+CROP_FUEL_LOADS = (0.30, 0.32, 0.34, 0.36, 0.38, 0.40, 0.42, 0.44)
 
 FUEL_NAME_TO_ID: Dict[str, int] = {m.name: i for i, m in FUEL_MODELS.items()}
 
@@ -175,6 +195,82 @@ class ValueWeights:
 
 
 @dataclass
+class SelfEvacuationParams:
+    """People leave on their own, without waiting for an order.
+
+    Nobody stands in a burning street because no official told them to go.
+    Residents who can see or smell the fire self-evacuate, and the closer
+    and hotter it is the faster they move. The model had no such term at
+    all: without an order the population sat where it was until the flame
+    arrived, which made the ordered evacuation look like the only thing
+    between a town and its casualty count.
+
+    They also have to have somewhere to go. Flight is only counted when a
+    neighbouring direction is NOT alight, so a settlement the fire has
+    already surrounded does not quietly empty itself.
+    """
+
+    enabled: bool = True
+    #: fraction leaving per minute when the fire is in the cell itself
+    in_flame_per_min: float = 0.08
+    #: and when it is in a neighbouring cell (seen, not yet arrived)
+    adjacent_per_min: float = 0.03
+    #: how far a cell can be from the fire and still notice it, in cells
+    awareness_cells: int = 6
+    #: the rate at that awareness range; it falls off linearly to it
+    aware_per_min: float = 0.004
+    #: nobody leaves once this share of a cell's people has gone: the last
+    #: few are the ones who cannot or will not move
+    max_share: float = 0.9
+
+
+@dataclass
+class DryingParams:
+    """Dead fuel moisture DRYING, the counterpart of the wetting terms.
+
+    Rain, a retardant coat and suppression all raise the moisture field and
+    nothing lowered it, so moisture was monotonically non-decreasing over a
+    run: fuel burned to ash kept its ambient value, the front never dried
+    the cells it was about to reach, and a cell wetted once stayed wet for
+    the rest of the scenario. That last one flattered the response, because
+    a line held once went on holding itself for free.
+
+    Three mechanisms, each switchable so the previous behaviour can still be
+    reproduced for comparison.
+    """
+
+    enabled: bool = True
+
+    # 1. TIMELAG RECOVERY. Dead fuel relaxes toward the equilibrium moisture
+    # content of the ambient air with a response time; fine dead fuels
+    # (grass, litter) are the classic 1-hour timelag class. Applied in the
+    # DRYING direction only: absorption from humid air is slower and weaker
+    # than the wetting terms already modelled, and adding it would silently
+    # re-baseline every scenario that starts drier than its equilibrium.
+    timelag_h: float = 1.0
+
+    # 2. PREHEATING. A cell next to the flame front is radiantly heated
+    # above air temperature, so it dries below the ambient level and it
+    # dries faster. The depth is the fraction by which the target falls at
+    # full neighbour intensity; the gain shortens the response time.
+    #
+    # CALIBRATED, NOT GUESSED. The first pass used 0.60 and 8.0, which dried
+    # the fuel ahead of the front faster than the crews could work it: on the
+    # end-to-end test the DSS stopped being able to put the fire out at all
+    # (221 cells burned and still alight at the horizon, against 16 cells and
+    # out by step 9 without any drying). At 0.20 and 2.0 the mechanism is
+    # present and the fire is still extinguished on schedule.
+    preheat_depth: float = 0.20
+    preheat_gain: float = 2.0
+
+    # 3. COMBUSTION. A burning cell drives its moisture off in minutes, so
+    # the response time collapses and the target is the residual left in
+    # char rather than anything the air dictates.
+    burn_timelag_min: float = 5.0
+    burn_floor: float = 0.02
+
+
+@dataclass
 class CostParams:
     """Decision cost parameters (,).
 
@@ -203,6 +299,19 @@ class CostParams:
     w_delay: float = 0.2    # response delay (timeliness), secondary
 
     # normalization references and safeguards
+    # AN ASSET THE FIRE REACHED IS LOST. A structure does not need its own
+    # cell to carry fuel to be destroyed: radiant heat and embers from the
+    # cell next door do it, which is the whole WUI mechanism. Charging only
+    # the cells that burned themselves also put a ceiling under the term
+    # that no fire could reach. Set False for the strict "this cell burned"
+    # reading.
+    asset_lost_on_contact: bool = True
+    # WHAT A DISPLACED PERSON COSTS, against 1.0 for one exposed to flame
+    # for the same time. An ordered evacuation is not free: people are
+    # housed, fed and cut off from their work and their services. At zero,
+    # which is what it was, moving a whole town cost nothing at all and the
+    # cheapest answer to any fire was to empty the map.
+    evacuation_weight: float = 0.05
     population_at_risk_fraction: float = 0.02  # rho_risk; casualty share of exposed
     horizon_steps: float = 200.0               # scenario horizon H (decision steps)
     capacity_reference: float = 100.0          # total available capacity pool
@@ -228,6 +337,9 @@ class SimConfig:
     rng_seed: int = 42              # seed for any stochastic forcing
 
     spread: SpreadParams = field(default_factory=SpreadParams)
+    drying: DryingParams = field(default_factory=DryingParams)
+    self_evac: SelfEvacuationParams = field(
+        default_factory=SelfEvacuationParams)
     suppression: SuppressionParams = field(default_factory=SuppressionParams)
     intensity: IntensityParams = field(default_factory=IntensityParams)
     value_weights: ValueWeights = field(default_factory=ValueWeights)
