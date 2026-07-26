@@ -60,7 +60,10 @@ class DecisionEngine:
         self.base_pool = base_pool
         self.network = network
         self.j_threshold = float(j_threshold)
-        self.eta = float(eta)
+        # eta is a QUALITY gate on [0, 1]; anything else is a
+        # configuration accident and would crush every order through
+        # the graduated fail-safe (Q/eta), so it is clamped here
+        self.eta = float(min(1.0, max(0.0, eta)))
         # how many times a rejected Stage-3 proposal may return to the
         # generator with the gate verdict before the stage gives up
         self.revision_budget = max(0, int(revision_budget))
@@ -162,6 +165,15 @@ class DecisionEngine:
                               use_stage3_rules=self.use_genai)
         self.resolve_warnings: list = []
         self.persist_errors: list = []
+        # CARRY THE CONTROLLER'S EXPERIENCE ACROSS RUNS. One fire offers only
+        # a few dozen adaptation attempts, nowhere near enough for an
+        # epsilon-greedy value table to converge, so a fresh table every run
+        # meant the stage choice never got past exploration. The table is
+        # keyed by map: it is restored on the same terrain and reset on
+        # different terrain, because the worth of a stage is a property of
+        # the scene, not of the algorithm.
+        self.map_key = None
+        self.controller_restored = False
         self._evfis_rules = None
         self.run_stats = self._fresh_run_stats()
         if state_path:
@@ -180,6 +192,18 @@ class DecisionEngine:
         # allowed only ~5 attempts in a 50-min run, which starved the
         # generative stage (epsilon-greedy rarely reached it at all)
         self.adapt_cooldown_min = 5.0
+        # A REJECTION DECIDED FOR FREE DOES NOT BUY THE FULL COOLDOWN.
+        # The cooldown exists to ration expensive work: a shadow forecast is
+        # 45 minutes of physics, a model call blocks on the network. But some
+        # attempts are turned down without doing either, by a set lookup or a
+        # form check (stage 2 finding the antecedent cell already covered is
+        # the common one, and it repeats identically as long as the situation
+        # holds). Charging those the same five minutes meant a third of all
+        # adaptation windows were spent on decisions that cost nothing, and in
+        # long runs stage 3 never got a turn at all. Such an attempt is
+        # refunded down to this much instead, so the next cycle can offer the
+        # window to a different stage.
+        self.adapt_retry_min = 1.0
         self.noharm_recheck_min = 10.0
         self._adapt_last_min = None
         self._nh_last = None      # (t_min, order_sig, phys_c, phys_0)
@@ -270,6 +294,32 @@ class DecisionEngine:
         # assigns the shares (which scale the offensive tempo above
         # AND steer the budget concentration in the allocator), and
         # states it in one line.
+        # GLOBAL LOGISTICS DIRECTIVE: the coordinator allocates the
+        # shared AERIAL capacity, and the water supply is part of that
+        # allocation. When the focus region fights a real fire, the
+        # map holds water and the region's own rules under-order the
+        # drafting, the coordinator floors it: send the helicopters
+        # to the water, wherever the water sits. Allocation, not
+        # inference: no feature, no rule, no concept is evaluated.
+        _directives = []
+        try:
+            import numpy as _np_w
+            _has_w = bool(_np_w.asarray(
+                sim.world.fuel.ftype == 5).any())
+        except Exception:
+            _has_w = False
+        if _has_w and prios:
+            _hot0 = max(prios, key=lambda n: prios[n])
+            _rd0 = rows.get(_hot0)
+            if (_rd0 is not None
+                    and float(_rd0["crisp"].get("fire_threat_level",
+                                                0.0)) >= 0.35
+                    and float(_rd0["u"].get("water_drafting",
+                                            0.0)) < 0.6):
+                _rd0["u"]["water_drafting"] = 0.6
+                _directives.append(
+                    f"{_hot0} is DIRECTED to draft water by air "
+                    "(helicopter shuttle to the nearest water body)")
         _rank = sorted(prios, key=lambda n: -prios[n])
         self.last_global = dict(
             ranking=[(n, round(float(prios[n]), 3)) for n in _rank],
@@ -278,6 +328,7 @@ class DecisionEngine:
             attended=[n for n in rows if rows[n]["attended"]],
             thresholds={n: round(float(rows[n]["eta"]), 3)
                         for n in rows},
+            directives=list(_directives),
             hotspot=(_rank[0] if _rank else None),
             statement=("Global DSS: "
                        + (f"focus on {_rank[0]} "
@@ -287,7 +338,9 @@ class DecisionEngine:
                            f"{n} share {rows[n]['share']:.2f}"
                            + ("" if rows[n]["attended"]
                               else " (monitor)")
-                           for n in _rank)))
+                           for n in _rank)
+                       + ("; " + "; ".join(_directives)
+                          if _directives else "")))
         return rows, pairs
 
     def _observed_burning(self, sim):
@@ -301,6 +354,49 @@ class DecisionEngine:
         if _obs is not None and "burning" in _obs:
             return np.asarray(_obs["burning"]) > 0.5
         return sim.state.burning > 0.5
+
+    def _note_water_ferry(self, sim, rows) -> None:
+        """Make the water logistics VISIBLE in the Global statement:
+        when a region orders drafting and the nearest water body sits
+        in ANOTHER region, the coordinator says so, because on the
+        map the shuttle crosses the border and an operator reading
+        only the shares would never learn where the water came from."""
+        if not self.last_global:
+            return
+        import numpy as _np
+        wat = _np.asarray(sim.world.fuel.ftype == 5)
+        if not wat.any():
+            return
+        wy, wx = _np.where(wat)
+        fire = sim.state.burning > 0.5
+        notes = []
+        for reg in self.regions:
+            name = reg.name
+            rd = rows.get(name)
+            if rd is None or float(rd["u"].get("water_drafting",
+                                               0.0)) <= 0.3:
+                continue
+            sy, sx = reg.slices()
+            fmask = _np.zeros_like(fire)
+            fmask[sy, sx] = fire[sy, sx]
+            if not fmask.any():
+                continue
+            fy, fx = _np.where(fmask)
+            d2 = ((wx[None, :] - fx[:, None]) ** 2
+                  + (wy[None, :] - fy[:, None]) ** 2)
+            k = int(_np.unravel_index(_np.argmin(d2), d2.shape)[1])
+            wxx, wyy = int(wx[k]), int(wy[k])
+            src = next((r.name for r in self.regions
+                        if r.x0 <= wxx < r.x1 and r.y0 <= wyy < r.y1),
+                       None)
+            dm = float(_np.sqrt(d2.min())) * float(
+                getattr(sim.cfg, "cell_size_m", 30.0))
+            if src and src != name:
+                notes.append(f"water ferried from {src}'s water "
+                             f"({dm:.0f} m) to {name}")
+        if notes:
+            self.last_global["statement"] += " · " + "; ".join(notes)
+            self.last_global["water_ferry"] = notes
 
     def _override(self, sim, pairs, keep_actions=False):
         world = sim.world
@@ -333,7 +429,8 @@ class DecisionEngine:
                     tried=0, accepted=0, rejected=0,
                     blocked={}, per_stage={}, gates={},
                     reasons={}, withheld=0, dJ_accepted=0.0,
-                    j_series=[], phys_series=[], persist_failed=0)
+                    j_series=[], phys_series=[], persist_failed=0,
+                    cooldown_refunds=0, stage2_prefiltered=0)
 
     def _tally_cycle(self, step, j_c, j_0, bound, deficit_on, gap,
                      adapt_due, menu):
@@ -399,6 +496,70 @@ class DecisionEngine:
             s["gates"][str(v)[:70]] = s["gates"].get(str(v)[:70], 0) + 1
 
     # ------------------------------ generated state: derive, then record
+    def bind_map(self, map_key: str | None) -> bool:
+        """Tell the engine which scene it is on, and restore the controller.
+
+        Called by the dashboard whenever the map identity changes. The value
+        table survives fires on the SAME map and is dropped on a different
+        one. Returns True when experience was carried over.
+        """
+        self.map_key = None if map_key is None else str(map_key)
+        if not getattr(self, "state_path", None):
+            return False
+        try:
+            self.controller_restored = self.gstate.load_controller(
+                self.controller, self.map_key)
+        except Exception as exc:
+            self.persist_errors.append(
+                f"stage controller: {type(exc).__name__}: {exc}")
+            self.controller_restored = False
+        return self.controller_restored
+
+    # ------------------------------------------ where the learning happens
+    ENGAGED_FIRE = 0.05      # a region counts as engaged above this intensity
+
+    def _adapt_region(self, rows, ctx, cov_by_region):
+        """Which region's situation the adaptation stage works on.
+
+        NOT the coordinator's hotspot. The coordinator ranks on operational
+        priority, which is about where the capacity should go. The adaptation
+        stages are about something else entirely: stage 2 instantiates an
+        antecedent cell the base does not cover, and stage 3 answers a
+        situation the base cannot express. Both are coverage operations.
+
+        Sending them to the highest-priority region sent them, run after run,
+        to the region the base already covered BEST: measured over 3812
+        cycles, the old selector picked one region 83% of the time and that
+        region also had the highest mean fired weight (0.487 against 0.258).
+        Stage 2 was then turned away with "cell already covered" in 150 of
+        its 162 attempts, which is what a growth stage aimed at a full cell
+        does.
+
+        So the adaptation goes to the region the base is QUIETEST about,
+        among the regions that actually have fire. The fire filter matters:
+        a quiet corner with nothing burning has the lowest coverage of all
+        for the trivial reason that nothing is happening there, and learning
+        rules for an empty situation is worse than not learning.
+
+        Returns (region_name, why) so the views can state the choice.
+        """
+        engaged = [n for n in rows
+                   if float(ctx[n]["f"].get("fire_intensity", 0.0))
+                   > self.ENGAGED_FIRE]
+        why = "least covered among the regions with fire"
+        if not engaged:
+            # nothing is burning anywhere: there is no coverage question to
+            # answer, so fall back to the coordinator's own ranking
+            engaged = list(rows)
+            why = "no region has fire, so the coordinator's hotspot stands"
+            return (max(engaged,
+                        key=lambda n: rows[n]["crisp"].get(
+                            "operational_priority", 0.0)), why)
+        pick = min(engaged, key=lambda n: (
+            float(cov_by_region.get(n, 0.0)),
+            -float(rows[n]["crisp"].get("operational_priority", 0.0))))
+        return pick, why
+
     def _sync_active_set(self) -> None:
         """Rebuild what the inference reasons with, from the baseline plus
         whatever the consumption flags allow. Runs every cycle: the active set
@@ -708,6 +869,10 @@ class DecisionEngine:
 
         rows, pairs = self._decide_regions(sim, ctx, rules=self.rules)
         ov = self._override(sim, pairs, keep_actions=True)
+        try:
+            self._note_water_ferry(sim, rows)
+        except Exception:
+            pass
         # regions where a GenAI-generated rule (G#) fired this cycle, so the
         # map can flag the generated orders distinctly from the base ones
         self.last_genai_regions = {
@@ -723,6 +888,10 @@ class DecisionEngine:
         outcome = AdaptOutcome(0, False, "rules as-is", dJ=j_c - j_0)
         stage = 0
         bucket = ""
+        # WHERE THE LEARNING WOULD GO, recorded even when no stage runs, so
+        # the view never has to guess which region an attempt belonged to
+        self.last_adapt_region = None
+        self.last_adapt_why = ""
         need = min(self.j_threshold, (1.0 - self.min_gain) * j_0)
         _dtm = float(getattr(sim.cfg, "step_minutes", 1.0))
         _now_min = step * _dtm
@@ -737,11 +906,15 @@ class DecisionEngine:
         # so it triggers adaptation on its own and routes it to the
         # rule-creating stages (2/3).
         fired_all = []
+        _cov_by_region: Dict[str, float] = {}
         for name in rows:
             eff = rows[name]["eff"]
             _, tr = evaluate_rules(eff, ctx[name]["f"], self.rules,
                                    macros=self.macros)
             fired_all.extend(tr)
+            # how loudly the base speaks about THIS region, kept per region
+            # because that is what decides where the adaptation is sent
+            _cov_by_region[name] = max((w for _r, w in tr), default=0.0)
         _covw = max((w for _r, w in fired_all), default=0.0)
         for _r_s, _w_s in fired_all:
             _r_s.strength = float(getattr(_r_s, "strength", 0.0)
@@ -785,6 +958,15 @@ class DecisionEngine:
                 deficit = max(deficit, 0.05,
                               min(0.3, _growth / 50.0))
             bucket = self.controller.bucket(deficit, gap=_gap)
+            # THE TARGET REGION IS CHOSEN FIRST. The menu filter below asks
+            # what stage 2 would find THERE, so the region has to be known
+            # before the menu is built.
+            hot, _hot_why = self._adapt_region(rows, ctx, _cov_by_region)
+            self.last_adapt_region = hot
+            self.last_adapt_why = (
+                f"{_hot_why} (coverage "
+                + ", ".join(f"{_n} {float(_cov_by_region.get(_n, 0.0)):.2f}"
+                            for _n in rows) + ")")
             _menu = self.stages_allowed
             if _void:
                 # a coverage void cannot be TUNED (no rule fires there): only
@@ -802,8 +984,34 @@ class DecisionEngine:
             # skip stage 3 even when the model answers fine.
             if 3 in _menu and self._genai_dead:
                 _menu = tuple(s for s in _menu if s != 3)
-            hot = max(rows, key=lambda n: rows[n]["crisp"].get(
-                "operational_priority", 0.0))
+            # PREDICTIVE FILTER, NOT RETIREMENT. Stage 2 instantiates the
+            # antecedent cell of the CURRENT situation. When that cell is
+            # already covered and the situation is crisp, the stage is
+            # certain to be refused, so offering it wastes the pick. This
+            # asks the stage itself (stage2_would_be_refused) rather than
+            # guessing, and it drops stage 2 from THIS CYCLE only: nothing
+            # is retired, so the moment the cell space grows (a new concept,
+            # a new term, a situation not seen before) the stage is back on
+            # the menu by itself.
+            #
+            # A coverage VOID is exempt: there the cell is open by
+            # definition, which is precisely when stage 2 is wanted.
+            if 2 in _menu and not _void:
+                try:
+                    from .adapt import stage2_would_be_refused
+                    if stage2_would_be_refused(self.rules,
+                                               rows[hot]["eff"],
+                                               rows[hot]["crisp"]):
+                        _m2 = tuple(x for x in _menu if x != 2)
+                        # never filter the menu empty: a stage that cannot
+                        # win is still better than no adaptation at all
+                        if _m2:
+                            _menu = _m2
+                            self.run_stats["stage2_prefiltered"] = \
+                                self.run_stats.get(
+                                    "stage2_prefiltered", 0) + 1
+                except Exception:
+                    pass
             if not _menu:
                 outcome = AdaptOutcome(
                     0, False,
@@ -823,6 +1031,10 @@ class DecisionEngine:
                 _b_rules = self._snap_rules(_work)
                 _b_parts = self._snap_parts()
                 _b_vocab = (set(self.hierarchy), set(self.macros))
+                # what this attempt is about to spend, measured rather than
+                # assumed: the cooldown refund below reads the difference
+                from . import adapt as _ad_mod
+                _spend0 = (_ad_mod.CVA_CALLS, _ad_mod.GENAI_CALLS)
                 if stage == 1:
                     outcome = stage1_evfis(build, sim, _work,
                                            fired_all, self.horizon_steps,
@@ -856,6 +1068,22 @@ class DecisionEngine:
                         if self._genai_fails >= 3:
                             self._genai_dead = True
                 outcome.stage = stage
+                # REFUND A FREE REJECTION. Neither a shadow forecast nor a
+                # model call happened, so the attempt rationed nothing and
+                # holding the window shut for the full cooldown only starves
+                # the other stages. A model timeout is NOT free: it already
+                # spent the wall clock and would just repeat.
+                _forecasts = _ad_mod.CVA_CALLS - _spend0[0]
+                _calls = _ad_mod.GENAI_CALLS - _spend0[1]
+                outcome.info = dict(outcome.info or {})
+                outcome.info["forecasts"] = int(_forecasts)
+                outcome.info["model_calls"] = int(_calls)
+                if (not outcome.accepted) and _forecasts == 0 and _calls == 0:
+                    self._adapt_last_min = (
+                        _now_min - (self.adapt_cooldown_min
+                                    - self.adapt_retry_min))
+                    self.run_stats["cooldown_refunds"] = \
+                        self.run_stats.get("cooldown_refunds", 0) + 1
                 self._tally_outcome(stage, outcome)
                 _rw = -outcome.dJ
                 # a REJECTED attempt wasted a cycle: give it a small negative
@@ -866,6 +1094,17 @@ class DecisionEngine:
                 if outcome.accepted and (outcome.info or {}).get("package"):
                     _rw -= 0.02      # G5: vocabulary growth costs margin
                 self.controller.update(deficit, stage, reward=_rw, gap=_gap)
+                if getattr(self, "state_path", None):
+                    # written every update, not at shutdown: a dashboard is
+                    # closed by closing the window, and an exit hook that
+                    # never runs is a memory that never persists
+                    try:
+                        self.gstate.save_controller(self.controller,
+                                                    map_key=self.map_key)
+                    except Exception as _exc_c:
+                        self.persist_errors.append(
+                            f"stage controller: {type(_exc_c).__name__}: "
+                            f"{_exc_c}")
                 if outcome.accepted and getattr(self, "state_path", None):
                     # PERSIST WHAT CHANGED, not the whole engine. The record
                     # carries before/after, so a wipe can revert it and a
@@ -973,11 +1212,16 @@ class DecisionEngine:
         if self.last_withheld:
             self.run_stats["withheld"] += 1
         if self.last_withheld:
+            # EVERYTHING except the life-safety orders is withheld: a
+            # plan judged worse than no action must not keep flying
+            # retardant, lighting counter-fires or running macros
+            # through the gap in a fixed channel list (that leak let
+            # a vetoed plan keep acting for half an hour)
             for name in rows:
-                for k_off in ("suppression_effort",
-                              "resource_deployment",
-                              "containment_line",
-                              "asset_protection"):
+                for k_off in list(rows[name]["u"].keys()):
+                    if k_off in ("evacuation", "public_warning",
+                                 "_share"):
+                        continue
                     rows[name]["u"][k_off] = 0.0
             ov = None
             self.last_actions = dict(
@@ -1055,6 +1299,8 @@ class DecisionEngine:
                              for (b, st_), v in self.controller.q.items()}),
             no_harm_withheld=bool(getattr(self, "last_withheld",
                                           False)),
+            adapt_region=getattr(self, "last_adapt_region", None),
+            adapt_region_why=getattr(self, "last_adapt_why", ""),
             adaptation=dict(stage=int(outcome.stage),
                             tried=int(stage),
                             accepted=bool(outcome.accepted),

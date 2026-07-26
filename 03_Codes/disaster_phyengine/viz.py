@@ -100,14 +100,18 @@ def apply_fire(img: np.ndarray, sim) -> np.ndarray:
         sev = np.clip(np.asarray(_cons)
                       / np.maximum(np.asarray(_fl0), 1e-6),
                       0.0, 1.0)
-        # light singe (s=0): terrain + thin grey-white veil;
-        # full burn (s=1): the black scar
-        _veil = np.array([0.82, 0.82, 0.80])
-        _mixv = 0.30 + 0.20 * sev[..., None]     # veil opacity
-        _lightly = (img * (1.0 - _mixv) + _veil * _mixv)
-        _sc = np.array(_BURN_SCAR)
-        _t = np.clip((sev[..., None] - 0.25) / 0.75, 0.0, 1.0) ** 0.8
-        _shaded = _lightly * (1.0 - _t) + _sc * _t
+        # EVERY burned cell looks burnt: even a cell knocked down in
+        # minutes is visibly scorched (ash-brown, terrain faintly
+        # showing through), and the tone runs to charcoal black as
+        # the consumption approaches total. The earlier version left
+        # the light end nearly pristine, which read as "nothing
+        # happened here" on a ground the fire had actually touched.
+        _char0 = np.array([0.33, 0.27, 0.22])    # light char / ash brown
+        _char1 = np.array([0.05, 0.045, 0.04])   # burned-out charcoal
+        _t = np.clip(sev[..., None], 0.0, 1.0) ** 0.7
+        _char = _char0 * (1.0 - _t) + _char1 * _t
+        _mixv = 0.55 + 0.45 * _t                 # scorch opacity
+        _shaded = img * (1.0 - _mixv) + _char * _mixv
         img[burned] = _shaded[burned]
     else:
         img[burned] = _BURN_SCAR
@@ -177,6 +181,22 @@ def _base_rgb(world, sim=None, show_fire=True, show_value=False,
         hs = hillshade(world.topo.elev, world.config.cell_size_m)
         img = img * (0.55 + 0.55 * hs[..., None])
     return np.clip(img, 0, 1)
+
+
+def _badge(draw, cx, cy, text, rgba, ink=(10, 10, 10, 255)):
+    """A short label with its own plate.
+
+    Bare coloured glyphs disappear on a map that is already green, brown and
+    orange: the DSS order symbols were all being drawn, and none of them
+    could be told apart from terrain. A filled plate with a dark border
+    behind the word fixes the contrast wherever the symbol lands.
+    """
+    _w = 7 * len(text) + 8
+    _h = 15
+    x0, y0 = int(cx - _w // 2), int(cy - _h // 2)
+    draw.rectangle([x0, y0, x0 + _w, y0 + _h],
+                   fill=rgba, outline=(15, 15, 15, 245), width=1)
+    draw.text((x0 + 4, y0 + 3), text, fill=ink)
 
 
 def render_pil(world, sim=None, scale: int = 8, show_fire: bool = True,
@@ -445,7 +465,15 @@ def render_pil(world, sim=None, scale: int = 8, show_fire: bool = True,
                              fill=(40, 120, 255, 230),
                              outline=(255, 255, 255, 180))
         prot = actions.get("prot")
-        if prot is not None:
+        if prot is not None and np.asarray(prot).any():
+            # A BRIGHT GREEN RING ON GREEN TERRAIN IS NOT A SYMBOL. The
+            # shield rings were being drawn all along, they just sat in the
+            # same hue family as the grass and the canopy, so a defended
+            # town read as texture. Every ring now carries a dark casing
+            # under the bright stroke, which separates it from any
+            # background, and the cluster is named with a P badge so the
+            # order is identifiable and not merely visible.
+            prot = np.asarray(prot)
             ys_, xs_ = np.where(prot)
             for yy_, xx_ in zip(ys_.tolist(), xs_.tolist()):
                 if (yy_ + xx_) % 2:
@@ -453,8 +481,14 @@ def render_pil(world, sim=None, scale: int = 8, show_fire: bool = True,
                 cx = xx_ * scale + scale // 2
                 cy = yy_ * scale + scale // 2
                 r_ = max(3, scale // 2)
+                draw.ellipse([cx - r_ - 1, cy - r_ - 1,
+                              cx + r_ + 1, cy + r_ + 1],
+                             outline=(10, 40, 20, 235), width=3)
                 draw.ellipse([cx - r_, cy - r_, cx + r_, cy + r_],
-                             outline=(40, 220, 90, 230), width=2)
+                             outline=(120, 255, 150, 255), width=2)
+            _pbx = int(xs_.max()) * scale + scale
+            _pby = int(ys_.mean()) * scale + scale // 2
+            _badge(draw, _pbx + 26, _pby, "P protect", (40, 200, 90, 245))
         for ro in actions.get("regions", []):
             u = ro["u"]
             if max(u.values()) <= 0.05:
@@ -469,8 +503,14 @@ def render_pil(world, sim=None, scale: int = 8, show_fire: bool = True,
             # its initials, so the map shows WHICH one acted. The plain "G"
             # badge stays as the fallback for a generated RULE that ordered
             # only base channels, where there is no macro to name.
+            # library actuators earn a chip exactly like runtime
+            # macros: if it worked cells this cycle, it is drawn
+            _actu = ("tactical_burn", "retardant_drop",
+                     "water_drafting")
+            _cand = list(_macdefs) + [a for a in _actu
+                                      if a not in _macdefs]
             _fired_m = [(_mn, float(u.get(_mn, 0.0)))
-                        for _mn in _macdefs
+                        for _mn in _cand
                         if float(u.get(_mn, 0.0)) > 0.05]
             _gcx = (x0_ + x1_) * scale // 2
             _gcy = (y0_ + y1_) * scale // 2
@@ -519,33 +559,73 @@ def render_pil(world, sim=None, scale: int = 8, show_fire: bool = True,
                              width=1)
                 draw.text((_gcx - 4, _gcy - 6), "G",
                           fill=(255, 255, 255, 255))
-            # evacuation: arrow + E at every populated asset inside
-            if u["evacuation"] > 0.3 and getattr(world, "assets", None):
-                for a in world.assets:
-                    if getattr(a, "kind", "") != "population":
-                        continue
-                    if not (x0_ <= a.x < x1_ and y0_ <= a.y < y1_):
-                        continue
-                    cx = a.x * scale + scale // 2
-                    cy = a.y * scale + scale // 2
-                    draw.polygon([(cx, cy - 12), (cx - 6, cy - 2),
-                                  (cx + 6, cy - 2)],
+            # EVACUATION. Drawn from the SAME population the physics acts
+            # on. It used to read world.assets and look for kind ==
+            # "population", but the order itself is applied to the vpop
+            # raster, so on any map whose people came from a GIS import
+            # rather than a hand-placed asset the evacuation changed the
+            # simulation and drew absolutely nothing.
+            if u["evacuation"] > 0.3:
+                _pts = []
+                for a in (getattr(world, "assets", None) or []):
+                    if getattr(a, "kind", "") == "population" \
+                            and x0_ <= a.x < x1_ and y0_ <= a.y < y1_:
+                        _pts.append((int(a.x), int(a.y)))
+                if not _pts:
+                    _vp = getattr(getattr(world, "value", None), "vpop", None)
+                    if _vp is not None:
+                        _sub = np.asarray(_vp)[y0_:y1_, x0_:x1_]
+                        _yy2, _xx2 = np.where(_sub > 1e-6)
+                        if _yy2.size:
+                            # one marker per populated cluster, not per cell:
+                            # bin coarsely and keep the densest cell of each
+                            _seen = {}
+                            for _y3, _x3 in zip(_yy2.tolist(), _xx2.tolist()):
+                                _k = (_y3 // 25, _x3 // 25)
+                                _v = float(_sub[_y3, _x3])
+                                if _v > _seen.get(_k, (0.0, 0, 0))[0]:
+                                    _seen[_k] = (_v, _x3 + x0_, _y3 + y0_)
+                            # the marker names the settlement, it does not
+                            # map it: a dozen overlapping arrows hid the
+                            # fire they were about
+                            _pts = [(_x3, _y3) for _v, _x3, _y3
+                                    in sorted(_seen.values(),
+                                              key=lambda t: -t[0])[:2]]
+                for _px, _py in _pts:
+                    cx = _px * scale + scale // 2
+                    cy = _py * scale + scale // 2
+                    _s = max(9, scale + 4)          # scale with the zoom
+                    draw.polygon([(cx, cy - 2 * _s), (cx - _s, cy - _s),
+                                  (cx + _s, cy - _s)],
                                  fill=(255, 140, 0, 255),
-                                 outline=(0, 0, 0, 200))
-                    draw.rectangle([cx - 2, cy - 2, cx + 2, cy + 6],
-                                   fill=(255, 140, 0, 255))
-                    draw.text((cx + 8, cy - 10), "EVAC",
-                              fill=(255, 160, 20, 255))
-            # public warning: yellow triangle, region's top-right corner
+                                 outline=(15, 15, 15, 255))
+                    draw.rectangle([cx - _s // 3, cy - _s,
+                                    cx + _s // 3, cy + _s // 2],
+                                   fill=(255, 140, 0, 255),
+                                   outline=(15, 15, 15, 255))
+                    _badge(draw, cx, cy + _s + 8, "EVAC",
+                           (255, 150, 20, 250))
+            # PUBLIC WARNING. A 12 px triangle parked in the region corner
+            # was the whole symbol, so the order was technically on screen
+            # and unreadable. It is now a labelled plate of its own, still
+            # at the region corner because the warning covers the WHOLE
+            # region rather than any one cell.
             if u["public_warning"] > 0.3:
-                tx_ = x1_ * scale - 18
-                ty_ = y0_ * scale + 6
-                draw.polygon([(tx_, ty_ + 12), (tx_ + 12, ty_ + 12),
-                              (tx_ + 6, ty_)],
-                             fill=(255, 220, 0, 240),
-                             outline=(0, 0, 0, 220))
-                draw.text((tx_ + 4, ty_ + 2), "!",
+                # TOP CENTRE OF THE REGION, not the image corner. The corner
+                # is where the compass rose and the scale bar live, so the
+                # warning kept landing underneath them.
+                tx_ = (x0_ + x1_) * scale // 2
+                ty_ = y0_ * scale + 8
+                _t = max(9, scale + 2)
+                draw.polygon([(tx_ - _t, ty_ + 2 * _t), (tx_ + _t,
+                                                         ty_ + 2 * _t),
+                              (tx_, ty_)],
+                             fill=(255, 220, 0, 250),
+                             outline=(15, 15, 15, 255))
+                draw.text((tx_ - 2, ty_ + _t - 2), "!",
                           fill=(0, 0, 0, 255))
+                _badge(draw, tx_, ty_ + 2 * _t + 12, "W warn",
+                       (255, 225, 40, 250))
 
     # DSS allocation overlay (D = resource deployment): the STAGED capacity
     # ahead of the front glows a faint cyan. Burning / burned cells are
@@ -861,9 +941,9 @@ def legend_entries(macros=None):
                  "urban": "urban / built-up"}.get(m.name, m.name.replace("_", " "))
         out.append(("Land cover", label, _hex(_FUEL_COLORS[i]), "sq"))
     out.append(("Fire", "active fire", _hex((0.98, 0.35, 0.06)), "sq"))
-    out.append(("Fire", "burn scar spectrum: light grey veil = "
-                "knocked down early (fuel saved), black = burned out",
-                _hex((0.16, 0.13, 0.12)), "sq"))
+    out.append(("Fire", "burn scar spectrum: ash brown = knocked "
+                "down early (fuel saved), charcoal black = burned "
+                "out", _hex((0.16, 0.13, 0.12)), "sq"))
     # perimeter is drawn as RED cell outlines (not a white ring)
     out.append(("Fire", "fire perimeter", "#ff3c28", "box"))
     # Assets & infrastructure (merged): things on the map that carry value

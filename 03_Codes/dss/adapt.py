@@ -88,6 +88,14 @@ class AdaptOutcome:
 # ------------------------------------------------------------- stage 1
 TRIAL_BASIS_MIN = 45.0   # adaptation trials are judged at >= this
 
+# WHAT AN ATTEMPT ACTUALLY COST. A shadow forecast simulates 45 minutes of
+# physics and a model call blocks on the network; a gate that only looks up a
+# set costs nothing at all. The engine charges the adaptation cooldown by
+# these two counters, so a rejection decided for free does not buy the same
+# five minutes of silence as a rejection that did the work.
+CVA_CALLS: int = 0
+GENAI_CALLS: int = 0
+
 
 def _cva(build_override, sim, rules, horizon, reseed=None):
     """Adaptation trials are judged on the PHYSICAL cost (burned area,
@@ -102,6 +110,8 @@ def _cva(build_override, sim, rules, horizon, reseed=None):
     hmin = getattr(sim, "_dss_hmin", None)
     hmin = max(TRIAL_BASIS_MIN, float(hmin)) \
         if hmin is not None else TRIAL_BASIS_MIN
+    global CVA_CALLS
+    CVA_CALLS += 1
     rep = forecast_cost(sim, build_override(rules), horizon,
                         reseed=reseed, horizon_min=hmin)
     p_c = physical_cost(rep, sim.cfg.cost)
@@ -121,10 +131,17 @@ def _cva(build_override, sim, rules, horizon, reseed=None):
 
 def stage1_evfis(build_override, sim, rules: List[Rule],
                  fired: List[Tuple[Rule, float]], horizon: int,
-                 step_size: float = 0.05, trials: int = 3) -> AdaptOutcome:
+                 step_size: float = 0.05, trials: int = 4) -> AdaptOutcome:
     """Perturb the strongest deficient rule; keep only improvements.
     Every trial is recorded (what moved, J before/after, kept, reason)
-    so the run log carries the full evFIS story."""
+    so the run log carries the full evFIS story.
+
+    The allowance is 4, not 3, because the stage has three claims on it and
+    3 could only pay two of them: both signs on the loudest rule, one sign on
+    the runner-up, and the reserved partition move. Each trial is a 45-minute
+    shadow forecast, so the extra one costs about a third more per stage 1
+    attempt, and stage 1 is drawn in roughly one adaptation window in three.
+    """
     hot = [(r, w) for r, w in fired if w > 0.05 and r.active]
     if not hot:
         return AdaptOutcome(1, False, "no fired rule to tune")
@@ -137,6 +154,15 @@ def stage1_evfis(build_override, sim, rules: List[Rule],
     # loudest voice was never tuned at all
     _cand_rules = [h[0] for h in hot[:2]]
     rule = _cand_rules[0]
+    # THE SHOULDER MOVE GETS ITS OWN BUDGET. evFIS tunes two things: the
+    # consequent values and the antecedent partition. Both used to run, but
+    # once the candidate list grew from one rule to two, the four consequent
+    # trials (2 rules x 2 signs) swallowed the whole allowance of 3 and the
+    # membership branch below became unreachable, so evFIS silently stopped
+    # moving partition boundaries at all. Reserving one trial keeps the two
+    # halves of the stage independent of how many rules are on the shortlist.
+    _shoulder_budget = 1 if trials > 1 else 0
+    trials -= _shoulder_budget
     for rule_t in _cand_rules:
         for sign in (+1.0, -1.0):
             if trials <= 0:
@@ -166,7 +192,7 @@ def stage1_evfis(build_override, sim, rules: List[Rule],
                                  f"{sign * step_size:+g}")
             else:
                 rule_t.consequents = old_cons
-    if trials > 0:
+    if _shoulder_budget > 0:
         var, term = rule.antecedents[0]
         # A shoulder is a SHARED boundary of two neighbouring trapezoids, not
         # a free parameter of one. Moving it through shift_boundary displaces
@@ -207,12 +233,79 @@ def stage1_evfis(build_override, sim, rules: List[Rule],
 
 
 # ------------------------------------------------------------- stage 2
+def _next_rule_name(prefix: str, rules, engine=None) -> str:
+    """Store-wide unique born-rule name.
+
+    Counting only the ACTIVE base restarted the numbering with every
+    fresh engine, so a lineage that already held a G9 got a second,
+    different G9 from the next session; the resolver loads by name
+    and silently shadowed one of them. The next index therefore
+    scans the persistent store too, not just the rules in memory."""
+    import re as _re
+    hi = 0
+    for r in rules:
+        m = _re.fullmatch(prefix + r"(\d+)", str(r.name))
+        if m:
+            hi = max(hi, int(m.group(1)))
+    gst = getattr(engine, "gstate", None)
+    if gst is not None:
+        try:
+            secs = (("genai_rules",) if prefix == "G"
+                    else ("evfis_rule_modifications",))
+            for sec in secs:
+                for rec in gst.records(sec):
+                    nm = str(rec.get("name")
+                             or (rec.get("after") or {}).get(
+                                 "rule", {}).get("name") or "")
+                    m = _re.fullmatch(prefix + r"(\d+)", nm)
+                    if m:
+                        hi = max(hi, int(m.group(1)))
+        except Exception:
+            pass
+    return f"{prefix}{hi + 1}"
+
+
 def _dominant_terms(eff: Dict[str, np.ndarray]) -> Dict[str, str]:
     out = {}
     for cn in DECISION_CONCEPTS:
         v = eff[cn]
         out[cn] = TERMS[int(np.argmax(v))]
     return out
+
+
+AMBIGUOUS_BELOW = 0.62   # a covered cell may still be REFINED below this
+
+
+def stage2_target_cell(eff: Dict[str, np.ndarray],
+                       crisp_c: Dict[str, float]):
+    """The antecedent cell stage 2 would instantiate for this situation.
+
+    Defined here, next to the stage that uses it, so the predictive filter in
+    the engine and the stage itself can never drift apart: if this changes,
+    both change.
+    """
+    dom = _dominant_terms(eff)
+    ranked = sorted(DECISION_CONCEPTS,
+                    key=lambda c: -float(crisp_c.get(c, 0.0)))
+    return [(c, dom[c]) for c in ranked[:2]]
+
+
+def stage2_would_be_refused(rules: List[Rule],
+                            eff: Dict[str, np.ndarray],
+                            crisp_c: Dict[str, float]) -> bool:
+    """Is stage 2 CERTAIN to be turned away on this situation?
+
+    True only when the cell it would aim at is already covered AND the
+    situation is crisp, which is exactly the "cell already covered" refusal
+    below. A covered cell with an AMBIGUOUS membership is still work for
+    stage 2: it inserts a narrower term and writes on the refined cell, so
+    that case must not be filtered out.
+    """
+    ants = stage2_target_cell(eff, crisp_c)
+    if not _cell_covered(rules, ants):
+        return False
+    v1 = eff.get(ants[0][0])
+    return not (v1 is not None and float(np.max(v1)) < AMBIGUOUS_BELOW)
 
 
 def _cell_covered(rules: List[Rule], ants) -> bool:
@@ -230,10 +323,9 @@ def stage2_resolution(build_override, sim, rules: List[Rule],
     """Instantiate the missing antecedent cell of the CURRENT situation:
     a new rule over the two most activated decision concepts, with
     consequents equal to the concept demands (family intensities)."""
-    dom = _dominant_terms(eff)
     ranked = sorted(DECISION_CONCEPTS,
                     key=lambda c: -float(crisp_c.get(c, 0.0)))
-    ants = [(c, dom[c]) for c in ranked[:2]]
+    ants = stage2_target_cell(eff, crisp_c)
     cons = []
     for cn in ranked[:3]:
         fams = CONCEPT_FAMILY.get(cn)
@@ -253,7 +345,7 @@ def stage2_resolution(build_override, sim, rules: List[Rule],
         c1 = ants[0][0]
         _v1 = eff.get(c1)
         _amb = (_v1 is not None
-                and float(np.max(_v1)) < 0.62)
+                and float(np.max(_v1)) < AMBIGUOUS_BELOW)
         if not _amb:
             return AdaptOutcome(
                 2, False,
@@ -274,7 +366,7 @@ def stage2_resolution(build_override, sim, rules: List[Rule],
     else:
         _split_note = None
     coverage_gap = True     # by definition: the cell was uncovered
-    name = f"A{sum(1 for r in rules if r.name.startswith('A')) + 1}"
+    name = _next_rule_name("A", rules)
     newr = Rule(name, ants, cons,
                 note=("adaptation-born: " + _split_note)
                 if _split_note else
@@ -344,6 +436,8 @@ _GENAI_SCHEMA = ("Answer with the MINIFIED JSON object only, on one line, "
 
 # wall time of the last live proposal call, so the run log can show WHY a
 # cycle took seconds instead of milliseconds
+import time as _t_mod
+
 LAST_GENAI_MS: float = 0.0
 
 
@@ -369,7 +463,8 @@ def genai_timeout() -> float:
 _genai_timeout = genai_timeout
 
 
-def genai_cmd(prompt: str) -> list:
+def genai_cmd(prompt: str, session: str | None = None,
+              resume: bool = False) -> list:
     """The `claude -p` command line, built in ONE place.
 
     Stage 3 wants a single JSON object, not an agent. By default `claude -p`
@@ -407,12 +502,21 @@ def genai_cmd(prompt: str) -> list:
         "--setting-sources", "",            # ignore user/project settings
         "--max-turns", "1",                 # single shot, no agentic loop
     ]
+    if session:
+        # ONE MIND PER INCIDENT: the first stage-3 call opens a CLI
+        # session (--session-id) carrying the mission brief; every
+        # later call RESUMES it (--resume), so the model keeps the
+        # map, the doctrine, its own past proposals and the named
+        # rejections in memory instead of being reborn per prompt.
+        cmd += (["--resume", session] if resume
+                else ["--session-id", session])
     cmd += ["-p", prompt, "--output-format", "json"]
     return cmd
 
 
-def _genai_propose_cli(prompt: str, timeout: float | None = None
-                       ) -> Optional[dict]:
+def _genai_propose_cli(prompt: str, timeout: float | None = None,
+                       session: str | None = None,
+                       resume: bool = False) -> Optional[dict]:
     """One rule proposal via the Claude Code CLI (`claude -p`), i.e. on the
     user's Claude subscription, no API key. Returns the parsed dict or None.
 
@@ -422,14 +526,22 @@ def _genai_propose_cli(prompt: str, timeout: float | None = None
     make stage 3 look unreachable even though the model answered fine."""
     import subprocess
     import time as _t
-    global LAST_GENAI_MS
+    global LAST_GENAI_MS, GENAI_CALLS
+    GENAI_CALLS += 1
     timeout = genai_timeout() if timeout is None else float(timeout)
     _t0 = _t.time()
-    cmd = genai_cmd(prompt)
+    cmd = genai_cmd(prompt, session=session, resume=resume)
     global LAST_GENAI_ERR
     try:
+        # STDIN MUST BE CLOSED. The CLI reads stdin for piped input and
+        # waits for it before it starts; with the handle inherited from the
+        # Streamlit process it can sit there for seconds ("no stdin data
+        # received in 3s, proceeding without it") on EVERY call, and stage 3
+        # makes up to four calls per attempt.
         res = subprocess.run(cmd, capture_output=True, text=True,
-                             timeout=timeout)
+                             encoding="utf-8",
+                             errors="replace",
+                             stdin=subprocess.DEVNULL, timeout=timeout)
     except subprocess.TimeoutExpired:
         LAST_GENAI_MS = (_t.time() - _t0) * 1000.0
         LAST_GENAI_ERR = f"timeout after {timeout:.0f} s"
@@ -458,14 +570,48 @@ def _genai_propose_cli(prompt: str, timeout: float | None = None
         return None
 
 
-def _genai_propose(situation: str) -> Optional[dict]:
+def _genai_propose(situation: str, timeout: float | None = None,
+                   engine=None, mission: str = "") -> Optional[dict]:
     """One rule proposal from Claude via the Claude Code CLI (`claude -p`) on
     the user's subscription. Returns None when the `claude` command is not
-    available/logged in or the reply is unparseable."""
-    prompt = ("You are the rule proposer of a wildfire decision "
-              "support system. Situation:\n" + situation + "\n"
-              + _GENAI_SCHEMA)
-    return _genai_propose_cli(prompt)
+    available/logged in or the reply is unparseable.
+
+    `timeout` is what is LEFT of the attempt's shared wait budget, so a
+    proposal and its revisions cannot each claim the full allowance.
+
+    With an engine the calls share ONE CLI session per incident: the
+    opening call carries the mission brief and the schema and creates
+    the session; every later call resumes it and sends only the current
+    situation. The model is a continuous mind for the whole run: it
+    remembers the map, the settings, what it has already proposed and
+    why each rejection happened, without the caller repeating any of it.
+    """
+    header = ("You are the rule proposer of a wildfire decision "
+              "support system. Situation:\n")
+    if engine is None:
+        return _genai_propose_cli(header + mission + situation + "\n"
+                                  + _GENAI_SCHEMA, timeout=timeout)
+    sid = getattr(engine, "_genai_sid", None)
+    if sid and getattr(engine, "_genai_sid_ok", False):
+        p = _genai_propose_cli(
+            "Current situation update (same incident, same standing "
+            "brief):\n" + situation
+            + "\nAnswer as before: ONLY the minified JSON.",
+            timeout=timeout, session=sid, resume=True)
+        if p is not None:
+            return p
+        if str(LAST_GENAI_ERR or "").startswith("timeout"):
+            return None      # budget gone; the session stays for later
+        engine._genai_sid_ok = False   # session lost: reopen below
+    import uuid as _uuid
+    sid = str(_uuid.uuid4())
+    engine._genai_sid = sid
+    p = _genai_propose_cli(header + mission + situation + "\n"
+                           + _GENAI_SCHEMA,
+                           timeout=timeout, session=sid)
+    if p is not None:
+        engine._genai_sid_ok = True
+    return p
 
 
 G5_MARGIN = 1e-4     # a vocabulary-growing package must clear this on both
@@ -696,14 +842,22 @@ def _g1_g2(prop: dict, engine=None) -> Optional[str]:
         _known_i |= set(getattr(engine, "macros", {}) or {})
     for v, t in ants:
         if v not in _known_c and v != _ncn:
-            return "G2 vocabulary"
+            return f"G2 vocabulary (unknown concept '{v}')"
         _tb = t[2:] if str(t).startswith(">=") else t
         if _tb not in TERMS and _tb not in REGISTRY.get(v):
-            return "G2 vocabulary"
+            try:
+                float(_tb)
+                return (f"G2 vocabulary (term '{t}' of {v} is a "
+                        "NUMBER; terms are VL,L,M,H,VH or '>=TERM', "
+                        "e.g. '>=M')")
+            except ValueError:
+                pass
+            return f"G2 vocabulary (unknown term '{t}' of {v})"
     for i, x in cons:
-        if (i not in _known_i and i != _nin) \
-                or not (0.0 <= x <= 1.0):
-            return "G2 range"
+        if i not in _known_i and i != _nin:
+            return f"G2 range (unknown intervention '{i}')"
+        if not (0.0 <= x <= 1.0):
+            return f"G2 range ({i}={x} outside 0..1)"
     return None
 
 
@@ -949,7 +1103,7 @@ def stage3_generative(build_override, sim, rules: List[Rule],
             _mb = engine.mission(sim) or ""
         except Exception:
             _mb = ""
-    situation = _mb + _situation_brief(sim, engine)
+    situation = _situation_brief(sim, engine)
     situation += ", ".join(f"{c}={crisp_c.get(c, 0.0):.2f}"
                            for c in DECISION_CONCEPTS)
     _dom = _dominant_terms(eff)
@@ -1073,7 +1227,21 @@ def stage3_generative(build_override, sim, rules: List[Rule],
             "that NAMES the situation (a weighted mix of existing "
             "features/concepts, not collinear with what exists), "
             "and write the rule on it.")
-    situation += _nearest_cases(engine, crisp_c)
+    _cases = _nearest_cases(engine, crisp_c)
+    situation += _cases
+    # RECURRENCE PRESSURE: when the retrieved nearest cases show this
+    # same situation being answered and rejected before, the missing
+    # piece is evidently PERCEPTION, not another order. That is the
+    # moment a concept proposal is asked for BY NAME, with evidence.
+    if _cases.count("rejected") >= 2:
+        situation += (
+            "\nNOTE THE PATTERN above: this situation has recurred "
+            "and order-level answers keep failing the gates. Do not "
+            "write another order-only rule. NAME the situation: "
+            "propose a package with ONE new intermediate concept (a "
+            "weighted mix of existing features/concepts, not "
+            "collinear with anything listed) and write the rule ON "
+            "that concept.")
     # ---- BOUNDED REVISION BUDGET: a proposal rejected at the CHEAP
     # gates (G1 form, G2 constraints, G2b redundancy) returns to the
     # model with the failing gate as feedback, up to B times; the
@@ -1083,7 +1251,21 @@ def stage3_generative(build_override, sim, rules: List[Rule],
     _budget = int(getattr(engine, "revision_budget", 3) or 0) \
         if engine is not None else 0
     _revisions = []
-    prop = _genai_propose(situation)
+    # ONE WAIT BUDGET FOR THE WHOLE ATTEMPT, not one per call. The timeout
+    # used to apply to each call separately, so a proposal plus three
+    # revisions could hold the decision cycle (and with it the animation
+    # frame) for four times the advertised wait. The log then reported a
+    # 90 s timeout for a stage that had actually blocked for minutes, and
+    # advised raising the timeout, which makes the freeze longer. The budget
+    # is now spent down across the calls: whatever is left is what the next
+    # call may wait, and a stage that runs out says so honestly.
+    _deadline = _t_mod.time() + genai_timeout()
+
+    def _left() -> float:
+        return _deadline - _t_mod.time()
+
+    prop = _genai_propose(situation, timeout=max(1.0, _left()),
+                          engine=engine, mission=_mb)
     src = "claude"
     # The generative stage REQUIRES a reachable model: there is no offline
     # stand-in. If the model cannot be reached (or returns nothing usable)
@@ -1093,12 +1275,14 @@ def stage3_generative(build_override, sim, rules: List[Rule],
         if _err.startswith("timeout"):
             return AdaptOutcome(
                 3, False,
-                f"model call timed out ({_err}); the model is "
-                "reachable but the answer took longer than the wait "
-                "budget. Attempt skipped this cycle; raise "
-                "DSS_GENAI_TIMEOUT to wait longer",
+                f"model call timed out after {genai_timeout():.0f} s. The "
+                "model is reachable, the answer just took longer than the "
+                "budget for one whole attempt. The stage is skipped this "
+                "cycle and tried again at the next window; set "
+                "DSS_GENAI_TIMEOUT higher only for batch runs, since the "
+                "decision cycle blocks for the whole wait",
                 info=dict(source="claude", reason="model timeout",
-                          error=_err))
+                          error=_err, waited_s=round(genai_timeout(), 1)))
         return AdaptOutcome(
             3, False,
             "generative model not reachable"
@@ -1118,15 +1302,30 @@ def stage3_generative(build_override, sim, rules: List[Rule],
                  + ", ".join(f"{c}={_dom[c]}"
                              for c in DECISION_CONCEPTS)
                  + "; antecedents must hold NOW (or use '>=').")
-        prop = _genai_propose(retry)
+        if _left() <= 1.0:
+            # the shared budget is gone: stop rather than start a call that
+            # can only end in a timeout
+            return AdaptOutcome(
+                3, False,
+                f"the wait budget of {genai_timeout():.0f} s for this "
+                f"attempt ran out after {len(_revisions)} revision(s); "
+                "the last proposal was still failing "
+                f"{err}. The stage is skipped this cycle",
+                info=dict(source="claude", reason="budget exhausted",
+                          revisions=_revisions,
+                          waited_s=round(genai_timeout(), 1)))
+        prop = _genai_propose(retry, timeout=max(1.0, _left()),
+                              engine=engine, mission=_mb)
         if prop is None:
             _err = str(LAST_GENAI_ERR or "")
             _tmo = _err.startswith("timeout")
             return AdaptOutcome(
                 3, False,
-                ("model call timed out during revision" if _tmo
+                (f"the wait budget of {genai_timeout():.0f} s for this "
+                 f"attempt ran out during revision "
+                 f"{len(_revisions)}" if _tmo
                  else "model became unreachable during revision")
-                + (f" ({_err})" if _err else ""),
+                + (f" ({_err})" if not _tmo and _err else ""),
                 info=dict(source="claude",
                           reason=("model timeout" if _tmo
                                   else "model unreachable"),
@@ -1180,7 +1379,7 @@ def stage3_generative(build_override, sim, rules: List[Rule],
             info=dict(source=src, proposal=prop,
                       gate="G2 duplicate cell"))
     coverage_gap = True     # by definition: the cell was uncovered
-    name = f"G{sum(1 for r in rules if r.name.startswith('G')) + 1}"
+    name = _next_rule_name("G", rules, engine)
     newr = Rule(name,
                 [(v, t) for v, t in prop["antecedents"]],
                 [(i, float(x)) for i, x in prop["consequents"]],
@@ -1364,6 +1563,9 @@ def genai_probe(max_tokens: int = 64) -> dict:
         # reports is the number the simulation will actually wait through
         cmd = genai_cmd(ask)
         res = subprocess.run(cmd, capture_output=True, text=True,
+                             encoding="utf-8",
+                             errors="replace",
+                             stdin=subprocess.DEVNULL,
                              timeout=genai_timeout())
         out["cmd"] = " ".join(cmd)
         out["raw"] = (res.stdout or "")[:4000]

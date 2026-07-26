@@ -468,7 +468,7 @@ def apply_actuator_clauses(out, world, fire, region_mask, clauses,
                     _nw = _fr & (_dw > _d)
                     _dw[_nw] = _d
                     _fr = _dilate(_fr, 1)
-                _bo = 1.0 + 0.8 * a * np.exp(-_dw / 10.0)
+                _bo = 1.0 + 0.8 * a / (1.0 + _dw / 15.0)
                 _mb = m & (out.rcap > 1e-6)
                 out.rcap[_mb] = np.minimum(out.rcap[_mb] * _bo[_mb],
                                            1.5 * cap_max)
@@ -621,6 +621,11 @@ def decision_to_resources(world, burning, regions_intensities, base=None,
             if locals().get("_down_ok"):
                 _strip &= _down
             out.rburn[_strip] = np.maximum(out.rburn[_strip], u7)
+            # the library actuator leaves the same per-cell trace a
+            # runtime macro does: what acts on the map is drawn on it
+            _mc7 = _macro_cells.setdefault(
+                "tactical_burn", np.zeros((ny, nx), dtype=bool))
+            _mc7 |= _strip
         u9 = float(u.get("retardant_drop", 0.0))
         if u9 > 0.3:
             # AERIAL RETARDANT/SOIL: coat the HEAD sector just ahead
@@ -638,6 +643,9 @@ def decision_to_resources(world, burning, regions_intensities, base=None,
             if locals().get("_down_ok"):
                 _pass &= _down
             out.rret[_pass] = np.maximum(out.rret[_pass], u9)
+            _mc9 = _macro_cells.setdefault(
+                "retardant_drop", np.zeros((ny, nx), dtype=bool))
+            _mc9 |= _pass
         # RUNTIME-DEFINED actuators: any macro carrying clauses that
         # this region's rules fired is interpreted here
         for _mn, _md in (macros or {}).items():
@@ -704,16 +712,29 @@ def decision_to_resources(world, burning, regions_intensities, base=None,
                 # chebyshev distance-to-water by iterative dilation
                 # (numpy only; capped at 30 cells = 900 m, beyond
                 # which drafting saves nothing anyway)
-                _dw = np.full((ny, nx), 30.0)
+                _dw = np.full((ny, nx), 60.0)
                 _frontier = _wat.copy()
-                for _d in range(30):
+                for _d in range(60):
                     _new = _frontier & (_dw > _d)
                     _dw[_new] = _d
                     _frontier = _dilate(_frontier, 1)
-                _boost = 1.0 + 0.8 * u8 * np.exp(-_dw / 10.0)
+                # GROUND shuttle: engines ferry water a few hundred
+                # metres. AIR shuttle: a helicopter drafts from ANY
+                # water body on the map, so wherever air cover exists
+                # the boost barely decays with distance; that is what
+                # lets one region's front drink another region's lake.
+                _bo_g = 0.8 * u8 / (1.0 + _dw / 15.0)
+                _bo_a = 0.8 * u8 / (1.0 + _dw / 45.0)
+                _air = (np.clip(out.rair, 0.0, 1.0)
+                        if getattr(out, "rair", None) is not None
+                        else np.zeros((ny, nx)))
+                _boost = 1.0 + np.maximum(_bo_g, _bo_a * _air)
                 _mb = rb & (out.rcap > 1e-6)
                 out.rcap[_mb] = np.minimum(
                     out.rcap[_mb] * _boost[_mb], 1.5 * cap_max)
+                _mc8 = _macro_cells.setdefault(
+                    "water_drafting", np.zeros((ny, nx), dtype=bool))
+                _mc8 |= (_mb & (_boost > 1.05))
         _shr = float(u.get("_share", 1.0))
         if abs(_shr - 1.0) > 1e-6:
             # GLOBAL STEERING: the region's share scales its cells'

@@ -679,7 +679,8 @@ def test_genai_package_grows_vocabulary():
                    "name": "backburn",
                    "composition": [["containment_line", 0.7],
                                    ["suppression_effort", 0.5]]}}
-        A._genai_propose = lambda s_: json.loads(json.dumps(pkg))
+        A._genai_propose = lambda s_, timeout=None, **kw_: json.loads(
+            json.dumps(pkg))
         out = stage3_generative(build, sim, eng.rules,
                                 rows[hot]["eff"], rows[hot]["crisp"],
                                 8, coverage_gap=True, engine=eng)
@@ -692,7 +693,8 @@ def test_genai_package_grows_vocabulary():
                     "level": "intermediate",
                     "inputs": [["weather_severity", 0.6],
                                ["fuel_load", 0.4]]}}
-        A._genai_propose = lambda s_: json.loads(json.dumps(pkg2))
+        A._genai_propose = lambda s_, timeout=None, **kw_: json.loads(
+            json.dumps(pkg2))
         out2 = stage3_generative(build, sim, eng.rules,
                                  rows[hot]["eff"], rows[hot]["crisp"],
                                  8, coverage_gap=True, engine=eng)
@@ -1221,3 +1223,588 @@ def test_tuning_of_a_generated_rule_applies_when_stage3_is_on(tmp_path):
     assert "G5" not in {r.name for r in b.rules}
     assert b.applied_mods == 0
     assert len(b.warnings) == 1 and "is off" in b.warnings[0]
+
+
+def test_evfis_still_reaches_the_membership_shoulder():
+    """evFIS tunes consequents AND the antecedent partition.
+
+    Once the candidate list grew from one rule to two, the consequent trials
+    (2 rules x 2 signs) swallowed the whole allowance and the shoulder branch
+    became unreachable, so the stage silently stopped moving partition
+    boundaries. The budget for the shoulder is now reserved up front.
+    """
+    from dss import adapt as A
+
+    class _Sim:
+        class state:
+            step = 3
+        class cfg:
+            cost = None
+            step_minutes = 1.0
+
+    calls = {"n": 0}
+
+    def _fake_cva(build, sim, rules, horizon, reseed=None):
+        # every trial looks slightly worse, so nothing is kept and the stage
+        # is forced to spend its whole budget
+        calls["n"] += 1
+        return 1.0 + 0.001 * calls["n"], 1.0
+
+    rules = A.make_runtime_rules("minimal5")
+    fired = [(rules[0], 0.9), (rules[1], 0.5)]
+    _old_cva, _old_shift = A._cva, A.REGISTRY.shift_boundary
+    moved = {"n": 0}
+
+    def _spy_shift(var, term, delta):
+        moved["n"] += 1
+        return _old_shift(var, term, delta)
+
+    try:
+        A._cva = _fake_cva
+        A.REGISTRY.shift_boundary = _spy_shift
+        out = A.stage1_evfis(lambda r: None, _Sim(), rules, fired, 12)
+    finally:
+        A._cva, A.REGISTRY.shift_boundary = _old_cva, _old_shift
+
+    kinds = [t.get("kind") for t in (out.info or {}).get("trials", [])]
+    assert "membership" in kinds, \
+        f"the shoulder trial must run; trials were {kinds}"
+    assert moved["n"] == 1, "the partition boundary must be tried exactly once"
+    assert kinds.count("consequent") >= 2, \
+        "the consequent trials must still happen alongside it"
+
+
+def test_a_free_rejection_does_not_burn_the_whole_cooldown():
+    """A rejection decided without a forecast or a model call is refunded.
+
+    Stage 2 finding the antecedent cell already covered is a set lookup. It
+    used to cost the same five minutes of silence as a rejection that ran the
+    45-minute shadow forecasts, which is how a third of all adaptation
+    windows went to decisions that cost nothing.
+    """
+    from dss import adapt as A
+    from dss.loop import DecisionEngine
+
+    c0, g0 = A.CVA_CALLS, A.GENAI_CALLS
+    # the counters move only when the expensive work actually happens
+    assert (A.CVA_CALLS, A.GENAI_CALLS) == (c0, g0)
+
+    eng = DecisionEngine([], adapt_on=True)
+    assert eng.adapt_retry_min < eng.adapt_cooldown_min, \
+        "the refund has to leave a shorter wait than the full cooldown"
+    # the refund rewinds the stamp so only adapt_retry_min is still owed
+    _now = 30.0
+    eng._adapt_last_min = (_now - (eng.adapt_cooldown_min
+                                   - eng.adapt_retry_min))
+    _due_at = eng._adapt_last_min + eng.adapt_cooldown_min
+    assert abs((_due_at - _now) - eng.adapt_retry_min) < 1e-9, \
+        "after a refund the next window must open one retry period later"
+
+
+def test_genai_budget_is_shared_by_the_proposal_and_its_revisions():
+    """The wait budget belongs to the ATTEMPT, not to each call.
+
+    With one budget per call, a proposal plus three revisions could hold the
+    decision cycle for four times the advertised wait while the log reported
+    a single 90 s timeout.
+    """
+    import inspect
+    from dss import adapt as A
+
+    src = inspect.getsource(A.stage3_generative)
+    assert "_deadline" in src and "_left()" in src, \
+        "the stage must carry one deadline across its calls"
+    assert src.count("timeout=max(1.0, _left())") == 2, \
+        "both the proposal and the revision must draw on what is left"
+    # _genai_propose has to be able to take the remaining budget
+    assert "timeout" in inspect.signature(A._genai_propose).parameters
+
+
+def test_every_agent_and_the_coordinator_are_visible_in_the_step_views():
+    """The step table names only the hotspot, so the other agents and the
+    Global DSS had no view at all: the run read as if one region were the
+    whole system. build_agent_rows and build_global_rows cover both.
+    """
+    import ast
+    import dss
+
+    src = open('app/streamlit_app.py', encoding='utf-8').read()
+    tree = ast.parse(src)
+    want = {'build_agent_rows', 'build_global_rows', '_fmt_orders'}
+    mod = ast.Module(
+        body=[n for n in tree.body
+              if isinstance(n, ast.FunctionDef) and n.name in want],
+        type_ignores=[])
+    ns = {}
+    exec(compile(mod, '<views>', 'exec'), ns)
+
+    w, sim = _mini_fire_sim()
+    base, _ = dss.resource_suggestion(w)
+    eng = dss.DecisionEngine(dss.partition_n(60, 40, 3), base_pool=base,
+                             j_threshold=0.05, cycle_steps=1,
+                             horizon_steps=4, adapt_on=True, genai_on=False)
+    for _ in range(8):
+        sim.step(resource_override=eng.maybe_decide(sim))
+
+    arows = ns['build_agent_rows'](eng.cycles)
+    grows = ns['build_global_rows'](eng.cycles)
+
+    assert len({r["agent"] for r in arows}) == 3, \
+        "all three local agents must have rows, not only the hotspot"
+    assert len(arows) == 3 * len(eng.cycles), \
+        "every agent decides in every cycle"
+    assert {r["role"] for r in arows} <= {"focus", "attended", "monitor"}
+    assert sum(1 for r in arows if r["role"] == "focus") == len(eng.cycles), \
+        "exactly one region is the hotspot per cycle"
+    # the coordinator's own decision is a row of its own
+    assert len(grows) == len(eng.cycles)
+    assert all(g["ranking"] != "—" for g in grows), \
+        "the ranking the shares came from must be shown"
+    # newest first, like the step table
+    assert arows[0]["cycle"] >= arows[-1]["cycle"]
+    assert grows[0]["cycle"] >= grows[-1]["cycle"]
+
+
+def _wui_run(orders, water=False, steps=18, wind=None, pool=1.0):
+    """One controlled fire with a FIXED order vector, for channel tests."""
+    import dss
+    from disaster_phyengine.scenarios import wui_interface
+    from disaster_phyengine.core import Simulator
+    from disaster_phyengine.costs import compute_costs
+    chans = ["suppression_effort", "resource_deployment", "containment_line",
+             "asset_protection", "evacuation", "public_warning",
+             "tactical_burn", "water_drafting", "retardant_drop"]
+    w = wui_interface()
+    ny, nx = w.fuel.fload.shape
+    if wind is not None:
+        w.meteo.wws[:] = wind
+        w.fuel.fmoist[:] = 0.05
+    if water:
+        w.fuel.ftype[10:24, 40:70] = 5
+    sim = Simulator(w)
+    w.add_ignition(70, 35, step=0, radius=2)
+    for _ in range(4):
+        sim.step()
+    base, _ = dss.resource_suggestion(w)
+    base.rcap *= pool
+    u = {c: 0.0 for c in chans}
+    u.update(orders)
+    pairs = [(dss.partition_n(nx, ny, 1)[0], dict(u))]
+    for _ in range(steps):
+        sim.step(resource_override=dss.decision_to_resources(
+            w, sim.state.burning > 0.5, pairs, base))
+    rep = compute_costs(sim)
+    return dict(burned=int(sim.ever_burned.sum()),
+                exposure=float(sim.exposure_person_steps),
+                j_pop=float(rep.j_pop), j_total=float(rep.j_total))
+
+
+def test_evacuating_people_must_lower_the_population_cost():
+    """J_pop was normalized by the population STILL THERE.
+
+    An ordered evacuation removes people from vpop, so the denominator fell
+    with the numerator and a good evacuation scored worse than none: on this
+    scenario the exposure dropped by 98.5% while J_pop went from 0.048 to
+    1.000, the maximum penalty. Since J_pop feeds the satisficing test and
+    the no-harm guard, the DSS was being told not to evacuate.
+    """
+    none = _wui_run({})
+    evac = _wui_run({"evacuation": 1.0})
+    both = _wui_run({"evacuation": 1.0, "public_warning": 1.0})
+
+    assert evac["exposure"] < none["exposure"] * 0.5, \
+        "the evacuation must actually remove people from the fire"
+    assert evac["j_pop"] < none["j_pop"], \
+        "fewer people exposed has to mean a SMALLER population cost"
+    assert both["exposure"] < evac["exposure"], \
+        "a warning primes the population, so the departure is faster"
+    assert both["j_pop"] < evac["j_pop"], \
+        "and the faster departure has to score better, not worse"
+    assert both["j_total"] < none["j_total"]
+
+
+def test_every_intervention_channel_reaches_the_physics():
+    """No channel may be decoration: each one has to move the simulation.
+
+    Two of them are MULTIPLIERS by design and do nothing alone: a public
+    warning moves nobody by itself (it doubles the evacuation tempo) and
+    water drafting boosts capacity that has already been staged. They are
+    checked in the combination they are meant for.
+    """
+    base = _wui_run({})
+    # direct channels: measurable on their own
+    for ch in ("suppression_effort", "containment_line", "asset_protection",
+               "tactical_burn"):
+        r = _wui_run({ch: 1.0})
+        assert r["burned"] != base["burned"], \
+            f"{ch} did not change the fire at all"
+    r = _wui_run({"evacuation": 1.0})
+    assert r["exposure"] < base["exposure"], "evacuation must move people"
+    r = _wui_run({"retardant_drop": 1.0}, water=True)
+    assert r["burned"] < base["burned"], "retardant must slow the fire"
+
+    # capacity-limited regime: staging and the water shuttle only matter
+    # when capacity is what the suppression is short of
+    hard = dict(wind=16.0, pool=0.25, steps=22)
+    b0 = _wui_run({"suppression_effort": 0.5}, **hard)
+    b1 = _wui_run({"suppression_effort": 0.5, "resource_deployment": 1.0},
+                  **hard)
+    assert b1["burned"] < b0["burned"], \
+        "resource deployment must give the suppression something to spend"
+    w0 = _wui_run({"suppression_effort": 0.5}, water=True, **hard)
+    w1 = _wui_run({"suppression_effort": 0.5, "water_drafting": 1.0},
+                  water=True, **hard)
+    assert w1["burned"] < w0["burned"], \
+        "drafting from a lake must sustain the attack better than not"
+
+
+def test_the_review_never_blocks_and_is_found_afterwards(tmp_path):
+    """The after-action review runs in the background.
+
+    The panel used to sleep and rerun in a loop while the model read the
+    logs, which froze the whole script for the one to three minutes the
+    deep review takes, and leaving the panel stopped the polling entirely,
+    so a finished report was never collected.
+    """
+    import time
+    from dss import rca
+
+    d = str(tmp_path)
+    calls = {"n": 0}
+
+    def _slow(evidence, model=None):
+        calls["n"] += 1
+        time.sleep(0.6)
+        return "REPORT BODY", {"recommendations": [{"kind": "setting"}]}
+
+    _old = rca.run_rca
+    try:
+        rca.run_rca = _slow
+        t0 = time.time()
+        rca.start_async(d, "evidence", model="opus")
+        assert time.time() - t0 < 0.3, \
+            "start_async must return at once, not wait for the model"
+        assert rca.poll(d)["state"] == "running"
+        assert rca.poll(d)["model"] == "opus"
+        # a second press while one is in flight must not launch another
+        rca.start_async(d, "evidence", model="opus")
+        assert calls["n"] <= 1
+
+        for _ in range(60):
+            if rca.poll(d)["state"] != "running":
+                break
+            time.sleep(0.1)
+        j = rca.poll(d)
+        assert j["state"] == "done", f"the review must finish: {j}"
+        assert j["report"] == "REPORT BODY"
+        assert rca.elapsed_s(d) > 0.0
+    finally:
+        rca.run_rca = _old
+
+    # the report survives the job table: a review that finished while the
+    # process was elsewhere (or restarted) is still found on disk
+    rca._JOBS.pop(d, None)
+    j2 = rca.poll(d)
+    assert j2["state"] == "done" and j2.get("from_disk"), \
+        "poll must fall back to the saved file"
+    assert "REPORT BODY" in j2["report"]
+    assert rca.poll(str(tmp_path / "nothing_here"))["state"] == "idle"
+
+
+def test_a_rejected_cycle_may_not_claim_another_stage_s_record():
+    """The step table joined store records to cycles on the STEP NUMBER.
+
+    It checked neither whether the cycle was accepted nor which stage wrote
+    the record, so a GenAI attempt rejected at G2c was shown with an evFIS
+    consequent tuning as its target, its change and its output. Step numbers
+    also restart with every fire, so without the seq0 scope an old record
+    was presented as this run's.
+    """
+    import ast
+    import json
+    import os
+    import tempfile
+
+    src = open('app/streamlit_app.py', encoding='utf-8').read()
+    tree = ast.parse(src)
+    want = {'build_step_rows', '_adapt_target', '_adapt_change',
+            '_gate_marks', '_applied_orders', '_STAGE_NAME', '_read_gstate'}
+    ns = {}
+    exec(compile(ast.Module(
+        body=[n for n in tree.body
+              if (isinstance(n, ast.FunctionDef) and n.name in want)
+              or (isinstance(n, ast.Assign)
+                  and getattr(n.targets[0], 'id', '') in want)],
+        type_ignores=[]), '<views>', 'exec'), ns)
+
+    store = {"evfis_rule_modifications": [dict(
+        id="evfis_mod_0011", seq=11, source_stage=1,
+        base_rule_id="G5", modification_type="consequent_update",
+        before={"consequents": [["asset_protection", 0.90]]},
+        after={"consequents": [["asset_protection", 0.85]]},
+        trigger={"step": 32})], "genai_rules": [], "genai_concepts": [],
+        "genai_interventions": []}
+    ns['_read_gstate'] = lambda *a, **k: store
+
+    # cycle 32: stage 3 was tried and REJECTED at G2c
+    cyc = [dict(step=32, t_min=32.0, global_dss={"hotspot": "Agent_3",
+                                                 "shares": {}, "attended": []},
+                regions={}, stage_controller={},
+                adaptation=dict(stage=0, tried=3, accepted=False,
+                                detail="rejected at G2c relevance",
+                                dJ=0.0, info={}))]
+    row = ns['build_step_rows'](cyc, {"seq0": 0})[0]
+    assert row["verdict"] == "rejected"
+    assert "0.90" not in str(row["change"]), \
+        f"a rejected attempt must not show a tuning as its change: {row}"
+    assert row["produced"] == "—", \
+        "a rejected attempt produced nothing"
+    assert row["rec_seq"] is None
+
+    # the SAME record, now with the stage that actually wrote it accepted
+    cyc[0]["adaptation"] = dict(stage=1, tried=1, accepted=True,
+                                detail="G5 consequents -0.05", dJ=-0.01,
+                                info={})
+    row = ns['build_step_rows'](cyc, {"seq0": 0})[0]
+    assert "0.90" in str(row["change"]) and row["rec_seq"] == 11, \
+        f"the stage that wrote the record must still show it: {row}"
+
+    # no seq0: nothing may be attributed, because step numbers restart
+    cyc[0]["adaptation"]["accepted"] = True
+    row = ns['build_step_rows'](cyc, {})[0]
+    assert row["produced"] == "—" and row["rec_seq"] is None, \
+        "without the run scope an old record must not be claimed"
+
+
+def test_the_adaptation_goes_to_the_least_covered_region_with_fire():
+    """The adaptation target is chosen on COVERAGE, not on priority.
+
+    The coordinator ranks on operational priority, which decides where the
+    capacity goes. Stage 2 and stage 3 answer situations the rule base does
+    NOT cover, so sending them to the highest-priority region sent them, run
+    after run, to the region the base already covered best: over 3812 real
+    cycles the old selector picked one region 83% of the time and that same
+    region had the highest mean fired weight.
+    """
+    from dss.loop import DecisionEngine
+
+    eng = DecisionEngine([], adapt_on=True)
+
+    def _mk(prio, fire):
+        return ({n: {"crisp": {"operational_priority": prio[n]}}
+                 for n in prio},
+                {n: {"f": {"fire_intensity": fire[n]}} for n in prio})
+
+    # the loudest region is also the best covered: it must NOT be picked
+    rows, ctx = _mk({"A": 0.90, "B": 0.30, "C": 0.20},
+                    {"A": 0.9, "B": 0.8, "C": 0.7})
+    pick, why = eng._adapt_region(rows, ctx, {"A": 0.80, "B": 0.25, "C": 0.60})
+    assert pick == "B", f"the least covered region with fire, got {pick}"
+    assert "least covered" in why
+
+    # a region with NO fire has the lowest coverage for the trivial reason
+    # that nothing is happening there; learning an empty situation is worse
+    # than not learning, so it is out of the running
+    rows, ctx = _mk({"A": 0.90, "B": 0.30, "C": 0.20},
+                    {"A": 0.9, "B": 0.0, "C": 0.7})
+    pick, _ = eng._adapt_region(rows, ctx, {"A": 0.80, "B": 0.00, "C": 0.60})
+    assert pick == "C", f"a region without fire must not be picked, got {pick}"
+
+    # equal coverage falls back to the coordinator's ranking
+    rows, ctx = _mk({"A": 0.20, "B": 0.90, "C": 0.10},
+                    {"A": 0.9, "B": 0.9, "C": 0.9})
+    pick, _ = eng._adapt_region(rows, ctx, {"A": 0.5, "B": 0.5, "C": 0.5})
+    assert pick == "B", f"ties break on priority, got {pick}"
+
+    # nothing burning anywhere: there is no coverage question, so the
+    # coordinator's hotspot stands
+    rows, ctx = _mk({"A": 0.20, "B": 0.90, "C": 0.10},
+                    {"A": 0.0, "B": 0.0, "C": 0.0})
+    pick, why = eng._adapt_region(rows, ctx, {"A": 0.1, "B": 0.9, "C": 0.2})
+    assert pick == "B" and "no region has fire" in why
+
+
+def test_stage2_is_filtered_only_when_it_is_certain_to_be_refused():
+    """A predictive filter, not a retirement.
+
+    Stage 2 instantiates the antecedent cell of the current situation, so a
+    cell that is already covered AND crisp means the stage is certain to be
+    turned away. Offering it wastes the pick: measured on the WUI scenario
+    the covered-cell refusals were 79% of all attempts. The filter drops
+    stage 2 from THAT CYCLE only, so the moment the cell space grows the
+    stage returns on its own.
+    """
+    import numpy as np
+    from dss import adapt as A
+    from dss.rules import Rule
+
+    terms = list(A.TERMS)
+
+    def _eff(peak_term, sharp=True):
+        """A membership vector whose argmax is peak_term."""
+        v = np.full(len(terms), 0.10)
+        v[terms.index(peak_term)] = 0.95 if sharp else 0.45
+        return v
+
+    crisp = {c: 0.9 if i < 2 else 0.1
+             for i, c in enumerate(A.DECISION_CONCEPTS)}
+    eff = {c: _eff("VH") for c in A.DECISION_CONCEPTS}
+    cell = A.stage2_target_cell(eff, crisp)
+    assert len(cell) == 2, "the cell is the two most activated concepts"
+
+    # nothing covers the cell yet: the stage has work, it must NOT be filtered
+    assert A.stage2_would_be_refused([], eff, crisp) is False
+
+    covering = Rule("X1", list(cell), [("suppression_effort", 0.5)])
+    assert A._cell_covered([covering], cell) is True
+    assert A.stage2_would_be_refused([covering], eff, crisp) is True, \
+        "a covered, crisp cell is a certain refusal"
+
+    # SAME covered cell, but the membership is ambiguous: stage 2 would
+    # insert a narrower term and write on the refined cell, so it is still
+    # real work and must survive the filter
+    eff_amb = dict(eff)
+    eff_amb[cell[0][0]] = _eff("VH", sharp=False)
+    assert float(np.max(eff_amb[cell[0][0]])) < A.AMBIGUOUS_BELOW
+    assert A.stage2_would_be_refused([covering], eff_amb, crisp) is False, \
+        "an ambiguous cell is a resolution increase, not a refusal"
+
+    # an inactive rule does not cover anything
+    covering.active = False
+    assert A.stage2_would_be_refused([covering], eff, crisp) is False
+
+
+def test_the_filter_never_empties_the_menu():
+    """A stage that cannot win still beats no adaptation at all."""
+    import inspect
+    from dss.loop import DecisionEngine
+    src = inspect.getsource(DecisionEngine.decide)
+    assert "if _m2:" in src, \
+        "the filtered menu must only be adopted when something is left"
+    assert "not _void" in src, \
+        "a coverage void must be exempt: there the cell is open by definition"
+
+
+def test_the_controller_value_table_survives_fires_on_the_same_map(tmp_path):
+    """The stage controller learns over a CAMPAIGN, not one fire.
+
+    One fire offers only a few dozen adaptation attempts, nowhere near
+    enough for an epsilon-greedy value table to get past exploration, so a
+    fresh table every run meant the stage choice never converged. The table
+    is kept in the store and restored on the same map; a different map
+    resets it, because the worth of a stage is a property of the scene.
+    """
+    import json
+    import dss
+    from dss.loop import DecisionEngine
+
+    sp = str(tmp_path / "gs.json")
+
+    def campaign(map_key, steps=30):
+        w, sim = _mini_fire_sim()
+        base, _ = dss.resource_suggestion(w)
+        eng = DecisionEngine(dss.partition_n(60, 40, 3), base_pool=base,
+                             j_threshold=0.05, cycle_steps=1,
+                             horizon_steps=4, adapt_on=True,
+                             evfis_on=True, genai_on=False, state_path=sp)
+        restored = eng.bind_map(map_key)
+        n_start = len(eng.controller.q)
+        for _ in range(steps):
+            sim.step(resource_override=eng.maybe_decide(sim))
+        return restored, n_start, len(eng.controller.q)
+
+    r1, s1, e1 = campaign("MAP-A")
+    assert r1 is False and s1 == 0, "the first fire starts from nothing"
+    assert e1 > 0, "the fire has to teach the controller something"
+
+    r2, s2, e2 = campaign("MAP-A")
+    assert r2 is True, "a second fire on the same map inherits the table"
+    assert s2 == e1, f"it must start where the first ended: {s2} vs {e1}"
+    assert e2 >= s2, "and keep accumulating"
+
+    r3, s3, _ = campaign("MAP-B")
+    assert r3 is False and s3 == 0, \
+        "a different map must not inherit another scene's experience"
+
+    on_disk = json.load(open(sp, encoding="utf-8"))["stage_controller"]
+    assert on_disk["map_key"] == "MAP-B"
+    assert on_disk["maps"]["MAP-B"]["q"], \
+        "the table has to reach the file, not only memory"
+    assert on_disk["maps"]["MAP-A"]["q"], \
+        "the earlier scene keeps its own table"
+
+    # a wipe clears the learned values too: they were learned from rules
+    # that a wipe removes
+    from dss.state import GeneratedState
+    st = GeneratedState.load(sp)
+    counts = st.wipe(backup=False)
+    assert counts["stage_controller_entries"] > 0
+    assert GeneratedState.load(sp).controller_maps() == {}
+
+
+def test_each_map_keeps_its_own_value_table(tmp_path):
+    """Returning to a scene restores what it earned there.
+
+    The first version kept ONE table tagged with a map key, so opening a
+    second map threw the first one's experience away and coming back meant
+    starting from zero, even though those fires had already been paid for.
+    Every scene now has its own table; they still never mix.
+    """
+    import json
+    from dss.adapt import StageController
+    from dss.state import GeneratedState
+
+    sp = str(tmp_path / "gs.json")
+    st = GeneratedState.load(sp)
+
+    a = StageController()
+    a.q[("mid", 1)] = 0.11
+    a.q[("high+gap", 3)] = 0.22
+    st.save_controller(a, map_key="MAP-A")
+
+    b = StageController()
+    b.q[("low", 2)] = -0.05
+    st.save_controller(b, map_key="MAP-B")
+
+    assert st.controller_maps() == {"MAP-A": 2, "MAP-B": 1}
+
+    # back on A: its own values, and none of B's
+    back = StageController()
+    st2 = GeneratedState.load(sp)
+    assert st2.load_controller(back, "MAP-A") is True
+    assert back.q == {("mid", 1): 0.11, ("high+gap", 3): 0.22}
+    assert ("low", 2) not in back.q, "the scenes must never mix"
+
+    # an unknown scene starts empty and says so
+    fresh = StageController()
+    assert st2.load_controller(fresh, "MAP-NEW") is False and not fresh.q
+
+    # the archive is bounded, least recently seen goes first
+    for i in range(GeneratedState.MAX_CONTROLLER_MAPS + 4):
+        c = StageController()
+        c.q[("mid", 1)] = float(i)
+        st2.save_controller(c, map_key=f"M{i:02d}", save=False)
+    kept = st2.controller_maps()
+    assert len(kept) <= GeneratedState.MAX_CONTROLLER_MAPS
+    assert f"M{GeneratedState.MAX_CONTROLLER_MAPS + 3:02d}" in kept, \
+        "the most recent scene must survive the eviction"
+
+
+def test_an_old_single_table_store_is_migrated_not_dropped(tmp_path):
+    """A store written before the per-map archive still carries its table."""
+    import json
+    from dss.adapt import StageController
+    from dss.state import GeneratedState, empty_state, SCHEMA_VERSION
+
+    sp = str(tmp_path / "gs.json")
+    old = empty_state()
+    old["stage_controller"] = {"map_key": "MAP-OLD",
+                               "q": {"mid/1": 0.33}, "updates": 7}
+    json.dump(old, open(sp, "w", encoding="utf-8"))
+
+    st = GeneratedState.load(sp)
+    assert st.controller_maps() == {"MAP-OLD": 1}, \
+        "the pre-existing table must be carried into the archive"
+    c = StageController()
+    assert st.load_controller(c, "MAP-OLD") is True
+    assert c.q == {("mid", 1): 0.33}

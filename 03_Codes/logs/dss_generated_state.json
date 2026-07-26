@@ -1,6 +1,6 @@
 {
  "schema_version": "1.0",
- "last_updated": "2026-07-25T14:35:11Z",
+ "last_updated": "2026-07-26T00:26:11Z",
  "baseline_ref": {
   "rule_sets": [
    "minimal5",
@@ -16,6 +16,26 @@
   "genai_active": true,
   "use_stage12_rules": true,
   "use_stage3_rules": true
+ },
+ "stage_controller": {
+  "map_key": "bb433f06acdc2147",
+  "maps": {
+   "bb433f06acdc2147": {
+    "q": {
+     "high+gap/2": 0.000105,
+     "low/3": -0.001906,
+     "high+gap/3": -0.00037,
+     "high+gap/1": 0.002199,
+     "mid+gap/1": -0.000657,
+     "mid+gap/3": -0.000836,
+     "mid+gap/2": 0.008172,
+     "low/1": -0.001725,
+     "low/2": -0.001605
+    },
+    "updates": 72,
+    "seen": "2026-07-26T00:26:11Z"
+   }
+  }
  },
  "evfis_rule_modifications": [
   {
@@ -339,6 +359,6497 @@
     "genai_active": true
    },
    "timestamp": "2026-07-25T14:35:11Z"
+  },
+  {
+   "base_rule_id": "G5",
+   "base_rule_set": "minimal",
+   "modification_type": "consequent_update",
+   "before": {
+    "consequents": [
+     [
+      "downwind_retardant_shield",
+      0.9500000000000001
+     ],
+     [
+      "asset_protection",
+      0.75
+     ],
+     [
+      "resource_deployment",
+      0.75
+     ]
+    ]
+   },
+   "after": {
+    "consequents": [
+     [
+      "downwind_retardant_shield",
+      0.9
+     ],
+     [
+      "asset_protection",
+      0.7
+     ],
+     [
+      "resource_deployment",
+      0.7
+     ]
+    ]
+   },
+   "trigger": {
+    "step": 10,
+    "minute": 10.0,
+    "deficit": 0.2,
+    "stage": 1
+   },
+   "id": "evfis_mod_0022",
+   "seq": 22,
+   "origin": "evfis",
+   "source_stage": 1,
+   "produced_under_flags": {
+    "use_stage12_rules": true,
+    "use_stage3_rules": true,
+    "evfis_active": true,
+    "genai_active": true
+   },
+   "timestamp": "2026-07-25T21:27:15Z"
+  },
+  {
+   "base_rule_id": "G5",
+   "base_rule_set": "minimal",
+   "modification_type": "consequent_update",
+   "before": {
+    "consequents": [
+     [
+      "downwind_retardant_shield",
+      0.9
+     ],
+     [
+      "asset_protection",
+      0.7
+     ],
+     [
+      "resource_deployment",
+      0.7
+     ]
+    ]
+   },
+   "after": {
+    "consequents": [
+     [
+      "downwind_retardant_shield",
+      0.9500000000000001
+     ],
+     [
+      "asset_protection",
+      0.75
+     ],
+     [
+      "resource_deployment",
+      0.75
+     ]
+    ]
+   },
+   "trigger": {
+    "step": 25,
+    "minute": 25.0,
+    "deficit": 0.3,
+    "stage": 1
+   },
+   "id": "evfis_mod_0023",
+   "seq": 23,
+   "origin": "evfis",
+   "source_stage": 1,
+   "produced_under_flags": {
+    "use_stage12_rules": true,
+    "use_stage3_rules": true,
+    "evfis_active": true,
+    "genai_active": true
+   },
+   "timestamp": "2026-07-25T21:27:52Z"
+  },
+  {
+   "base_rule_id": "G5",
+   "base_rule_set": "minimal",
+   "modification_type": "consequent_update",
+   "before": {
+    "consequents": [
+     [
+      "downwind_retardant_shield",
+      0.9500000000000001
+     ],
+     [
+      "asset_protection",
+      0.75
+     ],
+     [
+      "resource_deployment",
+      0.75
+     ]
+    ]
+   },
+   "after": {
+    "consequents": [
+     [
+      "downwind_retardant_shield",
+      1.0
+     ],
+     [
+      "asset_protection",
+      0.8
+     ],
+     [
+      "resource_deployment",
+      0.8
+     ]
+    ]
+   },
+   "trigger": {
+    "step": 15,
+    "minute": 15.0,
+    "deficit": 0.16,
+    "stage": 1
+   },
+   "id": "evfis_mod_0025",
+   "seq": 25,
+   "origin": "evfis",
+   "source_stage": 1,
+   "produced_under_flags": {
+    "use_stage12_rules": true,
+    "use_stage3_rules": true,
+    "evfis_active": true,
+    "genai_active": true
+   },
+   "timestamp": "2026-07-25T21:29:59Z"
+  },
+  {
+   "base_rule_id": "G5",
+   "base_rule_set": "minimal",
+   "modification_type": "consequent_update",
+   "before": {
+    "consequents": [
+     [
+      "downwind_retardant_shield",
+      1.0
+     ],
+     [
+      "asset_protection",
+      0.8
+     ],
+     [
+      "resource_deployment",
+      0.8
+     ]
+    ]
+   },
+   "after": {
+    "consequents": [
+     [
+      "downwind_retardant_shield",
+      1.0
+     ],
+     [
+      "asset_protection",
+      0.8500000000000001
+     ],
+     [
+      "resource_deployment",
+      0.8500000000000001
+     ]
+    ]
+   },
+   "trigger": {
+    "step": 20,
+    "minute": 20.0,
+    "deficit": 0.3,
+    "stage": 1
+   },
+   "id": "evfis_mod_0026",
+   "seq": 26,
+   "origin": "evfis",
+   "source_stage": 1,
+   "produced_under_flags": {
+    "use_stage12_rules": true,
+    "use_stage3_rules": true,
+    "evfis_active": true,
+    "genai_active": true
+   },
+   "timestamp": "2026-07-25T21:30:06Z"
+  },
+  {
+   "base_rule_id": "A1",
+   "base_rule_set": "minimal",
+   "modification_type": "consequent_update",
+   "before": {
+    "consequents": [
+     [
+      "asset_protection",
+      0.8822713257955821
+     ],
+     [
+      "evacuation",
+      0.5987536227611577
+     ]
+    ]
+   },
+   "after": {
+    "consequents": [
+     [
+      "asset_protection",
+      0.9322713257955821
+     ],
+     [
+      "evacuation",
+      0.6487536227611578
+     ]
+    ]
+   },
+   "trigger": {
+    "step": 20,
+    "minute": 20.0,
+    "deficit": 0.3,
+    "stage": 1
+   },
+   "id": "evfis_mod_0027",
+   "seq": 27,
+   "origin": "evfis",
+   "source_stage": 1,
+   "produced_under_flags": {
+    "use_stage12_rules": true,
+    "use_stage3_rules": true,
+    "evfis_active": true,
+    "genai_active": true
+   },
+   "timestamp": "2026-07-25T21:30:06Z"
+  },
+  {
+   "base_rule_id": "G5",
+   "base_rule_set": "minimal",
+   "modification_type": "consequent_update",
+   "before": {
+    "consequents": [
+     [
+      "downwind_retardant_shield",
+      1.0
+     ],
+     [
+      "asset_protection",
+      0.8500000000000001
+     ],
+     [
+      "resource_deployment",
+      0.8500000000000001
+     ]
+    ]
+   },
+   "after": {
+    "consequents": [
+     [
+      "downwind_retardant_shield",
+      1.0
+     ],
+     [
+      "asset_protection",
+      0.9000000000000001
+     ],
+     [
+      "resource_deployment",
+      0.9000000000000001
+     ]
+    ]
+   },
+   "trigger": {
+    "step": 5,
+    "minute": 5.0,
+    "deficit": 0.22,
+    "stage": 1
+   },
+   "id": "evfis_mod_0028",
+   "seq": 28,
+   "origin": "evfis",
+   "source_stage": 1,
+   "produced_under_flags": {
+    "use_stage12_rules": true,
+    "use_stage3_rules": true,
+    "evfis_active": true,
+    "genai_active": true
+   },
+   "timestamp": "2026-07-25T21:30:57Z"
+  },
+  {
+   "base_rule_id": "A2",
+   "base_rule_set": "minimal",
+   "modification_type": "rule_add",
+   "before": {
+    "rule": null
+   },
+   "after": {
+    "rule": {
+     "name": "A2",
+     "antecedents": [
+      [
+       "suppression_feasibility",
+       "X1"
+      ],
+      [
+       "asset_exposure_risk",
+       "H"
+      ]
+     ],
+     "consequents": [
+      [
+       "asset_protection",
+       0.5981245103519708
+      ],
+      [
+       "evacuation",
+       0.5065932723462065
+      ]
+     ],
+     "note": "adaptation-born: resolution increase: term X1 inserted into suppression_feasibility at 0.79 (catalog grew)",
+     "strength": 0.0
+    }
+   },
+   "trigger": {
+    "step": 60,
+    "minute": 60.0,
+    "deficit": 0.010119975797321143,
+    "stage": 2
+   },
+   "id": "evfis_mod_0029",
+   "seq": 29,
+   "origin": "evfis",
+   "source_stage": 2,
+   "produced_under_flags": {
+    "use_stage12_rules": true,
+    "use_stage3_rules": true,
+    "evfis_active": true,
+    "genai_active": true
+   },
+   "timestamp": "2026-07-25T21:34:24Z"
+  },
+  {
+   "variable": "suppression_feasibility",
+   "base_rule_set": "minimal",
+   "modification_type": "membership_shift",
+   "before": {
+    "partition": {}
+   },
+   "after": {
+    "partition": {
+     "VL": [
+      0.0,
+      0.0,
+      0.15,
+      0.3
+     ],
+     "L": [
+      0.15,
+      0.3,
+      0.35,
+      0.5
+     ],
+     "M": [
+      0.35,
+      0.5,
+      0.55,
+      0.7
+     ],
+     "H": [
+      0.55,
+      0.7,
+      0.75,
+      0.9
+     ],
+     "VH": [
+      0.75,
+      0.9,
+      1.0,
+      1.0
+     ],
+     "X1": [
+      0.6711641907809384,
+      0.7411641907809383,
+      0.8411641907809384,
+      0.9111641907809384
+     ]
+    }
+   },
+   "trigger": {
+    "step": 60,
+    "minute": 60.0,
+    "deficit": 0.010119975797321143,
+    "stage": 2
+   },
+   "id": "evfis_mod_0030",
+   "seq": 30,
+   "origin": "evfis",
+   "source_stage": 1,
+   "produced_under_flags": {
+    "use_stage12_rules": true,
+    "use_stage3_rules": true,
+    "evfis_active": true,
+    "genai_active": true
+   },
+   "timestamp": "2026-07-25T21:34:24Z"
+  },
+  {
+   "base_rule_id": "G5",
+   "base_rule_set": "minimal",
+   "modification_type": "consequent_update",
+   "before": {
+    "consequents": [
+     [
+      "downwind_retardant_shield",
+      1.0
+     ],
+     [
+      "asset_protection",
+      0.9000000000000001
+     ],
+     [
+      "resource_deployment",
+      0.9000000000000001
+     ]
+    ]
+   },
+   "after": {
+    "consequents": [
+     [
+      "downwind_retardant_shield",
+      0.95
+     ],
+     [
+      "asset_protection",
+      0.8500000000000001
+     ],
+     [
+      "resource_deployment",
+      0.8500000000000001
+     ]
+    ]
+   },
+   "trigger": {
+    "step": 5,
+    "minute": 5.0,
+    "deficit": 0.28,
+    "stage": 1
+   },
+   "id": "evfis_mod_0031",
+   "seq": 31,
+   "origin": "evfis",
+   "source_stage": 1,
+   "produced_under_flags": {
+    "use_stage12_rules": true,
+    "use_stage3_rules": true,
+    "evfis_active": true,
+    "genai_active": true
+   },
+   "timestamp": "2026-07-25T21:36:50Z"
+  },
+  {
+   "base_rule_id": "G5",
+   "base_rule_set": "minimal",
+   "modification_type": "consequent_update",
+   "before": {
+    "consequents": [
+     [
+      "downwind_retardant_shield",
+      0.95
+     ],
+     [
+      "asset_protection",
+      0.8500000000000001
+     ],
+     [
+      "resource_deployment",
+      0.8500000000000001
+     ]
+    ]
+   },
+   "after": {
+    "consequents": [
+     [
+      "downwind_retardant_shield",
+      1.0
+     ],
+     [
+      "asset_protection",
+      0.9000000000000001
+     ],
+     [
+      "resource_deployment",
+      0.9000000000000001
+     ]
+    ]
+   },
+   "trigger": {
+    "step": 15,
+    "minute": 15.0,
+    "deficit": 0.3,
+    "stage": 1
+   },
+   "id": "evfis_mod_0032",
+   "seq": 32,
+   "origin": "evfis",
+   "source_stage": 1,
+   "produced_under_flags": {
+    "use_stage12_rules": true,
+    "use_stage3_rules": true,
+    "evfis_active": true,
+    "genai_active": true
+   },
+   "timestamp": "2026-07-25T21:36:55Z"
+  },
+  {
+   "base_rule_id": "G5",
+   "base_rule_set": "minimal",
+   "modification_type": "consequent_update",
+   "before": {
+    "consequents": [
+     [
+      "downwind_retardant_shield",
+      1.0
+     ],
+     [
+      "asset_protection",
+      0.9000000000000001
+     ],
+     [
+      "resource_deployment",
+      0.9000000000000001
+     ]
+    ]
+   },
+   "after": {
+    "consequents": [
+     [
+      "downwind_retardant_shield",
+      1.0
+     ],
+     [
+      "asset_protection",
+      0.9500000000000002
+     ],
+     [
+      "resource_deployment",
+      0.9500000000000002
+     ]
+    ]
+   },
+   "trigger": {
+    "step": 20,
+    "minute": 20.0,
+    "deficit": 0.3,
+    "stage": 1
+   },
+   "id": "evfis_mod_0033",
+   "seq": 33,
+   "origin": "evfis",
+   "source_stage": 1,
+   "produced_under_flags": {
+    "use_stage12_rules": true,
+    "use_stage3_rules": true,
+    "evfis_active": true,
+    "genai_active": true
+   },
+   "timestamp": "2026-07-25T21:36:58Z"
+  },
+  {
+   "base_rule_id": "G5",
+   "base_rule_set": "minimal",
+   "modification_type": "consequent_update",
+   "before": {
+    "consequents": [
+     [
+      "downwind_retardant_shield",
+      1.0
+     ],
+     [
+      "asset_protection",
+      0.9500000000000002
+     ],
+     [
+      "resource_deployment",
+      0.9500000000000002
+     ]
+    ]
+   },
+   "after": {
+    "consequents": [
+     [
+      "downwind_retardant_shield",
+      0.95
+     ],
+     [
+      "asset_protection",
+      0.9000000000000001
+     ],
+     [
+      "resource_deployment",
+      0.9000000000000001
+     ]
+    ]
+   },
+   "trigger": {
+    "step": 25,
+    "minute": 25.0,
+    "deficit": 0.3,
+    "stage": 1
+   },
+   "id": "evfis_mod_0034",
+   "seq": 34,
+   "origin": "evfis",
+   "source_stage": 1,
+   "produced_under_flags": {
+    "use_stage12_rules": true,
+    "use_stage3_rules": true,
+    "evfis_active": true,
+    "genai_active": true
+   },
+   "timestamp": "2026-07-25T21:37:01Z"
+  },
+  {
+   "base_rule_id": "G5",
+   "base_rule_set": "minimal",
+   "modification_type": "consequent_update",
+   "before": {
+    "consequents": [
+     [
+      "downwind_retardant_shield",
+      0.95
+     ],
+     [
+      "asset_protection",
+      0.9000000000000001
+     ],
+     [
+      "resource_deployment",
+      0.9000000000000001
+     ]
+    ]
+   },
+   "after": {
+    "consequents": [
+     [
+      "downwind_retardant_shield",
+      1.0
+     ],
+     [
+      "asset_protection",
+      0.9500000000000002
+     ],
+     [
+      "resource_deployment",
+      0.9500000000000002
+     ]
+    ]
+   },
+   "trigger": {
+    "step": 30,
+    "minute": 30.0,
+    "deficit": 0.3,
+    "stage": 1
+   },
+   "id": "evfis_mod_0036",
+   "seq": 36,
+   "origin": "evfis",
+   "source_stage": 1,
+   "produced_under_flags": {
+    "use_stage12_rules": true,
+    "use_stage3_rules": true,
+    "evfis_active": true,
+    "genai_active": true
+   },
+   "timestamp": "2026-07-25T21:37:06Z"
+  },
+  {
+   "base_rule_id": "G5",
+   "base_rule_set": "minimal",
+   "modification_type": "consequent_update",
+   "before": {
+    "consequents": [
+     [
+      "downwind_retardant_shield",
+      1.0
+     ],
+     [
+      "asset_protection",
+      0.9500000000000002
+     ],
+     [
+      "resource_deployment",
+      0.9500000000000002
+     ]
+    ]
+   },
+   "after": {
+    "consequents": [
+     [
+      "downwind_retardant_shield",
+      1.0
+     ],
+     [
+      "asset_protection",
+      1.0
+     ],
+     [
+      "resource_deployment",
+      1.0
+     ]
+    ]
+   },
+   "trigger": {
+    "step": 15,
+    "minute": 15.0,
+    "deficit": 0.24,
+    "stage": 1
+   },
+   "id": "evfis_mod_0037",
+   "seq": 37,
+   "origin": "evfis",
+   "source_stage": 1,
+   "produced_under_flags": {
+    "use_stage12_rules": true,
+    "use_stage3_rules": true,
+    "evfis_active": true,
+    "genai_active": true
+   },
+   "timestamp": "2026-07-25T21:46:13Z"
+  },
+  {
+   "base_rule_id": "G5",
+   "base_rule_set": "minimal",
+   "modification_type": "consequent_update",
+   "before": {
+    "consequents": [
+     [
+      "downwind_retardant_shield",
+      1.0
+     ],
+     [
+      "asset_protection",
+      1.0
+     ],
+     [
+      "resource_deployment",
+      1.0
+     ]
+    ]
+   },
+   "after": {
+    "consequents": [
+     [
+      "downwind_retardant_shield",
+      0.95
+     ],
+     [
+      "asset_protection",
+      0.95
+     ],
+     [
+      "resource_deployment",
+      0.95
+     ]
+    ]
+   },
+   "trigger": {
+    "step": 30,
+    "minute": 30.0,
+    "deficit": 0.3,
+    "stage": 1
+   },
+   "id": "evfis_mod_0038",
+   "seq": 38,
+   "origin": "evfis",
+   "source_stage": 1,
+   "produced_under_flags": {
+    "use_stage12_rules": true,
+    "use_stage3_rules": true,
+    "evfis_active": true,
+    "genai_active": true
+   },
+   "timestamp": "2026-07-25T21:46:20Z"
+  },
+  {
+   "base_rule_id": "G5",
+   "base_rule_set": "minimal",
+   "modification_type": "consequent_update",
+   "before": {
+    "consequents": [
+     [
+      "downwind_retardant_shield",
+      0.95
+     ],
+     [
+      "asset_protection",
+      0.95
+     ],
+     [
+      "resource_deployment",
+      0.95
+     ]
+    ]
+   },
+   "after": {
+    "consequents": [
+     [
+      "downwind_retardant_shield",
+      1.0
+     ],
+     [
+      "asset_protection",
+      1.0
+     ],
+     [
+      "resource_deployment",
+      1.0
+     ]
+    ]
+   },
+   "trigger": {
+    "step": 35,
+    "minute": 35.0,
+    "deficit": 0.12,
+    "stage": 1
+   },
+   "id": "evfis_mod_0039",
+   "seq": 39,
+   "origin": "evfis",
+   "source_stage": 1,
+   "produced_under_flags": {
+    "use_stage12_rules": true,
+    "use_stage3_rules": true,
+    "evfis_active": true,
+    "genai_active": true
+   },
+   "timestamp": "2026-07-25T21:46:22Z"
+  },
+  {
+   "base_rule_id": "A1",
+   "base_rule_set": "minimal",
+   "modification_type": "consequent_update",
+   "before": {
+    "consequents": [
+     [
+      "asset_protection",
+      0.9322713257955821
+     ],
+     [
+      "evacuation",
+      0.6487536227611578
+     ]
+    ]
+   },
+   "after": {
+    "consequents": [
+     [
+      "asset_protection",
+      0.8822713257955821
+     ],
+     [
+      "evacuation",
+      0.5987536227611577
+     ]
+    ]
+   },
+   "trigger": {
+    "step": 3,
+    "minute": 3.0,
+    "deficit": 0.12,
+    "stage": 1
+   },
+   "id": "evfis_mod_0041",
+   "seq": 41,
+   "origin": "evfis",
+   "source_stage": 1,
+   "produced_under_flags": {
+    "use_stage12_rules": true,
+    "use_stage3_rules": false,
+    "evfis_active": true,
+    "genai_active": false
+   },
+   "timestamp": "2026-07-25T22:04:50Z"
+  },
+  {
+   "variable": "asset_exposure_risk",
+   "base_rule_set": "minimal",
+   "modification_type": "membership_shift",
+   "before": {
+    "partition": {}
+   },
+   "after": {
+    "partition": {
+     "VL": [
+      0.0,
+      0.0,
+      0.15,
+      0.3
+     ],
+     "L": [
+      0.15,
+      0.3,
+      0.35,
+      0.5
+     ],
+     "M": [
+      0.35,
+      0.5,
+      0.55,
+      0.7
+     ],
+     "H": [
+      0.55,
+      0.7,
+      0.75,
+      0.9
+     ],
+     "VH": [
+      0.75,
+      0.9,
+      1.0,
+      1.0
+     ]
+    }
+   },
+   "trigger": {
+    "step": 3,
+    "minute": 3.0,
+    "deficit": 0.12,
+    "stage": 1
+   },
+   "id": "evfis_mod_0042",
+   "seq": 42,
+   "origin": "evfis",
+   "source_stage": 1,
+   "produced_under_flags": {
+    "use_stage12_rules": true,
+    "use_stage3_rules": false,
+    "evfis_active": true,
+    "genai_active": false
+   },
+   "timestamp": "2026-07-25T22:04:50Z"
+  },
+  {
+   "base_rule_id": "A1",
+   "base_rule_set": "minimal",
+   "modification_type": "consequent_update",
+   "before": {
+    "consequents": [
+     [
+      "asset_protection",
+      0.8822713257955821
+     ],
+     [
+      "evacuation",
+      0.5987536227611577
+     ]
+    ]
+   },
+   "after": {
+    "consequents": [
+     [
+      "asset_protection",
+      0.832271325795582
+     ],
+     [
+      "evacuation",
+      0.5487536227611577
+     ]
+    ]
+   },
+   "trigger": {
+    "step": 19,
+    "minute": 19.0,
+    "deficit": 0.3,
+    "stage": 1
+   },
+   "id": "evfis_mod_0043",
+   "seq": 43,
+   "origin": "evfis",
+   "source_stage": 1,
+   "produced_under_flags": {
+    "use_stage12_rules": true,
+    "use_stage3_rules": false,
+    "evfis_active": true,
+    "genai_active": false
+   },
+   "timestamp": "2026-07-25T22:04:57Z"
+  },
+  {
+   "base_rule_id": "A3",
+   "base_rule_set": "minimal",
+   "modification_type": "rule_add",
+   "before": {
+    "rule": null
+   },
+   "after": {
+    "rule": {
+     "name": "A3",
+     "antecedents": [
+      [
+       "suppression_feasibility",
+       "VH"
+      ],
+      [
+       "asset_exposure_risk",
+       "H"
+      ]
+     ],
+     "consequents": [
+      [
+       "asset_protection",
+       0.6618070474358655
+      ],
+      [
+       "evacuation",
+       0.5796072651902456
+      ]
+     ],
+     "note": "adaptation-born: resolution increase (instantiated antecedent cell)",
+     "strength": 0.0
+    }
+   },
+   "trigger": {
+    "step": 109,
+    "minute": 109.0,
+    "deficit": 0.05,
+    "stage": 2
+   },
+   "id": "evfis_mod_0044",
+   "seq": 44,
+   "origin": "evfis",
+   "source_stage": 2,
+   "produced_under_flags": {
+    "use_stage12_rules": true,
+    "use_stage3_rules": false,
+    "evfis_active": true,
+    "genai_active": false
+   },
+   "timestamp": "2026-07-25T22:05:41Z"
+  },
+  {
+   "base_rule_id": "G5",
+   "base_rule_set": "minimal",
+   "modification_type": "consequent_update",
+   "before": {
+    "consequents": [
+     [
+      "downwind_retardant_shield",
+      1.0
+     ],
+     [
+      "asset_protection",
+      1.0
+     ],
+     [
+      "resource_deployment",
+      1.0
+     ]
+    ]
+   },
+   "after": {
+    "consequents": [
+     [
+      "downwind_retardant_shield",
+      0.95
+     ],
+     [
+      "asset_protection",
+      0.95
+     ],
+     [
+      "resource_deployment",
+      0.95
+     ]
+    ]
+   },
+   "trigger": {
+    "step": 36,
+    "minute": 36.0,
+    "deficit": 0.26,
+    "stage": 1
+   },
+   "id": "evfis_mod_0045",
+   "seq": 45,
+   "origin": "evfis",
+   "source_stage": 1,
+   "produced_under_flags": {
+    "use_stage12_rules": true,
+    "use_stage3_rules": true,
+    "evfis_active": true,
+    "genai_active": true
+   },
+   "timestamp": "2026-07-25T22:08:06Z"
+  },
+  {
+   "base_rule_id": "G5",
+   "base_rule_set": "minimal",
+   "modification_type": "consequent_update",
+   "before": {
+    "consequents": [
+     [
+      "downwind_retardant_shield",
+      0.95
+     ],
+     [
+      "asset_protection",
+      0.95
+     ],
+     [
+      "resource_deployment",
+      0.95
+     ]
+    ]
+   },
+   "after": {
+    "consequents": [
+     [
+      "downwind_retardant_shield",
+      1.0
+     ],
+     [
+      "asset_protection",
+      1.0
+     ],
+     [
+      "resource_deployment",
+      1.0
+     ]
+    ]
+   },
+   "trigger": {
+    "step": 66,
+    "minute": 66.0,
+    "deficit": 0.14,
+    "stage": 1
+   },
+   "id": "evfis_mod_0046",
+   "seq": 46,
+   "origin": "evfis",
+   "source_stage": 1,
+   "produced_under_flags": {
+    "use_stage12_rules": true,
+    "use_stage3_rules": true,
+    "evfis_active": true,
+    "genai_active": true
+   },
+   "timestamp": "2026-07-25T22:08:53Z"
+  },
+  {
+   "base_rule_id": "A4",
+   "base_rule_set": "minimal",
+   "modification_type": "rule_add",
+   "before": {
+    "rule": null
+   },
+   "after": {
+    "rule": {
+     "name": "A4",
+     "antecedents": [
+      [
+       "evacuation_pressure",
+       "VH"
+      ],
+      [
+       "asset_exposure_risk",
+       "H"
+      ]
+     ],
+     "consequents": [
+      [
+       "evacuation",
+       0.6305229213293693
+      ],
+      [
+       "asset_protection",
+       0.5981245103519708
+      ]
+     ],
+     "note": "adaptation-born: resolution increase (instantiated antecedent cell)",
+     "strength": 0.0
+    }
+   },
+   "trigger": {
+    "step": 91,
+    "minute": 91.0,
+    "deficit": 0.1,
+    "stage": 2
+   },
+   "id": "evfis_mod_0047",
+   "seq": 47,
+   "origin": "evfis",
+   "source_stage": 2,
+   "produced_under_flags": {
+    "use_stage12_rules": true,
+    "use_stage3_rules": true,
+    "evfis_active": true,
+    "genai_active": true
+   },
+   "timestamp": "2026-07-25T22:09:35Z"
+  },
+  {
+   "base_rule_id": "A5",
+   "base_rule_set": "minimal",
+   "modification_type": "rule_add",
+   "before": {
+    "rule": null
+   },
+   "after": {
+    "rule": {
+     "name": "A5",
+     "antecedents": [
+      [
+       "evacuation_pressure",
+       "X1"
+      ],
+      [
+       "asset_exposure_risk",
+       "H"
+      ]
+     ],
+     "consequents": [
+      [
+       "evacuation",
+       0.6305229213293693
+      ],
+      [
+       "asset_protection",
+       0.5981245103519708
+      ]
+     ],
+     "note": "adaptation-born: resolution increase: term X1 inserted into evacuation_pressure at 0.63 (catalog grew)",
+     "strength": 0.0
+    }
+   },
+   "trigger": {
+    "step": 96,
+    "minute": 96.0,
+    "deficit": 0.08,
+    "stage": 2
+   },
+   "id": "evfis_mod_0048",
+   "seq": 48,
+   "origin": "evfis",
+   "source_stage": 2,
+   "produced_under_flags": {
+    "use_stage12_rules": true,
+    "use_stage3_rules": true,
+    "evfis_active": true,
+    "genai_active": true
+   },
+   "timestamp": "2026-07-25T22:09:42Z"
+  },
+  {
+   "variable": "evacuation_pressure",
+   "base_rule_set": "minimal",
+   "modification_type": "membership_shift",
+   "before": {
+    "partition": {}
+   },
+   "after": {
+    "partition": {
+     "VL": [
+      0.0,
+      0.0,
+      0.15,
+      0.3
+     ],
+     "L": [
+      0.15,
+      0.3,
+      0.35,
+      0.5
+     ],
+     "M": [
+      0.35,
+      0.5,
+      0.55,
+      0.7
+     ],
+     "H": [
+      0.55,
+      0.7,
+      0.75,
+      0.9
+     ],
+     "VH": [
+      0.75,
+      0.9,
+      1.0,
+      1.0
+     ],
+     "X1": [
+      0.5105229213293693,
+      0.5805229213293692,
+      0.6805229213293693,
+      0.7505229213293693
+     ]
+    }
+   },
+   "trigger": {
+    "step": 96,
+    "minute": 96.0,
+    "deficit": 0.08,
+    "stage": 2
+   },
+   "id": "evfis_mod_0049",
+   "seq": 49,
+   "origin": "evfis",
+   "source_stage": 1,
+   "produced_under_flags": {
+    "use_stage12_rules": true,
+    "use_stage3_rules": true,
+    "evfis_active": true,
+    "genai_active": true
+   },
+   "timestamp": "2026-07-25T22:09:42Z"
+  },
+  {
+   "base_rule_id": "A5",
+   "base_rule_set": "minimal",
+   "modification_type": "consequent_update",
+   "before": {
+    "consequents": [
+     [
+      "evacuation",
+      0.6305229213293693
+     ],
+     [
+      "asset_protection",
+      0.5981245103519708
+     ]
+    ]
+   },
+   "after": {
+    "consequents": [
+     [
+      "evacuation",
+      0.5805229213293692
+     ],
+     [
+      "asset_protection",
+      0.5481245103519707
+     ]
+    ]
+   },
+   "trigger": {
+    "step": 101,
+    "minute": 101.0,
+    "deficit": 0.16,
+    "stage": 1
+   },
+   "id": "evfis_mod_0050",
+   "seq": 50,
+   "origin": "evfis",
+   "source_stage": 1,
+   "produced_under_flags": {
+    "use_stage12_rules": true,
+    "use_stage3_rules": true,
+    "evfis_active": true,
+    "genai_active": true
+   },
+   "timestamp": "2026-07-25T22:09:50Z"
+  },
+  {
+   "base_rule_id": "A5",
+   "base_rule_set": "minimal",
+   "modification_type": "consequent_update",
+   "before": {
+    "consequents": [
+     [
+      "evacuation",
+      0.5805229213293692
+     ],
+     [
+      "asset_protection",
+      0.5481245103519707
+     ]
+    ]
+   },
+   "after": {
+    "consequents": [
+     [
+      "evacuation",
+      0.5305229213293692
+     ],
+     [
+      "asset_protection",
+      0.49812451035197075
+     ]
+    ]
+   },
+   "trigger": {
+    "step": 106,
+    "minute": 106.0,
+    "deficit": 0.06,
+    "stage": 1
+   },
+   "id": "evfis_mod_0051",
+   "seq": 51,
+   "origin": "evfis",
+   "source_stage": 1,
+   "produced_under_flags": {
+    "use_stage12_rules": true,
+    "use_stage3_rules": true,
+    "evfis_active": true,
+    "genai_active": true
+   },
+   "timestamp": "2026-07-25T22:10:00Z"
+  },
+  {
+   "base_rule_id": "A5",
+   "base_rule_set": "minimal",
+   "modification_type": "consequent_update",
+   "before": {
+    "consequents": [
+     [
+      "evacuation",
+      0.5305229213293692
+     ],
+     [
+      "asset_protection",
+      0.49812451035197075
+     ]
+    ]
+   },
+   "after": {
+    "consequents": [
+     [
+      "evacuation",
+      0.4805229213293692
+     ],
+     [
+      "asset_protection",
+      0.44812451035197076
+     ]
+    ]
+   },
+   "trigger": {
+    "step": 111,
+    "minute": 111.0,
+    "deficit": 0.1,
+    "stage": 1
+   },
+   "id": "evfis_mod_0052",
+   "seq": 52,
+   "origin": "evfis",
+   "source_stage": 1,
+   "produced_under_flags": {
+    "use_stage12_rules": true,
+    "use_stage3_rules": true,
+    "evfis_active": true,
+    "genai_active": true
+   },
+   "timestamp": "2026-07-25T22:10:03Z"
+  },
+  {
+   "base_rule_id": "A5",
+   "base_rule_set": "minimal",
+   "modification_type": "consequent_update",
+   "before": {
+    "consequents": [
+     [
+      "evacuation",
+      0.4805229213293692
+     ],
+     [
+      "asset_protection",
+      0.44812451035197076
+     ]
+    ]
+   },
+   "after": {
+    "consequents": [
+     [
+      "evacuation",
+      0.4305229213293692
+     ],
+     [
+      "asset_protection",
+      0.3981245103519708
+     ]
+    ]
+   },
+   "trigger": {
+    "step": 116,
+    "minute": 116.0,
+    "deficit": 0.06,
+    "stage": 1
+   },
+   "id": "evfis_mod_0053",
+   "seq": 53,
+   "origin": "evfis",
+   "source_stage": 1,
+   "produced_under_flags": {
+    "use_stage12_rules": true,
+    "use_stage3_rules": true,
+    "evfis_active": true,
+    "genai_active": true
+   },
+   "timestamp": "2026-07-25T22:10:07Z"
+  },
+  {
+   "base_rule_id": "A5",
+   "base_rule_set": "minimal",
+   "modification_type": "consequent_update",
+   "before": {
+    "consequents": [
+     [
+      "evacuation",
+      0.4305229213293692
+     ],
+     [
+      "asset_protection",
+      0.3981245103519708
+     ]
+    ]
+   },
+   "after": {
+    "consequents": [
+     [
+      "evacuation",
+      0.3805229213293692
+     ],
+     [
+      "asset_protection",
+      0.3481245103519708
+     ]
+    ]
+   },
+   "trigger": {
+    "step": 121,
+    "minute": 121.0,
+    "deficit": 0.18,
+    "stage": 1
+   },
+   "id": "evfis_mod_0054",
+   "seq": 54,
+   "origin": "evfis",
+   "source_stage": 1,
+   "produced_under_flags": {
+    "use_stage12_rules": true,
+    "use_stage3_rules": true,
+    "evfis_active": true,
+    "genai_active": true
+   },
+   "timestamp": "2026-07-25T22:10:11Z"
+  },
+  {
+   "base_rule_id": "A5",
+   "base_rule_set": "minimal",
+   "modification_type": "consequent_update",
+   "before": {
+    "consequents": [
+     [
+      "evacuation",
+      0.3805229213293692
+     ],
+     [
+      "asset_protection",
+      0.3481245103519708
+     ]
+    ]
+   },
+   "after": {
+    "consequents": [
+     [
+      "evacuation",
+      0.3305229213293692
+     ],
+     [
+      "asset_protection",
+      0.2981245103519708
+     ]
+    ]
+   },
+   "trigger": {
+    "step": 126,
+    "minute": 126.0,
+    "deficit": 0.08,
+    "stage": 1
+   },
+   "id": "evfis_mod_0055",
+   "seq": 55,
+   "origin": "evfis",
+   "source_stage": 1,
+   "produced_under_flags": {
+    "use_stage12_rules": true,
+    "use_stage3_rules": true,
+    "evfis_active": true,
+    "genai_active": true
+   },
+   "timestamp": "2026-07-25T22:10:16Z"
+  },
+  {
+   "base_rule_id": "A5",
+   "base_rule_set": "minimal",
+   "modification_type": "consequent_update",
+   "before": {
+    "consequents": [
+     [
+      "evacuation",
+      0.3305229213293692
+     ],
+     [
+      "asset_protection",
+      0.2981245103519708
+     ]
+    ]
+   },
+   "after": {
+    "consequents": [
+     [
+      "evacuation",
+      0.28052292132936923
+     ],
+     [
+      "asset_protection",
+      0.2481245103519708
+     ]
+    ]
+   },
+   "trigger": {
+    "step": 131,
+    "minute": 131.0,
+    "deficit": 0.08,
+    "stage": 1
+   },
+   "id": "evfis_mod_0056",
+   "seq": 56,
+   "origin": "evfis",
+   "source_stage": 1,
+   "produced_under_flags": {
+    "use_stage12_rules": true,
+    "use_stage3_rules": true,
+    "evfis_active": true,
+    "genai_active": true
+   },
+   "timestamp": "2026-07-25T22:10:19Z"
+  },
+  {
+   "base_rule_id": "A5",
+   "base_rule_set": "minimal",
+   "modification_type": "consequent_update",
+   "before": {
+    "consequents": [
+     [
+      "evacuation",
+      0.28052292132936923
+     ],
+     [
+      "asset_protection",
+      0.2481245103519708
+     ]
+    ]
+   },
+   "after": {
+    "consequents": [
+     [
+      "evacuation",
+      0.23052292132936925
+     ],
+     [
+      "asset_protection",
+      0.19812451035197082
+     ]
+    ]
+   },
+   "trigger": {
+    "step": 136,
+    "minute": 136.0,
+    "deficit": 0.1,
+    "stage": 1
+   },
+   "id": "evfis_mod_0057",
+   "seq": 57,
+   "origin": "evfis",
+   "source_stage": 1,
+   "produced_under_flags": {
+    "use_stage12_rules": true,
+    "use_stage3_rules": true,
+    "evfis_active": true,
+    "genai_active": true
+   },
+   "timestamp": "2026-07-25T22:10:26Z"
+  },
+  {
+   "base_rule_id": "A5",
+   "base_rule_set": "minimal",
+   "modification_type": "consequent_update",
+   "before": {
+    "consequents": [
+     [
+      "evacuation",
+      0.23052292132936925
+     ],
+     [
+      "asset_protection",
+      0.19812451035197082
+     ]
+    ]
+   },
+   "after": {
+    "consequents": [
+     [
+      "evacuation",
+      0.18052292132936926
+     ],
+     [
+      "asset_protection",
+      0.14812451035197083
+     ]
+    ]
+   },
+   "trigger": {
+    "step": 141,
+    "minute": 141.0,
+    "deficit": 0.18,
+    "stage": 1
+   },
+   "id": "evfis_mod_0058",
+   "seq": 58,
+   "origin": "evfis",
+   "source_stage": 1,
+   "produced_under_flags": {
+    "use_stage12_rules": true,
+    "use_stage3_rules": true,
+    "evfis_active": true,
+    "genai_active": true
+   },
+   "timestamp": "2026-07-25T22:10:39Z"
+  },
+  {
+   "base_rule_id": "A5",
+   "base_rule_set": "minimal",
+   "modification_type": "consequent_update",
+   "before": {
+    "consequents": [
+     [
+      "evacuation",
+      0.18052292132936926
+     ],
+     [
+      "asset_protection",
+      0.14812451035197083
+     ]
+    ]
+   },
+   "after": {
+    "consequents": [
+     [
+      "evacuation",
+      0.13052292132936927
+     ],
+     [
+      "asset_protection",
+      0.09812451035197083
+     ]
+    ]
+   },
+   "trigger": {
+    "step": 146,
+    "minute": 146.0,
+    "deficit": 0.14,
+    "stage": 1
+   },
+   "id": "evfis_mod_0059",
+   "seq": 59,
+   "origin": "evfis",
+   "source_stage": 1,
+   "produced_under_flags": {
+    "use_stage12_rules": true,
+    "use_stage3_rules": true,
+    "evfis_active": true,
+    "genai_active": true
+   },
+   "timestamp": "2026-07-25T22:10:47Z"
+  },
+  {
+   "base_rule_id": "G5",
+   "base_rule_set": "minimal",
+   "modification_type": "consequent_update",
+   "before": {
+    "consequents": [
+     [
+      "downwind_retardant_shield",
+      1.0
+     ],
+     [
+      "asset_protection",
+      1.0
+     ],
+     [
+      "resource_deployment",
+      1.0
+     ]
+    ]
+   },
+   "after": {
+    "consequents": [
+     [
+      "downwind_retardant_shield",
+      0.95
+     ],
+     [
+      "asset_protection",
+      0.95
+     ],
+     [
+      "resource_deployment",
+      0.95
+     ]
+    ]
+   },
+   "trigger": {
+    "step": 21,
+    "minute": 21.0,
+    "deficit": 0.3,
+    "stage": 1
+   },
+   "id": "evfis_mod_0064",
+   "seq": 64,
+   "origin": "evfis",
+   "source_stage": 1,
+   "produced_under_flags": {
+    "use_stage12_rules": true,
+    "use_stage3_rules": true,
+    "evfis_active": true,
+    "genai_active": true
+   },
+   "timestamp": "2026-07-25T22:27:07Z"
+  },
+  {
+   "base_rule_id": "G5",
+   "base_rule_set": "minimal",
+   "modification_type": "consequent_update",
+   "before": {
+    "consequents": [
+     [
+      "downwind_retardant_shield",
+      0.95
+     ],
+     [
+      "asset_protection",
+      0.95
+     ],
+     [
+      "resource_deployment",
+      0.95
+     ]
+    ]
+   },
+   "after": {
+    "consequents": [
+     [
+      "downwind_retardant_shield",
+      0.8999999999999999
+     ],
+     [
+      "asset_protection",
+      0.8999999999999999
+     ],
+     [
+      "resource_deployment",
+      0.8999999999999999
+     ]
+    ]
+   },
+   "trigger": {
+    "step": 26,
+    "minute": 26.0,
+    "deficit": 0.3,
+    "stage": 1
+   },
+   "id": "evfis_mod_0065",
+   "seq": 65,
+   "origin": "evfis",
+   "source_stage": 1,
+   "produced_under_flags": {
+    "use_stage12_rules": true,
+    "use_stage3_rules": true,
+    "evfis_active": true,
+    "genai_active": true
+   },
+   "timestamp": "2026-07-25T22:27:10Z"
+  },
+  {
+   "base_rule_id": "G5",
+   "base_rule_set": "minimal",
+   "modification_type": "consequent_update",
+   "before": {
+    "consequents": [
+     [
+      "downwind_retardant_shield",
+      0.8999999999999999
+     ],
+     [
+      "asset_protection",
+      0.8999999999999999
+     ],
+     [
+      "resource_deployment",
+      0.8999999999999999
+     ]
+    ]
+   },
+   "after": {
+    "consequents": [
+     [
+      "downwind_retardant_shield",
+      0.8499999999999999
+     ],
+     [
+      "asset_protection",
+      0.8499999999999999
+     ],
+     [
+      "resource_deployment",
+      0.8499999999999999
+     ]
+    ]
+   },
+   "trigger": {
+    "step": 41,
+    "minute": 41.0,
+    "deficit": 0.3,
+    "stage": 1
+   },
+   "id": "evfis_mod_0067",
+   "seq": 67,
+   "origin": "evfis",
+   "source_stage": 1,
+   "produced_under_flags": {
+    "use_stage12_rules": true,
+    "use_stage3_rules": true,
+    "evfis_active": true,
+    "genai_active": true
+   },
+   "timestamp": "2026-07-25T22:31:43Z"
+  },
+  {
+   "base_rule_id": "G5",
+   "base_rule_set": "minimal",
+   "modification_type": "consequent_update",
+   "before": {
+    "consequents": [
+     [
+      "downwind_retardant_shield",
+      0.8499999999999999
+     ],
+     [
+      "asset_protection",
+      0.8499999999999999
+     ],
+     [
+      "resource_deployment",
+      0.8499999999999999
+     ]
+    ]
+   },
+   "after": {
+    "consequents": [
+     [
+      "downwind_retardant_shield",
+      0.8999999999999999
+     ],
+     [
+      "asset_protection",
+      0.8999999999999999
+     ],
+     [
+      "resource_deployment",
+      0.8999999999999999
+     ]
+    ]
+   },
+   "trigger": {
+    "step": 46,
+    "minute": 46.0,
+    "deficit": 0.3,
+    "stage": 1
+   },
+   "id": "evfis_mod_0068",
+   "seq": 68,
+   "origin": "evfis",
+   "source_stage": 1,
+   "produced_under_flags": {
+    "use_stage12_rules": true,
+    "use_stage3_rules": true,
+    "evfis_active": true,
+    "genai_active": true
+   },
+   "timestamp": "2026-07-25T22:31:51Z"
+  },
+  {
+   "base_rule_id": "G5",
+   "base_rule_set": "minimal",
+   "modification_type": "consequent_update",
+   "before": {
+    "consequents": [
+     [
+      "downwind_retardant_shield",
+      0.8999999999999999
+     ],
+     [
+      "asset_protection",
+      0.8999999999999999
+     ],
+     [
+      "resource_deployment",
+      0.8999999999999999
+     ]
+    ]
+   },
+   "after": {
+    "consequents": [
+     [
+      "downwind_retardant_shield",
+      0.95
+     ],
+     [
+      "asset_protection",
+      0.95
+     ],
+     [
+      "resource_deployment",
+      0.95
+     ]
+    ]
+   },
+   "trigger": {
+    "step": 51,
+    "minute": 51.0,
+    "deficit": 0.28,
+    "stage": 1
+   },
+   "id": "evfis_mod_0070",
+   "seq": 70,
+   "origin": "evfis",
+   "source_stage": 1,
+   "produced_under_flags": {
+    "use_stage12_rules": true,
+    "use_stage3_rules": true,
+    "evfis_active": true,
+    "genai_active": true
+   },
+   "timestamp": "2026-07-25T22:32:00Z"
+  },
+  {
+   "base_rule_id": "A1",
+   "base_rule_set": "minimal",
+   "modification_type": "consequent_update",
+   "before": {
+    "consequents": [
+     [
+      "asset_protection",
+      0.832271325795582
+     ],
+     [
+      "evacuation",
+      0.5487536227611577
+     ]
+    ]
+   },
+   "after": {
+    "consequents": [
+     [
+      "asset_protection",
+      0.8822713257955821
+     ],
+     [
+      "evacuation",
+      0.5987536227611577
+     ]
+    ]
+   },
+   "trigger": {
+    "step": 67,
+    "minute": 67.0,
+    "deficit": 0.22,
+    "stage": 1
+   },
+   "id": "evfis_mod_0071",
+   "seq": 71,
+   "origin": "evfis",
+   "source_stage": 1,
+   "produced_under_flags": {
+    "use_stage12_rules": true,
+    "use_stage3_rules": true,
+    "evfis_active": true,
+    "genai_active": true
+   },
+   "timestamp": "2026-07-25T22:32:24Z"
+  },
+  {
+   "base_rule_id": "G5",
+   "base_rule_set": "minimal",
+   "modification_type": "consequent_update",
+   "before": {
+    "consequents": [
+     [
+      "downwind_retardant_shield",
+      0.95
+     ],
+     [
+      "asset_protection",
+      0.95
+     ],
+     [
+      "resource_deployment",
+      0.95
+     ]
+    ]
+   },
+   "after": {
+    "consequents": [
+     [
+      "downwind_retardant_shield",
+      0.8999999999999999
+     ],
+     [
+      "asset_protection",
+      0.8999999999999999
+     ],
+     [
+      "resource_deployment",
+      0.8999999999999999
+     ]
+    ]
+   },
+   "trigger": {
+    "step": 72,
+    "minute": 72.0,
+    "deficit": 0.22,
+    "stage": 1
+   },
+   "id": "evfis_mod_0072",
+   "seq": 72,
+   "origin": "evfis",
+   "source_stage": 1,
+   "produced_under_flags": {
+    "use_stage12_rules": true,
+    "use_stage3_rules": true,
+    "evfis_active": true,
+    "genai_active": true
+   },
+   "timestamp": "2026-07-25T22:32:32Z"
+  },
+  {
+   "base_rule_id": "A5",
+   "base_rule_set": "minimal",
+   "modification_type": "consequent_update",
+   "before": {
+    "consequents": [
+     [
+      "evacuation",
+      0.13052292132936927
+     ],
+     [
+      "asset_protection",
+      0.09812451035197083
+     ]
+    ]
+   },
+   "after": {
+    "consequents": [
+     [
+      "evacuation",
+      0.18052292132936926
+     ],
+     [
+      "asset_protection",
+      0.14812451035197083
+     ]
+    ]
+   },
+   "trigger": {
+    "step": 78,
+    "minute": 78.0,
+    "deficit": 0.16,
+    "stage": 1
+   },
+   "id": "evfis_mod_0073",
+   "seq": 73,
+   "origin": "evfis",
+   "source_stage": 1,
+   "produced_under_flags": {
+    "use_stage12_rules": true,
+    "use_stage3_rules": true,
+    "evfis_active": true,
+    "genai_active": true
+   },
+   "timestamp": "2026-07-25T22:32:39Z"
+  },
+  {
+   "base_rule_id": "A5",
+   "base_rule_set": "minimal",
+   "modification_type": "consequent_update",
+   "before": {
+    "consequents": [
+     [
+      "evacuation",
+      0.18052292132936926
+     ],
+     [
+      "asset_protection",
+      0.14812451035197083
+     ]
+    ]
+   },
+   "after": {
+    "consequents": [
+     [
+      "evacuation",
+      0.23052292132936925
+     ],
+     [
+      "asset_protection",
+      0.19812451035197082
+     ]
+    ]
+   },
+   "trigger": {
+    "step": 83,
+    "minute": 83.0,
+    "deficit": 0.18,
+    "stage": 1
+   },
+   "id": "evfis_mod_0074",
+   "seq": 74,
+   "origin": "evfis",
+   "source_stage": 1,
+   "produced_under_flags": {
+    "use_stage12_rules": true,
+    "use_stage3_rules": true,
+    "evfis_active": true,
+    "genai_active": true
+   },
+   "timestamp": "2026-07-25T22:32:47Z"
+  },
+  {
+   "base_rule_id": "A5",
+   "base_rule_set": "minimal",
+   "modification_type": "consequent_update",
+   "before": {
+    "consequents": [
+     [
+      "evacuation",
+      0.23052292132936925
+     ],
+     [
+      "asset_protection",
+      0.19812451035197082
+     ]
+    ]
+   },
+   "after": {
+    "consequents": [
+     [
+      "evacuation",
+      0.18052292132936926
+     ],
+     [
+      "asset_protection",
+      0.14812451035197083
+     ]
+    ]
+   },
+   "trigger": {
+    "step": 99,
+    "minute": 99.0,
+    "deficit": 0.1,
+    "stage": 1
+   },
+   "id": "evfis_mod_0075",
+   "seq": 75,
+   "origin": "evfis",
+   "source_stage": 1,
+   "produced_under_flags": {
+    "use_stage12_rules": true,
+    "use_stage3_rules": true,
+    "evfis_active": true,
+    "genai_active": true
+   },
+   "timestamp": "2026-07-25T22:33:10Z"
+  },
+  {
+   "base_rule_id": "G5",
+   "base_rule_set": "minimal",
+   "modification_type": "consequent_update",
+   "before": {
+    "consequents": [
+     [
+      "downwind_retardant_shield",
+      0.8999999999999999
+     ],
+     [
+      "asset_protection",
+      0.8999999999999999
+     ],
+     [
+      "resource_deployment",
+      0.8999999999999999
+     ]
+    ]
+   },
+   "after": {
+    "consequents": [
+     [
+      "downwind_retardant_shield",
+      0.8499999999999999
+     ],
+     [
+      "asset_protection",
+      0.8499999999999999
+     ],
+     [
+      "resource_deployment",
+      0.8499999999999999
+     ]
+    ]
+   },
+   "trigger": {
+    "step": 32,
+    "minute": 32.0,
+    "deficit": 0.3,
+    "stage": 1
+   },
+   "id": "evfis_mod_0076",
+   "seq": 76,
+   "origin": "evfis",
+   "source_stage": 1,
+   "produced_under_flags": {
+    "use_stage12_rules": true,
+    "use_stage3_rules": true,
+    "evfis_active": true,
+    "genai_active": true
+   },
+   "timestamp": "2026-07-25T22:41:50Z"
+  },
+  {
+   "base_rule_id": "G5",
+   "base_rule_set": "minimal",
+   "modification_type": "consequent_update",
+   "before": {
+    "consequents": [
+     [
+      "downwind_retardant_shield",
+      0.8499999999999999
+     ],
+     [
+      "asset_protection",
+      0.8499999999999999
+     ],
+     [
+      "resource_deployment",
+      0.8499999999999999
+     ]
+    ]
+   },
+   "after": {
+    "consequents": [
+     [
+      "downwind_retardant_shield",
+      0.7999999999999998
+     ],
+     [
+      "asset_protection",
+      0.7999999999999998
+     ],
+     [
+      "resource_deployment",
+      0.7999999999999998
+     ]
+    ]
+   },
+   "trigger": {
+    "step": 37,
+    "minute": 37.0,
+    "deficit": 0.3,
+    "stage": 1
+   },
+   "id": "evfis_mod_0077",
+   "seq": 77,
+   "origin": "evfis",
+   "source_stage": 1,
+   "produced_under_flags": {
+    "use_stage12_rules": true,
+    "use_stage3_rules": true,
+    "evfis_active": true,
+    "genai_active": true
+   },
+   "timestamp": "2026-07-25T22:41:55Z"
+  },
+  {
+   "base_rule_id": "G5",
+   "base_rule_set": "minimal",
+   "modification_type": "consequent_update",
+   "before": {
+    "consequents": [
+     [
+      "downwind_retardant_shield",
+      0.7999999999999998
+     ],
+     [
+      "asset_protection",
+      0.7999999999999998
+     ],
+     [
+      "resource_deployment",
+      0.7999999999999998
+     ]
+    ]
+   },
+   "after": {
+    "consequents": [
+     [
+      "downwind_retardant_shield",
+      0.7499999999999998
+     ],
+     [
+      "asset_protection",
+      0.7499999999999998
+     ],
+     [
+      "resource_deployment",
+      0.7499999999999998
+     ]
+    ]
+   },
+   "trigger": {
+    "step": 53,
+    "minute": 53.0,
+    "deficit": 0.24,
+    "stage": 1
+   },
+   "id": "evfis_mod_0078",
+   "seq": 78,
+   "origin": "evfis",
+   "source_stage": 1,
+   "produced_under_flags": {
+    "use_stage12_rules": true,
+    "use_stage3_rules": true,
+    "evfis_active": true,
+    "genai_active": true
+   },
+   "timestamp": "2026-07-25T22:43:19Z"
+  },
+  {
+   "base_rule_id": "G5",
+   "base_rule_set": "minimal",
+   "modification_type": "consequent_update",
+   "before": {
+    "consequents": [
+     [
+      "downwind_retardant_shield",
+      0.7499999999999998
+     ],
+     [
+      "asset_protection",
+      0.7499999999999998
+     ],
+     [
+      "resource_deployment",
+      0.7499999999999998
+     ]
+    ]
+   },
+   "after": {
+    "consequents": [
+     [
+      "downwind_retardant_shield",
+      0.7999999999999998
+     ],
+     [
+      "asset_protection",
+      0.7999999999999998
+     ],
+     [
+      "resource_deployment",
+      0.7999999999999998
+     ]
+    ]
+   },
+   "trigger": {
+    "step": 64,
+    "minute": 64.0,
+    "deficit": 0.26,
+    "stage": 1
+   },
+   "id": "evfis_mod_0079",
+   "seq": 79,
+   "origin": "evfis",
+   "source_stage": 1,
+   "produced_under_flags": {
+    "use_stage12_rules": true,
+    "use_stage3_rules": true,
+    "evfis_active": true,
+    "genai_active": true
+   },
+   "timestamp": "2026-07-25T22:43:33Z"
+  },
+  {
+   "base_rule_id": "G5",
+   "base_rule_set": "minimal",
+   "modification_type": "consequent_update",
+   "before": {
+    "consequents": [
+     [
+      "downwind_retardant_shield",
+      0.7999999999999998
+     ],
+     [
+      "asset_protection",
+      0.7999999999999998
+     ],
+     [
+      "resource_deployment",
+      0.7999999999999998
+     ]
+    ]
+   },
+   "after": {
+    "consequents": [
+     [
+      "downwind_retardant_shield",
+      0.8499999999999999
+     ],
+     [
+      "asset_protection",
+      0.8499999999999999
+     ],
+     [
+      "resource_deployment",
+      0.8499999999999999
+     ]
+    ]
+   },
+   "trigger": {
+    "step": 69,
+    "minute": 69.0,
+    "deficit": 0.16,
+    "stage": 1
+   },
+   "id": "evfis_mod_0080",
+   "seq": 80,
+   "origin": "evfis",
+   "source_stage": 1,
+   "produced_under_flags": {
+    "use_stage12_rules": true,
+    "use_stage3_rules": true,
+    "evfis_active": true,
+    "genai_active": true
+   },
+   "timestamp": "2026-07-25T22:43:39Z"
+  },
+  {
+   "base_rule_id": "G5",
+   "base_rule_set": "minimal",
+   "modification_type": "consequent_update",
+   "before": {
+    "consequents": [
+     [
+      "downwind_retardant_shield",
+      0.8499999999999999
+     ],
+     [
+      "asset_protection",
+      0.8499999999999999
+     ],
+     [
+      "resource_deployment",
+      0.8499999999999999
+     ]
+    ]
+   },
+   "after": {
+    "consequents": [
+     [
+      "downwind_retardant_shield",
+      0.8999999999999999
+     ],
+     [
+      "asset_protection",
+      0.8999999999999999
+     ],
+     [
+      "resource_deployment",
+      0.8999999999999999
+     ]
+    ]
+   },
+   "trigger": {
+    "step": 79,
+    "minute": 79.0,
+    "deficit": 0.16,
+    "stage": 1
+   },
+   "id": "evfis_mod_0081",
+   "seq": 81,
+   "origin": "evfis",
+   "source_stage": 1,
+   "produced_under_flags": {
+    "use_stage12_rules": true,
+    "use_stage3_rules": true,
+    "evfis_active": true,
+    "genai_active": true
+   },
+   "timestamp": "2026-07-25T22:43:51Z"
+  },
+  {
+   "base_rule_id": "A1",
+   "base_rule_set": "minimal",
+   "modification_type": "consequent_update",
+   "before": {
+    "consequents": [
+     [
+      "asset_protection",
+      0.8822713257955821
+     ],
+     [
+      "evacuation",
+      0.5987536227611577
+     ]
+    ]
+   },
+   "after": {
+    "consequents": [
+     [
+      "asset_protection",
+      0.9322713257955821
+     ],
+     [
+      "evacuation",
+      0.6487536227611578
+     ]
+    ]
+   },
+   "trigger": {
+    "step": 79,
+    "minute": 79.0,
+    "deficit": 0.16,
+    "stage": 1
+   },
+   "id": "evfis_mod_0082",
+   "seq": 82,
+   "origin": "evfis",
+   "source_stage": 1,
+   "produced_under_flags": {
+    "use_stage12_rules": true,
+    "use_stage3_rules": true,
+    "evfis_active": true,
+    "genai_active": true
+   },
+   "timestamp": "2026-07-25T22:43:51Z"
+  },
+  {
+   "base_rule_id": "G5",
+   "base_rule_set": "minimal",
+   "modification_type": "consequent_update",
+   "before": {
+    "consequents": [
+     [
+      "downwind_retardant_shield",
+      0.8999999999999999
+     ],
+     [
+      "asset_protection",
+      0.8999999999999999
+     ],
+     [
+      "resource_deployment",
+      0.8999999999999999
+     ]
+    ]
+   },
+   "after": {
+    "consequents": [
+     [
+      "downwind_retardant_shield",
+      0.95
+     ],
+     [
+      "asset_protection",
+      0.95
+     ],
+     [
+      "resource_deployment",
+      0.95
+     ]
+    ]
+   },
+   "trigger": {
+    "step": 94,
+    "minute": 94.0,
+    "deficit": 0.12,
+    "stage": 1
+   },
+   "id": "evfis_mod_0083",
+   "seq": 83,
+   "origin": "evfis",
+   "source_stage": 1,
+   "produced_under_flags": {
+    "use_stage12_rules": true,
+    "use_stage3_rules": true,
+    "evfis_active": true,
+    "genai_active": true
+   },
+   "timestamp": "2026-07-25T22:43:59Z"
+  },
+  {
+   "base_rule_id": "A6",
+   "base_rule_set": "minimal",
+   "modification_type": "rule_add",
+   "before": {
+    "rule": null
+   },
+   "after": {
+    "rule": {
+     "name": "A6",
+     "antecedents": [
+      [
+       "asset_exposure_risk",
+       "VH"
+      ],
+      [
+       "suppression_feasibility",
+       "M"
+      ]
+     ],
+     "consequents": [
+      [
+       "asset_protection",
+       0.603
+      ],
+      [
+       "evacuation",
+       0.3211714285714286
+      ]
+     ],
+     "note": "adaptation-born: resolution increase (instantiated antecedent cell)",
+     "strength": 0.0
+    }
+   },
+   "trigger": {
+    "step": 0,
+    "minute": 0.0,
+    "deficit": 0.005000000000000001,
+    "stage": 2
+   },
+   "id": "evfis_mod_0084",
+   "seq": 84,
+   "origin": "evfis",
+   "source_stage": 2,
+   "produced_under_flags": {
+    "use_stage12_rules": true,
+    "use_stage3_rules": true,
+    "evfis_active": true,
+    "genai_active": true
+   },
+   "timestamp": "2026-07-25T22:44:26Z"
+  },
+  {
+   "base_rule_id": "A6",
+   "base_rule_set": "minimal",
+   "modification_type": "consequent_update",
+   "before": {
+    "consequents": [
+     [
+      "asset_protection",
+      0.603
+     ],
+     [
+      "evacuation",
+      0.3211714285714286
+     ]
+    ]
+   },
+   "after": {
+    "consequents": [
+     [
+      "asset_protection",
+      0.653
+     ],
+     [
+      "evacuation",
+      0.3711714285714286
+     ]
+    ]
+   },
+   "trigger": {
+    "step": 21,
+    "minute": 21.0,
+    "deficit": 0.26,
+    "stage": 1
+   },
+   "id": "evfis_mod_0085",
+   "seq": 85,
+   "origin": "evfis",
+   "source_stage": 1,
+   "produced_under_flags": {
+    "use_stage12_rules": true,
+    "use_stage3_rules": true,
+    "evfis_active": true,
+    "genai_active": true
+   },
+   "timestamp": "2026-07-25T22:45:10Z"
+  },
+  {
+   "base_rule_id": "A6",
+   "base_rule_set": "minimal",
+   "modification_type": "consequent_update",
+   "before": {
+    "consequents": [
+     [
+      "asset_protection",
+      0.653
+     ],
+     [
+      "evacuation",
+      0.3711714285714286
+     ]
+    ]
+   },
+   "after": {
+    "consequents": [
+     [
+      "asset_protection",
+      0.603
+     ],
+     [
+      "evacuation",
+      0.3211714285714286
+     ]
+    ]
+   },
+   "trigger": {
+    "step": 26,
+    "minute": 26.0,
+    "deficit": 0.3,
+    "stage": 1
+   },
+   "id": "evfis_mod_0086",
+   "seq": 86,
+   "origin": "evfis",
+   "source_stage": 1,
+   "produced_under_flags": {
+    "use_stage12_rules": true,
+    "use_stage3_rules": true,
+    "evfis_active": true,
+    "genai_active": true
+   },
+   "timestamp": "2026-07-25T22:45:16Z"
+  },
+  {
+   "base_rule_id": "A6",
+   "base_rule_set": "minimal",
+   "modification_type": "consequent_update",
+   "before": {
+    "consequents": [
+     [
+      "asset_protection",
+      0.603
+     ],
+     [
+      "evacuation",
+      0.3211714285714286
+     ]
+    ]
+   },
+   "after": {
+    "consequents": [
+     [
+      "asset_protection",
+      0.653
+     ],
+     [
+      "evacuation",
+      0.3711714285714286
+     ]
+    ]
+   },
+   "trigger": {
+    "step": 47,
+    "minute": 47.0,
+    "deficit": 0.3,
+    "stage": 1
+   },
+   "id": "evfis_mod_0087",
+   "seq": 87,
+   "origin": "evfis",
+   "source_stage": 1,
+   "produced_under_flags": {
+    "use_stage12_rules": true,
+    "use_stage3_rules": true,
+    "evfis_active": true,
+    "genai_active": true
+   },
+   "timestamp": "2026-07-25T22:45:25Z"
+  },
+  {
+   "base_rule_id": "A7",
+   "base_rule_set": "minimal",
+   "modification_type": "rule_add",
+   "before": {
+    "rule": null
+   },
+   "after": {
+    "rule": {
+     "name": "A7",
+     "antecedents": [
+      [
+       "asset_exposure_risk",
+       "VH"
+      ],
+      [
+       "suppression_feasibility",
+       "H"
+      ]
+     ],
+     "consequents": [
+      [
+       "asset_protection",
+       0.7476859264090334
+      ],
+      [
+       "evacuation",
+       0.6159235198296942
+      ]
+     ],
+     "note": "adaptation-born: resolution increase (instantiated antecedent cell)",
+     "strength": 0.0
+    }
+   },
+   "trigger": {
+    "step": 5,
+    "minute": 5.0,
+    "deficit": 0.3,
+    "stage": 2
+   },
+   "id": "evfis_mod_0089",
+   "seq": 89,
+   "origin": "evfis",
+   "source_stage": 2,
+   "produced_under_flags": {
+    "use_stage12_rules": true,
+    "use_stage3_rules": true,
+    "evfis_active": true,
+    "genai_active": true
+   },
+   "timestamp": "2026-07-25T22:51:25Z"
+  },
+  {
+   "base_rule_id": "G18",
+   "base_rule_set": "minimal",
+   "modification_type": "consequent_update",
+   "before": {
+    "consequents": [
+     [
+      "suppression_effort",
+      0.9
+     ],
+     [
+      "water_drafting",
+      0.8
+     ],
+     [
+      "retardant_drop",
+      0.7
+     ]
+    ]
+   },
+   "after": {
+    "consequents": [
+     [
+      "suppression_effort",
+      0.9500000000000001
+     ],
+     [
+      "water_drafting",
+      0.8500000000000001
+     ],
+     [
+      "retardant_drop",
+      0.75
+     ]
+    ]
+   },
+   "trigger": {
+    "step": 11,
+    "minute": 11.0,
+    "deficit": 0.3,
+    "stage": 1
+   },
+   "id": "evfis_mod_0090",
+   "seq": 90,
+   "origin": "evfis",
+   "source_stage": 1,
+   "produced_under_flags": {
+    "use_stage12_rules": true,
+    "use_stage3_rules": true,
+    "evfis_active": true,
+    "genai_active": true
+   },
+   "timestamp": "2026-07-25T22:51:34Z"
+  },
+  {
+   "base_rule_id": "A7",
+   "base_rule_set": "minimal",
+   "modification_type": "consequent_update",
+   "before": {
+    "consequents": [
+     [
+      "asset_protection",
+      0.7476859264090334
+     ],
+     [
+      "evacuation",
+      0.6159235198296942
+     ]
+    ]
+   },
+   "after": {
+    "consequents": [
+     [
+      "asset_protection",
+      0.7976859264090335
+     ],
+     [
+      "evacuation",
+      0.6659235198296942
+     ]
+    ]
+   },
+   "trigger": {
+    "step": 11,
+    "minute": 11.0,
+    "deficit": 0.3,
+    "stage": 1
+   },
+   "id": "evfis_mod_0091",
+   "seq": 91,
+   "origin": "evfis",
+   "source_stage": 1,
+   "produced_under_flags": {
+    "use_stage12_rules": true,
+    "use_stage3_rules": true,
+    "evfis_active": true,
+    "genai_active": true
+   },
+   "timestamp": "2026-07-25T22:51:34Z"
+  },
+  {
+   "base_rule_id": "A7",
+   "base_rule_set": "minimal",
+   "modification_type": "consequent_update",
+   "before": {
+    "consequents": [
+     [
+      "asset_protection",
+      0.7976859264090335
+     ],
+     [
+      "evacuation",
+      0.6659235198296942
+     ]
+    ]
+   },
+   "after": {
+    "consequents": [
+     [
+      "asset_protection",
+      0.8476859264090335
+     ],
+     [
+      "evacuation",
+      0.7159235198296943
+     ]
+    ]
+   },
+   "trigger": {
+    "step": 16,
+    "minute": 16.0,
+    "deficit": 0.3,
+    "stage": 1
+   },
+   "id": "evfis_mod_0092",
+   "seq": 92,
+   "origin": "evfis",
+   "source_stage": 1,
+   "produced_under_flags": {
+    "use_stage12_rules": true,
+    "use_stage3_rules": true,
+    "evfis_active": true,
+    "genai_active": true
+   },
+   "timestamp": "2026-07-25T22:51:39Z"
+  },
+  {
+   "base_rule_id": "A7",
+   "base_rule_set": "minimal",
+   "modification_type": "consequent_update",
+   "before": {
+    "consequents": [
+     [
+      "asset_protection",
+      0.8476859264090335
+     ],
+     [
+      "evacuation",
+      0.7159235198296943
+     ]
+    ]
+   },
+   "after": {
+    "consequents": [
+     [
+      "asset_protection",
+      0.8976859264090336
+     ],
+     [
+      "evacuation",
+      0.7659235198296943
+     ]
+    ]
+   },
+   "trigger": {
+    "step": 21,
+    "minute": 21.0,
+    "deficit": 0.3,
+    "stage": 1
+   },
+   "id": "evfis_mod_0093",
+   "seq": 93,
+   "origin": "evfis",
+   "source_stage": 1,
+   "produced_under_flags": {
+    "use_stage12_rules": true,
+    "use_stage3_rules": true,
+    "evfis_active": true,
+    "genai_active": true
+   },
+   "timestamp": "2026-07-25T22:51:44Z"
+  },
+  {
+   "base_rule_id": "A7",
+   "base_rule_set": "minimal",
+   "modification_type": "consequent_update",
+   "before": {
+    "consequents": [
+     [
+      "asset_protection",
+      0.8976859264090336
+     ],
+     [
+      "evacuation",
+      0.7659235198296943
+     ]
+    ]
+   },
+   "after": {
+    "consequents": [
+     [
+      "asset_protection",
+      0.9476859264090336
+     ],
+     [
+      "evacuation",
+      0.8159235198296944
+     ]
+    ]
+   },
+   "trigger": {
+    "step": 26,
+    "minute": 26.0,
+    "deficit": 0.3,
+    "stage": 1
+   },
+   "id": "evfis_mod_0094",
+   "seq": 94,
+   "origin": "evfis",
+   "source_stage": 1,
+   "produced_under_flags": {
+    "use_stage12_rules": true,
+    "use_stage3_rules": true,
+    "evfis_active": true,
+    "genai_active": true
+   },
+   "timestamp": "2026-07-25T22:51:50Z"
+  },
+  {
+   "base_rule_id": "A7",
+   "base_rule_set": "minimal",
+   "modification_type": "consequent_update",
+   "before": {
+    "consequents": [
+     [
+      "asset_protection",
+      0.9476859264090336
+     ],
+     [
+      "evacuation",
+      0.8159235198296944
+     ]
+    ]
+   },
+   "after": {
+    "consequents": [
+     [
+      "asset_protection",
+      0.9976859264090336
+     ],
+     [
+      "evacuation",
+      0.8659235198296944
+     ]
+    ]
+   },
+   "trigger": {
+    "step": 37,
+    "minute": 37.0,
+    "deficit": 0.3,
+    "stage": 1
+   },
+   "id": "evfis_mod_0095",
+   "seq": 95,
+   "origin": "evfis",
+   "source_stage": 1,
+   "produced_under_flags": {
+    "use_stage12_rules": true,
+    "use_stage3_rules": true,
+    "evfis_active": true,
+    "genai_active": true
+   },
+   "timestamp": "2026-07-25T22:52:02Z"
+  },
+  {
+   "base_rule_id": "A7",
+   "base_rule_set": "minimal",
+   "modification_type": "consequent_update",
+   "before": {
+    "consequents": [
+     [
+      "asset_protection",
+      0.9976859264090336
+     ],
+     [
+      "evacuation",
+      0.8659235198296944
+     ]
+    ]
+   },
+   "after": {
+    "consequents": [
+     [
+      "asset_protection",
+      1.0
+     ],
+     [
+      "evacuation",
+      0.9159235198296944
+     ]
+    ]
+   },
+   "trigger": {
+    "step": 6,
+    "minute": 6.0,
+    "deficit": 0.3,
+    "stage": 1
+   },
+   "id": "evfis_mod_0096",
+   "seq": 96,
+   "origin": "evfis",
+   "source_stage": 1,
+   "produced_under_flags": {
+    "use_stage12_rules": true,
+    "use_stage3_rules": true,
+    "evfis_active": true,
+    "genai_active": true
+   },
+   "timestamp": "2026-07-25T22:52:42Z"
+  },
+  {
+   "base_rule_id": "A7",
+   "base_rule_set": "minimal",
+   "modification_type": "consequent_update",
+   "before": {
+    "consequents": [
+     [
+      "asset_protection",
+      1.0
+     ],
+     [
+      "evacuation",
+      0.9159235198296944
+     ]
+    ]
+   },
+   "after": {
+    "consequents": [
+     [
+      "asset_protection",
+      1.0
+     ],
+     [
+      "evacuation",
+      0.9659235198296945
+     ]
+    ]
+   },
+   "trigger": {
+    "step": 11,
+    "minute": 11.0,
+    "deficit": 0.3,
+    "stage": 1
+   },
+   "id": "evfis_mod_0097",
+   "seq": 97,
+   "origin": "evfis",
+   "source_stage": 1,
+   "produced_under_flags": {
+    "use_stage12_rules": true,
+    "use_stage3_rules": true,
+    "evfis_active": true,
+    "genai_active": true
+   },
+   "timestamp": "2026-07-25T22:52:48Z"
+  },
+  {
+   "base_rule_id": "A7",
+   "base_rule_set": "minimal",
+   "modification_type": "consequent_update",
+   "before": {
+    "consequents": [
+     [
+      "asset_protection",
+      1.0
+     ],
+     [
+      "evacuation",
+      0.9659235198296945
+     ]
+    ]
+   },
+   "after": {
+    "consequents": [
+     [
+      "asset_protection",
+      0.95
+     ],
+     [
+      "evacuation",
+      0.9159235198296944
+     ]
+    ]
+   },
+   "trigger": {
+    "step": 16,
+    "minute": 16.0,
+    "deficit": 0.3,
+    "stage": 1
+   },
+   "id": "evfis_mod_0098",
+   "seq": 98,
+   "origin": "evfis",
+   "source_stage": 1,
+   "produced_under_flags": {
+    "use_stage12_rules": true,
+    "use_stage3_rules": true,
+    "evfis_active": true,
+    "genai_active": true
+   },
+   "timestamp": "2026-07-25T22:52:54Z"
+  },
+  {
+   "base_rule_id": "A7",
+   "base_rule_set": "minimal",
+   "modification_type": "consequent_update",
+   "before": {
+    "consequents": [
+     [
+      "asset_protection",
+      0.95
+     ],
+     [
+      "evacuation",
+      0.9159235198296944
+     ]
+    ]
+   },
+   "after": {
+    "consequents": [
+     [
+      "asset_protection",
+      1.0
+     ],
+     [
+      "evacuation",
+      0.9659235198296945
+     ]
+    ]
+   },
+   "trigger": {
+    "step": 21,
+    "minute": 21.0,
+    "deficit": 0.3,
+    "stage": 1
+   },
+   "id": "evfis_mod_0099",
+   "seq": 99,
+   "origin": "evfis",
+   "source_stage": 1,
+   "produced_under_flags": {
+    "use_stage12_rules": true,
+    "use_stage3_rules": true,
+    "evfis_active": true,
+    "genai_active": true
+   },
+   "timestamp": "2026-07-25T22:53:00Z"
+  },
+  {
+   "base_rule_id": "A7",
+   "base_rule_set": "minimal",
+   "modification_type": "consequent_update",
+   "before": {
+    "consequents": [
+     [
+      "asset_protection",
+      1.0
+     ],
+     [
+      "evacuation",
+      0.9659235198296945
+     ]
+    ]
+   },
+   "after": {
+    "consequents": [
+     [
+      "asset_protection",
+      1.0
+     ],
+     [
+      "evacuation",
+      1.0
+     ]
+    ]
+   },
+   "trigger": {
+    "step": 31,
+    "minute": 31.0,
+    "deficit": 0.3,
+    "stage": 1
+   },
+   "id": "evfis_mod_0100",
+   "seq": 100,
+   "origin": "evfis",
+   "source_stage": 1,
+   "produced_under_flags": {
+    "use_stage12_rules": true,
+    "use_stage3_rules": true,
+    "evfis_active": true,
+    "genai_active": true
+   },
+   "timestamp": "2026-07-25T22:53:13Z"
+  },
+  {
+   "base_rule_id": "A7",
+   "base_rule_set": "minimal",
+   "modification_type": "consequent_update",
+   "before": {
+    "consequents": [
+     [
+      "asset_protection",
+      1.0
+     ],
+     [
+      "evacuation",
+      1.0
+     ]
+    ]
+   },
+   "after": {
+    "consequents": [
+     [
+      "asset_protection",
+      0.95
+     ],
+     [
+      "evacuation",
+      0.95
+     ]
+    ]
+   },
+   "trigger": {
+    "step": 36,
+    "minute": 36.0,
+    "deficit": 0.3,
+    "stage": 1
+   },
+   "id": "evfis_mod_0101",
+   "seq": 101,
+   "origin": "evfis",
+   "source_stage": 1,
+   "produced_under_flags": {
+    "use_stage12_rules": true,
+    "use_stage3_rules": true,
+    "evfis_active": true,
+    "genai_active": true
+   },
+   "timestamp": "2026-07-25T22:53:20Z"
+  },
+  {
+   "base_rule_id": "A7",
+   "base_rule_set": "minimal",
+   "modification_type": "consequent_update",
+   "before": {
+    "consequents": [
+     [
+      "asset_protection",
+      0.95
+     ],
+     [
+      "evacuation",
+      0.95
+     ]
+    ]
+   },
+   "after": {
+    "consequents": [
+     [
+      "asset_protection",
+      1.0
+     ],
+     [
+      "evacuation",
+      1.0
+     ]
+    ]
+   },
+   "trigger": {
+    "step": 41,
+    "minute": 41.0,
+    "deficit": 0.3,
+    "stage": 1
+   },
+   "id": "evfis_mod_0102",
+   "seq": 102,
+   "origin": "evfis",
+   "source_stage": 1,
+   "produced_under_flags": {
+    "use_stage12_rules": true,
+    "use_stage3_rules": true,
+    "evfis_active": true,
+    "genai_active": true
+   },
+   "timestamp": "2026-07-25T22:53:26Z"
+  },
+  {
+   "base_rule_id": "A7",
+   "base_rule_set": "minimal",
+   "modification_type": "consequent_update",
+   "before": {
+    "consequents": [
+     [
+      "asset_protection",
+      1.0
+     ],
+     [
+      "evacuation",
+      1.0
+     ]
+    ]
+   },
+   "after": {
+    "consequents": [
+     [
+      "asset_protection",
+      0.95
+     ],
+     [
+      "evacuation",
+      0.95
+     ]
+    ]
+   },
+   "trigger": {
+    "step": 51,
+    "minute": 51.0,
+    "deficit": 0.3,
+    "stage": 1
+   },
+   "id": "evfis_mod_0103",
+   "seq": 103,
+   "origin": "evfis",
+   "source_stage": 1,
+   "produced_under_flags": {
+    "use_stage12_rules": true,
+    "use_stage3_rules": true,
+    "evfis_active": true,
+    "genai_active": true
+   },
+   "timestamp": "2026-07-25T22:54:30Z"
+  },
+  {
+   "base_rule_id": "A7",
+   "base_rule_set": "minimal",
+   "modification_type": "consequent_update",
+   "before": {
+    "consequents": [
+     [
+      "asset_protection",
+      0.95
+     ],
+     [
+      "evacuation",
+      0.95
+     ]
+    ]
+   },
+   "after": {
+    "consequents": [
+     [
+      "asset_protection",
+      1.0
+     ],
+     [
+      "evacuation",
+      1.0
+     ]
+    ]
+   },
+   "trigger": {
+    "step": 56,
+    "minute": 56.0,
+    "deficit": 0.3,
+    "stage": 1
+   },
+   "id": "evfis_mod_0104",
+   "seq": 104,
+   "origin": "evfis",
+   "source_stage": 1,
+   "produced_under_flags": {
+    "use_stage12_rules": true,
+    "use_stage3_rules": true,
+    "evfis_active": true,
+    "genai_active": true
+   },
+   "timestamp": "2026-07-25T22:54:37Z"
+  },
+  {
+   "base_rule_id": "G5",
+   "base_rule_set": "minimal",
+   "modification_type": "consequent_update",
+   "before": {
+    "consequents": [
+     [
+      "downwind_retardant_shield",
+      0.95
+     ],
+     [
+      "asset_protection",
+      0.95
+     ],
+     [
+      "resource_deployment",
+      0.95
+     ]
+    ]
+   },
+   "after": {
+    "consequents": [
+     [
+      "downwind_retardant_shield",
+      0.8999999999999999
+     ],
+     [
+      "asset_protection",
+      0.8999999999999999
+     ],
+     [
+      "resource_deployment",
+      0.8999999999999999
+     ]
+    ]
+   },
+   "trigger": {
+    "step": 10,
+    "minute": 10.0,
+    "deficit": 0.3,
+    "stage": 1
+   },
+   "id": "evfis_mod_0105",
+   "seq": 105,
+   "origin": "evfis",
+   "source_stage": 1,
+   "produced_under_flags": {
+    "use_stage12_rules": true,
+    "use_stage3_rules": true,
+    "evfis_active": true,
+    "genai_active": true
+   },
+   "timestamp": "2026-07-25T22:55:03Z"
+  },
+  {
+   "base_rule_id": "G5",
+   "base_rule_set": "minimal",
+   "modification_type": "consequent_update",
+   "before": {
+    "consequents": [
+     [
+      "downwind_retardant_shield",
+      0.8999999999999999
+     ],
+     [
+      "asset_protection",
+      0.8999999999999999
+     ],
+     [
+      "resource_deployment",
+      0.8999999999999999
+     ]
+    ]
+   },
+   "after": {
+    "consequents": [
+     [
+      "downwind_retardant_shield",
+      0.95
+     ],
+     [
+      "asset_protection",
+      0.95
+     ],
+     [
+      "resource_deployment",
+      0.95
+     ]
+    ]
+   },
+   "trigger": {
+    "step": 15,
+    "minute": 15.0,
+    "deficit": 0.3,
+    "stage": 1
+   },
+   "id": "evfis_mod_0106",
+   "seq": 106,
+   "origin": "evfis",
+   "source_stage": 1,
+   "produced_under_flags": {
+    "use_stage12_rules": true,
+    "use_stage3_rules": true,
+    "evfis_active": true,
+    "genai_active": true
+   },
+   "timestamp": "2026-07-25T22:55:08Z"
+  },
+  {
+   "base_rule_id": "G5",
+   "base_rule_set": "minimal",
+   "modification_type": "consequent_update",
+   "before": {
+    "consequents": [
+     [
+      "downwind_retardant_shield",
+      0.95
+     ],
+     [
+      "asset_protection",
+      0.95
+     ],
+     [
+      "resource_deployment",
+      0.95
+     ]
+    ]
+   },
+   "after": {
+    "consequents": [
+     [
+      "downwind_retardant_shield",
+      1.0
+     ],
+     [
+      "asset_protection",
+      1.0
+     ],
+     [
+      "resource_deployment",
+      1.0
+     ]
+    ]
+   },
+   "trigger": {
+    "step": 20,
+    "minute": 20.0,
+    "deficit": 0.3,
+    "stage": 1
+   },
+   "id": "evfis_mod_0107",
+   "seq": 107,
+   "origin": "evfis",
+   "source_stage": 1,
+   "produced_under_flags": {
+    "use_stage12_rules": true,
+    "use_stage3_rules": true,
+    "evfis_active": true,
+    "genai_active": true
+   },
+   "timestamp": "2026-07-25T22:55:14Z"
+  },
+  {
+   "base_rule_id": "A1",
+   "base_rule_set": "minimal",
+   "modification_type": "consequent_update",
+   "before": {
+    "consequents": [
+     [
+      "asset_protection",
+      0.9322713257955821
+     ],
+     [
+      "evacuation",
+      0.6487536227611578
+     ]
+    ]
+   },
+   "after": {
+    "consequents": [
+     [
+      "asset_protection",
+      0.9822713257955822
+     ],
+     [
+      "evacuation",
+      0.6987536227611578
+     ]
+    ]
+   },
+   "trigger": {
+    "step": 31,
+    "minute": 31.0,
+    "deficit": 0.3,
+    "stage": 1
+   },
+   "id": "evfis_mod_0108",
+   "seq": 108,
+   "origin": "evfis",
+   "source_stage": 1,
+   "produced_under_flags": {
+    "use_stage12_rules": true,
+    "use_stage3_rules": true,
+    "evfis_active": true,
+    "genai_active": true
+   },
+   "timestamp": "2026-07-25T22:55:24Z"
+  },
+  {
+   "base_rule_id": "G5",
+   "base_rule_set": "minimal",
+   "modification_type": "consequent_update",
+   "before": {
+    "consequents": [
+     [
+      "downwind_retardant_shield",
+      1.0
+     ],
+     [
+      "asset_protection",
+      1.0
+     ],
+     [
+      "resource_deployment",
+      1.0
+     ]
+    ]
+   },
+   "after": {
+    "consequents": [
+     [
+      "downwind_retardant_shield",
+      0.95
+     ],
+     [
+      "asset_protection",
+      0.95
+     ],
+     [
+      "resource_deployment",
+      0.95
+     ]
+    ]
+   },
+   "trigger": {
+    "step": 36,
+    "minute": 36.0,
+    "deficit": 0.3,
+    "stage": 1
+   },
+   "id": "evfis_mod_0109",
+   "seq": 109,
+   "origin": "evfis",
+   "source_stage": 1,
+   "produced_under_flags": {
+    "use_stage12_rules": true,
+    "use_stage3_rules": true,
+    "evfis_active": true,
+    "genai_active": true
+   },
+   "timestamp": "2026-07-25T22:55:30Z"
+  },
+  {
+   "base_rule_id": "G5",
+   "base_rule_set": "minimal",
+   "modification_type": "consequent_update",
+   "before": {
+    "consequents": [
+     [
+      "downwind_retardant_shield",
+      0.95
+     ],
+     [
+      "asset_protection",
+      0.95
+     ],
+     [
+      "resource_deployment",
+      0.95
+     ]
+    ]
+   },
+   "after": {
+    "consequents": [
+     [
+      "downwind_retardant_shield",
+      1.0
+     ],
+     [
+      "asset_protection",
+      1.0
+     ],
+     [
+      "resource_deployment",
+      1.0
+     ]
+    ]
+   },
+   "trigger": {
+    "step": 41,
+    "minute": 41.0,
+    "deficit": 0.3,
+    "stage": 1
+   },
+   "id": "evfis_mod_0110",
+   "seq": 110,
+   "origin": "evfis",
+   "source_stage": 1,
+   "produced_under_flags": {
+    "use_stage12_rules": true,
+    "use_stage3_rules": true,
+    "evfis_active": true,
+    "genai_active": true
+   },
+   "timestamp": "2026-07-25T22:55:35Z"
+  },
+  {
+   "base_rule_id": "A1",
+   "base_rule_set": "minimal",
+   "modification_type": "consequent_update",
+   "before": {
+    "consequents": [
+     [
+      "asset_protection",
+      0.9822713257955822
+     ],
+     [
+      "evacuation",
+      0.6987536227611578
+     ]
+    ]
+   },
+   "after": {
+    "consequents": [
+     [
+      "asset_protection",
+      1.0
+     ],
+     [
+      "evacuation",
+      0.7487536227611579
+     ]
+    ]
+   },
+   "trigger": {
+    "step": 41,
+    "minute": 41.0,
+    "deficit": 0.3,
+    "stage": 1
+   },
+   "id": "evfis_mod_0111",
+   "seq": 111,
+   "origin": "evfis",
+   "source_stage": 1,
+   "produced_under_flags": {
+    "use_stage12_rules": true,
+    "use_stage3_rules": true,
+    "evfis_active": true,
+    "genai_active": true
+   },
+   "timestamp": "2026-07-25T22:55:35Z"
+  },
+  {
+   "base_rule_id": "G5",
+   "base_rule_set": "minimal",
+   "modification_type": "consequent_update",
+   "before": {
+    "consequents": [
+     [
+      "downwind_retardant_shield",
+      1.0
+     ],
+     [
+      "asset_protection",
+      1.0
+     ],
+     [
+      "resource_deployment",
+      1.0
+     ]
+    ]
+   },
+   "after": {
+    "consequents": [
+     [
+      "downwind_retardant_shield",
+      0.95
+     ],
+     [
+      "asset_protection",
+      0.95
+     ],
+     [
+      "resource_deployment",
+      0.95
+     ]
+    ]
+   },
+   "trigger": {
+    "step": 46,
+    "minute": 46.0,
+    "deficit": 0.3,
+    "stage": 1
+   },
+   "id": "evfis_mod_0112",
+   "seq": 112,
+   "origin": "evfis",
+   "source_stage": 1,
+   "produced_under_flags": {
+    "use_stage12_rules": true,
+    "use_stage3_rules": true,
+    "evfis_active": true,
+    "genai_active": true
+   },
+   "timestamp": "2026-07-25T22:55:41Z"
+  },
+  {
+   "base_rule_id": "G5",
+   "base_rule_set": "minimal",
+   "modification_type": "consequent_update",
+   "before": {
+    "consequents": [
+     [
+      "downwind_retardant_shield",
+      0.95
+     ],
+     [
+      "asset_protection",
+      0.95
+     ],
+     [
+      "resource_deployment",
+      0.95
+     ]
+    ]
+   },
+   "after": {
+    "consequents": [
+     [
+      "downwind_retardant_shield",
+      0.8999999999999999
+     ],
+     [
+      "asset_protection",
+      0.8999999999999999
+     ],
+     [
+      "resource_deployment",
+      0.8999999999999999
+     ]
+    ]
+   },
+   "trigger": {
+    "step": 51,
+    "minute": 51.0,
+    "deficit": 0.3,
+    "stage": 1
+   },
+   "id": "evfis_mod_0113",
+   "seq": 113,
+   "origin": "evfis",
+   "source_stage": 1,
+   "produced_under_flags": {
+    "use_stage12_rules": true,
+    "use_stage3_rules": true,
+    "evfis_active": true,
+    "genai_active": true
+   },
+   "timestamp": "2026-07-25T22:55:46Z"
+  },
+  {
+   "base_rule_id": "A1",
+   "base_rule_set": "minimal",
+   "modification_type": "consequent_update",
+   "before": {
+    "consequents": [
+     [
+      "asset_protection",
+      1.0
+     ],
+     [
+      "evacuation",
+      0.7487536227611579
+     ]
+    ]
+   },
+   "after": {
+    "consequents": [
+     [
+      "asset_protection",
+      1.0
+     ],
+     [
+      "evacuation",
+      0.7987536227611579
+     ]
+    ]
+   },
+   "trigger": {
+    "step": 56,
+    "minute": 56.0,
+    "deficit": 0.3,
+    "stage": 1
+   },
+   "id": "evfis_mod_0114",
+   "seq": 114,
+   "origin": "evfis",
+   "source_stage": 1,
+   "produced_under_flags": {
+    "use_stage12_rules": true,
+    "use_stage3_rules": true,
+    "evfis_active": true,
+    "genai_active": true
+   },
+   "timestamp": "2026-07-25T22:55:52Z"
+  },
+  {
+   "base_rule_id": "G5",
+   "base_rule_set": "minimal",
+   "modification_type": "consequent_update",
+   "before": {
+    "consequents": [
+     [
+      "downwind_retardant_shield",
+      0.8999999999999999
+     ],
+     [
+      "asset_protection",
+      0.8999999999999999
+     ],
+     [
+      "resource_deployment",
+      0.8999999999999999
+     ]
+    ]
+   },
+   "after": {
+    "consequents": [
+     [
+      "downwind_retardant_shield",
+      0.95
+     ],
+     [
+      "asset_protection",
+      0.95
+     ],
+     [
+      "resource_deployment",
+      0.95
+     ]
+    ]
+   },
+   "trigger": {
+    "step": 61,
+    "minute": 61.0,
+    "deficit": 0.3,
+    "stage": 1
+   },
+   "id": "evfis_mod_0115",
+   "seq": 115,
+   "origin": "evfis",
+   "source_stage": 1,
+   "produced_under_flags": {
+    "use_stage12_rules": true,
+    "use_stage3_rules": true,
+    "evfis_active": true,
+    "genai_active": true
+   },
+   "timestamp": "2026-07-25T22:55:58Z"
+  },
+  {
+   "base_rule_id": "A1",
+   "base_rule_set": "minimal",
+   "modification_type": "consequent_update",
+   "before": {
+    "consequents": [
+     [
+      "asset_protection",
+      1.0
+     ],
+     [
+      "evacuation",
+      0.7987536227611579
+     ]
+    ]
+   },
+   "after": {
+    "consequents": [
+     [
+      "asset_protection",
+      1.0
+     ],
+     [
+      "evacuation",
+      0.848753622761158
+     ]
+    ]
+   },
+   "trigger": {
+    "step": 61,
+    "minute": 61.0,
+    "deficit": 0.3,
+    "stage": 1
+   },
+   "id": "evfis_mod_0116",
+   "seq": 116,
+   "origin": "evfis",
+   "source_stage": 1,
+   "produced_under_flags": {
+    "use_stage12_rules": true,
+    "use_stage3_rules": true,
+    "evfis_active": true,
+    "genai_active": true
+   },
+   "timestamp": "2026-07-25T22:55:58Z"
+  },
+  {
+   "base_rule_id": "G5",
+   "base_rule_set": "minimal",
+   "modification_type": "consequent_update",
+   "before": {
+    "consequents": [
+     [
+      "downwind_retardant_shield",
+      0.95
+     ],
+     [
+      "asset_protection",
+      0.95
+     ],
+     [
+      "resource_deployment",
+      0.95
+     ]
+    ]
+   },
+   "after": {
+    "consequents": [
+     [
+      "downwind_retardant_shield",
+      0.8999999999999999
+     ],
+     [
+      "asset_protection",
+      0.8999999999999999
+     ],
+     [
+      "resource_deployment",
+      0.8999999999999999
+     ]
+    ]
+   },
+   "trigger": {
+    "step": 6,
+    "minute": 6.0,
+    "deficit": 0.3,
+    "stage": 1
+   },
+   "id": "evfis_mod_0117",
+   "seq": 117,
+   "origin": "evfis",
+   "source_stage": 1,
+   "produced_under_flags": {
+    "use_stage12_rules": true,
+    "use_stage3_rules": true,
+    "evfis_active": true,
+    "genai_active": true
+   },
+   "timestamp": "2026-07-25T22:56:35Z"
+  },
+  {
+   "base_rule_id": "A1",
+   "base_rule_set": "minimal",
+   "modification_type": "consequent_update",
+   "before": {
+    "consequents": [
+     [
+      "asset_protection",
+      1.0
+     ],
+     [
+      "evacuation",
+      0.848753622761158
+     ]
+    ]
+   },
+   "after": {
+    "consequents": [
+     [
+      "asset_protection",
+      1.0
+     ],
+     [
+      "evacuation",
+      0.898753622761158
+     ]
+    ]
+   },
+   "trigger": {
+    "step": 6,
+    "minute": 6.0,
+    "deficit": 0.3,
+    "stage": 1
+   },
+   "id": "evfis_mod_0118",
+   "seq": 118,
+   "origin": "evfis",
+   "source_stage": 1,
+   "produced_under_flags": {
+    "use_stage12_rules": true,
+    "use_stage3_rules": true,
+    "evfis_active": true,
+    "genai_active": true
+   },
+   "timestamp": "2026-07-25T22:56:35Z"
+  },
+  {
+   "base_rule_id": "G5",
+   "base_rule_set": "minimal",
+   "modification_type": "consequent_update",
+   "before": {
+    "consequents": [
+     [
+      "downwind_retardant_shield",
+      0.8999999999999999
+     ],
+     [
+      "asset_protection",
+      0.8999999999999999
+     ],
+     [
+      "resource_deployment",
+      0.8999999999999999
+     ]
+    ]
+   },
+   "after": {
+    "consequents": [
+     [
+      "downwind_retardant_shield",
+      0.95
+     ],
+     [
+      "asset_protection",
+      0.95
+     ],
+     [
+      "resource_deployment",
+      0.95
+     ]
+    ]
+   },
+   "trigger": {
+    "step": 11,
+    "minute": 11.0,
+    "deficit": 0.3,
+    "stage": 1
+   },
+   "id": "evfis_mod_0119",
+   "seq": 119,
+   "origin": "evfis",
+   "source_stage": 1,
+   "produced_under_flags": {
+    "use_stage12_rules": true,
+    "use_stage3_rules": true,
+    "evfis_active": true,
+    "genai_active": true
+   },
+   "timestamp": "2026-07-25T22:56:41Z"
+  },
+  {
+   "base_rule_id": "G5",
+   "base_rule_set": "minimal",
+   "modification_type": "consequent_update",
+   "before": {
+    "consequents": [
+     [
+      "downwind_retardant_shield",
+      0.95
+     ],
+     [
+      "asset_protection",
+      0.95
+     ],
+     [
+      "resource_deployment",
+      0.95
+     ]
+    ]
+   },
+   "after": {
+    "consequents": [
+     [
+      "downwind_retardant_shield",
+      1.0
+     ],
+     [
+      "asset_protection",
+      1.0
+     ],
+     [
+      "resource_deployment",
+      1.0
+     ]
+    ]
+   },
+   "trigger": {
+    "step": 16,
+    "minute": 16.0,
+    "deficit": 0.3,
+    "stage": 1
+   },
+   "id": "evfis_mod_0120",
+   "seq": 120,
+   "origin": "evfis",
+   "source_stage": 1,
+   "produced_under_flags": {
+    "use_stage12_rules": true,
+    "use_stage3_rules": true,
+    "evfis_active": true,
+    "genai_active": true
+   },
+   "timestamp": "2026-07-25T22:56:46Z"
+  },
+  {
+   "base_rule_id": "G5",
+   "base_rule_set": "minimal",
+   "modification_type": "consequent_update",
+   "before": {
+    "consequents": [
+     [
+      "downwind_retardant_shield",
+      1.0
+     ],
+     [
+      "asset_protection",
+      1.0
+     ],
+     [
+      "resource_deployment",
+      1.0
+     ]
+    ]
+   },
+   "after": {
+    "consequents": [
+     [
+      "downwind_retardant_shield",
+      0.95
+     ],
+     [
+      "asset_protection",
+      0.95
+     ],
+     [
+      "resource_deployment",
+      0.95
+     ]
+    ]
+   },
+   "trigger": {
+    "step": 21,
+    "minute": 21.0,
+    "deficit": 0.3,
+    "stage": 1
+   },
+   "id": "evfis_mod_0121",
+   "seq": 121,
+   "origin": "evfis",
+   "source_stage": 1,
+   "produced_under_flags": {
+    "use_stage12_rules": true,
+    "use_stage3_rules": true,
+    "evfis_active": true,
+    "genai_active": true
+   },
+   "timestamp": "2026-07-25T22:56:51Z"
+  },
+  {
+   "base_rule_id": "G5",
+   "base_rule_set": "minimal",
+   "modification_type": "consequent_update",
+   "before": {
+    "consequents": [
+     [
+      "downwind_retardant_shield",
+      0.95
+     ],
+     [
+      "asset_protection",
+      0.95
+     ],
+     [
+      "resource_deployment",
+      0.95
+     ]
+    ]
+   },
+   "after": {
+    "consequents": [
+     [
+      "downwind_retardant_shield",
+      1.0
+     ],
+     [
+      "asset_protection",
+      1.0
+     ],
+     [
+      "resource_deployment",
+      1.0
+     ]
+    ]
+   },
+   "trigger": {
+    "step": 16,
+    "minute": 16.0,
+    "deficit": 0.3,
+    "stage": 1
+   },
+   "id": "evfis_mod_0123",
+   "seq": 123,
+   "origin": "evfis",
+   "source_stage": 1,
+   "produced_under_flags": {
+    "use_stage12_rules": true,
+    "use_stage3_rules": true,
+    "evfis_active": true,
+    "genai_active": true
+   },
+   "timestamp": "2026-07-25T23:03:45Z"
+  },
+  {
+   "base_rule_id": "G5",
+   "base_rule_set": "minimal",
+   "modification_type": "consequent_update",
+   "before": {
+    "consequents": [
+     [
+      "downwind_retardant_shield",
+      1.0
+     ],
+     [
+      "asset_protection",
+      1.0
+     ],
+     [
+      "resource_deployment",
+      1.0
+     ]
+    ]
+   },
+   "after": {
+    "consequents": [
+     [
+      "downwind_retardant_shield",
+      0.95
+     ],
+     [
+      "asset_protection",
+      0.95
+     ],
+     [
+      "resource_deployment",
+      0.95
+     ]
+    ]
+   },
+   "trigger": {
+    "step": 26,
+    "minute": 26.0,
+    "deficit": 0.3,
+    "stage": 1
+   },
+   "id": "evfis_mod_0124",
+   "seq": 124,
+   "origin": "evfis",
+   "source_stage": 1,
+   "produced_under_flags": {
+    "use_stage12_rules": true,
+    "use_stage3_rules": true,
+    "evfis_active": true,
+    "genai_active": true
+   },
+   "timestamp": "2026-07-25T23:04:02Z"
+  },
+  {
+   "base_rule_id": "G5",
+   "base_rule_set": "minimal",
+   "modification_type": "consequent_update",
+   "before": {
+    "consequents": [
+     [
+      "downwind_retardant_shield",
+      0.95
+     ],
+     [
+      "asset_protection",
+      0.95
+     ],
+     [
+      "resource_deployment",
+      0.95
+     ]
+    ]
+   },
+   "after": {
+    "consequents": [
+     [
+      "downwind_retardant_shield",
+      0.8999999999999999
+     ],
+     [
+      "asset_protection",
+      0.8999999999999999
+     ],
+     [
+      "resource_deployment",
+      0.8999999999999999
+     ]
+    ]
+   },
+   "trigger": {
+    "step": 31,
+    "minute": 31.0,
+    "deficit": 0.24,
+    "stage": 1
+   },
+   "id": "evfis_mod_0125",
+   "seq": 125,
+   "origin": "evfis",
+   "source_stage": 1,
+   "produced_under_flags": {
+    "use_stage12_rules": true,
+    "use_stage3_rules": true,
+    "evfis_active": true,
+    "genai_active": true
+   },
+   "timestamp": "2026-07-25T23:04:10Z"
+  },
+  {
+   "base_rule_id": "G5",
+   "base_rule_set": "minimal",
+   "modification_type": "consequent_update",
+   "before": {
+    "consequents": [
+     [
+      "downwind_retardant_shield",
+      0.8999999999999999
+     ],
+     [
+      "asset_protection",
+      0.8999999999999999
+     ],
+     [
+      "resource_deployment",
+      0.8999999999999999
+     ]
+    ]
+   },
+   "after": {
+    "consequents": [
+     [
+      "downwind_retardant_shield",
+      0.95
+     ],
+     [
+      "asset_protection",
+      0.95
+     ],
+     [
+      "resource_deployment",
+      0.95
+     ]
+    ]
+   },
+   "trigger": {
+    "step": 56,
+    "minute": 56.0,
+    "deficit": 0.2,
+    "stage": 1
+   },
+   "id": "evfis_mod_0126",
+   "seq": 126,
+   "origin": "evfis",
+   "source_stage": 1,
+   "produced_under_flags": {
+    "use_stage12_rules": true,
+    "use_stage3_rules": true,
+    "evfis_active": true,
+    "genai_active": true
+   },
+   "timestamp": "2026-07-25T23:04:38Z"
+  },
+  {
+   "base_rule_id": "A5",
+   "base_rule_set": "minimal",
+   "modification_type": "consequent_update",
+   "before": {
+    "consequents": [
+     [
+      "evacuation",
+      0.18052292132936926
+     ],
+     [
+      "asset_protection",
+      0.14812451035197083
+     ]
+    ]
+   },
+   "after": {
+    "consequents": [
+     [
+      "evacuation",
+      0.23052292132936925
+     ],
+     [
+      "asset_protection",
+      0.19812451035197082
+     ]
+    ]
+   },
+   "trigger": {
+    "step": 21,
+    "minute": 21.0,
+    "deficit": 0.3,
+    "stage": 1
+   },
+   "id": "evfis_mod_0128",
+   "seq": 128,
+   "origin": "evfis",
+   "source_stage": 1,
+   "produced_under_flags": {
+    "use_stage12_rules": true,
+    "use_stage3_rules": true,
+    "evfis_active": true,
+    "genai_active": true
+   },
+   "timestamp": "2026-07-25T23:16:05Z"
+  },
+  {
+   "base_rule_id": "G5",
+   "base_rule_set": "minimal",
+   "modification_type": "consequent_update",
+   "before": {
+    "consequents": [
+     [
+      "downwind_retardant_shield",
+      0.95
+     ],
+     [
+      "asset_protection",
+      0.95
+     ],
+     [
+      "resource_deployment",
+      0.95
+     ]
+    ]
+   },
+   "after": {
+    "consequents": [
+     [
+      "downwind_retardant_shield",
+      1.0
+     ],
+     [
+      "asset_protection",
+      1.0
+     ],
+     [
+      "resource_deployment",
+      1.0
+     ]
+    ]
+   },
+   "trigger": {
+    "step": 26,
+    "minute": 26.0,
+    "deficit": 0.3,
+    "stage": 1
+   },
+   "id": "evfis_mod_0129",
+   "seq": 129,
+   "origin": "evfis",
+   "source_stage": 1,
+   "produced_under_flags": {
+    "use_stage12_rules": true,
+    "use_stage3_rules": true,
+    "evfis_active": true,
+    "genai_active": true
+   },
+   "timestamp": "2026-07-25T23:16:13Z"
+  },
+  {
+   "base_rule_id": "A5",
+   "base_rule_set": "minimal",
+   "modification_type": "consequent_update",
+   "before": {
+    "consequents": [
+     [
+      "evacuation",
+      0.23052292132936925
+     ],
+     [
+      "asset_protection",
+      0.19812451035197082
+     ]
+    ]
+   },
+   "after": {
+    "consequents": [
+     [
+      "evacuation",
+      0.28052292132936923
+     ],
+     [
+      "asset_protection",
+      0.2481245103519708
+     ]
+    ]
+   },
+   "trigger": {
+    "step": 26,
+    "minute": 26.0,
+    "deficit": 0.3,
+    "stage": 1
+   },
+   "id": "evfis_mod_0130",
+   "seq": 130,
+   "origin": "evfis",
+   "source_stage": 1,
+   "produced_under_flags": {
+    "use_stage12_rules": true,
+    "use_stage3_rules": true,
+    "evfis_active": true,
+    "genai_active": true
+   },
+   "timestamp": "2026-07-25T23:16:13Z"
+  },
+  {
+   "base_rule_id": "A5",
+   "base_rule_set": "minimal",
+   "modification_type": "consequent_update",
+   "before": {
+    "consequents": [
+     [
+      "evacuation",
+      0.28052292132936923
+     ],
+     [
+      "asset_protection",
+      0.2481245103519708
+     ]
+    ]
+   },
+   "after": {
+    "consequents": [
+     [
+      "evacuation",
+      0.3305229213293692
+     ],
+     [
+      "asset_protection",
+      0.2981245103519708
+     ]
+    ]
+   },
+   "trigger": {
+    "step": 42,
+    "minute": 42.0,
+    "deficit": 0.26,
+    "stage": 1
+   },
+   "id": "evfis_mod_0131",
+   "seq": 131,
+   "origin": "evfis",
+   "source_stage": 1,
+   "produced_under_flags": {
+    "use_stage12_rules": true,
+    "use_stage3_rules": true,
+    "evfis_active": true,
+    "genai_active": true
+   },
+   "timestamp": "2026-07-25T23:16:42Z"
+  },
+  {
+   "base_rule_id": "A5",
+   "base_rule_set": "minimal",
+   "modification_type": "consequent_update",
+   "before": {
+    "consequents": [
+     [
+      "evacuation",
+      0.3305229213293692
+     ],
+     [
+      "asset_protection",
+      0.2981245103519708
+     ]
+    ]
+   },
+   "after": {
+    "consequents": [
+     [
+      "evacuation",
+      0.3805229213293692
+     ],
+     [
+      "asset_protection",
+      0.3481245103519708
+     ]
+    ]
+   },
+   "trigger": {
+    "step": 47,
+    "minute": 47.0,
+    "deficit": 0.26,
+    "stage": 1
+   },
+   "id": "evfis_mod_0132",
+   "seq": 132,
+   "origin": "evfis",
+   "source_stage": 1,
+   "produced_under_flags": {
+    "use_stage12_rules": true,
+    "use_stage3_rules": true,
+    "evfis_active": true,
+    "genai_active": true
+   },
+   "timestamp": "2026-07-25T23:16:50Z"
+  },
+  {
+   "base_rule_id": "R26",
+   "base_rule_set": "minimal",
+   "modification_type": "consequent_update",
+   "before": {
+    "consequents": [
+     [
+      "suppression_effort",
+      1.0
+     ],
+     [
+      "resource_deployment",
+      0.8
+     ]
+    ]
+   },
+   "after": {
+    "consequents": [
+     [
+      "suppression_effort",
+      1.0
+     ],
+     [
+      "resource_deployment",
+      0.8
+     ],
+     [
+      "retardant_drop",
+      0.8
+     ],
+     [
+      "containment_line",
+      0.7
+     ]
+    ]
+   },
+   "trigger": {
+    "source": "rca"
+   },
+   "id": "evfis_mod_0134",
+   "seq": 134,
+   "origin": "evfis",
+   "source_stage": 1,
+   "produced_under_flags": {
+    "use_stage12_rules": true,
+    "use_stage3_rules": true,
+    "evfis_active": true,
+    "genai_active": true
+   },
+   "timestamp": "2026-07-25T23:20:40Z"
+  },
+  {
+   "base_rule_id": "R26",
+   "base_rule_set": "minimal",
+   "modification_type": "consequent_update",
+   "before": {
+    "consequents": [
+     [
+      "suppression_effort",
+      1.0
+     ],
+     [
+      "resource_deployment",
+      0.8
+     ],
+     [
+      "retardant_drop",
+      0.8
+     ],
+     [
+      "containment_line",
+      0.7
+     ]
+    ]
+   },
+   "after": {
+    "consequents": [
+     [
+      "suppression_effort",
+      1.0
+     ],
+     [
+      "retardant_drop",
+      0.95
+     ],
+     [
+      "resource_deployment",
+      0.9
+     ],
+     [
+      "containment_line",
+      0.8
+     ]
+    ]
+   },
+   "trigger": {
+    "source": "rca"
+   },
+   "id": "evfis_mod_0136",
+   "seq": 136,
+   "origin": "evfis",
+   "source_stage": 1,
+   "produced_under_flags": {
+    "use_stage12_rules": true,
+    "use_stage3_rules": true,
+    "evfis_active": true,
+    "genai_active": true
+   },
+   "timestamp": "2026-07-25T23:27:11Z"
+  },
+  {
+   "base_rule_id": "A1",
+   "base_rule_set": "minimal",
+   "modification_type": "consequent_update",
+   "before": {
+    "consequents": [
+     [
+      "asset_protection",
+      1.0
+     ],
+     [
+      "evacuation",
+      0.898753622761158
+     ]
+    ]
+   },
+   "after": {
+    "consequents": [
+     [
+      "asset_protection",
+      1.0
+     ],
+     [
+      "evacuation",
+      0.948753622761158
+     ]
+    ]
+   },
+   "trigger": {
+    "step": 13,
+    "minute": 13.0,
+    "deficit": 0.24,
+    "stage": 1
+   },
+   "id": "evfis_mod_0137",
+   "seq": 137,
+   "origin": "evfis",
+   "source_stage": 1,
+   "produced_under_flags": {
+    "use_stage12_rules": true,
+    "use_stage3_rules": true,
+    "evfis_active": true,
+    "genai_active": true
+   },
+   "timestamp": "2026-07-25T23:28:02Z"
+  },
+  {
+   "base_rule_id": "G5",
+   "base_rule_set": "minimal",
+   "modification_type": "consequent_update",
+   "before": {
+    "consequents": [
+     [
+      "downwind_retardant_shield",
+      1.0
+     ],
+     [
+      "asset_protection",
+      1.0
+     ],
+     [
+      "resource_deployment",
+      1.0
+     ]
+    ]
+   },
+   "after": {
+    "consequents": [
+     [
+      "downwind_retardant_shield",
+      0.95
+     ],
+     [
+      "asset_protection",
+      0.95
+     ],
+     [
+      "resource_deployment",
+      0.95
+     ]
+    ]
+   },
+   "trigger": {
+    "step": 19,
+    "minute": 19.0,
+    "deficit": 0.16,
+    "stage": 1
+   },
+   "id": "evfis_mod_0138",
+   "seq": 138,
+   "origin": "evfis",
+   "source_stage": 1,
+   "produced_under_flags": {
+    "use_stage12_rules": true,
+    "use_stage3_rules": true,
+    "evfis_active": true,
+    "genai_active": true
+   },
+   "timestamp": "2026-07-25T23:28:08Z"
+  },
+  {
+   "base_rule_id": "A1",
+   "base_rule_set": "minimal",
+   "modification_type": "consequent_update",
+   "before": {
+    "consequents": [
+     [
+      "asset_protection",
+      1.0
+     ],
+     [
+      "evacuation",
+      0.948753622761158
+     ]
+    ]
+   },
+   "after": {
+    "consequents": [
+     [
+      "asset_protection",
+      1.0
+     ],
+     [
+      "evacuation",
+      0.9987536227611581
+     ]
+    ]
+   },
+   "trigger": {
+    "step": 19,
+    "minute": 19.0,
+    "deficit": 0.16,
+    "stage": 1
+   },
+   "id": "evfis_mod_0139",
+   "seq": 139,
+   "origin": "evfis",
+   "source_stage": 1,
+   "produced_under_flags": {
+    "use_stage12_rules": true,
+    "use_stage3_rules": true,
+    "evfis_active": true,
+    "genai_active": true
+   },
+   "timestamp": "2026-07-25T23:28:08Z"
+  },
+  {
+   "base_rule_id": "G5",
+   "base_rule_set": "minimal",
+   "modification_type": "consequent_update",
+   "before": {
+    "consequents": [
+     [
+      "downwind_retardant_shield",
+      0.95
+     ],
+     [
+      "asset_protection",
+      0.95
+     ],
+     [
+      "resource_deployment",
+      0.95
+     ]
+    ]
+   },
+   "after": {
+    "consequents": [
+     [
+      "downwind_retardant_shield",
+      1.0
+     ],
+     [
+      "asset_protection",
+      1.0
+     ],
+     [
+      "resource_deployment",
+      1.0
+     ]
+    ]
+   },
+   "trigger": {
+    "step": 24,
+    "minute": 24.0,
+    "deficit": 0.16,
+    "stage": 1
+   },
+   "id": "evfis_mod_0140",
+   "seq": 140,
+   "origin": "evfis",
+   "source_stage": 1,
+   "produced_under_flags": {
+    "use_stage12_rules": true,
+    "use_stage3_rules": true,
+    "evfis_active": true,
+    "genai_active": true
+   },
+   "timestamp": "2026-07-25T23:28:14Z"
+  },
+  {
+   "base_rule_id": "A1",
+   "base_rule_set": "minimal",
+   "modification_type": "consequent_update",
+   "before": {
+    "consequents": [
+     [
+      "asset_protection",
+      1.0
+     ],
+     [
+      "evacuation",
+      0.9987536227611581
+     ]
+    ]
+   },
+   "after": {
+    "consequents": [
+     [
+      "asset_protection",
+      1.0
+     ],
+     [
+      "evacuation",
+      1.0
+     ]
+    ]
+   },
+   "trigger": {
+    "step": 29,
+    "minute": 29.0,
+    "deficit": 0.14,
+    "stage": 1
+   },
+   "id": "evfis_mod_0141",
+   "seq": 141,
+   "origin": "evfis",
+   "source_stage": 1,
+   "produced_under_flags": {
+    "use_stage12_rules": true,
+    "use_stage3_rules": true,
+    "evfis_active": true,
+    "genai_active": true
+   },
+   "timestamp": "2026-07-25T23:28:57Z"
+  },
+  {
+   "base_rule_id": "G5",
+   "base_rule_set": "minimal",
+   "modification_type": "consequent_update",
+   "before": {
+    "consequents": [
+     [
+      "downwind_retardant_shield",
+      1.0
+     ],
+     [
+      "asset_protection",
+      1.0
+     ],
+     [
+      "resource_deployment",
+      1.0
+     ]
+    ]
+   },
+   "after": {
+    "consequents": [
+     [
+      "downwind_retardant_shield",
+      0.95
+     ],
+     [
+      "asset_protection",
+      0.95
+     ],
+     [
+      "resource_deployment",
+      0.95
+     ]
+    ]
+   },
+   "trigger": {
+    "step": 16,
+    "minute": 16.0,
+    "deficit": 0.3,
+    "stage": 1
+   },
+   "id": "evfis_mod_0142",
+   "seq": 142,
+   "origin": "evfis",
+   "source_stage": 1,
+   "produced_under_flags": {
+    "use_stage12_rules": true,
+    "use_stage3_rules": true,
+    "evfis_active": true,
+    "genai_active": true
+   },
+   "timestamp": "2026-07-25T23:33:40Z"
+  },
+  {
+   "base_rule_id": "G5",
+   "base_rule_set": "minimal",
+   "modification_type": "consequent_update",
+   "before": {
+    "consequents": [
+     [
+      "downwind_retardant_shield",
+      0.95
+     ],
+     [
+      "asset_protection",
+      0.95
+     ],
+     [
+      "resource_deployment",
+      0.95
+     ]
+    ]
+   },
+   "after": {
+    "consequents": [
+     [
+      "downwind_retardant_shield",
+      0.8999999999999999
+     ],
+     [
+      "asset_protection",
+      0.8999999999999999
+     ],
+     [
+      "resource_deployment",
+      0.8999999999999999
+     ]
+    ]
+   },
+   "trigger": {
+    "step": 26,
+    "minute": 26.0,
+    "deficit": 0.3,
+    "stage": 1
+   },
+   "id": "evfis_mod_0143",
+   "seq": 143,
+   "origin": "evfis",
+   "source_stage": 1,
+   "produced_under_flags": {
+    "use_stage12_rules": true,
+    "use_stage3_rules": true,
+    "evfis_active": true,
+    "genai_active": true
+   },
+   "timestamp": "2026-07-25T23:33:45Z"
+  },
+  {
+   "base_rule_id": "G5",
+   "base_rule_set": "minimal",
+   "modification_type": "consequent_update",
+   "before": {
+    "consequents": [
+     [
+      "downwind_retardant_shield",
+      0.8999999999999999
+     ],
+     [
+      "asset_protection",
+      0.8999999999999999
+     ],
+     [
+      "resource_deployment",
+      0.8999999999999999
+     ]
+    ]
+   },
+   "after": {
+    "consequents": [
+     [
+      "downwind_retardant_shield",
+      0.8499999999999999
+     ],
+     [
+      "asset_protection",
+      0.8499999999999999
+     ],
+     [
+      "resource_deployment",
+      0.8499999999999999
+     ]
+    ]
+   },
+   "trigger": {
+    "step": 7,
+    "minute": 7.0,
+    "deficit": 0.3,
+    "stage": 1
+   },
+   "id": "evfis_mod_0144",
+   "seq": 144,
+   "origin": "evfis",
+   "source_stage": 1,
+   "produced_under_flags": {
+    "use_stage12_rules": true,
+    "use_stage3_rules": true,
+    "evfis_active": true,
+    "genai_active": true
+   },
+   "timestamp": "2026-07-25T23:38:28Z"
+  },
+  {
+   "base_rule_id": "G5",
+   "base_rule_set": "minimal",
+   "modification_type": "consequent_update",
+   "before": {
+    "consequents": [
+     [
+      "downwind_retardant_shield",
+      0.8499999999999999
+     ],
+     [
+      "asset_protection",
+      0.8499999999999999
+     ],
+     [
+      "resource_deployment",
+      0.8499999999999999
+     ]
+    ]
+   },
+   "after": {
+    "consequents": [
+     [
+      "downwind_retardant_shield",
+      0.7999999999999998
+     ],
+     [
+      "asset_protection",
+      0.7999999999999998
+     ],
+     [
+      "resource_deployment",
+      0.7999999999999998
+     ]
+    ]
+   },
+   "trigger": {
+    "step": 12,
+    "minute": 12.0,
+    "deficit": 0.3,
+    "stage": 1
+   },
+   "id": "evfis_mod_0145",
+   "seq": 145,
+   "origin": "evfis",
+   "source_stage": 1,
+   "produced_under_flags": {
+    "use_stage12_rules": true,
+    "use_stage3_rules": true,
+    "evfis_active": true,
+    "genai_active": true
+   },
+   "timestamp": "2026-07-25T23:38:36Z"
+  },
+  {
+   "base_rule_id": "G5",
+   "base_rule_set": "minimal",
+   "modification_type": "consequent_update",
+   "before": {
+    "consequents": [
+     [
+      "downwind_retardant_shield",
+      0.7999999999999998
+     ],
+     [
+      "asset_protection",
+      0.7999999999999998
+     ],
+     [
+      "resource_deployment",
+      0.7999999999999998
+     ]
+    ]
+   },
+   "after": {
+    "consequents": [
+     [
+      "downwind_retardant_shield",
+      0.8499999999999999
+     ],
+     [
+      "asset_protection",
+      0.8499999999999999
+     ],
+     [
+      "resource_deployment",
+      0.8499999999999999
+     ]
+    ]
+   },
+   "trigger": {
+    "step": 22,
+    "minute": 22.0,
+    "deficit": 0.3,
+    "stage": 1
+   },
+   "id": "evfis_mod_0147",
+   "seq": 147,
+   "origin": "evfis",
+   "source_stage": 1,
+   "produced_under_flags": {
+    "use_stage12_rules": true,
+    "use_stage3_rules": true,
+    "evfis_active": true,
+    "genai_active": true
+   },
+   "timestamp": "2026-07-25T23:38:52Z"
+  },
+  {
+   "base_rule_id": "G5",
+   "base_rule_set": "minimal",
+   "modification_type": "consequent_update",
+   "before": {
+    "consequents": [
+     [
+      "downwind_retardant_shield",
+      0.8499999999999999
+     ],
+     [
+      "asset_protection",
+      0.8499999999999999
+     ],
+     [
+      "resource_deployment",
+      0.8499999999999999
+     ]
+    ]
+   },
+   "after": {
+    "consequents": [
+     [
+      "downwind_retardant_shield",
+      0.7999999999999998
+     ],
+     [
+      "asset_protection",
+      0.7999999999999998
+     ],
+     [
+      "resource_deployment",
+      0.7999999999999998
+     ]
+    ]
+   },
+   "trigger": {
+    "step": 28,
+    "minute": 28.0,
+    "deficit": 0.3,
+    "stage": 1
+   },
+   "id": "evfis_mod_0148",
+   "seq": 148,
+   "origin": "evfis",
+   "source_stage": 1,
+   "produced_under_flags": {
+    "use_stage12_rules": true,
+    "use_stage3_rules": true,
+    "evfis_active": true,
+    "genai_active": true
+   },
+   "timestamp": "2026-07-25T23:38:58Z"
+  },
+  {
+   "base_rule_id": "G5",
+   "base_rule_set": "minimal",
+   "modification_type": "consequent_update",
+   "before": {
+    "consequents": [
+     [
+      "downwind_retardant_shield",
+      0.7999999999999998
+     ],
+     [
+      "asset_protection",
+      0.7999999999999998
+     ],
+     [
+      "resource_deployment",
+      0.7999999999999998
+     ]
+    ]
+   },
+   "after": {
+    "consequents": [
+     [
+      "downwind_retardant_shield",
+      0.8499999999999999
+     ],
+     [
+      "asset_protection",
+      0.8499999999999999
+     ],
+     [
+      "resource_deployment",
+      0.8499999999999999
+     ]
+    ]
+   },
+   "trigger": {
+    "step": 33,
+    "minute": 33.0,
+    "deficit": 0.3,
+    "stage": 1
+   },
+   "id": "evfis_mod_0149",
+   "seq": 149,
+   "origin": "evfis",
+   "source_stage": 1,
+   "produced_under_flags": {
+    "use_stage12_rules": true,
+    "use_stage3_rules": true,
+    "evfis_active": true,
+    "genai_active": true
+   },
+   "timestamp": "2026-07-25T23:39:00Z"
+  },
+  {
+   "base_rule_id": "G5",
+   "base_rule_set": "minimal",
+   "modification_type": "consequent_update",
+   "before": {
+    "consequents": [
+     [
+      "downwind_retardant_shield",
+      0.8499999999999999
+     ],
+     [
+      "asset_protection",
+      0.8499999999999999
+     ],
+     [
+      "resource_deployment",
+      0.8499999999999999
+     ]
+    ]
+   },
+   "after": {
+    "consequents": [
+     [
+      "downwind_retardant_shield",
+      0.8999999999999999
+     ],
+     [
+      "asset_protection",
+      0.8999999999999999
+     ],
+     [
+      "resource_deployment",
+      0.8999999999999999
+     ]
+    ]
+   },
+   "trigger": {
+    "step": 48,
+    "minute": 48.0,
+    "deficit": 0.18,
+    "stage": 1
+   },
+   "id": "evfis_mod_0150",
+   "seq": 150,
+   "origin": "evfis",
+   "source_stage": 1,
+   "produced_under_flags": {
+    "use_stage12_rules": true,
+    "use_stage3_rules": true,
+    "evfis_active": true,
+    "genai_active": true
+   },
+   "timestamp": "2026-07-25T23:39:11Z"
+  },
+  {
+   "base_rule_id": "G5",
+   "base_rule_set": "minimal",
+   "modification_type": "consequent_update",
+   "before": {
+    "consequents": [
+     [
+      "downwind_retardant_shield",
+      0.8999999999999999
+     ],
+     [
+      "asset_protection",
+      0.8999999999999999
+     ],
+     [
+      "resource_deployment",
+      0.8999999999999999
+     ]
+    ]
+   },
+   "after": {
+    "consequents": [
+     [
+      "downwind_retardant_shield",
+      0.8499999999999999
+     ],
+     [
+      "asset_protection",
+      0.8499999999999999
+     ],
+     [
+      "resource_deployment",
+      0.8499999999999999
+     ]
+    ]
+   },
+   "trigger": {
+    "step": 58,
+    "minute": 58.0,
+    "deficit": 0.2,
+    "stage": 1
+   },
+   "id": "evfis_mod_0151",
+   "seq": 151,
+   "origin": "evfis",
+   "source_stage": 1,
+   "produced_under_flags": {
+    "use_stage12_rules": true,
+    "use_stage3_rules": true,
+    "evfis_active": true,
+    "genai_active": true
+   },
+   "timestamp": "2026-07-25T23:40:01Z"
+  },
+  {
+   "base_rule_id": "G5",
+   "base_rule_set": "minimal",
+   "modification_type": "consequent_update",
+   "before": {
+    "consequents": [
+     [
+      "downwind_retardant_shield",
+      0.8499999999999999
+     ],
+     [
+      "asset_protection",
+      0.8499999999999999
+     ],
+     [
+      "resource_deployment",
+      0.8499999999999999
+     ]
+    ]
+   },
+   "after": {
+    "consequents": [
+     [
+      "downwind_retardant_shield",
+      0.7999999999999998
+     ],
+     [
+      "asset_protection",
+      0.7999999999999998
+     ],
+     [
+      "resource_deployment",
+      0.7999999999999998
+     ]
+    ]
+   },
+   "trigger": {
+    "step": 16,
+    "minute": 16.0,
+    "deficit": 0.3,
+    "stage": 1
+   },
+   "id": "evfis_mod_0152",
+   "seq": 152,
+   "origin": "evfis",
+   "source_stage": 1,
+   "produced_under_flags": {
+    "use_stage12_rules": true,
+    "use_stage3_rules": true,
+    "evfis_active": true,
+    "genai_active": true
+   },
+   "timestamp": "2026-07-25T23:43:46Z"
+  },
+  {
+   "base_rule_id": "A8",
+   "base_rule_set": "minimal",
+   "modification_type": "rule_add",
+   "before": {
+    "rule": null
+   },
+   "after": {
+    "rule": {
+     "name": "A8",
+     "antecedents": [
+      [
+       "asset_exposure_risk",
+       "M"
+      ],
+      [
+       "evacuation_pressure",
+       "H"
+      ]
+     ],
+     "consequents": [
+      [
+       "asset_protection",
+       0.5345775051965403
+      ],
+      [
+       "evacuation",
+       0.5271427371176762
+      ]
+     ],
+     "note": "adaptation-born: resolution increase (instantiated antecedent cell)",
+     "strength": 0.0
+    }
+   },
+   "trigger": {
+    "step": 5,
+    "minute": 5.0,
+    "deficit": 0.3,
+    "stage": 2
+   },
+   "id": "evfis_mod_0153",
+   "seq": 153,
+   "origin": "evfis",
+   "source_stage": 2,
+   "produced_under_flags": {
+    "use_stage12_rules": true,
+    "use_stage3_rules": true,
+    "evfis_active": true,
+    "genai_active": true
+   },
+   "timestamp": "2026-07-26T00:14:02Z"
+  },
+  {
+   "base_rule_id": "G5",
+   "base_rule_set": "minimal",
+   "modification_type": "consequent_update",
+   "before": {
+    "consequents": [
+     [
+      "downwind_retardant_shield",
+      0.7999999999999998
+     ],
+     [
+      "asset_protection",
+      0.7999999999999998
+     ],
+     [
+      "resource_deployment",
+      0.7999999999999998
+     ]
+    ]
+   },
+   "after": {
+    "consequents": [
+     [
+      "downwind_retardant_shield",
+      0.8499999999999999
+     ],
+     [
+      "asset_protection",
+      0.8499999999999999
+     ],
+     [
+      "resource_deployment",
+      0.8499999999999999
+     ]
+    ]
+   },
+   "trigger": {
+    "step": 15,
+    "minute": 15.0,
+    "deficit": 0.3,
+    "stage": 1
+   },
+   "id": "evfis_mod_0155",
+   "seq": 155,
+   "origin": "evfis",
+   "source_stage": 1,
+   "produced_under_flags": {
+    "use_stage12_rules": true,
+    "use_stage3_rules": true,
+    "evfis_active": true,
+    "genai_active": true
+   },
+   "timestamp": "2026-07-26T00:14:19Z"
+  },
+  {
+   "base_rule_id": "G5",
+   "base_rule_set": "minimal",
+   "modification_type": "consequent_update",
+   "before": {
+    "consequents": [
+     [
+      "downwind_retardant_shield",
+      0.8499999999999999
+     ],
+     [
+      "asset_protection",
+      0.8499999999999999
+     ],
+     [
+      "resource_deployment",
+      0.8499999999999999
+     ]
+    ]
+   },
+   "after": {
+    "consequents": [
+     [
+      "downwind_retardant_shield",
+      0.7999999999999998
+     ],
+     [
+      "asset_protection",
+      0.7999999999999998
+     ],
+     [
+      "resource_deployment",
+      0.7999999999999998
+     ]
+    ]
+   },
+   "trigger": {
+    "step": 21,
+    "minute": 21.0,
+    "deficit": 0.3,
+    "stage": 1
+   },
+   "id": "evfis_mod_0156",
+   "seq": 156,
+   "origin": "evfis",
+   "source_stage": 1,
+   "produced_under_flags": {
+    "use_stage12_rules": true,
+    "use_stage3_rules": true,
+    "evfis_active": true,
+    "genai_active": true
+   },
+   "timestamp": "2026-07-26T00:14:21Z"
+  },
+  {
+   "base_rule_id": "G5",
+   "base_rule_set": "minimal",
+   "modification_type": "consequent_update",
+   "before": {
+    "consequents": [
+     [
+      "downwind_retardant_shield",
+      0.7999999999999998
+     ],
+     [
+      "asset_protection",
+      0.7999999999999998
+     ],
+     [
+      "resource_deployment",
+      0.7999999999999998
+     ]
+    ]
+   },
+   "after": {
+    "consequents": [
+     [
+      "downwind_retardant_shield",
+      0.8499999999999999
+     ],
+     [
+      "asset_protection",
+      0.8499999999999999
+     ],
+     [
+      "resource_deployment",
+      0.8499999999999999
+     ]
+    ]
+   },
+   "trigger": {
+    "step": 58,
+    "minute": 58.0,
+    "deficit": 0.05,
+    "stage": 1
+   },
+   "id": "evfis_mod_0157",
+   "seq": 157,
+   "origin": "evfis",
+   "source_stage": 1,
+   "produced_under_flags": {
+    "use_stage12_rules": true,
+    "use_stage3_rules": true,
+    "evfis_active": true,
+    "genai_active": true
+   },
+   "timestamp": "2026-07-26T00:15:42Z"
+  },
+  {
+   "base_rule_id": "G5",
+   "base_rule_set": "minimal",
+   "modification_type": "consequent_update",
+   "before": {
+    "consequents": [
+     [
+      "downwind_retardant_shield",
+      0.8499999999999999
+     ],
+     [
+      "asset_protection",
+      0.8499999999999999
+     ],
+     [
+      "resource_deployment",
+      0.8499999999999999
+     ]
+    ]
+   },
+   "after": {
+    "consequents": [
+     [
+      "downwind_retardant_shield",
+      0.7999999999999998
+     ],
+     [
+      "asset_protection",
+      0.7999999999999998
+     ],
+     [
+      "resource_deployment",
+      0.7999999999999998
+     ]
+    ]
+   },
+   "trigger": {
+    "step": 5,
+    "minute": 5.0,
+    "deficit": 0.24,
+    "stage": 1
+   },
+   "id": "evfis_mod_0161",
+   "seq": 161,
+   "origin": "evfis",
+   "source_stage": 1,
+   "produced_under_flags": {
+    "use_stage12_rules": true,
+    "use_stage3_rules": true,
+    "evfis_active": true,
+    "genai_active": true
+   },
+   "timestamp": "2026-07-26T00:19:13Z"
+  },
+  {
+   "base_rule_id": "G5",
+   "base_rule_set": "minimal",
+   "modification_type": "consequent_update",
+   "before": {
+    "consequents": [
+     [
+      "downwind_retardant_shield",
+      0.7999999999999998
+     ],
+     [
+      "asset_protection",
+      0.7999999999999998
+     ],
+     [
+      "resource_deployment",
+      0.7999999999999998
+     ]
+    ]
+   },
+   "after": {
+    "consequents": [
+     [
+      "downwind_retardant_shield",
+      0.7499999999999998
+     ],
+     [
+      "asset_protection",
+      0.7499999999999998
+     ],
+     [
+      "resource_deployment",
+      0.7499999999999998
+     ]
+    ]
+   },
+   "trigger": {
+    "step": 15,
+    "minute": 15.0,
+    "deficit": 0.26,
+    "stage": 1
+   },
+   "id": "evfis_mod_0162",
+   "seq": 162,
+   "origin": "evfis",
+   "source_stage": 1,
+   "produced_under_flags": {
+    "use_stage12_rules": true,
+    "use_stage3_rules": true,
+    "evfis_active": true,
+    "genai_active": true
+   },
+   "timestamp": "2026-07-26T00:19:18Z"
+  },
+  {
+   "base_rule_id": "G5",
+   "base_rule_set": "minimal",
+   "modification_type": "consequent_update",
+   "before": {
+    "consequents": [
+     [
+      "downwind_retardant_shield",
+      0.7499999999999998
+     ],
+     [
+      "asset_protection",
+      0.7499999999999998
+     ],
+     [
+      "resource_deployment",
+      0.7499999999999998
+     ]
+    ]
+   },
+   "after": {
+    "consequents": [
+     [
+      "downwind_retardant_shield",
+      0.6999999999999997
+     ],
+     [
+      "asset_protection",
+      0.6999999999999997
+     ],
+     [
+      "resource_deployment",
+      0.6999999999999997
+     ]
+    ]
+   },
+   "trigger": {
+    "step": 25,
+    "minute": 25.0,
+    "deficit": 0.24,
+    "stage": 1
+   },
+   "id": "evfis_mod_0163",
+   "seq": 163,
+   "origin": "evfis",
+   "source_stage": 1,
+   "produced_under_flags": {
+    "use_stage12_rules": true,
+    "use_stage3_rules": true,
+    "evfis_active": true,
+    "genai_active": true
+   },
+   "timestamp": "2026-07-26T00:19:23Z"
+  },
+  {
+   "base_rule_id": "A9",
+   "base_rule_set": "minimal",
+   "modification_type": "rule_add",
+   "before": {
+    "rule": null
+   },
+   "after": {
+    "rule": {
+     "name": "A9",
+     "antecedents": [
+      [
+       "suppression_feasibility",
+       "H"
+      ],
+      [
+       "evacuation_pressure",
+       "VH"
+      ]
+     ],
+     "consequents": [
+      [
+       "evacuation",
+       0.6305318976926004
+      ],
+      [
+       "asset_protection",
+       0.5981330245838672
+      ]
+     ],
+     "note": "adaptation-born: resolution increase (instantiated antecedent cell)",
+     "strength": 0.0
+    }
+   },
+   "trigger": {
+    "step": 35,
+    "minute": 35.0,
+    "deficit": 0.05,
+    "stage": 2
+   },
+   "id": "evfis_mod_0164",
+   "seq": 164,
+   "origin": "evfis",
+   "source_stage": 2,
+   "produced_under_flags": {
+    "use_stage12_rules": true,
+    "use_stage3_rules": true,
+    "evfis_active": true,
+    "genai_active": true
+   },
+   "timestamp": "2026-07-26T00:19:28Z"
+  },
+  {
+   "base_rule_id": "G5",
+   "base_rule_set": "minimal",
+   "modification_type": "consequent_update",
+   "before": {
+    "consequents": [
+     [
+      "downwind_retardant_shield",
+      0.6999999999999997
+     ],
+     [
+      "asset_protection",
+      0.6999999999999997
+     ],
+     [
+      "resource_deployment",
+      0.6999999999999997
+     ]
+    ]
+   },
+   "after": {
+    "consequents": [
+     [
+      "downwind_retardant_shield",
+      0.7499999999999998
+     ],
+     [
+      "asset_protection",
+      0.7499999999999998
+     ],
+     [
+      "resource_deployment",
+      0.7499999999999998
+     ]
+    ]
+   },
+   "trigger": {
+    "step": 65,
+    "minute": 65.0,
+    "deficit": 0.24,
+    "stage": 1
+   },
+   "id": "evfis_mod_0168",
+   "seq": 168,
+   "origin": "evfis",
+   "source_stage": 1,
+   "produced_under_flags": {
+    "use_stage12_rules": true,
+    "use_stage3_rules": true,
+    "evfis_active": true,
+    "genai_active": true
+   },
+   "timestamp": "2026-07-26T00:20:19Z"
+  },
+  {
+   "base_rule_id": "A10",
+   "base_rule_set": "minimal",
+   "modification_type": "rule_add",
+   "before": {
+    "rule": null
+   },
+   "after": {
+    "rule": {
+     "name": "A10",
+     "antecedents": [
+      [
+       "suppression_feasibility",
+       "VH"
+      ],
+      [
+       "asset_exposure_risk",
+       "M"
+      ]
+     ],
+     "consequents": [
+      [
+       "asset_protection",
+       0.5902753538092935
+      ],
+      [
+       "evacuation",
+       0.5142318267611395
+      ]
+     ],
+     "note": "adaptation-born: resolution increase (instantiated antecedent cell)",
+     "strength": 0.0
+    }
+   },
+   "trigger": {
+    "step": 5,
+    "minute": 5.0,
+    "deficit": 0.06,
+    "stage": 2
+   },
+   "id": "evfis_mod_0169",
+   "seq": 169,
+   "origin": "evfis",
+   "source_stage": 2,
+   "produced_under_flags": {
+    "use_stage12_rules": true,
+    "use_stage3_rules": true,
+    "evfis_active": true,
+    "genai_active": true
+   },
+   "timestamp": "2026-07-26T00:22:26Z"
+  },
+  {
+   "base_rule_id": "A11",
+   "base_rule_set": "minimal",
+   "modification_type": "rule_add",
+   "before": {
+    "rule": null
+   },
+   "after": {
+    "rule": {
+     "name": "A11",
+     "antecedents": [
+      [
+       "suppression_feasibility",
+       "X1"
+      ],
+      [
+       "asset_exposure_risk",
+       "M"
+      ]
+     ],
+     "consequents": [
+      [
+       "asset_protection",
+       0.593986891970022
+      ],
+      [
+       "evacuation",
+       0.5160029521378986
+      ]
+     ],
+     "note": "adaptation-born: resolution increase: term X1 inserted into suppression_feasibility at 0.79 (catalog grew)",
+     "strength": 0.0
+    }
+   },
+   "trigger": {
+    "step": 10,
+    "minute": 10.0,
+    "deficit": 0.05,
+    "stage": 2
+   },
+   "id": "evfis_mod_0171",
+   "seq": 171,
+   "origin": "evfis",
+   "source_stage": 2,
+   "produced_under_flags": {
+    "use_stage12_rules": true,
+    "use_stage3_rules": true,
+    "evfis_active": true,
+    "genai_active": true
+   },
+   "timestamp": "2026-07-26T00:22:33Z"
   }
  ],
  "genai_rules": [
@@ -717,9 +7228,1162 @@
     "genai_active": true
    },
    "timestamp": "2026-07-25T14:34:01Z"
+  },
+  {
+   "name": "G9",
+   "antecedents": [
+    [
+     "suppression_feasibility",
+     "VH"
+    ],
+    [
+     "fire_threat_level",
+     "H"
+    ]
+   ],
+   "consequents": [
+    [
+     "counterfire_strip",
+     0.9
+    ],
+    [
+     "resource_deployment",
+     0.8
+    ]
+   ],
+   "note": "adaptation-born: generative (claude), gates G1-G4",
+   "strength": 0.0,
+   "depends_on_concepts": [],
+   "trigger": {
+    "step": 27,
+    "minute": 13.0,
+    "deficit": 0.05,
+    "stage": 3
+   },
+   "id": "gen_rule_0020",
+   "seq": 20,
+   "origin": "genai",
+   "source_stage": 3,
+   "produced_under_flags": {
+    "use_stage12_rules": true,
+    "use_stage3_rules": true,
+    "evfis_active": true,
+    "genai_active": true
+   },
+   "timestamp": "2026-07-25T21:06:32Z"
+  },
+  {
+   "name": "G12",
+   "antecedents": [
+    [
+     "suppression_feasibility",
+     "VH"
+    ],
+    [
+     "asset_exposure_risk",
+     "VH"
+    ],
+    [
+     "fire_threat_level",
+     "VL"
+    ]
+   ],
+   "consequents": [
+    [
+     "suppression_effort",
+     0.9
+    ],
+    [
+     "water_drafting",
+     0.8
+    ],
+    [
+     "resource_deployment",
+     0.8
+    ]
+   ],
+   "note": "adaptation-born: generative (claude), gates G1-G4 | renamed from G9 (name collision across sessions)",
+   "strength": 0.0,
+   "depends_on_concepts": [],
+   "trigger": {
+    "step": 5,
+    "minute": 5.0,
+    "deficit": 0.1,
+    "stage": 3
+   },
+   "id": "gen_rule_0021",
+   "seq": 21,
+   "origin": "genai",
+   "source_stage": 3,
+   "produced_under_flags": {
+    "use_stage12_rules": true,
+    "use_stage3_rules": true,
+    "evfis_active": true,
+    "genai_active": true
+   },
+   "timestamp": "2026-07-25T21:18:30Z"
+  },
+  {
+   "name": "G10",
+   "antecedents": [
+    [
+     "suppression_feasibility",
+     "VH"
+    ],
+    [
+     "asset_exposure_risk",
+     "H"
+    ],
+    [
+     "evacuation_pressure",
+     "H"
+    ]
+   ],
+   "consequents": [
+    [
+     "suppression_effort",
+     0.9
+    ],
+    [
+     "water_drafting",
+     0.8
+    ],
+    [
+     "resource_deployment",
+     0.7
+    ]
+   ],
+   "note": "adaptation-born: generative (claude), gates G1-G4",
+   "strength": 0.0,
+   "depends_on_concepts": [],
+   "trigger": {
+    "step": 35,
+    "minute": 35.0,
+    "deficit": 0.06,
+    "stage": 3
+   },
+   "id": "gen_rule_0024",
+   "seq": 24,
+   "origin": "genai",
+   "source_stage": 3,
+   "produced_under_flags": {
+    "use_stage12_rules": true,
+    "use_stage3_rules": true,
+    "evfis_active": true,
+    "genai_active": true
+   },
+   "timestamp": "2026-07-25T21:28:28Z"
+  },
+  {
+   "name": "G11",
+   "antecedents": [
+    [
+     "asset_exposure_risk",
+     "VH"
+    ],
+    [
+     "suppression_feasibility",
+     "VH"
+    ],
+    [
+     "intervention_urgency",
+     "VL"
+    ]
+   ],
+   "consequents": [
+    [
+     "asset_protection",
+     0.9
+    ],
+    [
+     "containment_line",
+     0.8
+    ],
+    [
+     "retardant_drop",
+     0.7
+    ]
+   ],
+   "note": "adaptation-born: generative (claude), gates G1-G4",
+   "strength": 0.0,
+   "depends_on_concepts": [],
+   "trigger": {
+    "step": 29,
+    "minute": 0.0,
+    "deficit": 0.005000000000000003,
+    "stage": 3
+   },
+   "id": "gen_rule_0035",
+   "seq": 35,
+   "origin": "genai",
+   "source_stage": 3,
+   "produced_under_flags": {
+    "use_stage12_rules": true,
+    "use_stage3_rules": true,
+    "evfis_active": true,
+    "genai_active": true
+   },
+   "timestamp": "2026-07-25T21:37:05Z"
+  },
+  {
+   "name": "G13",
+   "antecedents": [
+    [
+     "interface_exposure",
+     "VH"
+    ],
+    [
+     "suppression_feasibility",
+     "VH"
+    ]
+   ],
+   "consequents": [
+    [
+     "asset_protection",
+     0.9
+    ],
+    [
+     "containment_line",
+     0.8
+    ],
+    [
+     "resource_deployment",
+     0.7
+    ]
+   ],
+   "note": "adaptation-born: generative (claude), gates G1-G4",
+   "strength": 0.0,
+   "depends_on_concepts": [
+    "interface_exposure"
+   ],
+   "trigger": {
+    "step": 15,
+    "minute": 5.0,
+    "deficit": 0.3,
+    "stage": 3
+   },
+   "id": "gen_rule_0061",
+   "seq": 61,
+   "origin": "genai",
+   "source_stage": 3,
+   "produced_under_flags": {
+    "use_stage12_rules": true,
+    "use_stage3_rules": true,
+    "evfis_active": true,
+    "genai_active": true
+   },
+   "timestamp": "2026-07-25T22:17:43Z"
+  },
+  {
+   "name": "G14",
+   "antecedents": [
+    [
+     "suppression_feasibility",
+     "VH"
+    ],
+    [
+     "evacuation_pressure",
+     "VH"
+    ],
+    [
+     "fire_threat_level",
+     "VL"
+    ]
+   ],
+   "consequents": [
+    [
+     "suppression_effort",
+     0.9
+    ],
+    [
+     "water_drafting",
+     0.8
+    ],
+    [
+     "resource_deployment",
+     0.8
+    ]
+   ],
+   "note": "adaptation-born: generative (claude), gates G1-G4",
+   "strength": 0.0,
+   "depends_on_concepts": [],
+   "trigger": {
+    "step": 11,
+    "minute": 6.0,
+    "deficit": 0.3,
+    "stage": 3
+   },
+   "id": "gen_rule_0062",
+   "seq": 62,
+   "origin": "genai",
+   "source_stage": 3,
+   "produced_under_flags": {
+    "use_stage12_rules": true,
+    "use_stage3_rules": true,
+    "evfis_active": true,
+    "genai_active": true
+   },
+   "timestamp": "2026-07-25T22:26:53Z"
+  },
+  {
+   "name": "G15",
+   "antecedents": [
+    [
+     "suppression_feasibility",
+     "VH"
+    ],
+    [
+     "evacuation_pressure",
+     "VH"
+    ],
+    [
+     "fire_threat_level",
+     "VL"
+    ]
+   ],
+   "consequents": [
+    [
+     "suppression_effort",
+     0.9
+    ],
+    [
+     "water_drafting",
+     0.8
+    ],
+    [
+     "resource_deployment",
+     0.8
+    ]
+   ],
+   "note": "adaptation-born: generative (claude), gates G1-G4",
+   "strength": 0.0,
+   "depends_on_concepts": [],
+   "trigger": {
+    "step": 11,
+    "minute": 11.0,
+    "deficit": 0.3,
+    "stage": 3
+   },
+   "id": "gen_rule_0063",
+   "seq": 63,
+   "origin": "genai",
+   "source_stage": 3,
+   "produced_under_flags": {
+    "use_stage12_rules": true,
+    "use_stage3_rules": true,
+    "evfis_active": true,
+    "genai_active": true
+   },
+   "timestamp": "2026-07-25T22:27:02Z"
+  },
+  {
+   "name": "G16",
+   "antecedents": [
+    [
+     "suppression_feasibility",
+     "VH"
+    ],
+    [
+     "asset_exposure_risk",
+     "VH"
+    ],
+    [
+     "evacuation_pressure",
+     "VH"
+    ]
+   ],
+   "consequents": [
+    [
+     "suppression_effort",
+     0.9
+    ],
+    [
+     "water_drafting",
+     0.8
+    ],
+    [
+     "retardant_drop",
+     0.7
+    ]
+   ],
+   "note": "adaptation-born: generative (claude), gates G1-G4",
+   "strength": 0.0,
+   "depends_on_concepts": [],
+   "trigger": {
+    "step": 6,
+    "minute": 6.0,
+    "deficit": 0.3,
+    "stage": 3
+   },
+   "id": "gen_rule_0066",
+   "seq": 66,
+   "origin": "genai",
+   "source_stage": 3,
+   "produced_under_flags": {
+    "use_stage12_rules": true,
+    "use_stage3_rules": true,
+    "evfis_active": true,
+    "genai_active": true
+   },
+   "timestamp": "2026-07-25T22:29:59Z"
+  },
+  {
+   "name": "G17",
+   "antecedents": [
+    [
+     "suppression_feasibility",
+     "VH"
+    ],
+    [
+     "asset_exposure_risk",
+     "VH"
+    ],
+    [
+     "intervention_urgency",
+     "VH"
+    ]
+   ],
+   "consequents": [
+    [
+     "suppression_effort",
+     0.95
+    ],
+    [
+     "water_drafting",
+     0.8
+    ],
+    [
+     "retardant_drop",
+     0.7
+    ]
+   ],
+   "note": "adaptation-born: generative (claude), gates G1-G4",
+   "strength": 0.0,
+   "depends_on_concepts": [],
+   "trigger": {
+    "step": 51,
+    "minute": 31.0,
+    "deficit": 0.2,
+    "stage": 3
+   },
+   "id": "gen_rule_0069",
+   "seq": 69,
+   "origin": "genai",
+   "source_stage": 3,
+   "produced_under_flags": {
+    "use_stage12_rules": true,
+    "use_stage3_rules": true,
+    "evfis_active": true,
+    "genai_active": true
+   },
+   "timestamp": "2026-07-25T22:31:59Z"
+  },
+  {
+   "name": "G18",
+   "antecedents": [
+    [
+     "suppression_feasibility",
+     "M"
+    ],
+    [
+     "asset_exposure_risk",
+     "VH"
+    ],
+    [
+     "evacuation_pressure",
+     "VH"
+    ]
+   ],
+   "consequents": [
+    [
+     "suppression_effort",
+     0.9
+    ],
+    [
+     "water_drafting",
+     0.8
+    ],
+    [
+     "retardant_drop",
+     0.7
+    ]
+   ],
+   "note": "adaptation-born: generative (claude), gates G1-G4",
+   "strength": 0.0,
+   "depends_on_concepts": [],
+   "trigger": {
+    "step": 83,
+    "minute": 83.0,
+    "deficit": 0.18,
+    "stage": 3
+   },
+   "id": "gen_rule_0088",
+   "seq": 88,
+   "origin": "genai",
+   "source_stage": 3,
+   "produced_under_flags": {
+    "use_stage12_rules": true,
+    "use_stage3_rules": true,
+    "evfis_active": true,
+    "genai_active": true
+   },
+   "timestamp": "2026-07-25T22:46:16Z"
+  },
+  {
+   "name": "G19",
+   "antecedents": [
+    [
+     "fire_threat_level",
+     "H"
+    ],
+    [
+     "asset_exposure_risk",
+     "VH"
+    ],
+    [
+     "suppression_feasibility",
+     "VH"
+    ]
+   ],
+   "consequents": [
+    [
+     "suppression_effort",
+     0.9
+    ],
+    [
+     "retardant_drop",
+     0.8
+    ],
+    [
+     "asset_protection",
+     0.7
+    ]
+   ],
+   "note": "adaptation-born: generative (claude), gates G1-G4",
+   "strength": 0.0,
+   "depends_on_concepts": [],
+   "trigger": {
+    "step": 6,
+    "minute": 0.0,
+    "deficit": 0.005000000000000001,
+    "stage": 3
+   },
+   "id": "gen_rule_0122",
+   "seq": 122,
+   "origin": "genai",
+   "source_stage": 3,
+   "produced_under_flags": {
+    "use_stage12_rules": true,
+    "use_stage3_rules": true,
+    "evfis_active": true,
+    "genai_active": true
+   },
+   "timestamp": "2026-07-25T22:58:58Z"
+  },
+  {
+   "name": "G20",
+   "antecedents": [
+    [
+     "asset_exposure_risk",
+     "VH"
+    ],
+    [
+     "suppression_feasibility",
+     "VH"
+    ],
+    [
+     "evacuation_pressure",
+     "VL"
+    ]
+   ],
+   "consequents": [
+    [
+     "containment_line",
+     0.8
+    ],
+    [
+     "retardant_drop",
+     0.7
+    ],
+    [
+     "resource_deployment",
+     0.7
+    ]
+   ],
+   "note": "adaptation-born: generative (claude), gates G1-G4",
+   "strength": 0.0,
+   "depends_on_concepts": [],
+   "trigger": {
+    "step": 6,
+    "minute": 0.0,
+    "deficit": 0.005000000000000003,
+    "stage": 3
+   },
+   "id": "gen_rule_0127",
+   "seq": 127,
+   "origin": "genai",
+   "source_stage": 3,
+   "produced_under_flags": {
+    "use_stage12_rules": true,
+    "use_stage3_rules": true,
+    "evfis_active": true,
+    "genai_active": true
+   },
+   "timestamp": "2026-07-25T23:15:24Z"
+  },
+  {
+   "name": "G21",
+   "antecedents": [
+    [
+     "fire_threat_level",
+     "H"
+    ],
+    [
+     "suppression_feasibility",
+     "L"
+    ]
+   ],
+   "consequents": [
+    [
+     "containment_line",
+     0.9
+    ],
+    [
+     "retardant_drop",
+     0.8
+    ]
+   ],
+   "note": "post-incident review (RCA) | WHY: fills the pre-VH gap G1-G4 leave; this fire lived at H/low-feasibility where only defensive rules fired.",
+   "depends_on_concepts": [],
+   "trigger": {
+    "source": "rca"
+   },
+   "id": "gen_rule_0133",
+   "seq": 133,
+   "origin": "genai",
+   "source_stage": 3,
+   "produced_under_flags": {
+    "use_stage12_rules": true,
+    "use_stage3_rules": true,
+    "evfis_active": true,
+    "genai_active": true
+   },
+   "timestamp": "2026-07-25T23:20:40Z"
+  },
+  {
+   "name": "G22",
+   "antecedents": [
+    [
+     "fire_threat_level",
+     ">=H"
+    ],
+    [
+     "suppression_feasibility",
+     "L"
+    ]
+   ],
+   "consequents": [
+    [
+     "retardant_drop",
+     0.9
+    ],
+    [
+     "containment_line",
+     0.8
+    ]
+   ],
+   "note": "post-incident review (RCA) | WHY: Direct attack was infeasible yet aerial retardant needs no roads and the map has water to refill, the only path to bend the head here.",
+   "depends_on_concepts": [],
+   "trigger": {
+    "source": "rca"
+   },
+   "id": "gen_rule_0135",
+   "seq": 135,
+   "origin": "genai",
+   "source_stage": 3,
+   "produced_under_flags": {
+    "use_stage12_rules": true,
+    "use_stage3_rules": true,
+    "evfis_active": true,
+    "genai_active": true
+   },
+   "timestamp": "2026-07-25T23:27:10Z"
+  },
+  {
+   "name": "G23",
+   "antecedents": [
+    [
+     "suppression_feasibility",
+     "VH"
+    ],
+    [
+     "fire_threat_level",
+     "VL"
+    ],
+    [
+     "intervention_urgency",
+     "VL"
+    ]
+   ],
+   "consequents": [
+    [
+     "suppression_effort",
+     0.9
+    ],
+    [
+     "water_drafting",
+     0.8
+    ],
+    [
+     "containment_line",
+     0.7
+    ]
+   ],
+   "note": "adaptation-born: generative (claude), gates G1-G4",
+   "strength": 0.0,
+   "depends_on_concepts": [],
+   "trigger": {
+    "step": 15,
+    "minute": 2.0,
+    "deficit": 0.05,
+    "stage": 3
+   },
+   "id": "gen_rule_0146",
+   "seq": 146,
+   "origin": "genai",
+   "source_stage": 3,
+   "produced_under_flags": {
+    "use_stage12_rules": true,
+    "use_stage3_rules": true,
+    "evfis_active": true,
+    "genai_active": true
+   },
+   "timestamp": "2026-07-25T23:38:40Z"
+  },
+  {
+   "name": "G24",
+   "antecedents": [
+    [
+     "intervention_urgency",
+     "H"
+    ],
+    [
+     "suppression_feasibility",
+     "L"
+    ],
+    [
+     "asset_exposure_risk",
+     "H"
+    ]
+   ],
+   "consequents": [
+    [
+     "retardant_drop",
+     0.9
+    ],
+    [
+     "containment_line",
+     0.8
+    ],
+    [
+     "water_drafting",
+     0.7
+    ]
+   ],
+   "note": "adaptation-born: generative (claude), gates G1-G4",
+   "strength": 0.0,
+   "depends_on_concepts": [],
+   "trigger": {
+    "step": 10,
+    "minute": 10.0,
+    "deficit": 0.3,
+    "stage": 3
+   },
+   "id": "gen_rule_0154",
+   "seq": 154,
+   "origin": "genai",
+   "source_stage": 3,
+   "produced_under_flags": {
+    "use_stage12_rules": true,
+    "use_stage3_rules": true,
+    "evfis_active": true,
+    "genai_active": true
+   },
+   "timestamp": "2026-07-26T00:14:17Z"
+  },
+  {
+   "name": "G25",
+   "antecedents": [
+    [
+     "asset_exposure_risk",
+     "H"
+    ],
+    [
+     "evacuation_pressure",
+     "VH"
+    ],
+    [
+     "suppression_feasibility",
+     "L"
+    ]
+   ],
+   "consequents": [
+    [
+     "water_drafting",
+     0.9
+    ],
+    [
+     "suppression_effort",
+     0.8
+    ],
+    [
+     "retardant_drop",
+     0.7
+    ]
+   ],
+   "note": "adaptation-born: generative (claude), gates G1-G4",
+   "strength": 0.0,
+   "depends_on_concepts": [],
+   "trigger": {
+    "step": 74,
+    "minute": 74.0,
+    "deficit": 0.05,
+    "stage": 3
+   },
+   "id": "gen_rule_0158",
+   "seq": 158,
+   "origin": "genai",
+   "source_stage": 3,
+   "produced_under_flags": {
+    "use_stage12_rules": true,
+    "use_stage3_rules": true,
+    "evfis_active": true,
+    "genai_active": true
+   },
+   "timestamp": "2026-07-26T00:16:14Z"
+  },
+  {
+   "name": "G26",
+   "antecedents": [
+    [
+     "intervention_urgency",
+     ">=L"
+    ],
+    [
+     "suppression_feasibility",
+     "M"
+    ]
+   ],
+   "consequents": [
+    [
+     "suppression_effort",
+     0.9
+    ],
+    [
+     "containment_line",
+     0.8
+    ],
+    [
+     "retardant_drop",
+     0.8
+    ]
+   ],
+   "note": "post-incident review (RCA) | WHY: The VH-gated attack battery never fired; Agent_3 (614 fire cells) only reaches urgency ~0.36 and feasibility 0.42=M, so an M-level trigger is what actually orde",
+   "depends_on_concepts": [],
+   "trigger": {
+    "source": "rca"
+   },
+   "id": "gen_rule_0159",
+   "seq": 159,
+   "origin": "genai",
+   "source_stage": 3,
+   "produced_under_flags": {
+    "use_stage12_rules": true,
+    "use_stage3_rules": true,
+    "evfis_active": true,
+    "genai_active": true
+   },
+   "timestamp": "2026-07-26T00:18:54Z"
+  },
+  {
+   "name": "G27",
+   "antecedents": [
+    [
+     "asset_exposure_risk",
+     ">=M"
+    ]
+   ],
+   "consequents": [
+    [
+     "retardant_drop",
+     0.8
+    ],
+    [
+     "containment_line",
+     0.7
+    ]
+   ],
+   "note": "post-incident review (RCA) | WHY: Ground logistics in Agent_3 are 0.25; asset_exposure_risk reaches H(0.75)/M(0.60), and air-delivered retardant coats the head without needing road access.",
+   "depends_on_concepts": [],
+   "trigger": {
+    "source": "rca"
+   },
+   "id": "gen_rule_0160",
+   "seq": 160,
+   "origin": "genai",
+   "source_stage": 3,
+   "produced_under_flags": {
+    "use_stage12_rules": true,
+    "use_stage3_rules": true,
+    "evfis_active": true,
+    "genai_active": true
+   },
+   "timestamp": "2026-07-26T00:18:54Z"
+  },
+  {
+   "name": "G28",
+   "antecedents": [
+    [
+     "asset_exposure_risk",
+     "H"
+    ],
+    [
+     "suppression_feasibility",
+     "H"
+    ],
+    [
+     "evacuation_pressure",
+     "VH"
+    ]
+   ],
+   "consequents": [
+    [
+     "suppression_effort",
+     0.9
+    ],
+    [
+     "water_drafting",
+     0.8
+    ],
+    [
+     "retardant_drop",
+     0.7
+    ]
+   ],
+   "note": "adaptation-born: generative (claude), gates G1-G4",
+   "strength": 0.0,
+   "depends_on_concepts": [],
+   "trigger": {
+    "step": 60,
+    "minute": 55.0,
+    "deficit": 0.05,
+    "stage": 3
+   },
+   "id": "gen_rule_0165",
+   "seq": 165,
+   "origin": "genai",
+   "source_stage": 3,
+   "produced_under_flags": {
+    "use_stage12_rules": true,
+    "use_stage3_rules": true,
+    "evfis_active": true,
+    "genai_active": true
+   },
+   "timestamp": "2026-07-26T00:20:08Z"
+  },
+  {
+   "name": "G28",
+   "antecedents": [
+    [
+     "asset_exposure_risk",
+     "H"
+    ],
+    [
+     "suppression_feasibility",
+     "H"
+    ],
+    [
+     "evacuation_pressure",
+     "VH"
+    ]
+   ],
+   "consequents": [
+    [
+     "suppression_effort",
+     0.9
+    ],
+    [
+     "water_drafting",
+     0.8
+    ],
+    [
+     "retardant_drop",
+     0.7
+    ]
+   ],
+   "note": "adaptation-born: generative (claude), gates G1-G4",
+   "strength": 0.0,
+   "depends_on_concepts": [],
+   "trigger": {
+    "step": 60,
+    "minute": 50.0,
+    "deficit": 0.007363160131413452,
+    "stage": 3
+   },
+   "id": "gen_rule_0166",
+   "seq": 166,
+   "origin": "genai",
+   "source_stage": 3,
+   "produced_under_flags": {
+    "use_stage12_rules": true,
+    "use_stage3_rules": true,
+    "evfis_active": true,
+    "genai_active": true
+   },
+   "timestamp": "2026-07-26T00:20:08Z"
+  },
+  {
+   "name": "G29",
+   "antecedents": [
+    [
+     "asset_exposure_risk",
+     "H"
+    ],
+    [
+     "suppression_feasibility",
+     "H"
+    ]
+   ],
+   "consequents": [
+    [
+     "suppression_effort",
+     0.9
+    ],
+    [
+     "water_drafting",
+     0.8
+    ],
+    [
+     "retardant_drop",
+     0.7
+    ]
+   ],
+   "note": "adaptation-born: generative (claude), gates G1-G4",
+   "strength": 0.0,
+   "depends_on_concepts": [],
+   "trigger": {
+    "step": 60,
+    "minute": 45.0,
+    "deficit": 0.1,
+    "stage": 3
+   },
+   "id": "gen_rule_0167",
+   "seq": 167,
+   "origin": "genai",
+   "source_stage": 3,
+   "produced_under_flags": {
+    "use_stage12_rules": true,
+    "use_stage3_rules": true,
+    "evfis_active": true,
+    "genai_active": true
+   },
+   "timestamp": "2026-07-26T00:20:11Z"
+  },
+  {
+   "name": "G30",
+   "antecedents": [
+    [
+     "fire_threat_level",
+     "H"
+    ],
+    [
+     "suppression_feasibility",
+     "VH"
+    ],
+    [
+     "intervention_urgency",
+     "VL"
+    ]
+   ],
+   "consequents": [
+    [
+     "suppression_effort",
+     1.0
+    ],
+    [
+     "water_drafting",
+     0.8
+    ],
+    [
+     "retardant_drop",
+     0.7
+    ]
+   ],
+   "note": "adaptation-born: generative (claude), gates G1-G4",
+   "strength": 0.0,
+   "depends_on_concepts": [],
+   "trigger": {
+    "step": 10,
+    "minute": 0.0,
+    "deficit": 0.0034173351935821716,
+    "stage": 3
+   },
+   "id": "gen_rule_0170",
+   "seq": 170,
+   "origin": "genai",
+   "source_stage": 3,
+   "produced_under_flags": {
+    "use_stage12_rules": true,
+    "use_stage3_rules": true,
+    "evfis_active": true,
+    "genai_active": true
+   },
+   "timestamp": "2026-07-26T00:22:33Z"
   }
  ],
- "genai_concepts": [],
+ "genai_concepts": [
+  {
+   "name": "interface_exposure",
+   "layer": 4,
+   "inputs": [
+    {
+     "name": "asset_exposure_risk",
+     "weight": 0.5
+    },
+    {
+     "name": "evacuation_pressure",
+     "weight": 0.5
+    }
+   ],
+   "outputs": [
+    {
+     "name": "activation",
+     "range": [
+      0,
+      1
+     ]
+    }
+   ],
+   "aggregation": "weighted-sum-gated",
+   "trigger": {
+    "step": 15,
+    "minute": 5.0,
+    "deficit": 0.3,
+    "stage": 3
+   },
+   "id": "gen_concept_0060",
+   "seq": 60,
+   "origin": "genai",
+   "source_stage": 3,
+   "produced_under_flags": {
+    "use_stage12_rules": true,
+    "use_stage3_rules": true,
+    "evfis_active": true,
+    "genai_active": true
+   },
+   "timestamp": "2026-07-25T22:17:43Z"
+  }
+ ],
  "genai_interventions": [
   {
    "name": "downwind_backburn",
@@ -884,6 +8548,27 @@
     "genai_active": true
    },
    "timestamp": "2026-07-25T14:34:01Z"
+  },
+  {
+   "id": "gen_interv_0040",
+   "seq": 40,
+   "origin": "genai",
+   "source_stage": 3,
+   "name": "counterfire_strip",
+   "composition": [
+    {
+     "channel": "tactical_burn",
+     "weight": 1.0
+    },
+    {
+     "channel": "containment_line",
+     "weight": 0.6
+    }
+   ],
+   "clauses": [],
+   "depends_on_concepts": [],
+   "note": "repaired from the birth log DSS_20260726_000529 step 13 (the record was lost by a pre-fix build)",
+   "timestamp": "2026-07-25T21:06:32Z"
   }
  ]
 }

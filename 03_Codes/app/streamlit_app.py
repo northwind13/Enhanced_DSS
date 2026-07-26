@@ -166,7 +166,39 @@ def _new_simulator(world: World) -> None:
         pass
 
 
+def _restore_rca_applied() -> None:
+    """What the operator applied from a review STAYS applied: the
+    settings come back as session defaults and the staged sensors /
+    depots rejoin the staging lists (deduplicated), the same
+    permanence the learned store already gives the rules."""
+    if st.session_state.get("_rca_restored"):
+        return
+    st.session_state["_rca_restored"] = True
+    import json as _js_rb
+    _prb = os.path.join(os.path.dirname(os.path.dirname(
+        os.path.abspath(__file__))), "logs", "rca_applied.json")
+    try:
+        _d = _js_rb.load(open(_prb, encoding="utf-8"))
+    except Exception:
+        return
+    for _k, _v in (_d.get("settings") or {}).items():
+        st.session_state.setdefault(_k, _v)
+    for _lst, _key in (("sensors", "dss_sensors"),
+                       ("depots", "dss_res_items")):
+        _add = _d.get(_lst) or []
+        if not _add:
+            continue
+        _cur = list(st.session_state.get(_key, []) or [])
+        _sigs = [(q.get("kind"), q.get("x"), q.get("y"))
+                 for q in _cur]
+        for _r in _add:
+            if (_r.get("kind"), _r.get("x"), _r.get("y")) not in _sigs:
+                _cur.append(_r)
+        st.session_state[_key] = _cur
+
+
 def _ensure_state() -> None:
+    _restore_rca_applied()
     if "sim" not in st.session_state:
         _new_simulator(terrain.generate_landscape(
             SimConfig(nx=100, ny=70, cell_size_m=30.0), seed=42,
@@ -235,6 +267,36 @@ def _gstate_path() -> str:
     the adaptation stages produce."""
     return os.path.join(os.path.dirname(os.path.dirname(
         os.path.abspath(__file__))), "logs", "dss_generated_state.json")
+
+
+def _map_key(world=None) -> str | None:
+    """A stable identity for the SCENE the DSS is learning on.
+
+    The stage controller's value table is kept per map: what stage 2 is worth
+    on a wooded ridge says nothing about what it is worth on a coastal town,
+    so carrying the table across maps would teach it the wrong lesson. The
+    key is content-based (grid size, fuel layout, assets), which means an
+    EDIT to the map counts as a different map and resets the table. That is
+    deliberate: an edited map is a different scene, and a stale value table
+    is worse than an empty one.
+    """
+    w = world if world is not None else st.session_state.get("world")
+    if w is None:
+        return None
+    try:
+        import hashlib as _hl
+        import numpy as _np
+        h = _hl.blake2b(digest_size=8)
+        _ft = _np.asarray(w.fuel.ftype)
+        h.update(f"{_ft.shape}".encode())
+        h.update(_np.ascontiguousarray(_ft, dtype=_np.int16).tobytes())
+        for a in (getattr(w, "assets", None) or []):
+            h.update(f"{getattr(a, 'name', '')}|{getattr(a, 'kind', '')}"
+                     f"|{getattr(a, 'x', 0)}|{getattr(a, 'y', 0)}"
+                     f"|{getattr(a, 'radius', 0)};".encode())
+        return h.hexdigest()
+    except Exception:
+        return None
 
 
 def _read_gstate(path: str | None = None):
@@ -527,13 +589,32 @@ _STEP_COL_HELP = (
     "- **cycle** — the row number in this run, 1, 2, 3 ...\n"
     "- **step / t_min** — the simulation step and the minute of fire time "
     "it stands for. Steps restart with every fire.\n"
-    "- **agent** — the region the coordinator made the hotspot this cycle. "
-    "The adaptation acts on THAT region's situation. Every agent still "
-    "decides its own orders in the same cycle; those are in **applied** and, "
-    "one row each, in the Decision log.\n"
+    "- **agent** — the region whose situation the adaptation stage worked "
+    "on this cycle. It is NOT the coordinator's hotspot. The coordinator "
+    "ranks on operational priority, which decides where the capacity goes; "
+    "the adaptation instead goes to the region the rule base is QUIETEST "
+    "about, among the regions that actually have fire, because stage 2 and "
+    "stage 3 exist to cover situations the base cannot answer. Sending them "
+    "to the highest-priority region sent them to the best-covered one, and "
+    "stage 2 was then turned away with 'cell already covered' in 150 of its "
+    "162 attempts. Every agent still decides its own orders in the SAME "
+    "cycle, on the Agents tab.\n"
+    "- **why_agent** — the reason that region was picked, with each "
+    "region's coverage (its strongest fired rule weight) so the choice can "
+    "be checked.\n"
+    "- **coordination** — the attention share the Global DSS gave each "
+    "region this cycle, and which ones it chose to only monitor. The full "
+    "ranking and its one-line statement are on the Global DSS tab.\n"
     "- **stage** — which adaptation stage the controller picked: 1 evFIS "
-    "tuning, 2 resolution, 3 GenAI, or none when the satisficing test "
-    "already passed.\n"
+    "tuning, 2 resolution, 3 GenAI. **0 means no stage ran that cycle**, "
+    "which is NOT the same as no decision: the concepts were still "
+    "inferred, the rules still fired and the orders still went out (see "
+    "**applied**), only the learning layer stayed out. The **reason** "
+    "column says why: `rules as-is` is the satisficing test passing, so "
+    "there was nothing to fix; `adaptation on cooldown` is the gate "
+    "opening too soon after the previous attempt; and a stage cannot be "
+    "picked at all when DSS active is off or both evFIS and GenAI are "
+    "off. In practice the cooldown is the common one.\n"
     "- **target** — the rule the stage acted on (R7, A1, G9), or the "
     "variable for a membership change, or the antecedent cell it aimed at "
     "when it was turned away.\n"
@@ -581,10 +662,57 @@ _GATE_HELP = (
     "tie. An ordinary rule may be admitted for being harmless; a permanent "
     "addition to the vocabulary has to earn its place.")
 
-STEP_COLS = ["cycle", "step", "t_min", "agent", "stage", "target",
-             "change", "produced", "G1", "G2", "G2b", "G3", "G4",
+STEP_COLS = ["cycle", "step", "t_min", "agent", "why_agent",
+             "coordination", "stage",
+             "target", "change", "produced", "G1", "G2", "G2b", "G3", "G4",
              "G5", "verdict", "reason", "dJ", "failsafe", "bucket",
              "rec_seq", "applied"]
+
+# one row per AGENT per cycle: what each local DSS decided, not only the one
+# the adaptation happened to work on
+AGENT_COLS = ["cycle", "step", "t_min", "agent", "role", "priority", "share",
+              "fired", "orders_from_rules", "orders_final", "Q", "failsafe"]
+
+# one row per cycle for the coordinator itself
+GLOBAL_COLS = ["cycle", "step", "t_min", "hotspot", "ranking", "shares",
+               "monitored", "statement"]
+
+_AGENT_COL_HELP = (
+    "- **role** — `focus` is the region the coordinator ranked first, and "
+    "the one the adaptation stage works on this cycle. `attended` regions "
+    "get their full offensive tempo, `monitor` regions are deliberately "
+    "held back so the capacity concentrates where it counts.\n"
+    "- **priority** — the operational priority the coordinator ranked on.\n"
+    "- **share** — the attention share it assigned. It multiplies the "
+    "offensive orders and steers the budget concentration in the "
+    "allocator.\n"
+    "- **fired** — the rules that fired for THIS agent, with their weights, "
+    "strongest first. Agents see different situations, so they fire "
+    "different rules.\n"
+    "- **orders_from_rules → orders_final** — the agent's own decision "
+    "before coordination, and what it became after the share was applied. "
+    "The gap between the two IS the coordinator's intervention.\n"
+    "- **Q** — the quality of that agent's decision.\n"
+    "- **failsafe** — the graduated fail-safe engaged for that agent."
+)
+
+# THE LONG CELLS NEED ROOM. "reason", "change" and "produced" carry whole
+# sentences; at the default width they were clipped mid-word and the reader
+# lost exactly the part that says what to do about it.
+_STEP_COL_CONFIG = {
+    "reason": st.column_config.TextColumn("reason", width="large"),
+    "coordination": st.column_config.TextColumn("coordination",
+                                                width="medium"),
+    "why_agent": st.column_config.TextColumn("why_agent", width="medium"),
+    "fired": st.column_config.TextColumn("fired", width="medium"),
+    "orders_from_rules": st.column_config.TextColumn(
+        "orders_from_rules", width="medium"),
+    "orders_final": st.column_config.TextColumn("orders_final",
+                                                width="medium"),
+    "change": st.column_config.TextColumn("change", width="medium"),
+    "produced": st.column_config.TextColumn("produced", width="medium"),
+    "target": st.column_config.TextColumn("target", width="small"),
+}
 
 
 def build_step_rows(_cycA, _rsA):
@@ -600,18 +728,24 @@ def build_step_rows(_cycA, _rsA):
     # records from earlier runs that reached the same step. The
     # store sequence is global, so seq0 (its value when this run
     # started) is the cut.
+    # WITHOUT seq0 NOTHING MAY BE ATTRIBUTED. The scope used to be skipped
+    # whenever seq0 was missing, which silently turned the join into "match
+    # on the step number alone". Step numbers restart with every fire, so an
+    # old record from step 32 was then presented as this run's step 32.
+    # Showing nothing is honest; showing another run's history as this one's
+    # is not.
     _seq0 = _rsA.get("seq0")
     _byStep = {}
-    for _sec in ("evfis_rule_modifications", "genai_rules",
-                 "genai_concepts", "genai_interventions"):
-        for _r in (_gd.get(_sec) or []):
-            _s = (_r.get("trigger") or {}).get("step")
-            if _s is None:
-                continue
-            if _seq0 is not None and int(
-                    _r.get("seq", 0)) < int(_seq0):
-                continue
-            _byStep.setdefault(int(_s), []).append((_sec, _r))
+    if _seq0 is not None:
+        for _sec in ("evfis_rule_modifications", "genai_rules",
+                     "genai_concepts", "genai_interventions"):
+            for _r in (_gd.get(_sec) or []):
+                _s = (_r.get("trigger") or {}).get("step")
+                if _s is None:
+                    continue
+                if int(_r.get("seq", 0)) < int(_seq0):
+                    continue
+                _byStep.setdefault(int(_s), []).append((_sec, _r))
     for _c in _cycA:
         _ad = _c.get("adaptation") or {}
         _inf = _ad.get("info") or {}
@@ -620,10 +754,21 @@ def build_step_rows(_cycA, _rsA):
         _tried = int(_ad.get("tried") or 0)
         _ok = bool(_ad.get("accepted"))
         _g = _gate_marks(_ad)
+        # WHICH RECORDS THIS CYCLE MAY CLAIM. Two conditions, both missing
+        # before, which is how a REJECTED GenAI attempt came to display an
+        # evFIS consequent tuning as its own result:
+        #   the cycle was accepted   - a rejected attempt produced nothing,
+        #                              so it may claim nothing
+        #   the stage matches        - a record carries the stage that wrote
+        #                              it, and stage 1 tunings are not stage
+        #                              3 output
+        _recs = ([(_sec, _r) for _sec, _r in _byStep.get(_st, [])
+                  if int(_r.get("source_stage", 0) or 0) == _tried]
+                 if (_ok and _tried) else [])
         # what this step produced, read from the store records
         # stamped with this step
         _prod = []
-        for _sec, _r in _byStep.get(_st, []):
+        for _sec, _r in _recs:
             if _sec == "genai_concepts":
                 _prod.append(f"concept {_r.get('name')}")
             elif _sec == "genai_interventions":
@@ -641,29 +786,132 @@ def build_step_rows(_cycA, _rsA):
                     _prod.append(f"term in {_r.get('variable')}")
                 else:
                     _prod.append("parameter change")
-        _seqs = [int(_r.get("seq", 0))
-                 for _sec, _r in _byStep.get(_st, [])]
+        _seqs = [int(_r.get("seq", 0)) for _sec, _r in _recs]
         _gl = _c.get("global_dss") or {}
+        # WHAT THE COORDINATOR DID. The agent column names only the hotspot,
+        # so without this the other agents and the Global DSS were invisible:
+        # the table read as if one region were the whole system.
+        _shr = _gl.get("shares") or {}
+        _att = set(_gl.get("attended") or [])
+        _coord = " | ".join(
+            f"{_n} {float(_v):.2f}" + ("" if _n in _att else " (monitor)")
+            for _n, _v in sorted(_shr.items(), key=lambda kv: -float(kv[1]))
+        ) or "—"
         _rows.append(dict(
             cycle=len(_rows) + 1,
             rec_seq=(min(_seqs) if _seqs else None),
             step=_st,
-            agent=(_gl.get("hotspot") or "—"),
+            # THE REGION THE ADAPTATION WORKED ON, which is no longer the
+            # coordinator's hotspot: the coordinator ranks on priority, the
+            # adaptation goes where the rule base is quietest.
+            agent=(_c.get("adapt_region") or _gl.get("hotspot") or "—"),
+            why_agent=str(_c.get("adapt_region_why") or ""),
+            coordination=_coord,
             t_min=round(float(_c.get("t_min", 0.0)), 1),
             stage=_STAGE_NAME.get(_tried, "0 — none tried"),
-            target=_adapt_target(_ad, _byStep.get(_st, [])),
-            change=_adapt_change(_ad, _byStep.get(_st, [])),
+            target=_adapt_target(_ad, _recs),
+            change=_adapt_change(_ad, _recs),
             produced=", ".join(_prod) or "—",
             G1=_g["G1"], G2=_g["G2"], G2b=_g["G2b"],
             G3=_g["G3"], G4=_g["G4"], G5=_g["G5"],
             verdict=("ACCEPTED" if _ok else
                      ("rejected" if _tried else "—")),
-            reason=(_ad.get("detail") or "")[:120],
+            # FULL SENTENCE. Cutting at 120 characters chopped the useful
+            # half off the longer reasons (the timeout one ends with the
+            # advice on what to do about it), so the cell now carries the
+            # whole text and the table is told to wrap it.
+            reason=str(_ad.get("detail") or ""),
             dJ=round(float(_ad.get("dJ") or 0.0), 4),
             failsafe=("WITHHELD"
                       if _c.get("no_harm_withheld") else "ok"),
             bucket=_ctl.get("bucket") or "—",
             applied=_applied_orders(_c)))
+    # NEWEST FIRST. The rows are built in cycle order, but the table is read
+    # while the fire runs, so the step that just happened has to be the one
+    # in view without scrolling to the bottom. Reversed here, at the single
+    # source, so the panel preview, the modal and the page all agree.
+    _rows.reverse()
+    return _rows
+
+
+def _fmt_orders(d) -> str:
+    """The orders of one agent, shortest form that still identifies them."""
+    return ", ".join(f"{k.split('_')[0]} {float(v):.2f}"
+                     for k, v in (d or {}).items()
+                     if float(v) > 0.02) or "none"
+
+
+def build_agent_rows(_cycA):
+    """One row per AGENT per cycle: what each local DSS actually decided.
+
+    The step table carries one row per cycle and names only the hotspot, so
+    the other agents and the coordinator never appeared anywhere. They do
+    decide every cycle: each has its own concepts, its own rules fire, and
+    the Global DSS then scales their offensive tempo by the attention share.
+    Both halves of that are here, side by side, so the attenuation is
+    visible as the difference between orders_from_rules and orders_final.
+    """
+    _rows = []
+    for _i, _c in enumerate(_cycA, start=1):
+        _gl = _c.get("global_dss") or {}
+        _prio = dict(_gl.get("ranking") or [])
+        _att = set(_gl.get("attended") or [])
+        _hot = _gl.get("hotspot")
+        for _name, _r in (_c.get("regions") or {}).items():
+            _fired = ", ".join(
+                f"{_rn} {float(_w):.2f}"
+                for _rn, _w in (_r.get("fired") or [])[:4]
+                if float(_w) > 0.05) or "none above 0.05"
+            _rows.append(dict(
+                cycle=_i,
+                step=int(_c.get("step", 0)),
+                t_min=round(float(_c.get("t_min", 0.0)), 1),
+                agent=_name,
+                role=("focus" if _name == _hot else
+                      ("attended" if _name in _att else "monitor")),
+                priority=(round(float(_prio[_name]), 3)
+                          if _name in _prio else None),
+                share=_r.get("coord_share"),
+                fired=_fired,
+                orders_from_rules=_fmt_orders(_r.get("orders_from_rules")),
+                orders_final=_fmt_orders(_r.get("orders_final")),
+                Q=_r.get("quality"),
+                failsafe=("FAIL-SAFE" if _r.get("failsafe") else "ok")))
+    _rows.reverse()          # same ordering rule as the step table
+    return _rows
+
+
+def build_global_rows(_cycA):
+    """One row per cycle for the coordinator's own decision.
+
+    The Global DSS states its verdict explicitly every cycle: it ranks the
+    regions on operational priority, assigns the attention shares and says
+    which regions it will only monitor. That statement was written to the
+    chronicle but never shown anywhere.
+    """
+    _rows = []
+    for _i, _c in enumerate(_cycA, start=1):
+        _gl = _c.get("global_dss") or {}
+        if not _gl:
+            continue
+        _rank = _gl.get("ranking") or []
+        _att = set(_gl.get("attended") or [])
+        _shr = _gl.get("shares") or {}
+        _rows.append(dict(
+            cycle=_i,
+            step=int(_c.get("step", 0)),
+            t_min=round(float(_c.get("t_min", 0.0)), 1),
+            hotspot=_gl.get("hotspot") or "—",
+            ranking=" > ".join(f"{_n} {float(_v):.2f}" for _n, _v in _rank)
+            or "—",
+            shares=" | ".join(f"{_n} {float(_v):.2f}"
+                              for _n, _v in sorted(
+                                  _shr.items(),
+                                  key=lambda kv: -float(kv[1]))) or "—",
+            monitored=", ".join(_n for _n in _shr if _n not in _att)
+            or "none",
+            statement=_gl.get("statement") or ""))
+    _rows.reverse()
     return _rows
 
 
@@ -1087,7 +1335,7 @@ def legend_html(horizontal: bool = False, macros=None) -> str:
 import disaster_phyengine as _dpe
 import dss as _dss_pkg
 _EXPECTED_ENGINE_BUILD = 37
-_EXPECTED_DSS_BUILD = 77
+_EXPECTED_DSS_BUILD = 89
 if (getattr(_dpe, "ENGINE_BUILD", 0) != _EXPECTED_ENGINE_BUILD
         or getattr(_dss_pkg, "DSS_BUILD", 0) != _EXPECTED_DSS_BUILD):
     st.error(
@@ -1475,6 +1723,15 @@ def _step_sim(n: int = 1):
                         st.session_state.get("dss_learned_override")
                         or _gstate_path()),
                     run_logger=_lg)
+                # THE CONTROLLER REMEMBERS THE SCENE. Its value table is kept
+                # in the store and restored whenever the engine is rebuilt on
+                # the SAME map, so what it learns about which stage pays off
+                # accumulates over a campaign of fires instead of restarting
+                # from zero every run. A different map drops it.
+                try:
+                    _eng.bind_map(_map_key())
+                except Exception:
+                    pass
                 try:
                     _lg.write_meta(dict(
                         map=dict(nx=cfg.nx, ny=cfg.ny,
@@ -1636,6 +1893,63 @@ _PAGE_ICONS = {"Simulation": "\U0001F525", "Map editor": "✏️", "Data layers"
                "Parameters": "⚙️", "Validation": "✅",
                "Step analysis": "\U0001F50E",
  "GIS import": "\U0001F30D", "System Description": "\U0001F4D8"}
+
+def _rca_status_body():
+    """Where the after-action review stands. Safe to call from anywhere.
+
+    Reads the background job WITHOUT waiting on it and lifts a finished
+    report into the session, so the result is picked up no matter which
+    page happened to be open when the model finished.
+    """
+    from dss import rca as _r
+    _d = st.session_state.get("rca_dir")
+    if not _d:
+        return
+    if st.session_state.get("rca_report"):
+        return                      # already collected, the panel shows it
+    _j = _r.poll(_d)
+    _state = _j.get("state")
+    if _state == "running":
+        _el = _r.elapsed_s(_d)
+        st.info(f"Root cause analysis running on "
+                f"**{_j.get('model') or 'opus'}** — {_el:.0f} s so far. "
+                "Keep working; this refreshes itself and the report lands "
+                "under Layer 4 · Analysis when it is ready.")
+    elif _state == "error":
+        st.error(f"Root cause analysis failed: {_j.get('error')}")
+        st.session_state.pop("rca_dir", None)
+    elif _state == "done":
+        st.session_state["rca_report"] = _j.get("report")
+        st.session_state["rca_recs"] = _j.get("recs") or {}
+        if hasattr(st, "toast"):
+            st.toast("Root cause analysis is ready", icon="✅")
+        st.rerun()
+
+
+# A FRAGMENT RERUNS ITSELF, NOT THE PAGE. That is what lets the review be
+# waited on without freezing the simulation: every few seconds Streamlit
+# re-executes just this block, sees whether the thread has finished, and
+# leaves everything else alone. On builds without fragments the status is
+# still correct, it simply updates on the next interaction.
+_rca_live = (st.fragment(run_every=3.0)(_rca_status_body)
+             if hasattr(st, "fragment") else _rca_status_body)
+
+
+def _rca_sidebar_badge():
+    """The same status, on EVERY page, so the review can be started and
+    then forgotten about until it is done."""
+    from dss import rca as _r
+    _d = st.session_state.get("rca_dir")
+    if not _d:
+        return
+    if st.session_state.get("rca_report"):
+        st.sidebar.success("Root cause analysis ready — open "
+                           "Layer 4 · Analysis")
+        return
+    if _r.poll(_d).get("state") == "running":
+        st.sidebar.info(f"Root cause analysis running "
+                        f"({_r.elapsed_s(_d):.0f} s)")
+
 
 with st.sidebar:
     st.title("DisasterAware")
@@ -1981,6 +2295,13 @@ with st.sidebar:
         if _sel_pg != page:
             st.session_state["nav_page"] = _sel_pg
             st.rerun()
+
+    # THE REVIEW FOLLOWS YOU. It is started from one panel but takes
+    # minutes, so the status belongs where every page can see it.
+    try:
+        _rca_sidebar_badge()
+    except Exception:
+        pass
 
     st.divider()
 
@@ -4084,7 +4405,8 @@ def page_simulation():
                     f"{len(_cycA)} decision cycle(s) · {_acc} adaptation(s) "
                     f"accepted · seed base "
                     f"**{_sv('dss_seed_profile', 'minimal')}**")
-                st.markdown("**What happened at each step**")
+                st.markdown("**What happened at each step** "
+                            "(latest cycle first)")
                 # THE PANEL COLUMN IS NARROW. Twenty-one columns of
                 # provenance do not fit beside the map, so the full table
                 # lives on its own page; what stays here is a preview.
@@ -4100,7 +4422,8 @@ def page_simulation():
                     @st.dialog("What happened at each step", width="large")
                     def _steps_window():
                         st.dataframe(_rows, use_container_width=True,
-                                     height=620, column_order=_COLS_A)
+                                     height=620, column_order=_COLS_A,
+                                     column_config=_STEP_COL_CONFIG)
                         st.caption(
                             f"{len(_rows)} cycle(s). Columns are explained "
                             "under the preview table on the panel.")
@@ -4121,7 +4444,8 @@ def page_simulation():
                                       key="prev_steps")
                 if _prev:
                     st.dataframe(_rows, use_container_width=True, height=300,
-                                 column_order=_COLS_A)
+                                 column_order=_COLS_A,
+                                 column_config=_STEP_COL_CONFIG)
                 st.markdown(_STEP_COL_HELP)
 
                 with st.expander("What the gates G1 to G5 mean"):
@@ -4162,6 +4486,175 @@ def page_simulation():
                         "carries the price of acting, so it sits higher "
                         "whenever the fleet is fielded; the physical curve "
                         "is the verdict on the orders themselves.")
+                # ---- ROOT CAUSE ANALYSIS: the after-action review ----
+                st.divider()
+                st.markdown("**Root cause analysis — after-action "
+                            "review (Opus)**")
+                st.caption("Compiles this run's evidence (trajectory, "
+                           "orders, vetoes, geometry, gates) and asks "
+                           "a strong model for the incident analyst's "
+                           "verdict: what worked, what failed, what "
+                           "would have been better. Apply feeds the "
+                           "findings back: rules / interventions / "
+                           "concepts into the store, settings to the "
+                           "panel, sensor and depot advice onto the "
+                           "staging list. Then reset the fire and "
+                           "rerun to SEE the difference.")
+                _lgA = getattr(_engA, "run_logger", None)
+                from dss import rca as _rca
+                _rc1, _rc2 = st.columns([1, 1])
+                _rmodel = _rc1.selectbox(
+                    "Review model", ["opus", "sonnet"], index=0,
+                    key="rca_model",
+                    help="Opus: the deepest review, 1-3 minutes. "
+                         "Sonnet: a faster review, usually well "
+                         "under a minute.")
+                if _rc2.button("Root Cause Analysis", key="rca_go",
+                               disabled=_lgA is None):
+                    _saved = _rca.load_saved(_lgA.dir)
+                    _ev = _rca.build_evidence(
+                        _lgA.dir, _engA, st.session_state.get("sim"))
+                    st.session_state["rca_dir"] = _lgA.dir
+                    st.session_state.pop("rca_report", None)
+                    st.session_state.pop("rca_recs", None)
+                    _rca.start_async(_lgA.dir, _ev, model=_rmodel)
+                    st.rerun()
+                # NEVER BLOCK ON THE REVIEW. This used to sleep two seconds
+                # and rerun in a loop, which froze the WHOLE script for the
+                # one to three minutes the deep model takes: the fire could
+                # not be stepped and no other page would open. Worse,
+                # leaving the panel stopped the polling altogether, so a
+                # review that finished while you were elsewhere was never
+                # picked up. The status now lives in a fragment that reruns
+                # itself without touching the rest of the page.
+                _rca_live()
+                _repS = st.session_state.get("rca_report")
+                if _repS:
+                    st.markdown(_repS)
+                    _recsS = st.session_state.get("rca_recs") or {}
+                    _rlist = list(_recsS.get("recommendations") or [])
+                    _nrec = len(_rlist)
+                    st.caption(f"{_nrec} machine-applicable "
+                               "recommendation(s); the report is also "
+                               "saved to the run folder as "
+                               "root_cause_analysis.md. Tick the ones "
+                               "you want; untick to reject.")
+                    _sel = []
+                    for _iR, _recR in enumerate(_rlist):
+                        _tR = str(_recR.get("type", "?"))
+                        if _tR == "setting":
+                            _lbl = (f"setting {_recR.get('key')} → "
+                                    f"{_recR.get('value')}")
+                        elif _tR in ("sensor", "depot"):
+                            _lbl = (f"{_tR} {_recR.get('kind')} @ "
+                                    f"({_recR.get('x')},"
+                                    f"{_recR.get('y')})")
+                        elif _tR == "tune_rule":
+                            _lbl = f"tune rule {_recR.get('name')}"
+                        else:
+                            _lbl = f"{_tR} {_recR.get('name', '')}"
+                        _why = str(_recR.get("why", ""))[:120]
+                        if st.checkbox(f"{_lbl} — {_why}",
+                                       value=True,
+                                       key=f"rca_sel_{_iR}"):
+                            _sel.append(_recR)
+                    if _nrec and st.button(
+                            f"Apply selected ({len(_sel)})",
+                            key="rca_apply", disabled=not _sel):
+                        from dss import rca as _rca2
+                        _ap, _sk, _sess, _sns, _dps = (
+                            _rca2.apply_recommendations(
+                                {"recommendations": _sel}, _engA,
+                                sim=st.session_state.get("sim")))
+                        for _k2, _v2 in _sess.items():
+                            st.session_state[_k2] = _v2
+                        # PERSIST what was applied: settings and
+                        # staged infrastructure survive an app
+                        # restart exactly like the learned store does
+                        try:
+                            import json as _js_ra
+                            import os as _os_ra
+                            _pra = _os_ra.path.join(
+                                _os_ra.path.dirname(_os_ra.path.dirname(
+                                    _os_ra.path.abspath(__file__))),
+                                "logs", "rca_applied.json")
+                            try:
+                                _prev_ra = _js_ra.load(open(_pra,
+                                                            encoding="utf-8"))
+                            except Exception:
+                                _prev_ra = {}
+                            _prev_ra.setdefault("settings", {}).update(
+                                _sess)
+                            for _lst, _new in (("sensors", _sns),
+                                               ("depots", _dps)):
+                                _cur_ra = _prev_ra.setdefault(_lst, [])
+                                for _r_ra in _new:
+                                    _sig_ra = (_r_ra.get("kind"),
+                                               _r_ra.get("x"),
+                                               _r_ra.get("y"))
+                                    if _sig_ra not in [
+                                            (q.get("kind"), q.get("x"),
+                                             q.get("y"))
+                                            for q in _cur_ra]:
+                                        _cur_ra.append(_r_ra)
+                            _js_ra.dump(_prev_ra, open(
+                                _pra, "w", encoding="utf-8"), indent=1)
+                        except Exception:
+                            pass
+                        if _sns:
+                            _cur = list(st.session_state.get(
+                                "dss_sensors", []) or [])
+                            st.session_state["dss_sensors"] =                                 _cur + _sns
+                            st.session_state.pop("dss_net_sig", None)
+                        if _dps:
+                            _cur = list(st.session_state.get(
+                                "dss_res_items", []) or [])
+                            st.session_state["dss_res_items"] =                                 _cur + _dps
+                            st.session_state["dss_res_base"] = None
+                            st.session_state.pop("dss_res_sig", None)
+                        for _m3 in _ap:
+                            st.success("applied: " + _m3)
+                        for _m3 in _sk:
+                            st.warning("skipped: " + _m3)
+                        # the decision record goes NEXT TO the report
+                        # in the analyzed run's folder, so what was
+                        # accepted and what was refused is part of
+                        # the run's own log trail
+                        try:
+                            import json as _js_rd
+                            import os as _os_rd
+                            import time as _tm_rd
+                            _drd = st.session_state.get("rca_dir")
+                            if _drd:
+                                _js_rd.dump(
+                                    dict(applied=_ap, skipped=_sk,
+                                         at=_tm_rd.strftime(
+                                             "%Y-%m-%d %H:%M:%S")),
+                                    open(_os_rd.path.join(
+                                        _drd, "rca_decisions.json"),
+                                        "w", encoding="utf-8"),
+                                    indent=1, ensure_ascii=False)
+                        except Exception:
+                            pass
+                        # READBACK: prove the advice landed, from the
+                        # live staging lists, not from the intent
+                        _vs = [f"{q.get('kind')}@({q.get('x')},"
+                               f"{q.get('y')})"
+                               for q in (st.session_state.get(
+                                   "dss_sensors") or [])]
+                        _vd = [f"{q.get('kind')}@({q.get('x')},"
+                               f"{q.get('y')})"
+                               for q in (st.session_state.get(
+                                   "dss_res_items") or [])
+                               if q.get("label") == "RCA advice"]
+                        st.caption("Now staged on the map: sensors "
+                                   + (", ".join(_vs) or "none")
+                                   + " | RCA depots: "
+                                   + (", ".join(_vd) or "none")
+                                   + ". Decision record saved to the "
+                                   "run folder (rca_decisions.json).")
+                        st.info("Reset the fire and rerun to see the "
+                                "difference the review made.")
         elif panel == "Layer 4 · Logs":
             _eng4 = st.session_state.get("dss_engine")
             with st.expander("Saved runs \u2014 load & replay"):
@@ -7534,37 +8027,96 @@ def page_steps():
         st.info("No decision cycle has run yet. Go to Simulation, turn on "
                 "'Apply decisions' and step the fire.")
         return
+    # the tabs are built AFTER the guard, so an empty run shows the message
+    # instead of three empty tables with the message stranded underneath
+    _tabA, _tabB, _tabC = st.tabs(
+        ["Adaptation, one row per cycle",
+         "Agents, one row per agent per cycle",
+         "Global DSS, the coordination decision"])
     _rows = build_step_rows(_cyc, _rs)
     _acc = sum(1 for c in _cyc
                if (c.get("adaptation") or {}).get("accepted"))
     _gd = _read_gstate()
-    st.caption(
-        f"{len(_cyc)} decision cycle(s) · {_acc} adaptation(s) accepted · "
-        f"seed base **{st.session_state.get('dss_seed_profile', 'minimal')}**"
-        f" · config `{_dss_pkg.config_id(_gd.get('runtime_flags') or {})}`")
 
-    _c1, _c2, _c3 = st.columns([2, 2, 3])
-    _only = _c1.checkbox("Only cycles where a stage was tried", value=False,
-                         key="steps_only_tried")
-    _acc_only = _c2.checkbox("Only accepted", value=False,
-                             key="steps_only_acc")
-    _view = list(_rows)
-    if _only:
-        _view = [r for r in _view if r.get("stage", "").strip()[:1] != "0"]
-    if _acc_only:
-        _view = [r for r in _view if r.get("verdict") == "ACCEPTED"]
-    _c3.caption(f"showing {len(_view)} of {len(_rows)} cycle(s)")
-    st.dataframe(_view, use_container_width=True, height=620,
-                 column_order=STEP_COLS)
-    _tsv = ("\t".join(STEP_COLS) + "\n" + "\n".join(
-        "\t".join(str(r.get(c, "")) for c in STEP_COLS) for r in _view))
-    st.download_button("Download as TSV", _tsv,
-                       file_name="layer4_steps.tsv",
-                       mime="text/tab-separated-values", key="steps_tsv")
-    with st.expander("What the columns mean", expanded=False):
-        st.markdown(_STEP_COL_HELP)
-    with st.expander("What the gates G1 to G5 mean", expanded=False):
-        st.markdown(_GATE_HELP)
+    with _tabA:
+        st.caption(
+            f"{len(_cyc)} decision cycle(s) · {_acc} adaptation(s) accepted · "
+            f"seed base "
+            f"**{st.session_state.get('dss_seed_profile', 'minimal')}**"
+            f" · config `{_dss_pkg.config_id(_gd.get('runtime_flags') or {})}`")
+        st.caption("The adaptation runs on ONE region per cycle, the "
+                   "coordinator's hotspot, so this table has one row per "
+                   "cycle. What each agent decided is on the next tab.")
+        _c1, _c2, _c3 = st.columns([2, 2, 3])
+        _only = _c1.checkbox("Only cycles where a stage was tried",
+                             value=False, key="steps_only_tried")
+        _acc_only = _c2.checkbox("Only accepted", value=False,
+                                 key="steps_only_acc")
+        _view = list(_rows)
+        if _only:
+            _view = [r for r in _view
+                     if r.get("stage", "").strip()[:1] != "0"]
+        if _acc_only:
+            _view = [r for r in _view if r.get("verdict") == "ACCEPTED"]
+        _c3.caption(f"showing {len(_view)} of {len(_rows)} cycle(s), "
+                    f"latest first")
+        st.dataframe(_view, use_container_width=True, height=560,
+                     column_order=STEP_COLS, column_config=_STEP_COL_CONFIG)
+        _tsv = ("\t".join(STEP_COLS) + "\n" + "\n".join(
+            "\t".join(str(r.get(c, "")) for c in STEP_COLS) for r in _view))
+        st.download_button("Download as TSV", _tsv,
+                           file_name="layer4_steps.tsv",
+                           mime="text/tab-separated-values", key="steps_tsv")
+        with st.expander("What the columns mean", expanded=False):
+            st.markdown(_STEP_COL_HELP)
+        with st.expander("What the gates G1 to G5 mean", expanded=False):
+            st.markdown(_GATE_HELP)
+
+    with _tabB:
+        _arows = build_agent_rows(_cyc)
+        _names = sorted({r["agent"] for r in _arows})
+        st.caption(
+            f"{len(_arows)} agent-cycle(s) across {len(_names)} local DSS "
+            f"agent(s). Every agent decides in EVERY cycle; the coordinator "
+            f"then scales the offensive tempo by the attention share, which "
+            f"is the difference between orders_from_rules and orders_final.")
+        _a1, _a2 = st.columns([3, 2])
+        _pick = _a1.multiselect("Agents", _names, default=_names,
+                                key="steps_agent_pick")
+        _fs_only = _a2.checkbox("Only cycles the fail-safe touched",
+                                value=False, key="steps_agent_fs")
+        _av = [r for r in _arows if r["agent"] in _pick]
+        if _fs_only:
+            _av = [r for r in _av if r.get("failsafe") != "ok"]
+        _a2.caption(f"showing {len(_av)} of {len(_arows)} row(s)")
+        st.dataframe(_av, use_container_width=True, height=560,
+                     column_order=AGENT_COLS,
+                     column_config=_STEP_COL_CONFIG)
+        _tsvB = ("\t".join(AGENT_COLS) + "\n" + "\n".join(
+            "\t".join(str(r.get(c, "")) for c in AGENT_COLS) for r in _av))
+        st.download_button("Download as TSV", _tsvB,
+                           file_name="layer4_agents.tsv",
+                           mime="text/tab-separated-values",
+                           key="steps_agents_tsv")
+        st.markdown(_AGENT_COL_HELP)
+
+    with _tabC:
+        _grows = build_global_rows(_cyc)
+        st.caption(
+            "One row per cycle: how the Global DSS ranked the regions, what "
+            "share each got, and which ones it decided to only monitor. "
+            "The share scales the offensive tempo of that agent and steers "
+            "the budget concentration in the allocator.")
+        st.dataframe(_grows, use_container_width=True, height=560,
+                     column_order=GLOBAL_COLS,
+                     column_config=_STEP_COL_CONFIG)
+        _tsvC = ("\t".join(GLOBAL_COLS) + "\n" + "\n".join(
+            "\t".join(str(r.get(c, "")) for c in GLOBAL_COLS)
+            for r in _grows))
+        st.download_button("Download as TSV", _tsvC,
+                           file_name="layer4_global.tsv",
+                           mime="text/tab-separated-values",
+                           key="steps_global_tsv")
 
 
 PAGES = {"Simulation": page_simulation, "Map editor": page_editor,

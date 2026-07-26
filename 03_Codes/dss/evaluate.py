@@ -126,7 +126,8 @@ def graduated_failsafe(intensities: Dict[str, float], Q: float,
         return dict(intensities), False
     scale = max(0.0, Q / eta)
     out = dict(intensities)
-    for k in ("suppression_effort", "resource_deployment",
-              "containment_line", "asset_protection"):
-        out[k] = float(intensities[k]) * scale
+    for k, v in intensities.items():
+        if k in ("evacuation", "public_warning", "_share"):
+            continue
+        out[k] = float(v) * scale
     return out, True

@@ -109,6 +109,8 @@ def _propose_via_cli(ctx: "ProposalContext", user: str,
     cmd += ["-p", prompt, "--output-format", "json"]
     try:
         res = subprocess.run(cmd, capture_output=True, text=True,
+                             encoding="utf-8",
+                             errors="replace",
                              timeout=timeout)
     except Exception:
         return None

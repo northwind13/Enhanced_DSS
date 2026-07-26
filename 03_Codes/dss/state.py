@@ -74,6 +74,12 @@ def empty_state(active_rule_set: str = "minimal5") -> Dict[str, Any]:
             "intervention_count": 6,
         },
         "runtime_flags": flags,
+        # THE STAGE CONTROLLER'S EXPERIENCE, kept across runs. It learns
+        # which adaptation stage pays off in which situation class, and one
+        # fire only offers a few dozen attempts, far too few to converge. It
+        # is scoped by `map_key`: the value of a stage is a property of the
+        # terrain and the assets, so a different map starts from scratch.
+        "stage_controller": {"map_key": None, "maps": {}},
     }
     for s in SECTIONS:
         d[s] = []
@@ -133,6 +139,11 @@ class GeneratedState:
             base[s] = list(d.get(s) or [])
         base["runtime_flags"] = {**DEFAULT_FLAGS,
                                  **(d.get("runtime_flags") or {})}
+        _sc = d.get("stage_controller")
+        if isinstance(_sc, dict):
+            # kept verbatim; _sc() migrates the old single-table layout on
+            # first use, so an existing store is not thrown away
+            base["stage_controller"] = dict(_sc)
         st.data = base
         return st
 
@@ -221,10 +232,100 @@ class GeneratedState:
                 pass
         for s in SECTIONS:
             self.data[s] = []
+        # the controller's value table is learned knowledge too: leaving it
+        # behind would let a wiped store still steer the stage choice with
+        # experience gathered from rules that no longer exist
+        counts["stage_controller_entries"] = sum(
+            len(v.get("q") or {})
+            for v in ((self.data.get("stage_controller") or {})
+                      .get("maps") or {}).values()) + len(
+            (self.data.get("stage_controller") or {}).get("q") or {})
+        self.data["stage_controller"] = {"map_key": None, "maps": {}}
         self.flags["evfis_active"] = False
         self.flags["genai_active"] = False
         self.save()
         return counts
+
+    # --------------------------------------------- stage controller memory
+    MAX_CONTROLLER_MAPS = 12     # archived scenes, oldest evicted first
+
+    def _sc(self) -> Dict[str, Any]:
+        """The controller memory, migrated from the single-table layout.
+
+        The first version kept ONE table tagged with a map key, so returning
+        to a scene the DSS had already worked meant starting from zero, even
+        though the experience had been paid for. Now every scene keeps its
+        own table and the tag only says which one is current.
+        """
+        sc = self.data.setdefault(
+            "stage_controller", {"map_key": None, "q": {}, "updates": 0})
+        if "maps" not in sc:
+            sc["maps"] = {}
+            _k = sc.get("map_key")
+            if _k and (sc.get("q") or {}):
+                sc["maps"][str(_k)] = {"q": dict(sc["q"]),
+                                       "updates": int(sc.get("updates") or 0),
+                                       "seen": _now()}
+            sc.pop("q", None)
+            sc.pop("updates", None)
+        return sc
+
+    def _evict(self, sc: Dict[str, Any]) -> None:
+        """Bound the archive: keep the most recently used scenes."""
+        maps = sc.get("maps") or {}
+        if len(maps) <= self.MAX_CONTROLLER_MAPS:
+            return
+        for k in sorted(maps, key=lambda k: str(maps[k].get("seen") or ""))[
+                :len(maps) - self.MAX_CONTROLLER_MAPS]:
+            maps.pop(k, None)
+
+    def load_controller(self, controller, map_key: str | None) -> bool:
+        """Restore the value table THIS map earned, if it has one.
+
+        Each scene keeps its own table: what stage 2 is worth on a wooded
+        ridge says nothing about what it is worth on a coastal town, so the
+        tables never mix. But a scene the DSS has already learned on is not
+        forgotten just because another map was opened in between.
+        """
+        sc = self._sc()
+        sc["map_key"] = map_key
+        if map_key is None:
+            return False
+        entry = (sc.get("maps") or {}).get(str(map_key))
+        if not entry:
+            return False
+        restored = False
+        for k, v in (entry.get("q") or {}).items():
+            b, _, st_ = str(k).rpartition("/")
+            if not b or not st_.isdigit():
+                continue
+            controller.q[(b, int(st_))] = float(v)
+            restored = True
+        entry["seen"] = _now()
+        return restored
+
+    def save_controller(self, controller, map_key: str | None = None,
+                        save: bool = True) -> None:
+        """Write this scene's value table back, keyed "bucket/stage"."""
+        sc = self._sc()
+        key = str(map_key if map_key is not None else sc.get("map_key") or "")
+        if not key:
+            return                      # no scene identity, nothing to file
+        sc["map_key"] = key
+        sc.setdefault("maps", {})[key] = {
+            "q": {f"{b}/{st_}": round(float(v), 6)
+                  for (b, st_), v in controller.q.items()},
+            "updates": int((sc.get("maps", {}).get(key, {})
+                            .get("updates") or 0)) + 1,
+            "seen": _now()}
+        self._evict(sc)
+        if save:
+            self.save()
+
+    def controller_maps(self) -> Dict[str, int]:
+        """How many learned values each remembered scene holds."""
+        return {k: len(v.get("q") or {})
+                for k, v in (self._sc().get("maps") or {}).items()}
 
     def reverted_modifications(self) -> List[Dict[str, Any]]:
         """evFIS modifications newest first, for reverting before a wipe."""

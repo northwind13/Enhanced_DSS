@@ -120,7 +120,19 @@ def compute_costs(sim, cost: CostParams | None = None) -> CostReport:
     pop_at_risk_total = cost.population_at_risk_fraction * pop_total
     person_steps = float(getattr(sim, "exposure_person_steps", 0.0))
     pop_evac = float(getattr(sim, "population_evacuated", 0.0))
-    denom_pop = max(pop_total * cost.horizon_steps, eps)
+    # NORMALIZE BY THE POPULATION AT RISK, NOT BY THE ONES STILL THERE.
+    # An ordered evacuation physically removes people from vpop, so using
+    # the CURRENT vpop as the denominator shrank it exactly as the numerator
+    # fell, and a good evacuation scored worse than none: measured on the WUI
+    # scenario, evacuation cut the exposure from 114761 to 1779 person-steps
+    # (98.5% fewer people exposed) while J_pop went from 0.048 to 1.000, the
+    # maximum penalty. Since J_pop feeds the satisficing test and the no-harm
+    # guard, the DSS was being told to let people burn. The reference is the
+    # population the fire started with, which does not move.
+    _v0 = getattr(sim, "_vpop0", None)
+    pop_reference = (float((_v0 * cell_km2).sum()) if _v0 is not None
+                     else pop_total + pop_evac)
+    denom_pop = max(pop_reference * cost.horizon_steps, eps)
     j_pop = min(1.0, person_steps / denom_pop)
 
     # the response cost is charged on the resources ACTUALLY applied in
