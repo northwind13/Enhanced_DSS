@@ -216,3 +216,6 @@ __marimo__/
 
 # Claude local session settings
 .claude/
+
+# saved maps are the operator's own data, not the repository's
+03_Codes/maps/
