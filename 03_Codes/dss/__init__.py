@@ -29,7 +29,7 @@ from .evaluate import (clone_sim, forecast_cost, candidate_vs_noaction,
 from .persist import (save_learned, load_learned, load_parts,
                       load_vocab, merge_learned,
                       prune_learned, wipe_learned)
-from .state import GeneratedState, config_id
+from .state import GeneratedState, config_id, isolated_store_path
 from .resolve import resolve_active_set, ActiveSet
 from .adapt import (make_runtime_rules, StageController, AdaptOutcome,
                     stage1_evfis, stage2_resolution, stage3_generative,
@@ -66,4 +66,4 @@ __all__ = ["Region", "partition", "partition_n", "ten_features",
            "counterfactual"]
 
 # bumped on every dss change; checked by the app freshness gate
-DSS_BUILD = 90
+DSS_BUILD = 91

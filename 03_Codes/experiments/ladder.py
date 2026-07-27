@@ -168,7 +168,10 @@ def run_once(scenario: str, arm: str, seed: int, max_hours: float,
     if ekw is not None:
         eng = dss.DecisionEngine(
             dss.partition_n(w.config.nx, w.config.ny, 4),
-            base_pool=base, seed_profile=profile, **ekw)
+            base_pool=base, seed_profile=profile,
+            # one store per run: the rungs of a ladder must not inherit
+            # each other's learning (dss.isolated_store_path)
+            state_path=dss.isolated_store_path("ladder"), **ekw)
 
     max_steps = int(round(max_hours * 60.0 / w.config.step_minutes))
     out_at = None

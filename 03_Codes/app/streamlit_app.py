@@ -174,6 +174,132 @@ def _resize_world(w: World, nx2: int, ny2: int,
     return w2
 
 
+#: how far an export may be enlarged past the screen composition
+EXPORT_MAX_MPX = 60.0
+
+
+def _export_scale(nx: int, ny: int) -> int:
+    """Pixels per cell for an export: THE SCREEN'S OWN.
+
+    The first version rendered at ~27 px per cell to fill 4000 px, and the
+    result was not the map enlarged: the marker glyphs and the lettering
+    are drawn at sizes that do not all follow the cell size (the label font
+    is capped, the sensor and depot icons are fixed pixel shapes), so at
+    four times the scale the symbols and the words shrank into the terrain
+    and the map lost the very labels it was exported for.
+
+    The export is the composition on screen. Its RESOLUTION comes from a
+    whole-image enlargement afterwards, which keeps every proportion.
+    """
+    return _fit_scale(nx)
+
+
+def _export_maps(world, sim=None, factor: int = 1):
+    """Two high-resolution PNGs of the CURRENT map.
+
+    1. the map itself: terrain, land cover, roads, settlements and what is
+       at risk on them - the world, with nothing operational on it;
+    2. the same map with the SENSORS, the RESOURCE bases and their service
+       radii, and the IGNITION points - what the response is set up to do
+       about it.
+
+    Two files rather than one because they answer different questions and
+    a reader of the second cannot see the ground under it.
+    """
+    from io import BytesIO
+    from PIL import Image
+    _sc = _export_scale(world.config.nx, world.config.ny)
+    _sens = st.session_state.get("dss_sensors_draw")
+    _deps = st.session_state.get("dss_depots_draw")
+    _common = dict(scale=_sc, show_fire=False, show_assets=True,
+                   show_value=False, show_hillshade=True, show_roads=True,
+                   show_labels=True, show_grid=False, show_perimeter=False,
+                   show_wind=True)
+    plain = viz.render_pil(world, sim=sim, show_ignitions=False, **_common)
+    staged = viz.render_pil(world, sim=sim, show_ignitions=True,
+                            sensors=_sens, depots=_deps, **_common)
+    _f = max(1, int(factor))
+    if (plain.width * _f) * (plain.height * _f) > EXPORT_MAX_MPX * 1e6:
+        _f = max(1, int((EXPORT_MAX_MPX * 1e6
+                         / max(1, plain.width * plain.height)) ** 0.5))
+    out = []
+    for img in (plain, staged):
+        if _f > 1:
+            # LANCZOS, not NEAREST: the enlargement is of the FINISHED
+            # picture, so the terrain cells, the glyphs and the lettering
+            # grow together and the export is what the screen shows, on
+            # more pixels.
+            img = img.resize((img.width * _f, img.height * _f),
+                             Image.LANCZOS)
+        b = BytesIO()
+        img.save(b, format="PNG", dpi=(300, 300))
+        out.append(b.getvalue())
+    return out[0], out[1], _sc, (plain.width * _f, plain.height * _f), \
+        (_sens, _deps)
+
+
+def _export_panel(world, sim=None, key: str = "exp") -> None:
+    """The export control, on both the simulation page and the editor."""
+    with st.expander("Export map", expanded=False):
+        _sc = _export_scale(world.config.nx, world.config.ny)
+        _f = st.radio("Size", [1, 2, 3], horizontal=True, key=f"{key}_f",
+                      format_func=lambda k: ("screen (1:1)" if k == 1
+                                             else f"x{k} for print"),
+                      help="The export is the map as it is on screen. The "
+                           "multiplier enlarges the finished picture, so "
+                           "the terrain, the symbols and the lettering keep "
+                           "their proportions instead of the labels "
+                           "shrinking into a giant map.")
+        st.caption(f"{world.config.nx * _sc} x {world.config.ny * _sc} px "
+                   f"at 1:1, 300 dpi. Two files: the map on its own, and "
+                   "the map with the sensors, the resource bases and the "
+                   "ignition points.")
+        if st.button("Render", key=f"{key}_go", use_container_width=True,
+                     type="primary"):
+            with st.spinner("Rendering..."):
+                _p, _s, _scl, _sz, _lists = _export_maps(world, sim,
+                                                         factor=int(_f))
+            st.session_state[f"{key}_png"] = (_p, _s, _scl, _sz)
+            _sn, _dp = _lists
+            if not _sn and not _dp:
+                st.info("No sensors or resource units are staged yet, so "
+                        "the second image differs only by the ignition "
+                        "points. Stage them on Layer 1 first.")
+        # THE KEY IS A FILE TOO, BUT NOT ON EVERY RERUN. The legend lived
+        # in the page as HTML: readable on screen and impossible to put in
+        # a document. Rendering the sheet here unconditionally cost 0.75 s
+        # of every single interaction - a step, a slider, an animation
+        # frame - and the app felt dead: pressing Step appeared to do
+        # nothing. It is built when it is asked for, like the maps.
+        if st.button("Render legend sheet", key=f"{key}_lego",
+                     use_container_width=True):
+            from io import BytesIO as _BIO
+            with st.spinner("Rendering the legend..."):
+                _lg = viz.legend_sheet(macros=_all_macros(None) or None,
+                                       title="DisasterAware — map legend")
+                _lb = _BIO()
+                _lg.save(_lb, format="PNG", dpi=(300, 300))
+            st.session_state[f"{key}_leg"] = (_lb.getvalue(), _lg.size)
+        _lgot = st.session_state.get(f"{key}_leg")
+        if _lgot:
+            st.download_button(f"Legend ({_lgot[1][0]}x{_lgot[1][1]})",
+                               _lgot[0], file_name="legend.png",
+                               mime="image/png", use_container_width=True,
+                               key=f"{key}_dleg")
+
+        _got = st.session_state.get(f"{key}_png")
+        if _got:
+            _p, _s, _scl, _sz = _got
+            c1, c2 = st.columns(2)
+            c1.download_button(f"Map ({_sz[0]}x{_sz[1]})", _p,
+                               file_name="map.png", mime="image/png",
+                               use_container_width=True, key=f"{key}_d1")
+            c2.download_button("Map + sensors + resources + ignitions", _s,
+                               file_name="map_operational.png",
+                               mime="image/png", use_container_width=True,
+                               key=f"{key}_d2")
+
+
 def _map_card():
     """Every map view sits in one bordered block of fixed width.
 
@@ -1225,6 +1351,23 @@ def _record_costs() -> None:
     st.session_state.cost_series.append(compute_costs(st.session_state.sim).to_dict())
 
 
+def _model_ids() -> dict:
+    """The pinned generative and review model identities, for meta.json.
+
+    A campaign's claim "all runs used model X" is only verifiable if
+    every run log carries the identity; the env overrides are read
+    HERE, once, so a mid-campaign environment change is visible in
+    the logs instead of silent."""
+    import os as _os_mi
+    try:
+        from dss import genai as _gn_mi
+        _g = _gn_mi.current_model()
+    except Exception:
+        _g = _os_mi.environ.get("DSS_GENAI_MODEL", "?")
+    return dict(genai=_g,
+                rca=_os_mi.environ.get("DSS_RCA_MODEL", "opus"))
+
+
 def _fit_scale(nx) -> int:
     return int(max(4, min(16, 900 // max(nx, 1))))
 
@@ -1500,8 +1643,8 @@ def legend_html(horizontal: bool = False, macros=None) -> str:
 # surfaces as confusing TypeErrors deep inside the pages ----
 import disaster_phyengine as _dpe
 import dss as _dss_pkg
-_EXPECTED_ENGINE_BUILD = 48
-_EXPECTED_DSS_BUILD = 90
+_EXPECTED_ENGINE_BUILD = 51
+_EXPECTED_DSS_BUILD = 91
 if (getattr(_dpe, "ENGINE_BUILD", 0) != _EXPECTED_ENGINE_BUILD
         or getattr(_dss_pkg, "DSS_BUILD", 0) != _EXPECTED_DSS_BUILD):
     st.error(
@@ -1943,7 +2086,8 @@ def _step_sim(n: int = 1):
                                                      18.0)),
                             dr_rain_dur=float(_sv0("dr_rain_dur", 3.0))),
                         sensors=list(_sv0("dss_sensors", []) or []),
-                        depots=list(_sv0("dss_res_items", []) or [])))
+                        depots=list(_sv0("dss_res_items", []) or []),
+                        models=_model_ids()))
                     # the snapshot must be the t=0 BASELINE even if
                     # the engine is (re)built mid-run: swap in the
                     # pristine fuel state around the dump
@@ -2321,7 +2465,9 @@ with st.sidebar:
                 _denS = float(st.session_state.get("dss_res_density", 1.0))
                 _its, _rwhy = _dss_pkg.suggest_resource_items(
                     world, efficiency_target=_effS / 100.0,
-                    density=_denS)
+                    density=_denS,
+                    coverage=float(st.session_state.get("dss_res_cov",
+                                                        100.0)) / 100.0)
                 st.session_state["dss_res_items"] = _its
                 st.session_state["dss_res_why"] = _rwhy
                 st.session_state["dss_res_base_v"] = _mv
@@ -2332,6 +2478,18 @@ with st.sidebar:
                 st.rerun()
             except Exception as _e_sr:
                 st.error(f"Resource suggestion failed: {_e_sr}")
+
+        # THE PLANNERS EXPLAIN THEMSELVES HERE TOO. Both suggesters
+        # return their optimization trace; showing it only in the
+        # Layer 1 panel made these two buttons look like magic.
+        if st.session_state.get("dss_suggest_why"):
+            with st.expander("Why these sensor positions"):
+                for _ln_w in st.session_state["dss_suggest_why"]:
+                    st.caption(_ln_w)
+        if st.session_state.get("dss_res_why"):
+            with st.expander("Why this resource pool"):
+                for _ln_w in st.session_state["dss_res_why"]:
+                    st.caption(_ln_w)
 
         _c5, _c6 = st.columns([1, 4])
         _c5.markdown(_lamp(_dss_ok))
@@ -3067,6 +3225,15 @@ def page_simulation():
                      "effectiveness meets this target (up to 10 "
                      "additions). Every added unit stays an editable "
                      "row below."))
+            st.session_state["dss_res_cov"] = float(st.slider(
+                "Base coverage (% of candidate sites staged)", 10, 100,
+                int(_sv("dss_res_cov", 100)), 5,
+                help="How many of the candidate sites actually get a base. "
+                     "Capacity alone is not scarcity: a thin depot in every "
+                     "town still puts a response everywhere, while a "
+                     "province with three brigades leaves ground with none "
+                     "near it. The sites with the most to protect are kept "
+                     "first."))
             st.session_state["dss_res_density"] = float(_rt2.slider(
                 "Resource density (×R_cap)", 0.2, 2.0,
                 float(_sv("dss_res_density", 1.0)), 0.1,
@@ -3083,11 +3250,23 @@ def page_simulation():
                          != int(st.session_state["dss_eff_applied"])
                          or float(st.session_state["dss_res_density"])
                          != float(st.session_state.get("dss_dens_applied",
-                                                       1.0)))):
+                                                       1.0))
+                         # ITS OWN KEY. This started out as
+                         # "dss_cov_applied", which is the SENSOR panel's
+                         # coverage-target memory: the two panels then
+                         # overwrote each other's number, each saw a change
+                         # it had not made, each re-suggested and called
+                         # st.rerun(), and the screen blinked in a loop
+                         # while the suggested sensors were thrown away on
+                         # every pass.
+                         or float(st.session_state["dss_res_cov"])
+                         != float(st.session_state.get("dss_rescov_applied",
+                                                       100.0)))):
                 _its, _rwhy = _dss.suggest_resource_items(
                     world, efficiency_target=float(
                         st.session_state["dss_eff_target"]) / 100.0,
-                    density=float(st.session_state["dss_res_density"]))
+                    density=float(st.session_state["dss_res_density"]),
+                    coverage=float(st.session_state["dss_res_cov"]) / 100.0)
                 st.session_state["dss_res_items"] = _its
                 st.session_state["dss_res_why"] = _rwhy
                 st.session_state["dss_res_base_v"] = \
@@ -3096,6 +3275,8 @@ def page_simulation():
                     st.session_state["dss_eff_target"])
                 st.session_state["dss_dens_applied"] = float(
                     st.session_state["dss_res_density"])
+                st.session_state["dss_rescov_applied"] = float(
+                    st.session_state["dss_res_cov"])
                 st.rerun()
             rp1, rp2 = st.columns(2)
             if rp1.button(
@@ -3109,13 +3290,15 @@ def page_simulation():
                          "values, not depots. "
                          "$R_{eff}$ comes from the terrain access "
                          "field, $R_{time}$ from the road-network "
-                         "distance (10 min dispatch + 2 min per "
-                         "off-road cell). The Layer 4 decisions "
+                         "distance (dispatch at the nearest base, then "
+                         "60 km/h on roads). The Layer 4 decisions "
                          "allocate THIS pool and cannot exceed 1.5x "
                          "the staged capacity anywhere."):
                 _its, _rwhy = _dss.suggest_resource_items(
                     world, efficiency_target=float(
-                        st.session_state["dss_eff_target"]) / 100.0)
+                        st.session_state["dss_eff_target"]) / 100.0,
+                    coverage=float(st.session_state.get("dss_res_cov",
+                                                        100.0)) / 100.0)
                 st.session_state["dss_res_items"] = _its
                 st.session_state["dss_res_why"] = _rwhy
                 st.session_state["dss_res_base_v"] = \
@@ -4939,7 +5122,9 @@ def page_simulation():
                         _ap, _sk, _sess, _sns, _dps = (
                             _rca2.apply_recommendations(
                                 {"recommendations": _sel}, _engA,
-                                sim=st.session_state.get("sim")))
+                                sim=st.session_state.get("sim"),
+                                run_dir=(_lgA.dir if _lgA is not None
+                                         else None)))
                         for _k2, _v2 in _sess.items():
                             st.session_state[_k2] = _v2
                         # PERSIST what was applied: settings and
@@ -6029,6 +6214,7 @@ def page_simulation():
                     st.rerun()
         # (the per-order explanation lived here; it duplicated the legend
         # below, so it was removed to declutter the screen)
+        _export_panel(world, sim, key="expsim")
         st.markdown(legend_html(horizontal=True), unsafe_allow_html=True)
 
     # LAYOUT: the cost section (and the decision log) live in the LEFT column,
@@ -6831,13 +7017,15 @@ def page_editor():
                 help="Scales the footprint of buildings and critical "
                      "facilities AND how many a settlement carries. At 0 "
                      "the settlements are houses only.")
-            farmv = st.checkbox(
-                "Farmland around settlements", value=True, key="gen_farm",
-                help="Rectangular cultivated parcels on the flat low ground "
-                     "near settlements. A worked field carries about half "
-                     "the fine fuel of natural grass and a little more "
-                     "moisture, so it slows a front, which is why it is on "
-                     "by default. Turn it off for a pure wildland scenario.")
+            farmv = st.slider(
+                "Farmland density (0 = none)", 0.0, 2.0, 1.0, 0.1,
+                key="gen_farm",
+                help="Cultivated parcels on the workable ground near the "
+                     "settlements: how often a workable block is sown and "
+                     "how far from the town the fields reach. A worked "
+                     "field carries about half the fine fuel of natural "
+                     "grass and a little more moisture, so it slows a "
+                     "front. 0 gives a pure wildland scenario.")
 
             # the seed sits NEXT TO the generate button: it is what one
             # changes between quick trials, so no scrolling in between
@@ -6857,7 +7045,7 @@ def page_editor():
                     n_settlements=int(nvill),
                     population_per_settlement=int(popv),
                     building_scale=float(bscale), accessibility=float(access),
-                    farmland=bool(farmv),
+                    farmland=float(farmv),
                     coast=bool(coast), river=bool(river)))
                 st.rerun()
         elif src == "Built in scenario":
@@ -7061,6 +7249,7 @@ def page_editor():
                               "steps back."):
                 _restore_snapshot(); st.session_state.canvas_key += 1; st.rerun()
             # Clear strokes only matters when strokes are NOT applied live
+            _export_panel(world, sim, key="exped")
             if not live and t3.button(
                     "Clear strokes", use_container_width=True,
                     help="Discards the drawn strokes WITHOUT applying them; "

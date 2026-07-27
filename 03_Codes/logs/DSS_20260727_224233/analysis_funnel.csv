@@ -1,0 +1,21 @@
+﻿quantity;value
+cycles;23
+satisficing_failed;22
+tried;17
+accepted;13
+rejected;4
+withheld;4
+persist_failed;0
+dJ_accepted;-0.143199
+stage1_tried;13
+stage1_accepted;12
+stage2_tried;2
+stage2_accepted;0
+stage3_tried;2
+stage3_accepted;1
+blocked: cooldown between adaptation trials;5
+gate: admitted (improves G3 + G4);1
+gate: rejected;1
+rejected: refined cell already covered;2
+rejected: no improving perturbation found;1
+"rejected: rejected at G2c relevance (the rule does not fire in the PRESENT situation; use each concept's CURRENT dominant term from the situation line) (claude)";1

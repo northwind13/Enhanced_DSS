@@ -1,0 +1,13 @@
+﻿step;t_min;hotspot;attended;shares;statement
+47;1410.0;Agent_3;Agent_1|Agent_2|Agent_3;Agent_1=1.0|Agent_2=1.0|Agent_3=1.0;Global DSS: focus on Agent_3 (priority 0.58), Agent_3 share 1.00, Agent_1 share 1.00, Agent_2 share 1.00
+48;1440.0;Agent_3;Agent_1|Agent_2|Agent_3;Agent_1=1.0|Agent_2=1.0|Agent_3=1.0;Global DSS: focus on Agent_3 (priority 0.52), Agent_3 share 1.00, Agent_1 share 1.00, Agent_2 share 1.00
+49;1470.0;Agent_3;Agent_1|Agent_2|Agent_3;Agent_1=1.0|Agent_2=1.0|Agent_3=1.0;Global DSS: focus on Agent_3 (priority 0.47), Agent_3 share 1.00, Agent_1 share 1.00, Agent_2 share 1.00
+50;1500.0;Agent_3;Agent_1|Agent_2|Agent_3;Agent_1=1.0|Agent_2=1.0|Agent_3=1.0;Global DSS: focus on Agent_3 (priority 0.42), Agent_3 share 1.00, Agent_1 share 1.00, Agent_2 share 1.00
+51;1530.0;Agent_3;Agent_1|Agent_2|Agent_3;Agent_1=1.0|Agent_2=1.0|Agent_3=1.0;Global DSS: focus on Agent_3 (priority 0.38), Agent_3 share 1.00, Agent_1 share 1.00, Agent_2 share 1.00
+52;1560.0;Agent_3;Agent_1|Agent_2|Agent_3;Agent_1=1.0|Agent_2=1.0|Agent_3=1.0;Global DSS: focus on Agent_3 (priority 0.34), Agent_3 share 1.00, Agent_1 share 1.00, Agent_2 share 1.00
+53;1590.0;Agent_3;Agent_1|Agent_2|Agent_3;Agent_1=1.0|Agent_2=1.0|Agent_3=1.0;Global DSS: focus on Agent_3 (priority 0.31), Agent_3 share 1.00, Agent_1 share 1.00, Agent_2 share 1.00
+54;1620.0;Agent_3;Agent_1|Agent_2|Agent_3;Agent_1=1.0|Agent_2=1.0|Agent_3=1.0;Global DSS: focus on Agent_3 (priority 0.28), Agent_3 share 1.00, Agent_1 share 1.00, Agent_2 share 1.00
+55;1650.0;Agent_3;Agent_1|Agent_2|Agent_3;Agent_1=1.0|Agent_2=1.0|Agent_3=1.0;Global DSS: focus on Agent_3 (priority 0.25), Agent_3 share 1.00, Agent_1 share 1.00, Agent_2 share 1.00
+56;1680.0;Agent_3;Agent_1|Agent_2|Agent_3;Agent_1=1.0|Agent_2=1.0|Agent_3=1.0;Global DSS: focus on Agent_3 (priority 0.22), Agent_3 share 1.00, Agent_1 share 1.00, Agent_2 share 1.00
+57;1710.0;Agent_3;Agent_1|Agent_2|Agent_3;Agent_1=1.0|Agent_2=1.0|Agent_3=1.0;Global DSS: focus on Agent_3 (priority 0.20), Agent_3 share 1.00, Agent_1 share 1.00, Agent_2 share 1.00 · water ferried from Agent_2's water (85 m) to Agent_3
+58;1740.0;Agent_3;Agent_1|Agent_2|Agent_3;Agent_1=1.0|Agent_2=1.0|Agent_3=1.0;Global DSS: focus on Agent_3 (priority 0.18), Agent_3 share 1.00, Agent_1 share 1.00, Agent_2 share 1.00

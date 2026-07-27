@@ -371,6 +371,19 @@ def _dijkstra_field(cost, source):
     return dist, prevx, prevy
 
 
+def _grow_mask(mask, k: int):
+    """`mask` dilated by k cells (4-neighbour), as a plain boolean field."""
+    out = np.asarray(mask, dtype=bool).copy()
+    for _ in range(max(0, int(k))):
+        g = out.copy()
+        g[1:, :] |= out[:-1, :]
+        g[:-1, :] |= out[1:, :]
+        g[:, 1:] |= out[:, :-1]
+        g[:, :-1] |= out[:, 1:]
+        out = g
+    return out
+
+
 def _one_lake(elev, ftype, water_id, target_frac):
     """Fill ONE basin to the requested area instead of flooding every pit.
 
@@ -858,7 +871,7 @@ def generate_landscape(config: SimConfig | None = None,
                        n_settlements: int | None = None,
                        population_per_settlement: int | None = None,
                        building_scale: float = 1.0,
-                       farmland: bool = True,
+                       farmland: float | bool = 1.0,
                        accessibility: float | None = None,
                        preset: str | None = None,
                        coast: bool = False,
@@ -1144,92 +1157,6 @@ def generate_landscape(config: SimConfig | None = None,
         sites = [_to_land(int(nx * 0.6), ny // 2)]
     tx, ty = sites[0]
 
-    # AGRICULTURAL QUILT: rectangular parcels of cultivated (cured-grass,
-    # low-load) fuel on flat, low ground around the settlements, like the
-    # field mosaics of real valley floors. Unselected parcels keep their
-    # natural cover, so the quilt is broken rather than wall-to-wall.
-    #
-    # It is a real land-cover class, not decoration: a worked field carries
-    # roughly half the continuous fine fuel of natural grass (measured on a
-    # generated map, 0.30-0.45 against 0.80) and a little more moisture, so
-    # it slows a front the way farmland does. The GIS import says the same
-    # thing about the WorldCover cropland class. It is switchable because
-    # the hard-edged blocks read as an artefact on a wildland scenario
-    # where no one expects fields.
-    if with_assets and n_set > 0 and farmland:
-        # ITS OWN RANDOM STREAM. The parcel loop used to draw from the main
-        # rng, so switching farmland off did not merely remove the fields:
-        # every draw after it shifted and the settlements came out with
-        # different facilities on a map that was supposed to differ in one
-        # respect only. A separate stream keeps the switch to one effect.
-        # DERIVED FROM THE SEED, NOT FROM hash(). Python randomises the hash
-        # of a string per process, so hashing a tag here made the same seed
-        # produce a different map on every run: the one thing a seed exists
-        # to prevent.
-        _frng = np.random.default_rng((int(seed) * 2654435761 + 12345)
-                                      % (2 ** 32))
-        par_h = max(3, ny // 40)
-        par_w = max(4, nx // 30)
-        # AN IRREGULAR EDGE. A parcel painted as a clean rectangle reads as
-        # something stamped on the map rather than grown on it, and on a
-        # pale grass background the blocks stood out as squares the eye
-        # could not explain. Real field boundaries follow ditches, tracks
-        # and the lie of the land, so the edge is broken with a noise field
-        # of its own: the same seed, so a map is still reproducible.
-        _fedge = fractal_noise(ny, nx, _frng, octaves=4, persistence=0.55)
-        _fedge = (_fedge - _fedge.min()) / max(float(np.ptp(_fedge)), 1e-9)
-        flat_low = (slope < 0.15) & (elev_norm < 0.45) \
-            & (ftype >= 1) & (ftype <= 4)
-        near_set = np.zeros((ny, nx), dtype=bool)
-        _oy, _ox = np.ogrid[:ny, :nx]
-        _r2 = (max(nx, ny) * 0.18) ** 2
-        for _sx, _sy in sites[:n_set]:
-            near_set |= ((_ox - _sx) ** 2 + (_oy - _sy) ** 2) <= _r2
-        for _py in range(0, ny - par_h, par_h + 1):
-            for _px in range(0, nx - par_w, par_w + 1):
-                _sl = (slice(_py, _py + par_h), slice(_px, _px + par_w))
-                ok = flat_low[_sl] & near_set[_sl]
-                # THE FIELD FOLLOWS THE GROUND, NOT THE GRID. The parcel was
-                # painted wall to wall once the block was mostly flat, so the
-                # steep corner of it was cultivated too; and demanding that
-                # 70% of a block qualify meant that on a map with 450 m of
-                # relief, where barely a tenth of the ground is flat enough
-                # to work, no parcel qualified at all and the class silently
-                # disappeared. Half a block is enough to call it farmland,
-                # and only the workable cells inside it are sown.
-                if ok.mean() > 0.5 and _frng.random() < 0.55:
-                    # A FIELD IS A FIELD, WITH AN EDGE. Cutting 30% of the
-                    # block away along the noise broke the parcels up until
-                    # they read as mottling rather than as farmland; the
-                    # variety belongs in the COLOUR of each parcel, which
-                    # is what a field mosaic actually looks like from the
-                    # air. A tenth is enough to stop the sides being drawn
-                    # with a ruler.
-                    _cut = float(np.quantile(_fedge[_sl], 0.10))
-                    m = ((ftype[_sl] >= 1) & (ftype[_sl] <= 4) & ok
-                         & (_fedge[_sl] > _cut))
-                    # A FIELD IS WORKED IN ONE PIECE. Where the ground
-                    # inside a block is broken up, keeping only the
-                    # qualifying cells left one- and two-cell scraps, and
-                    # since each parcel is drawn in its own colour, those
-                    # scraps rendered as confetti. A block that cannot hold
-                    # a field is left as it is.
-                    if int(m.sum()) < int(0.45 * m.size):
-                        continue
-                    ftype[_sl][m] = grass
-                    # ONE value off the crop ladder per parcel: the
-                    # renderer derives the field colour from this number,
-                    # so a per-cell draw would speckle the parcel in five
-                    # colours at once, and a value off the ladder would let
-                    # wild grass be taken for a field.
-                    world.fuel.fload[_sl][m] = float(
-                        CROP_FUEL_LOADS[int(_frng.integers(
-                            0, len(CROP_FUEL_LOADS)))])
-                    world.fuel.fmoist[_sl][m] = np.clip(
-                        world.fuel.fmoist[_sl][m] + 0.03, 0.02, 0.5)
-                    if getattr(world.fuel, "fload0", None) is not None:
-                        world.fuel.fload0[_sl][m] = world.fuel.fload[_sl][m]
-
     evac_xy = None
     _road_exits = []
     if with_roads and n_set > 0:
@@ -1337,6 +1264,144 @@ def generate_landscape(config: SimConfig | None = None,
                                   int(_ex2), int(_ey2), radius=0))
         # bridges are allowed: road cells over water stay roads (the cell
         # itself remains water / non-burnable, only crossing is possible)
+    # THE FIELDS ARE SOWN LAST, and this is not cosmetic ordering: the
+    # parcels have to know where the ROADS and the TOWNS are. Sown
+    # before them, the road mask was still empty, so "start at the
+    # roadside" admitted nothing and the class vanished from every map;
+    # and a field could be cut where a street was about to be painted.
+
+    # AGRICULTURAL QUILT: rectangular parcels of cultivated (cured-grass,
+    # low-load) fuel on flat, low ground around the settlements, like the
+    # field mosaics of real valley floors. Unselected parcels keep their
+    # natural cover, so the quilt is broken rather than wall-to-wall.
+    #
+    # It is a real land-cover class, not decoration: a worked field carries
+    # roughly half the continuous fine fuel of natural grass (measured on a
+    # generated map, 0.30-0.45 against 0.80) and a little more moisture, so
+    # it slows a front the way farmland does. The GIS import says the same
+    # thing about the WorldCover cropland class. It is switchable because
+    # the hard-edged blocks read as an artefact on a wildland scenario
+    # where no one expects fields.
+    # HOW MUCH FARMING, NOT WHETHER. The class was a switch, so a map was
+    # either a worked countryside or a wildland with nothing in between,
+    # and the two things the density has to move are how OFTEN a workable
+    # block is actually sown and how FAR from the town the fields reach.
+    _fden = float(max(0.0, float(farmland)))
+    if with_assets and n_set > 0 and _fden > 0.0:
+        # WRITE THROUGH THE WORLD'S OWN ARRAY. world.fuel keeps its
+        # own copy of ftype, so sowing into the stale local array
+        # painted the fields into a dead buffer: the crop LOADS landed
+        # in the world, the grass TYPE did not, and four of five
+        # parcels rendered as forest carrying crop loads.
+        ftype = np.asarray(world.fuel.ftype)
+        # ITS OWN RANDOM STREAM. The parcel loop used to draw from the main
+        # rng, so switching farmland off did not merely remove the fields:
+        # every draw after it shifted and the settlements came out with
+        # different facilities on a map that was supposed to differ in one
+        # respect only. A separate stream keeps the switch to one effect.
+        # DERIVED FROM THE SEED, NOT FROM hash(). Python randomises the hash
+        # of a string per process, so hashing a tag here made the same seed
+        # produce a different map on every run: the one thing a seed exists
+        # to prevent.
+        _frng = np.random.default_rng((int(seed) * 2654435761 + 12345)
+                                      % (2 ** 32))
+        par_h = max(3, ny // 40)
+        par_w = max(4, nx // 30)
+        # AN IRREGULAR EDGE. A parcel painted as a clean rectangle reads as
+        # something stamped on the map rather than grown on it, and on a
+        # pale grass background the blocks stood out as squares the eye
+        # could not explain. Real field boundaries follow ditches, tracks
+        # and the lie of the land, so the edge is broken with a noise field
+        # of its own: the same seed, so a map is still reproducible.
+        _fedge = fractal_noise(ny, nx, _frng, octaves=4, persistence=0.55)
+        _fedge = (_fedge - _fedge.min()) / max(float(np.ptp(_fedge)), 1e-9)
+        near_set = np.zeros((ny, nx), dtype=bool)
+        _oy, _ox = np.ogrid[:ny, :nx]
+        # a WIDER belt: 18% of the map dimension left lone islands of
+        # field; a quarter reads as a worked countryside around a town
+        # the belt grows with the square root of the density, so twice the
+        # farming is twice the AREA of fields rather than twice the radius
+        _r2 = (max(nx, ny) * 0.28 * float(np.sqrt(min(_fden, 4.0)))) ** 2
+        for _sx, _sy in sites[:n_set]:
+            near_set |= ((_ox - _sx) ** 2 + (_oy - _sy) ** 2) <= _r2
+        # WORKABLE IS RELATIVE (slope in radians). An absolute cap
+        # admitted almost nothing on a hilly seed and the farmland
+        # class silently vanished: a farmer works the FLATTEST ground
+        # the neighbourhood offers (terracing included), so the cut
+        # is the 45th percentile of the slope around the settlements,
+        # bounded to a 15-20 degree band.
+        _sl_near = slope[near_set] if near_set.any() else slope
+        _sl_thr = float(np.clip(np.quantile(_sl_near, 0.45),
+                                0.26, 0.35))
+        # NOBODY FARMS A FOREST. The workable mask was every vegetated
+        # type, so parcels were cut straight out of pine and hardwood
+        # stands: a field appeared where a wood had been, which is not how
+        # land is worked and not what an aerial photograph of farmland
+        # looks like. Fields go on the OPEN ground - grass and the thin
+        # scrub that is cleared for it - and a map whose settlement sits in
+        # closed forest simply has no fields, which is also true.
+        _open = (ftype == grass) | (ftype == shrub)
+        # AND THEY START AT THE ROAD. Every field has to be reached with a
+        # tractor, so the mosaic grows outward from the track network;
+        # parcels floating in the middle of nowhere with no way in were the
+        # other thing that made the old blocks read as stamped on. The belt
+        # widens with the density, because more farming means working
+        # further from the road, not fields with no access.
+        _roads_m = np.asarray(getattr(world, "roads", None)) \
+            if getattr(world, "roads", None) is not None \
+            else np.zeros((ny, nx), dtype=bool)
+        _roads_m = np.asarray(_roads_m, dtype=bool)
+        _dlim = int(max(3, round((4 + 8 * min(_fden, 2.0))
+                                 * 30.0 / max(cfg.cell_size_m, 1e-6))))
+        _near_road = _grow_mask(_roads_m, _dlim) if _roads_m.any() \
+            else np.zeros((ny, nx), dtype=bool)
+        flat_low = ((slope <= _sl_thr) & (elev_norm < 0.65)
+                    & _open & _near_road)
+        for _py in range(0, ny - par_h, par_h + 1):
+            for _px in range(0, nx - par_w, par_w + 1):
+                _sl = (slice(_py, _py + par_h), slice(_px, _px + par_w))
+                ok = flat_low[_sl] & near_set[_sl]
+                # THE FIELD FOLLOWS THE GROUND, NOT THE GRID. The parcel was
+                # painted wall to wall once the block was mostly flat, so the
+                # steep corner of it was cultivated too; and demanding that
+                # 70% of a block qualify meant that on a map with 450 m of
+                # relief, where barely a tenth of the ground is flat enough
+                # to work, no parcel qualified at all and the class silently
+                # disappeared. Half a block is enough to call it farmland,
+                # and only the workable cells inside it are sown.
+                if (ok.mean() > 0.3
+                        and _frng.random() < min(0.98, 0.8 * _fden)):
+                    # A FIELD IS A FIELD, WITH AN EDGE. Cutting 30% of the
+                    # block away along the noise broke the parcels up until
+                    # they read as mottling rather than as farmland; the
+                    # variety belongs in the COLOUR of each parcel, which
+                    # is what a field mosaic actually looks like from the
+                    # air. A tenth is enough to stop the sides being drawn
+                    # with a ruler.
+                    _cut = float(np.quantile(_fedge[_sl], 0.10))
+                    m = (_open[_sl] & ok & (_fedge[_sl] > _cut))
+                    # A FIELD IS WORKED IN ONE PIECE. Where the ground
+                    # inside a block is broken up, keeping only the
+                    # qualifying cells left one- and two-cell scraps, and
+                    # since each parcel is drawn in its own colour, those
+                    # scraps rendered as confetti. A block that cannot hold
+                    # a field is left as it is.
+                    if int(m.sum()) < int(0.30 * m.size):
+                        continue
+                    ftype[_sl][m] = grass
+                    # ONE value off the crop ladder per parcel: the
+                    # renderer derives the field colour from this number,
+                    # so a per-cell draw would speckle the parcel in five
+                    # colours at once, and a value off the ladder would let
+                    # wild grass be taken for a field.
+                    world.fuel.fload[_sl][m] = float(
+                        CROP_FUEL_LOADS[int(_frng.integers(
+                            0, len(CROP_FUEL_LOADS)))])
+                    world.fuel.fmoist[_sl][m] = np.clip(
+                        world.fuel.fmoist[_sl][m] + 0.03, 0.02, 0.5)
+                    if getattr(world.fuel, "fload0", None) is not None:
+                        world.fuel.fload0[_sl][m] = world.fuel.fload[_sl][m]
+
     # WHAT THE MAP DRAWS AS A TOWN MUST BE WORTH SOMETHING. The built-up
     # footprint is painted far wider than the discs of the placed assets, so
     # without this the loss model saw 90% of the settlement as empty ground.

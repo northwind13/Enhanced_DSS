@@ -1,0 +1,15 @@
+﻿quantity;value
+cycles;12
+satisficing_failed;12
+tried;12
+accepted;5
+rejected;7
+withheld;2
+persist_failed;0
+dJ_accepted;-0.004794
+stage1_tried;5
+stage1_accepted;2
+stage2_tried;7
+stage2_accepted;3
+rejected: no improving perturbation found;3
+rejected: refined cell already covered;4

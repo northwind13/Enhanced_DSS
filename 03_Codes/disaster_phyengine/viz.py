@@ -62,11 +62,13 @@ def landscape_rgb(world) -> np.ndarray:
 #: the parcels were all one dim shade of grass: a quilt of one colour is a
 #: smudge. They stay pale so a settlement, a fire or an order still reads
 #: over them.
-_CROP_COLORS = [(0.91, 0.84, 0.45),      # stubble / wheat, pale yellow
-                (0.63, 0.82, 0.47),      # young crop, pale green
-                (0.84, 0.58, 0.46),      # ploughed earth, pale red
-                (0.80, 0.79, 0.75),      # fallow, pale grey
-                (0.86, 0.74, 0.44)]      # hay, pale ochre
+#: user-tuned quilt: pale green / yellow / orange family only (the
+#: old ploughed-red and fallow-grey read as bare rock on the relief)
+_CROP_COLORS = [(0.93, 0.87, 0.50),      # wheat / stubble, pale yellow
+                (0.68, 0.85, 0.50),      # young crop, pale green
+                (0.95, 0.74, 0.46),      # ripening field, pale orange
+                (0.81, 0.87, 0.55),      # pasture, yellow-green
+                (0.91, 0.79, 0.50)]      # hay, pale ochre-orange
 
 #: kept for callers that ask what a field looks like; the MASK is the exact
 #: ladder in config, not this band (wild grass reaches down into it)
@@ -356,10 +358,16 @@ def draw_critical(draw, cx, cy, r, rgb=(200, 25, 25)):
                    fill=(250, 250, 250, 255),
                    outline=(180, 20, 20, 255), width=2)
     bw = max(2, (2 * r) // 5)
-    draw.rectangle([cx - bw // 2, cy - r + 3, cx + bw // 2, cy + r - bw - 4],
-                   fill=(*rgb, 255))
-    draw.ellipse([cx - bw // 2, cy + r - 2 - bw, cx + bw // 2, cy + r - 2],
-                 fill=(*rgb, 255))
+    # THE MARK HAS TO FIT THE PLATE. At legend size the plate is 13 px, so
+    # the stem's computed bottom landed above its top and PIL refused to
+    # draw the rectangle at all: the whole figure script died on its own
+    # legend. The parts are clamped to the plate instead.
+    _top = cy - r + 3
+    _bot = max(_top + 1, cy + r - bw - 4)
+    draw.rectangle([cx - bw // 2, _top, cx + bw // 2, _bot], fill=(*rgb, 255))
+    _dy1 = cy + r - 2
+    _dy0 = min(_dy1 - 1, _dy1 - bw)
+    draw.ellipse([cx - bw // 2, _dy0, cx + bw // 2, _dy1], fill=(*rgb, 255))
 
 
 def draw_people(draw, cx, cy, r, rgb=(60, 130, 240)):
@@ -501,13 +509,21 @@ def render_pil(world, sim=None, scale: int = 8, show_fire: bool = True,
                sim_for_behavior=None, night_factor: float = 1.0,
                clock_text=None, region_box=None, region_label=None,
                regions=None, sensors=None, depots=None, alloc=None,
-               actions=None, pretty: bool = True):
+               actions=None, pretty: bool = True,
+               defer_text: bool = False, label_kinds=None):
     """Render the map to a polished PIL image of size (nx*scale, ny*scale).
 
     `pretty` is the aesthetic switch the panel exposes: TrueType
     anti-aliased lettering and a bilinear terrain upscale (smooth
     hills, ribbon-like roads). Off = raw nearest-neighbour cells, the
-    honest view of the simulation grid."""
+    honest view of the simulation grid.
+
+    `defer_text` PLACES every label but does not draw it, reporting the
+    positions in img.info["label_boxes"] instead. The plotly view scales
+    the raster to the browser window, and lettering baked into the pixels
+    goes to mush when it does; the same view can draw those labels as real
+    text on top. The placement still happens here, because that is where
+    the markers, the plates and the chrome are known."""
     from PIL import Image, ImageDraw
 
     rgb = _base_rgb(world, sim, show_fire, show_value, show_hillshade)
@@ -543,6 +559,128 @@ def render_pil(world, sim=None, scale: int = 8, show_fire: bool = True,
     # Plates are measured from the text, so they scale with it.
     draw.font = _font(max(13, min(20, int(scale * 1.7))))
 
+    # ---- ONE LABEL SYSTEM FOR THE WHOLE MAP -------------------------
+    # Settlement and facility names were de-cluttered against each other
+    # while every other label on the map - sensors, depots, order badges,
+    # the whole-map sensor list - was written wherever its own marker
+    # happened to be. So a town's name ran through a sensor's label and a
+    # depot's name sat on a facility's, and the reader could not tell which
+    # word belonged to which thing. Every text on the map goes through the
+    # same placer now, and every ICON reserves its own box, so a label
+    # never lands on a symbol either.
+    _lbl_boxes = []
+    #: the boxes of the TEXTS actually written, kept so the invariant "no
+    #: two labels overlap" can be measured rather than eyeballed; returned
+    #: on the image itself as img.info["label_boxes"]
+    _text_boxes = []
+    _W_img, _H_img = nx * scale, ny * scale
+
+    def _reserve(box):
+        _lbl_boxes.append([int(box[0]), int(box[1]),
+                           int(box[2]), int(box[3])])
+        return box
+
+    def _overlap(box):
+        """How much of `box` is already taken, in pixels squared."""
+        return sum(max(0, min(box[2], ob[2]) - max(box[0], ob[0]))
+                   * max(0, min(box[3], ob[3]) - max(box[1], ob[1]))
+                   for ob in _lbl_boxes)
+
+    def _place_text(cx, cy, r, text, fill=(255, 255, 255, 255),
+                    plate=(15, 15, 15, 165), force=False, anchor_dx=0):
+        """Write `text` near (cx, cy) where it collides with nothing.
+
+        Eight positions are tried around the marker and each is clamped
+        inside the image. `force` takes the least-crowded position when
+        every side is taken; it is for things the reader cannot recover
+        from the picture (a settlement name), while an ordinary label is
+        given up rather than written across something else.
+        """
+        _t = str(text)
+        if not _t:
+            return None
+        _w_l = _tw(draw, _t) + 8
+        _h_l = _th(draw) + 5
+        # EIGHT SIDES, THEN FURTHER OUT. Trying only the ring against the
+        # marker meant that in a town centre - which is where the depots,
+        # the facilities and the settlement name all are - every candidate
+        # collided and a forced label was written over its neighbour
+        # anyway. Stepping the ring outwards finds clear ground and a
+        # leader is unnecessary: the label is still the nearest one.
+        _best = None
+        for _rad in (r, r + 16, r + 34, r + 56):
+            _cands = [(cx + _rad + 3 + anchor_dx, cy - 6),
+                      (cx - _rad - 3 - _w_l, cy - 6),
+                      (cx - _w_l // 2, cy - _rad - 4 - _h_l),
+                      (cx - _w_l // 2, cy + _rad + 4),
+                      (cx + _rad + 3, cy - _rad - 4 - _h_l),
+                      (cx - _rad - 3 - _w_l, cy - _rad - 4 - _h_l),
+                      (cx + _rad + 3, cy + _rad + 4),
+                      (cx - _rad - 3 - _w_l, cy + _rad + 4)]
+            for _lx, _ly in _cands:
+                _lx = int(min(max(2, _lx), max(2, _W_img - _w_l - 2)))
+                _ly = int(min(max(2, _ly), max(2, _H_img - _h_l - 2)))
+                _bx = [_lx - 2, _ly - 1, _lx + _w_l, _ly + _h_l]
+                _ov = _overlap(_bx)
+                if _best is None or _ov < _best[0]:
+                    _best = (_ov, _lx, _ly, _bx)
+                if _ov == 0:
+                    break
+            if _best is not None and _best[0] == 0:
+                break
+        if _best is None or (_best[0] > 0 and not force):
+            return None
+        _ov, _lx, _ly, _bx = _best
+        if not defer_text:
+            if plate:
+                draw.rounded_rectangle(_bx, radius=3, fill=plate)
+            draw.text((_lx + 2, _ly + 1), _t, fill=fill)
+        _reserve(_bx)
+        _text_boxes.append(dict(box=list(_bx), text=_t, fill=tuple(fill),
+                                plate=tuple(plate) if plate else None))
+        return _bx
+
+    def _place_badge(cx, cy, text, rgba, ink=(10, 10, 10, 255), force=True):
+        """A badge, moved off whatever is already there."""
+        _t = str(text)
+        _w_b = _tw(draw, _t) + 10
+        _h_b = _th(draw) + 6
+        _best = None
+        for _dx, _dy in ((0, 0), (0, -_h_b - 3), (0, _h_b + 3),
+                         (_w_b // 2 + 6, 0), (-_w_b // 2 - 6, 0),
+                         (0, -2 * _h_b - 6), (0, 2 * _h_b + 6)):
+            _x = int(min(max(_w_b // 2 + 2, cx + _dx),
+                         max(_w_b // 2 + 2, _W_img - _w_b // 2 - 2)))
+            _y = int(min(max(_h_b // 2 + 2, cy + _dy),
+                         max(_h_b // 2 + 2, _H_img - _h_b // 2 - 2)))
+            _bx = [_x - _w_b // 2, _y - _h_b // 2,
+                   _x + _w_b // 2, _y + _h_b // 2]
+            _ov = _overlap(_bx)
+            if _best is None or _ov < _best[0]:
+                _best = (_ov, _x, _y, _bx)
+            if _ov == 0:
+                break
+        if _best is None or (_best[0] > 0 and not force):
+            return None
+        _ov, _x, _y, _bx = _best
+        if not defer_text:
+            _badge(draw, _x, _y, _t, rgba, ink)
+        _reserve(_bx)
+        _text_boxes.append(dict(box=list(_bx), text=_t, fill=tuple(ink),
+                                plate=tuple(rgba)))
+        return _bx
+
+    # THE CHROME IS RESERVED FIRST, though it is drawn last. The clock,
+    # the compass, the north arrow and the scale bar always sit in the same
+    # corners, and labels were being written under them and then painted
+    # over: reserving the corners up front moves the label instead.
+    if clock_text:
+        _reserve([6, 6, 10 + _tw(draw, str(clock_text)) + 14, 32])
+    if show_wind:
+        _reserve([_W_img - 100, 0, _W_img - 8, 92])
+    _reserve([8, 12, 46, 76])                       # north arrow
+    _reserve([10, _H_img - 40, 14 + max(1, nx // 6) * scale, _H_img - 8])
+
     # optional cell grid for precise placement (dark, always visible)
     if show_grid:
         gstep = 10 if nx > 80 else 5
@@ -557,7 +695,10 @@ def render_pil(world, sim=None, scale: int = 8, show_fire: bool = True,
     if show_ignitions:
         for ev in world.ignitions:
             cx, cy = ev.x * scale + scale // 2, ev.y * scale + scale // 2
-            draw_ignition(draw, cx, cy, max(4, scale))
+            # BIG ENOUGH TO FIND. The ignition is the one thing a scenario
+            # figure has to show besides the ground itself, and at one cell
+            # across it disappeared among the sensor footprints.
+            draw_ignition(draw, cx, cy, max(7, int(scale * 1.4)))
 
     # asset markers: recognizable icons
     if show_assets:
@@ -565,7 +706,6 @@ def render_pil(world, sim=None, scale: int = 8, show_fire: bool = True,
         # not only labels: checking label against label alone let a name be
         # written straight across a neighbouring facility's icon, which is
         # how a dense town ended up with clipped, unreadable text.
-        _lbl_boxes = []
         # THE PEOPLE MARKER DOES NOT COVER THE TOWN. A settlement carries a
         # population asset on the SAME cell as its building, so the blue
         # disc was drawn straight over the house and every town on the map
@@ -626,8 +766,14 @@ def render_pil(world, sim=None, scale: int = 8, show_fire: bool = True,
             # and only when the label box does not collide with one already
             # drawn: this keeps a dense town from turning into a wall of
             # overlapping text.
+            # WHICH KINDS CARRY A NAME. On a fifteen-town map every civic
+            # facility asked for a label and the picture became a wall of
+            # text; a scenario figure needs the settlements and the exits
+            # named and can leave the rest to the legend. Default: all of
+            # them, as the dashboard has always drawn them.
             if (show_labels and getattr(a, "name", "")
-                    and a.kind != "population"):
+                    and a.kind != "population"
+                    and (label_kinds is None or a.kind in label_kinds)):
                 # PLACE IT SOMEWHERE, DO NOT DROP IT. The label used to be
                 # tried in ONE spot, to the right of the marker, and simply
                 # abandoned when that collided or ran off the frame: in a
@@ -663,43 +809,12 @@ def render_pil(world, sim=None, scale: int = 8, show_fire: bool = True,
                         _nm += f"  {_pop / 1000:.0f}K"
                     elif _pop >= 1.0:
                         _nm += f"  {_pop:.0f}"
-                _w_l = _tw(draw, _nm) + 8
-                _h_l = _th(draw) + 5
-                _W, _H = nx * scale, ny * scale
-                _cands = [(cx + r + 3, cy - 6),           # right
-                          (cx - r - 3 - _w_l, cy - 6),    # left
-                          (cx - _w_l // 2, cy - r - 4 - _h_l),   # above
-                          (cx - _w_l // 2, cy + r + 4),          # below
-                          (cx + r + 3, cy - r - 4 - _h_l),
-                          (cx - r - 3 - _w_l, cy - r - 4 - _h_l),
-                          (cx + r + 3, cy + r + 4),
-                          (cx - r - 3 - _w_l, cy + r + 4)]
                 # A SETTLEMENT IS ALWAYS NAMED. A facility label may be
                 # given up when every side of its marker is taken, but a
                 # town without its name and head count is the one thing the
-                # reader cannot recover from the picture: for those, the
-                # least-crowded position is used rather than none at all.
-                _best = None
-                for _lx, _ly in _cands:
-                    _lx = int(min(max(2, _lx), max(2, _W - _w_l - 2)))
-                    _ly = int(min(max(2, _ly), max(2, _H - _h_l - 2)))
-                    _bx = [_lx - 2, _ly - 1, _lx + _w_l, _ly + _h_l]
-                    _ov = 0
-                    for ob in _lbl_boxes:
-                        _ov += (max(0, min(_bx[2], ob[2]) - max(_bx[0], ob[0]))
-                                * max(0, min(_bx[3], ob[3])
-                                      - max(_bx[1], ob[1])))
-                    if _best is None or _ov < _best[0]:
-                        _best = (_ov, _lx, _ly, _bx)
-                    if _ov == 0:
-                        break
-                if _best is not None and (_best[0] == 0 or _is_town):
-                    _ov, _lx, _ly, _bx = _best
-                    draw.rounded_rectangle(_bx, radius=3,
-                                           fill=(15, 15, 15, 165))
-                    draw.text((_lx + 2, _ly + 1), _nm,
-                              fill=(255, 255, 255, 255))
-                    _lbl_boxes.append(_bx)
+                # reader cannot recover from the picture, so those are
+                # forced into the least-crowded position instead.
+                _place_text(cx, cy, r, _nm, force=_is_town)
 
     # all DSS agent regions: thin borders + small labels. Entries may carry
     # a 6th element (attended flag): the coordinator's attended regions are
@@ -724,6 +839,7 @@ def render_pil(world, sim=None, scale: int = 8, show_fire: bool = True,
                 draw.rectangle([px0, py0, px1, py1],
                                outline=(255, 210, 40, 120), width=2)
                 txt, col = str(lab), (255, 230, 120, 200)
+            _reserve([px0 + 4, py1 - 18, px0 + 10 + _tw(draw, txt), py1 - 2])
             draw.text((px0 + 6, py1 - 16), txt, fill=col)
 
     # selected DSS agent region highlight (translucent fill + border + label)
@@ -737,6 +853,8 @@ def render_pil(world, sim=None, scale: int = 8, show_fire: bool = True,
             draw.rectangle([px0 + 4, py0 + 4,
                             px0 + 10 + 7 * len(str(region_label)), py0 + 22],
                            fill=(0, 0, 0, 160))
+            _reserve([px0 + 4, py0 + 4,
+                      px0 + 10 + 7 * len(str(region_label)), py0 + 22])
             draw.text((px0 + 8, py0 + 8), str(region_label),
                       fill=(255, 230, 120, 255))
 
@@ -766,12 +884,19 @@ def render_pil(world, sim=None, scale: int = 8, show_fire: bool = True,
                              outline=(*col, 230), width=2)
                 draw.line([bx - 10, by + 7, bx + 10, by - 7],
                           fill=(*col, 230), width=2)
-                draw.text((bx - 24, by + 8), str(lab), fill=(*col, 220))
+                _reserve([bx - 10, by - 8, bx + 10, by + 8])
+                _place_text(bx, by, 12, str(lab), fill=(*col, 235),
+                            force=True)
                 continue
             cx, cy = sx_ * scale + scale // 2, sy_ * scale + scale // 2
             rr = int(r_c * scale)
+            # A THIN WASH. Thirteen suggested sensors overlap on a small
+            # map, and at the old alpha their fills stacked until the
+            # terrain underneath went milky - the map lost the land cover
+            # it exists to show. The ring still says where the footprint
+            # ends; the fill only has to hint at the inside.
             draw.ellipse([cx - rr, cy - rr, cx + rr, cy + rr],
-                         fill=(*col, 26), outline=(*col, 170), width=2)
+                         fill=(*col, 12), outline=(*col, 175), width=2)
             if kind == "aerial":                 # drone diamond
                 draw.polygon([(cx - 8, cy), (cx, cy - 5), (cx + 8, cy),
                               (cx, cy + 5)], fill=(*col, 240),
@@ -805,7 +930,8 @@ def render_pil(world, sim=None, scale: int = 8, show_fire: bool = True,
                 draw.rectangle([cx - 5, cy - 5, cx + 5, cy + 5],
                                fill=(*col, 240),
                                outline=(0, 0, 0, 200))
-            draw.text((cx + 9, cy - 6), str(lab), fill=(*col, 235))
+            _reserve([cx - 8, cy - 9, cx + 8, cy + 9])
+            _place_text(cx, cy, 9, str(lab), fill=(*col, 235))
 
     # DSS intervention overlay: every intervention type has its OWN
     # visual so the viewer reads the operation at a glance:
@@ -846,14 +972,16 @@ def render_pil(world, sim=None, scale: int = 8, show_fire: bool = True,
             prot = np.asarray(prot)
             ys_, xs_ = np.where(prot)
             for yy_, xx_ in zip(ys_.tolist(), xs_.tolist()):
-                if (yy_ + xx_) % 2:
+                # one ring per ~4 cells: a full blanket of shields hid
+                # the town it was protecting, labels included
+                if (yy_ * 7 + xx_ * 3) % 4:
                     continue
                 cx = xx_ * scale + scale // 2
                 cy = yy_ * scale + scale // 2
                 draw_protect(draw, cx, cy, max(3, scale // 2))
             _pbx = int(xs_.max()) * scale + scale
             _pby = int(ys_.mean()) * scale + scale // 2
-            _badge(draw, _pbx + 26, _pby, "P protect", (40, 200, 90, 245))
+            _place_badge(_pbx + 26, _pby, "P protect", (40, 200, 90, 245))
         for ro in actions.get("regions", []):
             u = ro["u"]
             if max(u.values()) <= 0.05:
@@ -959,8 +1087,8 @@ def render_pil(world, sim=None, scale: int = 8, show_fire: bool = True,
                     cy = _py * scale + scale // 2
                     _s = max(9, scale + 4)          # scale with the zoom
                     draw_evac(draw, cx, cy, _s)
-                    _badge(draw, cx, cy + _s + 8, "EVAC",
-                           (255, 150, 20, 250))
+                    _place_badge(cx, cy + _s + 8, "EVAC",
+                                 (255, 150, 20, 250))
             # PUBLIC WARNING. A 12 px triangle parked in the region corner
             # was the whole symbol, so the order was technically on screen
             # and unreadable. It is now a labelled plate of its own, still
@@ -974,8 +1102,8 @@ def render_pil(world, sim=None, scale: int = 8, show_fire: bool = True,
                 ty_ = y0_ * scale + 8
                 _t = max(9, scale + 2)
                 draw_warn(draw, tx_, ty_ + _t, _t)
-                _badge(draw, tx_, ty_ + 2 * _t + 12, "W warn",
-                       (255, 225, 40, 250))
+                _place_badge(tx_, ty_ + 2 * _t + 12, "W warn",
+                             (255, 225, 40, 250))
 
     # DSS allocation overlay (D = resource deployment): the STAGED capacity
     # ahead of the front glows a faint violet. Burning / burned cells are
@@ -1025,8 +1153,14 @@ def render_pil(world, sim=None, scale: int = 8, show_fire: bool = True,
                           fill=(0, 0, 0, 230), width=2)
                 draw.line([cx - 3, cy, cx + 3, cy], fill=(0, 0, 0, 230),
                           width=2)
-                draw.text((cx + 9, cy - 6), str(lab),
-                          fill=(150, 230, 255, 230))
+                _reserve([cx - 9, cy - 9, cx + 9, cy + 9])
+                # A BASE IS NAMED WHEREVER IT STANDS. Depots sit in towns,
+                # which is exactly where the map is most crowded, so an
+                # ordinary label would be given up there and the reader
+                # would see an unexplained marker in the middle of the
+                # settlement. Which unit is where drives the response.
+                _place_text(cx, cy, 9, str(lab),
+                            fill=(150, 230, 255, 235), force=True)
             else:
                 draw.rectangle([cx - 5, cy - 2, cx + 5, cy + 6],
                                fill=(60, 200, 120, 240),
@@ -1034,8 +1168,9 @@ def render_pil(world, sim=None, scale: int = 8, show_fire: bool = True,
                 draw.polygon([(cx - 6, cy - 2), (cx, cy - 8),
                               (cx + 6, cy - 2)],
                              fill=(60, 200, 120, 240), outline=(0, 0, 0, 200))
-                draw.text((cx + 8, cy - 6), str(lab),
-                          fill=(150, 255, 190, 230))
+                _reserve([cx - 8, cy - 9, cx + 8, cy + 7])
+                _place_text(cx, cy, 9, str(lab),
+                            fill=(150, 255, 190, 235), force=True)
 
     # clock badge (top left)
     if clock_text:
@@ -1114,6 +1249,11 @@ def render_pil(world, sim=None, scale: int = 8, show_fire: bool = True,
                             px * scale + scale, py * scale + scale],
                            outline=(255, 60, 40, 255), width=max(1, scale // 4))
     # (spread-direction arrows removed: not drawn on the map or the legend)
+    # what was written where, so "no two labels overlap" is a measurement
+    try:
+        img.info["label_boxes"] = list(_text_boxes)
+    except Exception:
+        pass
     return img
 
 
@@ -1268,6 +1408,101 @@ def macro_description(name: str, spec) -> str:
     body = " + ".join(bits) if bits else "no resolved composition"
     return (f"{str(name).replace('_', ' ')} [{macro_tag(name)}] "
             f"— GenAI macro: {body}")
+
+
+def legend_sheet(macros=None, groups=None, cols: int = 2,
+                 px: int = 20, scale: int = 2, title: str | None = None):
+    """The whole key as one picture, drawn by the MAP's own glyph code.
+
+    The legend lived in the page as HTML: readable on screen and impossible
+    to put in a document, so a figure had to be captioned by hand and the
+    hand-written version drifted from what the map drew. This renders every
+    entry with legend_icon_png - the same functions the renderer uses - so
+    the sheet cannot claim a symbol the map does not draw.
+
+    `groups` selects and orders the sections; None takes all of them, which
+    is what "complete" means here. `scale` supersamples the whole sheet for
+    print.
+    """
+    from PIL import Image, ImageDraw
+    import io
+    _all = legend_entries(macros)
+    _order = list(groups) if groups else []
+    for grp, _l, _c, _g in _all:
+        if grp not in _order:
+            _order.append(grp)
+    _pad, _lh, _hh = 12, px + 8, px + 14
+    _fw = max(7, int(px * 0.62))                  # rough glyph width
+    _wrap = 58
+
+    def _lines(text):
+        """NOTHING IS CUT OFF. Long entries used to end in an ellipsis, so
+        the sheet stopped saying what half its own symbols meant."""
+        out, cur = [], ""
+        for word in str(text).split():
+            if cur and len(cur) + 1 + len(word) > _wrap:
+                out.append(cur)
+                cur = word
+            else:
+                cur = f"{cur} {word}".strip()
+        if cur:
+            out.append(cur)
+        return out or [""]
+
+    rows = {g: [(_lines(l), c, k) for gg, l, c, k in _all if gg == g]
+            for g in _order}
+    rows = {g: r for g, r in rows.items() if r}
+
+    # column heights: sections are kept whole, so a group never straddles
+    _blocks = [(g, sum(len(t) for t, _c, _k in rows[g]))
+               for g in rows]
+    _total = sum(_hh + n * _lh + _pad for g, n in _blocks)
+    _target = _total / max(1, int(cols))
+    _colsets, _cur, _h = [], [], 0
+    for g, n in _blocks:
+        _bh = _hh + n * _lh + _pad
+        if _cur and _h + _bh > _target and len(_colsets) < int(cols) - 1:
+            _colsets.append(_cur)
+            _cur, _h = [], 0
+        _cur.append(g)
+        _h += _bh
+    if _cur:
+        _colsets.append(_cur)
+
+    _colw = _pad * 2 + px + 10 + _fw * _wrap
+    _heights = [sum(_hh + sum(len(t) for t, _c, _k in rows[g]) * _lh + _pad
+                    for g in cs) for cs in _colsets]
+    _W = _colw * len(_colsets)
+    _H = int(max(_heights) + _pad * 2 + (_hh if title else 0))
+    img = Image.new("RGB", (_W, _H), (255, 255, 255))
+    d = ImageDraw.Draw(img)
+    d.font = _font(px - 4)
+    _y0 = _pad
+    if title:
+        d.text((_pad, _pad), str(title), fill=(10, 10, 10))
+        _y0 += _hh
+    for ci, cs in enumerate(_colsets):
+        x = ci * _colw + _pad
+        y = _y0
+        for g in cs:
+            d.text((x, y), str(g).upper(), fill=(10, 10, 10))
+            d.line([x, y + px + 2, x + _colw - 2 * _pad, y + px + 2],
+                   fill=(150, 150, 150))
+            y += _hh
+            for _txt, hexc, glyph in rows[g]:
+                h = str(hexc).lstrip("#")
+                rgb = tuple(int(h[k:k + 2], 16) for k in (0, 2, 4))
+                ic = Image.open(io.BytesIO(legend_icon_png(glyph, rgb,
+                                                           px=px)))
+                img.paste(ic, (x, y + 2), ic)
+                for _i, _ln in enumerate(_txt):
+                    d.text((x + px + 8, y + 3), _ln, fill=(25, 25, 25))
+                    y += _lh
+            y += _pad
+    if int(scale) > 1:
+        img = img.resize((img.width * int(scale), img.height * int(scale)),
+                         Image.LANCZOS)
+    return img
 
 
 def legend_entries(macros=None):
@@ -1521,7 +1756,10 @@ def fire_surface_figure(world, sim=None, max_cells: int = 150,
     # the one asset table the 2D map and the legend read, so a facility is
     # the same red and a settlement the same brown in every view instead of
     # turning white in this one.
-    sym = {"building": "square", "critical": "x",
+    # plotly's 3D marker set has no exclamation plate; "x" was read as a
+    # deletion mark rather than as a facility, so the upright cross is used
+    # - the shape a hospital or a utility is drawn with everywhere else.
+    sym = {"building": "square", "critical": "cross",
            "population": "circle", "evac_route": "diamond"}
     col = {k: "rgb({}, {}, {})".format(*v["color"])
            for k, v in _ASSET_STYLE.items()}
@@ -1530,12 +1768,34 @@ def fire_surface_figure(world, sim=None, max_cells: int = 150,
             pts = [a for a in world.assets if a.kind == kind]
             if not pts:
                 continue
+            # ONLY THE SETTLEMENTS ARE LABELLED. Plotly writes 3D text
+            # wherever the point lands and has no de-cluttering, so a town
+            # holding six facilities came out as six names stacked on top
+            # of each other and on the town's own. The names that are not
+            # drawn are still one hover away, and the settlement label
+            # carries the head count, as it does on the 2D map.
+            _lab = []
+            for a in pts:
+                _g = str(getattr(a, "group", "") or "")
+                if kind == "building" and _g:
+                    _p = sum(float(getattr(b, "population", 0.0) or 0.0)
+                             for b in world.assets
+                             if getattr(b, "kind", "") == "population"
+                             and str(getattr(b, "group", "")) == _g)
+                    _lab.append(f"{_g}  {_p / 1000:.0f}K" if _p >= 1000
+                                else (f"{_g}  {_p:.0f}" if _p >= 1 else _g))
+                elif kind == "evac_route":
+                    _lab.append(str(a.name))
+                else:
+                    _lab.append("")
             data.append(go.Scatter3d(
                 x=[a.x for a in pts], y=[a.y for a in pts],
                 z=[zfull[int(np.clip(a.y, 0, ny - 1)), int(np.clip(a.x, 0, nx - 1))]
                    + 0.6 for a in pts],
-                mode="markers+text", text=[a.name for a in pts],
-                textposition="top center", textfont=dict(size=9, color="white"),
+                mode="markers+text", text=_lab,
+                hovertext=[str(a.name) for a in pts],
+                textposition="top center", textfont=dict(size=11,
+                                                         color="white"),
                 marker=dict(size=6, symbol=sym[kind], color=col[kind],
                             line=dict(width=1, color="black")),
                 name=kind, hoverinfo="text"))
@@ -1838,8 +2098,17 @@ def map_figure_2d(world, sim=None, scale: int = 6, hover: bool = True,
     actions = flags.get("actions")
     alloc = flags.get("alloc")
     regions = flags.get("regions")
-    pil = render_pil(world, sim=sim, scale=scale, show_labels=False,
-                     **flags)
+    # THE LETTERING IS TEXT, NOT PIXELS, and it is placed by the RENDERER.
+    # This view hands the raster to the browser, which scales it: lettering
+    # baked into the image is resampled with it and turns to mush. But the
+    # placement has to happen where the markers, the plates and the chrome
+    # are known, or the labels come out clear and on top of the symbols.
+    # render_pil places every label - settlements, facilities, sensors,
+    # depots, order badges - and reports where each one goes; they are
+    # drawn here as annotations, razor sharp at any zoom.
+    pil = render_pil(world, sim=sim, scale=scale, show_labels=True,
+                     defer_text=True, **flags)
+    _labels = list((pil.info or {}).get("label_boxes") or [])
     arr = np.asarray(pil)
     # map the raster onto GRID CELL coordinates (dx = dy = 1/scale) so the
     # axes and the hover read the same x,y the user types when placing a
@@ -1872,91 +2141,26 @@ def map_figure_2d(world, sim=None, scale: int = 6, hover: bool = True,
     # IMPORTANT: no explicit axis ranges. With a constant uirevision the
     # user's zoom/pan survives every step; re-setting ranges on every
     # rebuild would fight the preserved UI state and snap the view back.
-    # VECTOR LABELS. Lettering baked into the raster can never be
-    # glass on a scaled canvas; SVG annotations ARE text: razor sharp
-    # at every zoom and always the same on-screen size. Same content
-    # the raster labels carried (name + head count on settlements).
-    try:
-        _assets = list(getattr(world, "assets", None) or [])[:60]
-        _built = {(int(a.x), int(a.y)) for a in _assets
-                  if getattr(a, "kind", "") == "building"}
-        # DE-CLUTTER, the same discipline the raster labels had: a
-        # label claims a box, the next label may not intersect a
-        # claimed box, and each label tries eight positions around
-        # its asset before giving up. Sizes are estimated in CELL
-        # units from the on-screen geometry (560 px tall figure).
-        _ppc = max(560.0 / max(world.config.ny, 1), 1e-6)
-        _ny_c, _nx_c = world.config.ny, world.config.nx
-        _placed = []
+    # VECTOR LABELS, at the positions the renderer worked out. Deriving
+    # them a second time here would mean a second de-clutter that knows
+    # about the assets only: sensor names, depot names and order badges
+    # live in the raster pass, and a label placed here in ignorance of
+    # them lands on top of them.
+    for _l in _labels:
+        _b = _l.get("box") or [0, 0, 0, 0]
+        _fx = tuple(int(v) for v in (_l.get("fill") or (255, 255, 255, 255)))
+        _pl = _l.get("plate")
+        fig.add_annotation(
+            x=(_b[0] + 2) / _sc, y=(_b[1] + _b[3]) / (2.0 * _sc),
+            text=str(_l.get("text", "")), showarrow=False,
+            xanchor="left", yanchor="middle",
+            font=dict(size=13, family="Helvetica, Arial, sans-serif",
+                      color=f"rgb({_fx[0]},{_fx[1]},{_fx[2]})"),
+            bgcolor=(f"rgba({_pl[0]},{_pl[1]},{_pl[2]},"
+                     f"{(_pl[3] if len(_pl) > 3 else 255) / 255:.2f})"
+                     if _pl else "rgba(15,15,15,0.72)"),
+            borderpad=3)
 
-        def _clash(bx):
-            if bx[0] < 0 or bx[1] < 0 or bx[2] > _nx_c or bx[3] > _ny_c:
-                return True
-            return any(not (bx[2] < ob[0] or bx[0] > ob[2]
-                            or bx[3] < ob[1] or bx[1] > ob[3])
-                       for ob in _placed)
-
-        # towns first (their labels matter most and are the longest),
-        # then critical facilities, then the rest
-        _order = {"building": 0, "critical": 1}
-        _assets_srt = sorted(
-            [a for a in _assets if getattr(a, "name", "")],
-            key=lambda a: _order.get(getattr(a, "kind", ""), 2))
-        for a in _assets_srt:
-            _k = getattr(a, "kind", "")
-            _nm = str(getattr(a, "name", "") or "")
-            if _k == "population" and (int(a.x), int(a.y)) in _built:
-                continue
-            if _k == "building":
-                _pop = 0.0
-                for b in _assets:
-                    if (getattr(b, "kind", "") == "population"
-                            and abs(b.x - a.x) <= 1
-                            and abs(b.y - a.y) <= 1):
-                        _pop = max(_pop, float(getattr(
-                            b, "population", 0.0)))
-                if _pop >= 1000:
-                    _nm += f"  {_pop / 1000:.0f}k"
-                elif _pop >= 1.0:
-                    _nm += f"  {_pop:.0f}"
-            _wc = (6.9 * len(_nm) + 10) / _ppc      # label box, cells
-            _hc = 21.0 / _ppc
-            _ax, _ay = float(a.x) + 0.5, float(a.y) + 0.5
-            # (x, y, xanchor) candidates: right, left, above, below,
-            # the four diagonals, then a WIDER second ring so a dense
-            # town still finds room instead of dropping its names
-            _cand = []
-            for _d in (1.0, 2.4):
-                _cand += [
-                    (_ax + _d, _ay, "left"),
-                    (_ax - _d, _ay, "right"),
-                    (_ax - _wc / 2, _ay - _d - _hc / 2, "left"),
-                    (_ax - _wc / 2, _ay + _d + _hc / 2, "left"),
-                    (_ax + _d, _ay - _hc, "left"),
-                    (_ax + _d, _ay + _hc, "left"),
-                    (_ax - _d, _ay - _hc, "right"),
-                    (_ax - _d, _ay + _hc, "right"),
-                ]
-            for _cx2, _cy2, _anch in _cand:
-                _bx = ([_cx2, _cy2 - _hc / 2, _cx2 + _wc,
-                        _cy2 + _hc / 2] if _anch == "left" else
-                       [_cx2 - _wc, _cy2 - _hc / 2, _cx2,
-                        _cy2 + _hc / 2])
-                if _clash(_bx):
-                    continue
-                fig.add_annotation(
-                    x=_cx2, y=_cy2, text=_nm, showarrow=False,
-                    xanchor=_anch, yanchor="middle",
-                    font=dict(size=13, color="white"),
-                    bgcolor="rgba(15,15,15,0.72)", borderpad=3)
-                _placed.append(_bx)
-                break
-            # no free spot: the label is dropped, a pile of
-            # overprinted names says less than a missing one
-            if len(_placed) >= 25:
-                break
-    except Exception:
-        pass
     fig.update_xaxes(visible=False, constrain="domain", uirevision=uirev)
     fig.update_yaxes(visible=False, autorange="reversed",
                      scaleanchor="x", scaleratio=1, uirevision=uirev)

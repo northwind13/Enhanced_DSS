@@ -1,0 +1,12 @@
+﻿quantity;value
+cycles;1
+satisficing_failed;1
+tried;1
+accepted;1
+rejected;0
+withheld;1
+persist_failed;0
+dJ_accepted;-0.000158
+stage3_tried;1
+stage3_accepted;1
+gate: admitted (improves G3 + G4);1

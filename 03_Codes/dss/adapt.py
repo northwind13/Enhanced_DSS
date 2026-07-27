@@ -97,6 +97,28 @@ CVA_CALLS: int = 0
 GENAI_CALLS: int = 0
 
 
+def _ov_fingerprint(ov):
+    """What makes two resource overrides the same order.
+
+    Every array the physics reads is hashed, so a cache hit means the
+    shadow run would have been handed identical inputs; anything the
+    forecast could see and this does not cover would be a silent wrong
+    answer, which is why it walks the object rather than naming fields.
+    """
+    if ov is None:
+        return "none"
+    import hashlib
+    h = hashlib.md5()
+    for name in sorted(vars(ov)) if hasattr(ov, "__dict__") else ():
+        val = getattr(ov, name, None)
+        if isinstance(val, np.ndarray):
+            h.update(name.encode())
+            h.update(np.ascontiguousarray(val, dtype=np.float64).tobytes())
+        elif isinstance(val, (int, float, bool)):
+            h.update(f"{name}={val!r}".encode())
+    return h.hexdigest()
+
+
 def _cva(build_override, sim, rules, horizon, reseed=None):
     """Adaptation trials are judged on the PHYSICAL cost (burned area,
     assets, population) at a >= 45 min basis, exactly like the no-harm
@@ -112,9 +134,29 @@ def _cva(build_override, sim, rules, horizon, reseed=None):
         if hmin is not None else TRIAL_BASIS_MIN
     global CVA_CALLS
     CVA_CALLS += 1
-    rep = forecast_cost(sim, build_override(rules), horizon,
-                        reseed=reseed, horizon_min=hmin)
-    p_c = physical_cost(rep, sim.cfg.cost)
+    _ov = build_override(rules)
+    # THE SAME QUESTION IS NOT ASKED TWICE. A shadow forecast is a function
+    # of (this simulator state, this override, this basis): the clone
+    # carries the RNG state, so two runs from the same step with the same
+    # override return the same number by construction. Measured on the
+    # reference run, 41% of the trial forecasts were repeats - a tuning
+    # whose consequent change does not survive defuzzification and the
+    # capacity clamp produces the identical resource field, and the stage
+    # paid a full 45-minute shadow run to be told so again. The cache is
+    # per STEP, so nothing is carried across a moving fire.
+    _key = (_ov_fingerprint(_ov), round(hmin, 1), reseed, int(horizon))
+    _step = int(getattr(sim.state, "step", -1))
+    if getattr(sim, "_dss_cva_step", None) != _step:
+        sim._dss_cva = {}
+        sim._dss_cva_step = _step
+    _hit = sim._dss_cva.get(_key)
+    if _hit is not None:
+        p_c = _hit
+    else:
+        rep = forecast_cost(sim, _ov, horizon,
+                            reseed=reseed, horizon_min=hmin)
+        p_c = physical_cost(rep, sim.cfg.cost)
+        sim._dss_cva[_key] = float(p_c)
     # the no-action physical baseline is constant within a decision
     # step: cache it per (basis, reseed)
     key = (round(hmin, 1), reseed)

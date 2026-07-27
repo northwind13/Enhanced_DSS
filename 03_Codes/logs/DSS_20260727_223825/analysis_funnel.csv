@@ -1,0 +1,12 @@
+﻿quantity;value
+cycles;1
+satisficing_failed;1
+tried;2
+accepted;1
+rejected;1
+withheld;0
+persist_failed;0
+dJ_accepted;0.000115
+stage1_tried;2
+stage1_accepted;1
+rejected: no improving perturbation found;1

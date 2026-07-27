@@ -287,7 +287,7 @@ class CostParams:
     # Against the whole map a 600-cell forest fire scored ~0.06 while a
     # committed response cost 0.2*j_resp — the optimizer read "letting
     # the forest burn is cheaper than fighting it", which is wrong.
-    burn_reference_fraction: float = 0.05
+    burn_reference_fraction: float = 0.50
     w_burn: float = 1.0     # burned area (land and ecological loss)
     w_asset: float = 1.0    # asset loss (structures + critical infrastructure)
     w_pop: float = 1.0      # population exposure (life safety)

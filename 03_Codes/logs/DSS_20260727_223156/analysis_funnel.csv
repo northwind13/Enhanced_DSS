@@ -1,0 +1,27 @@
+﻿quantity;value
+cycles;33
+satisficing_failed;33
+tried;13
+accepted;2
+rejected;11
+withheld;1
+persist_failed;0
+dJ_accepted;0.000384
+stage1_tried;2
+stage1_accepted;0
+stage2_tried;3
+stage2_accepted;0
+stage3_tried;8
+stage3_accepted;2
+blocked: cooldown between adaptation trials;20
+gate: rejected at G3 (no improvement);2
+gate: admitted (improves G3 + G4);1
+gate: rejected at G5 (package margin);1
+gate: model timeout;3
+gate: admitted (package, G5 margin cleared);1
+rejected: rejected at G3 (claude);2
+rejected: instantiated cell did not improve the physical forecast (0.014 vs 0.014, burn+asset+pop at >=45 min);1
+rejected: no improving perturbation found;2
+rejected: refined cell already covered;2
+rejected: rejected at G5 package margin (claude);1
+rejected: the wait budget of 90 s for this attempt ran out during revision 3;3

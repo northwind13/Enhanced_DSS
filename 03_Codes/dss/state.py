@@ -33,6 +33,31 @@ import json
 import os
 from typing import Any, Dict, List
 
+def isolated_store_path(tag: str = "run") -> str:
+    """A generated-knowledge store belonging to ONE run.
+
+    The store is the DSS's memory: evFIS modifications, generated rules,
+    concepts, interventions and the stage controller's value table, and in
+    the field that persistence is the point. In an EXPERIMENT it is a
+    confound. Every campaign script here shared the default file, so the
+    arms of a comparison were not independent - a run inherited whatever
+    the previous run had learned. Measured on one scenario: with the shared
+    store the adaptation accepted 3 modifications and the physical cost
+    came out 0.0952; with a fresh store, 0 accepted and 0.0152, on
+    identical inputs.
+
+    Set DISASTERAWARE_SHARED_STORE=1 to opt out and use the field store,
+    which is what you want when you deliberately study carry-over.
+    """
+    import os
+    import tempfile
+    if os.environ.get("DISASTERAWARE_SHARED_STORE", "").strip() in ("1",
+                                                                   "true"):
+        return "logs/dss_generated_state.json"
+    d = tempfile.mkdtemp(prefix=f"dss_{tag}_")
+    return os.path.join(d, "state.json")
+
+
 SCHEMA_VERSION = "1.0"
 
 SECTIONS = ("evfis_rule_modifications", "genai_rules",

@@ -326,7 +326,7 @@ def start_async(run_dir: str, evidence: str,
     def _work():
         try:
             rep, recs = run_rca(evidence, model=model)
-            save_rca(run_dir, rep, recs)
+            save_rca(run_dir, rep, recs, model=job["model"])
             job.update(state="done", report=rep, recs=recs,
                        finished_at=_t.time())
         except Exception as exc:
@@ -364,11 +364,26 @@ def elapsed_s(run_dir: str) -> float:
     return float((job.get("finished_at") or _t.time()) - t0)
 
 
-def save_rca(run_dir: str, report: str, recs: dict) -> None:
+def save_rca(run_dir: str, report: str, recs: dict,
+             model: str | None = None) -> None:
     with open(os.path.join(run_dir, "root_cause_analysis.md"), "w",
               encoding="utf-8") as f:
         f.write(report + "\n\n### JSON\n"
                 + json.dumps(recs, indent=1, ensure_ascii=False))
+    # REPRODUCIBILITY: the review is a model output, so the exact
+    # model identity belongs next to it (the thesis campaign reports
+    # "all reviews by model X"; without this file that claim is
+    # unverifiable after the fact).
+    try:
+        import time as _t
+        with open(os.path.join(run_dir, "rca_meta.json"), "w",
+                  encoding="utf-8") as f:
+            json.dump({"model": model
+                       or os.environ.get("DSS_RCA_MODEL", "opus"),
+                       "saved_at": _t.strftime("%Y-%m-%dT%H:%M:%S")},
+                      f, indent=1)
+    except OSError:
+        pass
 
 
 # --------------------------------------------------------------- apply
@@ -467,14 +482,22 @@ def _placement_error(x: int, y: int, sim) -> str | None:
     return None
 
 
-def apply_recommendations(recs: dict, engine=None, sim=None):
+def apply_recommendations(recs: dict, engine=None, sim=None,
+                          run_dir: str | None = None):
     """Feed the review back into the system.
 
     Returns (applied, skipped, session_updates, sensors, depots):
     vocabulary and rules go through the SAME validators as live
     stage-3 output and land in the persistent store marked as
     post-incident knowledge; settings come back as session updates
-    for the panel; sensor/depot advice comes back as staged rows."""
+    for the panel; sensor/depot advice comes back as staged rows.
+
+    With run_dir set, the call additionally writes the RECOMMENDATION
+    FUNNEL (rca_funnel.json: proposed / guard-refused / applied per
+    type, with every refusal reason) and appends refusals to
+    rca_slips.log. A refused recommendation is EVIDENCE, not noise:
+    the guards are part of the measured system, and the funnel is
+    what Table 5.20 of the thesis reads."""
     from .adapt import (_g1_g2, _validate_package, _install_package,
                         _uninstall_package, _next_rule_name,
                         _availability)
@@ -608,7 +631,54 @@ def apply_recommendations(recs: dict, engine=None, sim=None):
             applied.append(f"{t} -> rule {name} ({why})")
         else:
             skipped.append(f"unknown recommendation type {t!r}")
+    if run_dir:
+        _write_funnel(run_dir, recs, applied, skipped)
     return applied, skipped, session, sensors, depots
+
+
+def _write_funnel(run_dir: str, recs: dict,
+                  applied: List[str], skipped: List[str]) -> None:
+    """Persist the per-type funnel and the refusal ('model slip') log."""
+    _CANON = {"rule_update": "tune_rule", "modify_rule": "tune_rule"}
+    prop: Dict[str, int] = {}
+    for rec in (recs or {}).get("recommendations", []):
+        t = _CANON.get(str(rec.get("type", "?")), str(rec.get("type", "?")))
+        prop[t] = prop.get(t, 0) + 1
+
+    def _bucket(lines):
+        out: Dict[str, int] = {}
+        for ln in lines:
+            t = _CANON.get(ln.split(" ", 1)[0], ln.split(" ", 1)[0])
+            out[t] = out.get(t, 0) + 1
+        return out
+
+    funnel = {"proposed": prop, "applied": _bucket(applied),
+              "refused": _bucket(skipped), "refusal_reasons": skipped}
+    try:
+        path = os.path.join(run_dir, "rca_funnel.json")
+        prev = {}
+        try:
+            prev = json.load(open(path, encoding="utf-8"))
+        except Exception:
+            prev = {}
+        for k in ("proposed", "applied", "refused"):
+            base = prev.get(k, {})
+            for t, n in funnel[k].items():
+                base[t] = base.get(t, 0) + n
+            funnel[k] = base
+        funnel["refusal_reasons"] = (prev.get("refusal_reasons", [])
+                                     + skipped)
+        with open(path, "w", encoding="utf-8") as f:
+            json.dump(funnel, f, indent=1, ensure_ascii=False)
+        if skipped:
+            import time as _t
+            with open(os.path.join(run_dir, "rca_slips.log"), "a",
+                      encoding="utf-8") as f:
+                stamp = _t.strftime("%Y-%m-%dT%H:%M:%S")
+                for ln in skipped:
+                    f.write(f"{stamp} MODEL-SLIP {ln}\n")
+    except OSError:
+        pass
 
 
 def _rec_to_prop(rec: dict, t: str) -> dict:

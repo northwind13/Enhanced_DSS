@@ -83,7 +83,11 @@ def run_arm(arm: str, seed: int, episodes: int, max_steps: int = 150):
     eng = dss.DecisionEngine(
         dss.partition_n(w.config.nx, w.config.ny, 1), base_pool=base,
         cycle_min=8.0, horizon_min=15.0, adapt_on=adapt,
-        genai_on=adapt, evfis_on=adapt, seed_profile=profile)
+        genai_on=adapt, evfis_on=adapt, seed_profile=profile,
+        # the point of this experiment is how a rule base GROWS, so it has
+        # to start from the seed profile and not from what an earlier run
+        # left in the field store (dss.isolated_store_path)
+        state_path=dss.isolated_store_path("rule_growth"))
     eng.adapt_cooldown_min = 8.0
     spots = ignition_spots(w, episodes, seed)
     rows = []

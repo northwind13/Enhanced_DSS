@@ -1,0 +1,3 @@
+target,campaign_props,campaign_best,campaign_cos,live_props,live_best,live_cos,rediscovered
+macro_backburn,1,town_shield,0.57,7,downwind_backburn,0.98,yes (live)
+concept_ember_exposure,0,-,0.0,1,interface_exposure,0.0,no (a different gap was named)

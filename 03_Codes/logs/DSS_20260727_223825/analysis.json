@@ -1,0 +1,60 @@
+{
+ "start_step": 2,
+ "seq0": 222,
+ "cycles": 1,
+ "satisficing_failed": 1,
+ "tried": 2,
+ "accepted": 1,
+ "rejected": 1,
+ "blocked": {},
+ "per_stage": {
+  "1": {
+   "tried": 2,
+   "accepted": 1,
+   "dJ": 0.00011480910901170982
+  }
+ },
+ "gates": {},
+ "reasons": {
+  "no improving perturbation found": 1
+ },
+ "withheld": 0,
+ "dJ_accepted": 0.00011480910901170982,
+ "j_series": [
+  [
+   2,
+   0.05841579166130668,
+   0.053539249057622154,
+   0.05246846407646971
+  ]
+ ],
+ "phys_series": [
+  [
+   2,
+   0.06079262470765016,
+   0.4624133673100724
+  ],
+  [
+   2,
+   0.060797826933925526,
+   0.06067781559863845
+  ]
+ ],
+ "persist_failed": 0,
+ "cooldown_refunds": 0,
+ "stage2_prefiltered": 0,
+ "stage_controller": {
+  "low|3": -0.0002,
+  "high+gap|2": -0.0011097483149569783,
+  "high|3": -1.8799656043428683e-06,
+  "high+gap|3": -0.0016813522954236767,
+  "high+gap|1": -0.0006312994710358271,
+  "low|2": 6.842151856589763e-07,
+  "mid+gap|3": -0.0002,
+  "high|2": -0.0002,
+  "low|1": -0.0002
+ },
+ "config_id": "DSS1-EV1-GA0-U12:1-U3:1",
+ "seed_profile": "minimal",
+ "persist_errors": []
+}

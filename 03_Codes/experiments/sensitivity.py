@@ -111,6 +111,9 @@ def run_once(seed: int, overrides: dict, max_steps: int = 150):
         j_threshold=p["j_threshold"], eta=p["eta"],
         attention_thr=p["attention_thr"],
         cycle_min=p["cycle_min"], horizon_min=p["horizon_min"],
+        # a sensitivity sweep varies ONE parameter at a time; a shared
+        # store would vary the memory too (dss.isolated_store_path)
+        state_path=dss.isolated_store_path("sensitivity"),
         adapt_on=False)
     for g in eng.gaters.values():
         g.rho = float(p["rho"])

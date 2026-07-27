@@ -1465,7 +1465,13 @@ def test_every_intervention_channel_reaches_the_physics():
 
     # capacity-limited regime: staging and the water shuttle only matter
     # when capacity is what the suppression is short of
-    hard = dict(wind=16.0, pool=0.25, steps=22)
+    # CAPACITY-LIMITED, NOT HOPELESS. At a quarter of the pool the attack
+    # on this scenario is beyond saving - measured, 1896 cells burn with
+    # the water shuttle and 1897 without, i.e. nothing to sustain - so the
+    # regime that shows the mechanism is the one where the crews can still
+    # act and are short of water: a third of the pool (1896 -> 1885), and
+    # a half at a lower wind (1958 -> 1920).
+    hard = dict(wind=16.0, pool=0.35, steps=22)
     b0 = _wui_run({"suppression_effort": 0.5}, **hard)
     b1 = _wui_run({"suppression_effort": 0.5, "resource_deployment": 1.0},
                   **hard)
@@ -3220,19 +3226,72 @@ def test_farmland_can_be_switched_off_without_changing_anything_else():
     assert len(_seen) >= 2, f"the map draws {len(_seen)} field colour(s)"
     # a flat map really does carry a mosaic: measured, 1039 field cells in
     # all five colours on a 200x140 rolling-hills world
-    _flat = terrain.generate_landscape(
-        SimConfig(nx=200, ny=140, cell_size_m=30.0), seed=5, relief_m=140.0,
-        forest_density=0.30, base_moisture=0.06, water_level=0.04,
-        n_settlements=4, population_per_settlement=40000,
-        building_scale=0.9, with_assets=True, with_roads=True,
-        accessibility=1.0)
+    # HOW MUCH FARMING, NOT WHETHER. The class used to be a switch, so a
+    # map was either a worked countryside or a wildland with nothing in
+    # between. The density moves how often a workable block is sown and how
+    # far from the town the fields reach, and it has to be monotone or the
+    # slider means nothing.
+    def _flat_map(fd):
+        return terrain.generate_landscape(
+            SimConfig(nx=200, ny=140, cell_size_m=30.0), seed=5,
+            relief_m=140.0, forest_density=0.30, base_moisture=0.06,
+            water_level=0.04, n_settlements=4,
+            population_per_settlement=40000, building_scale=0.9,
+            farmland=fd, with_assets=True, with_roads=True,
+            accessibility=1.0)
+
+    _counts = [int(_fields(_flat_map(d))[0].sum())
+               for d in (0.0, 0.5, 1.0, 2.0)]
+    assert _counts[0] == 0, f"density 0 still sowed {_counts[0]} cells"
+    assert all(b > a for a, b in zip(_counts[:-1], _counts[1:])), _counts
+    assert _counts[2] > 3 * _counts[1],         f"the slider barely moves: {_counts}"
+    # and the old boolean still means what it meant
+    assert int(_fields(_flat_map(True))[0].sum()) == _counts[2]
+    assert int(_fields(_flat_map(False))[0].sum()) == 0
+    app = open('app/streamlit_app.py', encoding='utf-8').read()
+    assert '"Farmland density (0 = none)"' in app
+    assert "farmland=float(farmv)" in app
+
+    _flat = _flat_map(1.0)
     _c2, _i2 = _fields(_flat)
+
+    # NOBODY FARMS A FOREST, AND EVERY FIELD IS REACHED FROM A ROAD. The
+    # workable mask used to be every vegetated type and the parcels were
+    # cut straight out of pine and hardwood stands; and they were sown
+    # before the road network existed, so they floated wherever the ground
+    # was flat with no way in. An aerial photograph of farmland is a mosaic
+    # along the tracks, on the open ground, with the woods left standing.
+    from collections import deque
+    _bare = _flat_map(0.0)                 # the same map without fields
+    _prev = np.asarray(_bare.fuel.ftype)[_c2]
+    _forest = {FUEL_NAME_TO_ID["pine_litter"], FUEL_NAME_TO_ID["hardwood"]}
+    assert not (set(np.unique(_prev).tolist()) & _forest),         "fields were cut out of forest"
+
+    _rd = np.asarray(_flat.roads, dtype=bool)
+    assert _rd.any()
+    _d = np.full(_rd.shape, 1 << 20, dtype=int)
+    _dq = deque()
+    for _y, _x in zip(*np.where(_rd)):
+        _d[_y, _x] = 0
+        _dq.append((_y, _x))
+    _ny, _nx = _rd.shape
+    while _dq:
+        _y, _x = _dq.popleft()
+        for _dy, _dx in ((-1, 0), (1, 0), (0, -1), (0, 1)):
+            _yy, _xx = _y + _dy, _x + _dx
+            if (0 <= _yy < _ny and 0 <= _xx < _nx
+                    and _d[_yy, _xx] > _d[_y, _x] + 1):
+                _d[_yy, _xx] = _d[_y, _x] + 1
+                _dq.append((_yy, _xx))
+    _open = np.isin(np.asarray(_bare.fuel.ftype),
+                    [FUEL_NAME_TO_ID["grass"], FUEL_NAME_TO_ID["shrub"]])
+    assert float(_d[_c2].mean()) < 0.5 * float(_d[_open].mean()),         f"fields sit {_d[_c2].mean():.1f} cells from a road against "        f"{_d[_open].mean():.1f} for open ground generally"
+    assert int(_d[_c2].max()) <= 20
     assert _c2.sum() >= 400, f"{int(_c2.sum())} field cells on flat ground"
     assert int((np.bincount(_i2[_c2],
                             minlength=len(CROP_FUEL_LOADS)) > 0).sum()) >= 4
 
-    src = open('app/streamlit_app.py', encoding='utf-8').read()
-    assert "Farmland around settlements" in src
+    # the control is a DENSITY now, and it is checked above
 
 
 def test_resizing_a_map_changes_its_resolution_not_its_geography():
@@ -3774,7 +3833,9 @@ def test_settlements_are_named_with_their_size_and_facilities_are_scarce():
     # says neither "centre" nor a lowercase k any more
     src = open('disaster_phyengine/viz.py', encoding='utf-8').read()
     assert '_nm += f"  {_pop / 1000:.0f}K"' in src
-    assert "_best is not None and (_best[0] == 0 or _is_town)" in src
+    # a settlement label is forced into the least-crowded spot rather than
+    # dropped; every other label goes through the same placer
+    assert "_place_text(cx, cy, r, _nm, force=_is_town)" in src
 
     # ---- and the names are the short sentence-case ones
     from disaster_phyengine import scenarios
@@ -3839,3 +3900,418 @@ def test_the_interface_speaks_one_language_and_does_not_invent_agents():
     _tr = [t for t in _tr
            if "kiyisi" not in t and "Akman" not in t]
     assert not _tr, f"Turkish left in the interface: {_tr[:4]}"
+
+
+def test_no_two_labels_on_the_map_are_written_over_each_other():
+    """One placer for every text the map draws, not just the asset names.
+
+    Settlement and facility names were de-cluttered against each other
+    while sensors, depots, the whole-map sensor list and the order badges
+    were each written wherever their own marker happened to be. So a town's
+    name ran through a sensor's label and a depot's name sat on a
+    facility's, and the reader could not tell which word belonged to what.
+    """
+    import numpy as np
+    import dss
+    from disaster_phyengine import terrain, viz
+    from disaster_phyengine.config import SimConfig
+    from disaster_phyengine.core import Simulator
+
+    cfg = SimConfig(nx=160, ny=110, cell_size_m=30.0)
+    w = terrain.generate_landscape(
+        cfg, seed=7, relief_m=380.0, forest_density=0.45, base_moisture=0.08,
+        water_level=0.05, n_settlements=5, population_per_settlement=45000,
+        building_scale=0.9, with_assets=True, with_roads=True,
+        accessibility=1.0)
+    items, _why = dss.suggest_resource_items(w)
+    deps = [(int(i["x"]), int(i["y"]), int(i.get("radius", 4)),
+             float(i.get("cap", 0.8)),
+             "helibase" if i.get("kind") == "helibase" else "ground depot")
+            for i in items if i.get("kind") in ("depot", "helibase")]
+    sens = [(20, 20, 8, "ground_camera", "Camera 1"),
+            (90, 40, 10, "aerial", "UAV 2"),
+            (120, 80, 6, "in_situ", "Station 3"),
+            (0, 0, None, "satellite", "Satellite imagery")]
+
+    img = viz.render_pil(
+        w, sim=Simulator(w), scale=6, show_fire=False, show_assets=True,
+        show_labels=True, show_hillshade=True, show_roads=True,
+        show_grid=False, show_wind=True, sensors=sens, depots=deps,
+        clock_text="t=0 min",
+        regions=[(0, 0, 80, 55, "Agent_1"), (80, 0, 160, 55, "Agent_2"),
+                 (0, 55, 80, 110, "Agent_3"), (80, 55, 160, 110, "Agent_4")])
+    boxes = img.info.get("label_boxes")
+    assert boxes, "the renderer reports no labels"
+    _names = {str(b["text"]) for b in boxes}
+    # everything that carries a name on this map is named
+    assert "Camera 1" in _names and "UAV 2" in _names
+    assert "Satellite imagery" in _names
+    assert any(t.startswith("ground depot") or t.startswith("helibase")
+               for t in _names)
+    assert any(t.startswith("Town") for t in _names)
+    assert sum(1 for t in _names if t.startswith("Village")) >= 3
+
+    # and no two of them share a pixel
+    _bad = []
+    for i in range(len(boxes)):
+        a, ta = boxes[i]["box"], boxes[i]["text"]
+        for j in range(i + 1, len(boxes)):
+            b, tb = boxes[j]["box"], boxes[j]["text"]
+            _ov = (max(0, min(a[2], b[2]) - max(a[0], b[0]))
+                   * max(0, min(a[3], b[3]) - max(a[1], b[1])))
+            if _ov > 0:
+                _bad.append((ta, tb, _ov))
+    assert not _bad, f"labels written over each other: {_bad[:4]}"
+
+    # ---- and the pan/zoom view writes them as REAL TEXT, not as pixels.
+    # A label baked into the raster is resampled when the browser scales
+    # the image to the column and comes out muddy; annotations are glyphs.
+    fig = viz.map_figure_2d(
+        w, sim=Simulator(w), scale=6, hover=False, sensors=sens,
+        depots=deps, clock_text="t=0 min",
+        regions=[(0, 0, 80, 55, "Agent_1"), (80, 0, 160, 55, "Agent_2")])
+    _ann = {str(a.text) for a in fig.layout.annotations}
+    assert len(_ann) >= 15, f"only {len(_ann)} vector labels"
+    # every KIND of label made it, not only the asset names
+    assert any(t.startswith("Town") for t in _ann)
+    assert "Camera 1" in _ann and "Satellite imagery" in _ann
+    assert any("depot" in t or "helibase" in t for t in _ann)
+    assert any("Evacuation route" in t for t in _ann)
+    # and the raster this view carries has no lettering baked into it
+    _plan = viz.render_pil(
+        w, sim=Simulator(w), scale=6, show_labels=True, defer_text=True,
+        sensors=sens, depots=deps, clock_text="t=0 min")
+    assert len(_plan.info["label_boxes"]) == len(boxes)
+    assert "defer_text=True" in open('disaster_phyengine/viz.py',
+                                     encoding='utf-8').read()
+
+    # the 3D view cannot de-clutter (plotly writes text where the point is),
+    # so it labels the settlements and leaves the rest to the hover
+    src = open('disaster_phyengine/viz.py', encoding='utf-8').read()
+    assert 'hovertext=[str(a.name) for a in pts]' in src
+    assert 'ONLY THE SETTLEMENTS ARE LABELLED' in src
+
+
+def test_a_map_can_be_exported_at_print_resolution_in_two_versions():
+    """The screen view is small on purpose; a figure for a document is not.
+
+    The only way out of the app was the canvas "Download PNG", which hands
+    over exactly the pixels the screen shows - about six per cell - so it
+    landed in a document as a blown-up screen grab. The export renders the
+    map again at print size, and it renders TWO of them, because the ground
+    and what the response is set up to do about it answer different
+    questions and the second hides the first.
+    """
+    import ast
+    import types
+    import numpy as np
+    import dss
+    from disaster_phyengine import terrain, viz
+    from disaster_phyengine.config import SimConfig
+    from disaster_phyengine.core import Simulator
+
+    src = open('app/streamlit_app.py', encoding='utf-8').read()
+    tree = ast.parse(src)
+    ns = {"np": np, "viz": viz,
+          "st": types.SimpleNamespace(session_state={})}
+    keep = [n for n in tree.body
+            if (isinstance(n, ast.FunctionDef)
+                and n.name in ("_export_scale", "_export_maps",
+                               "_fit_scale"))
+            or (isinstance(n, ast.Assign)
+                and getattr(n.targets[0], "id", "").startswith("EXPORT"))]
+    exec(compile(ast.Module(body=keep, type_ignores=[]), '<x>', 'exec'), ns)
+
+    # THE EXPORT IS THE SCREEN'S COMPOSITION. Rendering it at four times
+    # the cell size did not enlarge the map: the label font is capped and
+    # the sensor and depot glyphs are fixed pixel shapes, so the words and
+    # the symbols shrank into the terrain and the map lost the labels it
+    # was exported for. Resolution comes from enlarging the finished
+    # picture, which keeps every proportion.
+    for nx, ny in ((150, 110), (400, 400), (60, 40), (600, 600)):
+        assert ns["_export_scale"](nx, ny) == ns["_fit_scale"](nx)
+
+    w = terrain.generate_landscape(
+        SimConfig(nx=80, ny=60, cell_size_m=60.0), seed=2201,
+        n_settlements=3, population_per_settlement=20000)
+    w.add_ignition(30, 30, step=0, radius=1)
+    items, _ = dss.suggest_resource_items(w)
+    ns["st"].session_state["dss_depots_draw"] = [
+        (int(i["x"]), int(i["y"]), int(i.get("radius", 4)),
+         float(i.get("cap", 0.8)), f"D{k + 1} depot")
+        for k, i in enumerate(items)
+        if i.get("kind") in ("depot", "helibase")]
+
+    sim = Simulator(w)
+    plain, staged, scale, size, _lists = ns["_export_maps"](w, sim)
+    assert plain[:4] == b"\x89PNG" and staged[:4] == b"\x89PNG"
+    assert size == (80 * scale, 60 * scale)
+    # the two are not the same picture: one carries the staging, one does not
+    assert plain != staged
+
+    # 1:1 is the map on screen, pixel for pixel
+    import io as _io
+    from PIL import Image as _Im
+    from disaster_phyengine import viz as _vz
+    _screen = _vz.render_pil(w, sim=sim, scale=ns["_fit_scale"](80),
+                             show_fire=False, show_assets=True,
+                             show_value=False, show_hillshade=True,
+                             show_roads=True, show_labels=True,
+                             show_grid=False, show_perimeter=False,
+                             show_wind=True, show_ignitions=False)
+    assert _Im.open(_io.BytesIO(plain)).size == _screen.size
+
+    # and a multiplier enlarges the whole picture rather than re-rendering
+    _p3, _s3, _sc3, _sz3, _l3 = ns["_export_maps"](w, sim, factor=3)
+    assert _sz3 == (size[0] * 3, size[1] * 3)
+    assert _sc3 == scale
+    assert (_sz3[0] * _sz3[1]) <= ns["EXPORT_MAX_MPX"] * 1e6
+
+    # and both pages offer it
+    assert src.count("_export_panel(world, sim") >= 2
+    assert 'key="expsim"' in src and 'key="exped"' in src
+
+
+def test_thinning_the_pool_closes_bases_instead_of_starving_all_of_them():
+    """Scarcity is fewer stations, not a teaspoon in every town.
+
+    The staging had one knob, the capacity of each unit, so lowering the
+    target left a depot in every settlement holding almost nothing: the map
+    still showed a response everywhere. And it could not have been
+    otherwise, because R_time was measured from the nearest ROAD rather
+    than from a base, and one helibase set the flight clock over the whole
+    map - so closing eleven of twelve depots changed the reach score by
+    nothing at all.
+    """
+    import numpy as np
+    import dss
+    from disaster_phyengine import terrain
+    from disaster_phyengine.config import SimConfig
+
+    w = terrain.generate_landscape(
+        SimConfig(nx=150, ny=110, cell_size_m=60.0), seed=2201,
+        n_settlements=15, population_per_settlement=90000,
+        building_scale=1.3, relief_m=300.0, forest_density=0.46,
+        base_moisture=0.07, water_level=0.05)
+
+    def _depots(items):
+        return [i for i in items if i.get("kind") == "depot"]
+
+    # ---- the coverage axis stages fewer sites, keeping the richest
+    _n = []
+    for cov in (1.0, 0.6, 0.3, 0.1):
+        it, _ = dss.suggest_resource_items(w, coverage=cov)
+        _n.append(len(_depots(it)))
+    assert _n[0] > _n[1] > _n[2] >= _n[3] >= 1, _n
+    _full, _ = dss.suggest_resource_items(w, coverage=1.0)
+    _thin, _ = dss.suggest_resource_items(w, coverage=0.3)
+    _rank_full = sorted(dss.actions._base_rank(w, d)
+                        for d in _depots(_full))
+    _rank_thin = sorted(dss.actions._base_rank(w, d)
+                        for d in _depots(_thin))
+    assert min(_rank_thin) >= _rank_full[len(_rank_full) - len(_rank_thin)
+                                         - 1], \
+        "the poorest sites are not the ones dropped"
+
+    # ---- and a lower target closes bases as well as thinning them
+    _counts = {}
+    for tgt in (0.9, 0.5, 0.3, 0.1):
+        it, why = dss.suggest_resource_items(w, efficiency_target=tgt)
+        eff, _c = dss.pool_efficiency(w, dss.build_resource_layer(w, it))
+        _counts[tgt] = len(_depots(it))
+        if tgt <= 0.5:
+            assert abs(eff - tgt) < 0.02, f"target {tgt}: landed {eff:.2f}"
+    assert _counts[0.9] > _counts[0.3] > _counts[0.1], _counts
+    assert _counts[0.1] <= 3, f"a 10% pool still keeps {_counts[0.1]} bases"
+
+    # ---- R_time starts at a base and runs along the roads
+    _one, _ = dss.suggest_resource_items(w, coverage=0.1)
+    _many, _ = dss.suggest_resource_items(w, coverage=1.0)
+    _t1 = np.asarray(dss.build_resource_layer(w, _one).rtime)
+    _t2 = np.asarray(dss.build_resource_layer(w, _many).rtime)
+    assert float(_t1.mean()) > float(_t2.mean()), \
+        "closing bases did not slow the response down"
+
+    # with no ground base at all there is no ground response to speak of
+    _air = [i for i in _many if i.get("kind") != "depot"]
+    _t0 = np.asarray(dss.build_resource_layer(w, _air).rtime)
+    assert float(_t0.max()) >= 200.0
+
+    # and the panel exposes the axis
+    app = open('app/streamlit_app.py', encoding='utf-8').read()
+    assert "Base coverage (% of candidate sites staged)" in app
+    assert app.count("dss_res_cov") >= 5
+
+
+def test_no_two_panels_share_an_applied_state_key():
+    """The panels remember what they last applied; they must not share it.
+
+    The resource coverage control was given the key "dss_cov_applied",
+    which is what the SENSOR panel already used for its coverage target.
+    Each panel then read a number the other had written, saw a change it
+    had not made, re-ran its own suggestion and called st.rerun(): the
+    screen blinked in a loop and the suggested sensors were thrown away on
+    every pass. A guard key belongs to exactly one control.
+    """
+    import re
+    src = open('app/streamlit_app.py', encoding='utf-8').read()
+
+    # every "...changed since we applied it?" guard, as (current, applied)
+    pairs = set(re.findall(
+        r'st\.session_state\["(\w+)"\]\s*\)?\s*'
+        r'!=\s*\w*\(?\s*st\.session_state\.get\("(\w+_applied)"',
+        re.sub(r"#[^\n]*", "", src)))
+    assert pairs, "the guards changed shape; this test needs updating"
+
+    by_applied = {}
+    for cur, app in pairs:
+        by_applied.setdefault(app, set()).add(cur)
+    _shared = {a: c for a, c in by_applied.items() if len(c) > 1}
+    assert not _shared, f"one memory serving two controls: {_shared}"
+
+    # and the two that collided are explicitly apart
+    assert "dss_rescov_applied" in by_applied
+    assert by_applied["dss_rescov_applied"] == {"dss_res_cov"}
+
+
+def test_the_legend_can_be_downloaded_complete():
+    """The key belongs in the document, not only on the screen.
+
+    It lived in the page as HTML, so a figure had to be captioned by hand
+    and the hand-written caption drifted from what the map drew. The sheet
+    is rendered by the map's own glyph functions and carries every group,
+    with nothing cut off: an entry that ends in an ellipsis is an entry
+    whose meaning the reader has to guess.
+    """
+    from disaster_phyengine import viz
+
+    img = viz.legend_sheet(title="DisasterAware — map legend")
+    assert img.width > 600 and img.height > 400
+
+    # every group of the legend is on the sheet, and every entry with it
+    groups = {g for g, _l, _c, _k in viz.legend_entries({})}
+    assert {"Land cover", "Fire", "Assets", "Markers",
+            "Sensors (+ coverage fill)", "Resources"} <= groups
+
+    # nothing is truncated: the wrapper breaks lines, it does not cut them
+    src = open('disaster_phyengine/viz.py', encoding='utf-8').read()
+    assert "NOTHING IS CUT OFF" in src
+    _long = max((l for _g, l, _c, _k in viz.legend_entries({})), key=len)
+    assert len(_long) > 60          # there IS a long entry to wrap
+    _blk = src[src.index("def legend_sheet"):src.index("def legend_entries")]
+    assert "\\u2026" not in _blk and "..." not in _blk.split('"""')[2]
+
+    # and the app offers it as a file
+    app = open('app/streamlit_app.py', encoding='utf-8').read()
+    assert "viz.legend_sheet(" in app
+    assert 'file_name="legend.png"' in app
+
+
+def test_the_same_shadow_forecast_is_not_run_twice_in_a_step():
+    """A forecast is a function of (state, override, basis).
+
+    The adaptation stages spend nearly all of the DSS's time in shadow
+    runs, and measured on a reference run 41% of the trial forecasts asked
+    for an override that had already been forecast at that very step: a
+    consequent tuning whose change does not survive defuzzification and the
+    capacity clamp produces the identical resource field, and the stage
+    paid a full 45-minute shadow run to be told so again. The clone carries
+    the RNG state, so the cached answer is the answer it would have got.
+    """
+    import numpy as np
+    import dss
+    from dss import adapt as A
+    from disaster_phyengine import terrain
+    from disaster_phyengine.config import SimConfig
+    from disaster_phyengine.core import Simulator
+
+    w = terrain.generate_landscape(
+        SimConfig(nx=60, ny=40, cell_size_m=40.0), seed=11,
+        n_settlements=2, population_per_settlement=8000)
+    w.add_ignition(30, 20, step=0, radius=2)
+    sim = Simulator(w)
+    sim.record_states = False
+    for _ in range(3):
+        sim.step()
+    items, _ = dss.suggest_resource_items(w)
+    base = dss.build_resource_layer(w, items)
+
+    calls = [0]
+    _orig = A.forecast_cost
+
+    def counted(*a, **k):
+        calls[0] += 1
+        return _orig(*a, **k)
+
+    A.forecast_cost = counted
+    try:
+        rules = []            # the override does not depend on them here
+        j1 = A._cva(lambda _r: base, sim, rules, 3)
+        n1 = calls[0]
+        j2 = A._cva(lambda _r: base, sim, rules, 3)
+        n2 = calls[0]
+    finally:
+        A.forecast_cost = _orig
+
+    assert j1 == j2, "the cache changed the answer"
+    assert n2 == n1, f"the repeat cost {n2 - n1} more forecast(s)"
+    assert n1 >= 2, "the first call must really run the shadow twice (trial + baseline)"
+
+    # a moved fire invalidates it: the cache is per step, not per run
+    sim.step()
+    A.forecast_cost = counted
+    try:
+        A._cva(lambda _r: base, sim, rules, 3)
+    finally:
+        A.forecast_cost = _orig
+    assert calls[0] > n2, "the cache survived a step of the fire"
+
+    # and the fingerprint covers every array the physics would read
+    src = open('dss/adapt.py', encoding='utf-8').read()
+    assert "def _ov_fingerprint" in src
+    assert "isinstance(val, np.ndarray)" in src
+
+
+def test_every_experiment_runs_on_its_own_learned_store():
+    """An experiment's arms have to be independent of each other.
+
+    The generated-knowledge store is the DSS's memory - evFIS
+    modifications, generated rules and concepts, the stage controller's
+    value table - and in the field that persistence is the point. Every
+    campaign script here shared the one field file, so a run inherited
+    whatever the previous run had learned and the arms of a comparison were
+    not independent. Measured on one scenario: with the shared store the
+    adaptation accepted 3 modifications and the physical cost came out
+    0.0952; with a fresh store, 0 accepted and 0.0152, on identical inputs.
+    """
+    import os
+    import re
+    import dss
+
+    # the helper hands out a private file, and says how to opt out
+    p1 = dss.isolated_store_path("t")
+    p2 = dss.isolated_store_path("t")
+    assert p1 != p2 and p1.endswith(".json")
+    assert os.path.isdir(os.path.dirname(p1))
+    _old = os.environ.get("DISASTERAWARE_SHARED_STORE")
+    os.environ["DISASTERAWARE_SHARED_STORE"] = "1"
+    try:
+        assert dss.isolated_store_path("t") == "logs/dss_generated_state.json"
+    finally:
+        if _old is None:
+            os.environ.pop("DISASTERAWARE_SHARED_STORE", None)
+        else:
+            os.environ["DISASTERAWARE_SHARED_STORE"] = _old
+
+    # and every experiment that builds an engine uses it
+    import glob
+    for path in sorted(glob.glob('experiments/*.py')):
+        src = open(path, encoding='utf-8').read()
+        if "DecisionEngine(" not in src:
+            continue
+        for m in re.finditer(r"DecisionEngine\(", src):
+            _tail = src[m.end():m.end() + 900]
+            _close = _tail.find("\n\n")
+            assert "state_path=" in (_tail if _close < 0 else _tail[:_close]), \
+                f"{path} builds an engine on the shared field store"
+        assert "isolated_store_path" in src, path

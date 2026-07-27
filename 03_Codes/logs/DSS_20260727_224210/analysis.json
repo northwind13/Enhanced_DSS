@@ -1,0 +1,62 @@
+{
+ "start_step": 0,
+ "seq0": 235,
+ "cycles": 1,
+ "satisficing_failed": 1,
+ "tried": 1,
+ "accepted": 0,
+ "rejected": 1,
+ "blocked": {},
+ "per_stage": {
+  "3": {
+   "tried": 1,
+   "accepted": 0,
+   "dJ": 0.0
+  }
+ },
+ "gates": {
+  "rejected at G3 (no improvement)": 1
+ },
+ "reasons": {
+  "rejected at G3 (claude)": 1
+ },
+ "withheld": 1,
+ "dJ_accepted": 0.0,
+ "j_series": [
+  [
+   0,
+   0.2614670994675668,
+   0.26042460427286546,
+   0.25
+  ]
+ ],
+ "phys_series": [
+  [
+   0,
+   0.2963293793965757,
+   0.29514788484258087
+  ]
+ ],
+ "persist_failed": 0,
+ "cooldown_refunds": 0,
+ "stage2_prefiltered": 1,
+ "genai_ms": [
+  20334.6
+ ],
+ "stage_controller": {
+  "low|3": -0.0009048762500000001,
+  "high+gap|2": -0.0017833491908842108,
+  "high|3": -1.8799656043428683e-06,
+  "high+gap|3": -0.001950568593741609,
+  "high+gap|1": -0.0018373671519492701,
+  "low|2": -0.0009795777567596763,
+  "mid+gap|3": -0.0005705,
+  "high|2": -0.0002,
+  "low|1": -0.0010596324375,
+  "mid+gap|2": -0.0005705,
+  "mid+gap|1": -0.0005705
+ },
+ "config_id": "DSS1-EV1-GA1-U12:1-U3:1",
+ "seed_profile": "minimal",
+ "persist_errors": []
+}

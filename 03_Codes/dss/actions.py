@@ -62,8 +62,50 @@ def _dilate(mask: np.ndarray, r: int) -> np.ndarray:
     return out
 
 
-def suggest_resource_items(world, efficiency_target=None, density=1.0
-                           ) -> Tuple[List[dict], List[str]]:
+#: how the single aircraft's share of the work fades away from its base.
+#: It can FLY anywhere in minutes, so it always sets the response clock;
+#: what it cannot do is be in two places at once, which is what the share
+#: expresses. Setting the share to 1 over the whole map (the original) made
+#: one helibase decide the reach of every cell and left the ground network
+#: - how many bases, and where - with no effect on anything at all.
+#: CALIBRATED, NOT GUESSED. Measured on the mountain-forest reference run
+#: (100x70, 4 agents, one ignition): the original share-of-1 model staged a
+#: 71% pool and left 317 cells burned; 4 radii / 0.45 dropped the same pool
+#: to 54% and 410 cells; 8 radii / 0.75 keeps it at 64% and 282 cells, so
+#: the aircraft stays the strong arm it is without deciding the reach of
+#: every cell on the map by itself.
+AIR_FADE = 8.0        # fades over this many station radii
+AIR_FLOOR = 0.75      # ... down to this, its reinforcement value anywhere
+
+
+def _base_rank(world, item) -> float:
+    """How much a base is worth keeping: what it stands to protect.
+
+    Thinning the pool has to remove the RIGHT bases. A brigade in a city of
+    forty thousand and a shed beside a hamlet of two hundred are not
+    interchangeable, so the ranking is the protected value and the people
+    within the unit's own service radius, with a real fire station worth
+    more than a town base improvised because there was none.
+    """
+    import numpy as _np
+    v = getattr(world, "value", None)
+    if v is None:
+        return 0.0
+    ny, nx = _np.asarray(world.fuel.ftype).shape
+    x, y = int(item.get("x", 0)), int(item.get("y", 0))
+    r = max(2, int(item.get("radius", 4)) * 3)
+    y0, y1 = max(0, y - r), min(ny, y + r + 1)
+    x0, x1 = max(0, x - r), min(nx, x + r + 1)
+    _sl = (slice(y0, y1), slice(x0, x1))
+    val = (float(_np.clip(_np.asarray(v.vbld)[_sl], 0, 1).sum())
+           + float(_np.clip(_np.asarray(v.vcrit)[_sl], 0, 1).sum()))
+    pop = float(_np.asarray(v.vpop)[_sl].sum())
+    _real = 0.0 if "town base" in str(item.get("label", "")).lower() else 1.0
+    return (1.0 + 0.5 * _real) * (val + 0.002 * pop)
+
+
+def suggest_resource_items(world, efficiency_target=None, density=1.0,
+                           coverage=1.0) -> Tuple[List[dict], List[str]]:
     """Itemized baseline pool: one editable row per staged asset.
 
     density: multiplies the staged capacity (R_cap) of every unit, i.e. how
@@ -94,29 +136,54 @@ def suggest_resource_items(world, efficiency_target=None, density=1.0
     for a in getattr(world, "assets", []):
         nm = str(getattr(a, "name", "")).lower()
         kind = getattr(a, "kind", "")
-        is_station = ("fire" in nm and ("station" in nm or "brigade" in nm)) \
-            or "fire_station" in nm
+        is_station = (("fire" in nm and ("station" in nm
+                                         or "brigade" in nm))
+                      or "fire_station" in nm or "itfaiye" in nm
+                      or kind == "fire_station")
         if is_station:
             _depot_cands.append(dict(
                 kind="depot", x=int(a.x), y=int(a.y),
                 radius=max(_rsrv, int(getattr(a, "radius", 2)) + 2),
                 cap=round(0.8 * _d, 3), avail=1.0, t_disp=10.0,
                 label=str(getattr(a, "name", "fire station"))))
-        elif kind == "building" and _town_fallback is None:
-            _town_fallback = a         # the town centre (first building)
-    if not _depot_cands and _town_fallback is not None:
-        a = _town_fallback
+    # EVERY SETTLEMENT KEEPS SOME GROUND CAPACITY. Only mapped fire
+    # stations become full depots, but a town without one within
+    # ~600 m still has a municipal brigade of SOME size; staging a
+    # half-strength town base there is more truthful than a 48k city
+    # with zero ground response.
+    _r_near = max(7, int(round(600.0 / max(_cellm, 1e-6))))
+    for a in getattr(world, "assets", []):
+        if getattr(a, "kind", "") != "building":
+            continue
+        _ax, _ay = int(a.x), int(a.y)
+        if any((d["x"] - _ax) ** 2 + (d["y"] - _ay) ** 2
+               <= _r_near ** 2 for d in _depot_cands):
+            continue
         _depot_cands.append(dict(
-            kind="depot", x=int(a.x), y=int(a.y),
-            radius=max(_rsrv, int(getattr(a, "radius", 2)) + 2),
-            cap=round(0.8 * _d, 3), avail=1.0, t_disp=10.0,
-            label="town base (no fire station on the map)"))
+            kind="depot", x=_ax, y=_ay, radius=_rsrv,
+            cap=round(0.5 * _d, 3), avail=1.0, t_disp=12.0,
+            label=f"town base ({getattr(a, 'name', 'settlement')})"))
     # SAFETY CAP: firefighting capacity is an operational resource; keep the
     # depot count bounded on asset-heavy maps.
     _MAX_DEPOTS = 12
     if len(_depot_cands) > _MAX_DEPOTS:
         _depot_cands.sort(key=lambda d: -float(d["radius"]))
         _depot_cands = _depot_cands[:_MAX_DEPOTS]
+    # HOW MANY BASES, not just how big. Scarcity was staged by shrinking
+    # every unit while a base stayed in every single settlement, so a
+    # deliberately under-resourced map still showed response everywhere and
+    # the REACH term never moved: a thin pool in every town is not what
+    # scarcity looks like, a province with three brigades is. `coverage` is
+    # the share of candidate sites actually staged, keeping the ones with
+    # the most to protect.
+    _cov = float(np.clip(coverage, 0.0, 1.0))
+    if _cov < 1.0 and len(_depot_cands) > 1:
+        _depot_cands.sort(key=lambda d: -_base_rank(world, d))
+        _keep = max(1, int(round(_cov * len(_depot_cands))))
+        _dropped = len(_depot_cands) - _keep
+        _depot_cands = _depot_cands[:_keep]
+    else:
+        _dropped = 0
     items.extend(_depot_cands)
     if getattr(world, "roads", None) is not None \
             and np.asarray(world.roads).any():
@@ -135,7 +202,12 @@ def suggest_resource_items(world, efficiency_target=None, density=1.0
     items.append(dict(kind="helibase", x=_hx, y=_hy, radius=_hr,
                       cap=round(0.6 * _d, 3), avail=1.0, t_disp=6.0,
                       label="helibase (aerial)"))
-    lines = [
+    lines = []
+    if _dropped:
+        lines.append(
+            f"Coverage {_cov:.0%}: {_dropped} candidate site(s) left "
+            "unstaged, keeping the bases with the most to protect.")
+    lines += [
         f"R_cap: staged at {sum(1 for i in items if i['kind'] == 'depot')} "
         "fire-station depot(s) (0.8 rcap_max each; a town base is used only "
         "if no fire station exists) plus the road corridor (0.4) and "
@@ -143,8 +215,9 @@ def suggest_resource_items(world, efficiency_target=None, density=1.0
         "depots.",
         "R_avail: 1 wherever capacity is staged (nothing committed yet)",
         "R_eff: terrain access field G_access (workability of the ground)",
-        "R_time: 10 min dispatch + 2 min per off-road cell from the "
-        "road network",
+        "R_time: dispatch delay at the nearest BASE, then 60 km/h along "
+        "the road network and ~15 min/km across country; 240 min where no "
+        "ground base can reach",
         "Aerial: 1 helibase (0.6 rcap_max, 6 min dispatch); its share "
         "replaces road access in the reach product, derated by wind",
     ]
@@ -157,25 +230,51 @@ def suggest_resource_items(world, efficiency_target=None, density=1.0
         eff0, _c0 = pool_efficiency(world, base0)
         _scaled_down = False
         if eff0 > tgt + 0.005:
+            # THE POOL THINS IN BOTH SENSES. Capacity used to be the only
+            # knob, so a 10% target left a depot in every town holding a
+            # teaspoon each: the map still showed a response everywhere.
+            # Closing bases greedily "while the target is still met" was no
+            # better - on a small map with a dense road net the reach score
+            # barely notices the twelfth station, so it shut all eleven at
+            # the first step. The count follows the SHORTFALL instead: half
+            # the effectiveness means roughly half the stations, each of
+            # them somewhat thinner, which is what an under-resourced
+            # region actually looks like.
+            _ratio = float(np.clip(tgt / max(eff0, 1e-6), 0.05, 1.0))
+            _dep = [i for i in items if i.get("kind") == "depot"]
+            _keep_n = max(1, int(round(_ratio * len(_dep))))
+            _closed = max(0, len(_dep) - _keep_n)
+            if _closed:
+                _dep.sort(key=lambda d: -_base_rank(world, d))
+                _drop = set(id(d) for d in _dep[_keep_n:])
+                items = [i for i in items if id(i) not in _drop]
+            if _closed:
+                lines.append(
+                    f"{_closed} base(s) closed to reach the {tgt:.0%} "
+                    "target: the poorest-protecting sites go first, so "
+                    "scarcity shows as ground with no response near it "
+                    "rather than as a thin depot in every town.")
+            base0 = build_resource_layer(world, items)
+            eff0, _c0 = pool_efficiency(world, base0)
             # the target is EXACT in both directions: a target BELOW
             # the baseline scales every capacity DOWN until the pool
             # delivers roughly the requested effectiveness — this is
             # how under-resourced experiments ("the interventions
             # may FAIL") are staged.
-            for _it2 in range(3):
+            for _it2 in range(6):
                 b_ = build_resource_layer(world, items)
                 e_, c_ = pool_efficiency(world, b_)
                 if e_ <= tgt + 0.01:
                     break
                 _cap_t = tgt / max(c_["reach"], 1e-6)
-                need_ = (0.05 * cfg.nx * cfg.ny
-                         * max(cfg.suppression.rcap_max, 1e-6))
-                have_ = 1.2 * float(
-                    (b_.rcap * np.clip(b_.ravail, 0, 1)).sum())
-                _sc = float(np.clip(_cap_t / max(have_ / need_,
-                                                 1e-6), 0.02, 1.0))
+                # the UNCLIPPED capacity ratio, from the same function
+                # that defines the metric: a local copy of the need
+                # formula drifted once already and broke the landing
+                _sc = float(np.clip(
+                    _cap_t / max(c_.get("cap_raw", 1e-6), 1e-6),
+                    0.02, 1.0))
                 for it in items:
-                    it["cap"] = max(0.02,
+                    it["cap"] = max(0.005,
                                     round(float(it["cap"]) * _sc, 3))
             b_ = build_resource_layer(world, items)
             e_, c_ = pool_efficiency(world, b_)
@@ -192,11 +291,24 @@ def suggest_resource_items(world, efficiency_target=None, density=1.0
         # staged a capacity-0.7 helibase, fourteen times the scaled-down
         # depots. The pool jumped from the requested 10% to 44% while the
         # message above still claimed it had landed at 10%.
+        _eff_prev = None
         for _n in range(0 if _scaled_down else 25):
             base = build_resource_layer(world, items)
             eff, comp = pool_efficiency(world, base)
             if eff >= tgt:
                 break
+            if _eff_prev is not None and eff - _eff_prev < 0.003:
+                # the last addition bought nothing: the map has hit
+                # its reach ceiling (terrain access + dispatch), and
+                # more aircraft only crowd the ramp. Stop and say so.
+                items.pop()
+                lines.append(
+                    f"stopped at {eff:.0%}: the last helibase added "
+                    "<0.3% effectiveness — this map's reach "
+                    "ceiling is terrain access and dispatch time, "
+                    "not fleet size.")
+                break
+            _eff_prev = eff
             beta = float(getattr(cfg.suppression, "beta_t", 0.03))
             acc = np.clip(world.topo.access, 0.0, 1.0)
             if getattr(base, "rair", None) is not None:
@@ -227,6 +339,53 @@ def suggest_resource_items(world, efficiency_target=None, density=1.0
     return items, lines
 
 
+def _travel_time(world, sources, roads):
+    """Minutes from the NEAREST staged base to every cell.
+
+    R_time used to be "10 minutes plus two per cell off the nearest road",
+    which quietly assumes a crew standing on every road in the map: the
+    number of ground bases then changed nothing but the capacity total, so
+    closing eleven of twelve depots left the reach score untouched and
+    scarcity could not be staged at all. The clock starts at a BASE, with
+    its own dispatch delay, and runs fast along the road network and slow
+    across country - which is what makes where the bases are, and how many
+    there are, matter.
+
+    `sources` is [(x, y, t_disp), ...]. With no ground base at all the
+    field stays at NO_GROUND: there is no ground response, and the reach
+    term says so instead of pretending the roads are manned.
+    """
+    cfg = world.config
+    ny, nx = cfg.ny, cfg.nx
+    cell = float(cfg.cell_size_m)
+    NO_GROUND = 240.0
+    t = np.full((ny, nx), NO_GROUND, dtype=float)
+    if not sources:
+        return t
+    # 60 km/h on the road network, ~1 km per 15 min across country (the
+    # rate the old field used: 2 min per 30 m)
+    c_road = cell / 1000.0
+    c_off = 2.0 * cell / 30.0
+    cost = np.where(np.asarray(roads, dtype=bool), c_road, c_off)
+    for x, y, t0 in sources:
+        _x = int(np.clip(int(x), 0, nx - 1))
+        _y = int(np.clip(int(y), 0, ny - 1))
+        t[_y, _x] = min(t[_y, _x], float(max(0.0, t0)))
+    # min-plus relaxation: cheap, vectorised, and it converges in as many
+    # sweeps as the longest path is cells long
+    for _ in range(int(nx + ny)):
+        prev = t
+        a = t.copy()
+        a[1:, :] = np.minimum(a[1:, :], t[:-1, :] + cost[1:, :])
+        a[:-1, :] = np.minimum(a[:-1, :], t[1:, :] + cost[:-1, :])
+        a[:, 1:] = np.minimum(a[:, 1:], t[:, :-1] + cost[:, 1:])
+        a[:, :-1] = np.minimum(a[:, :-1], t[:, 1:] + cost[:, :-1])
+        t = np.minimum(a, NO_GROUND)
+        if np.array_equal(t, prev):
+            break
+    return t
+
+
 def build_resource_layer(world, items: List[dict]):
     """Rasterize the item rows into U_Res = [R_cap, R_avail, R_eff,
     R_time]. R_eff and R_time always come from the map (terrain access
@@ -239,20 +398,14 @@ def build_resource_layer(world, items: List[dict]):
     roads = getattr(world, "roads", None)
     roads = (np.asarray(roads, dtype=bool)
              if roads is not None else np.zeros((ny, nx), dtype=bool))
-    # off-road travel: ~2 min per 30 m of ground, SCALED by the cell
-    # size (on a 5 m grid the old per-cell constant meant 24 min per
-    # 100 m and the whole pool looked unreachable)
-    _tc = 2.0 * float(cfg.cell_size_m) / 30.0
-    dist = np.full((ny, nx), 60.0)
-    m = roads.copy()
-    d = 0
-    _dmax = max(30, int(round(30 * 30.0 / max(cfg.cell_size_m, 1e-6))))
-    while m.any() and d < _dmax:
-        dist[m & (dist > 60.0 - 1e-9)] = 10.0 + _tc * d
-        m = _dilate(m, 1)
-        d += 1
-    dist = np.where(dist > 59.0, 10.0 + _tc * _dmax, dist)
-    rl.rtime[:] = dist
+    # THE CLOCK STARTS AT A BASE (see _travel_time), not on the nearest
+    # road: how many ground bases there are and where they stand is what
+    # decides how long the crews take to arrive.
+    rl.rtime[:] = _travel_time(
+        world,
+        [(it.get("x", 0), it.get("y", 0), it.get("t_disp", 10.0))
+         for it in items if it.get("kind") == "depot"],
+        roads)
     rl.reff[:] = np.clip(world.topo.access, 0.0, 1.0)
 
     cap = np.zeros((ny, nx))
@@ -282,13 +435,46 @@ def build_resource_layer(world, items: List[dict]):
             avail[disk] = np.maximum(avail[disk], av)
             if rl.rair is None:
                 rl.rair = np.zeros((ny, nx))
-            rl.rair[:] = 1.0
+            # ONE AIRCRAFT IS NOT EVERYWHERE. The air share was set to 1
+            # over the whole map and the flight-time clock with it, so a
+            # single helibase decided the response time for every cell:
+            # closing eleven of twelve ground depots then changed the reach
+            # score by nothing at all, and scarcity could not be staged.
+            # An aircraft is a first responder around its base and a
+            # reinforcement further out - it can only be in one place at a
+            # time - so its share is full within the station radius and
+            # fades to nothing at three times it.
+            _dair = np.sqrt((xx - int(it["x"])) ** 2
+                            + (yy - int(it["y"])) ** 2)
+            _share = np.clip(1.0 - np.maximum(0.0, _dair - r)
+                             / max(AIR_FADE * r, 1.0),
+                             AIR_FLOOR, 1.0)
+            rl.rair[:] = np.maximum(rl.rair, _share)
             # flight time everywhere: dispatch + crow-line distance
             t0 = float(max(0.0, it.get("t_disp", 6.0)))
             dcell = np.sqrt((xx - int(it["x"])) ** 2
                             + (yy - int(it["y"])) ** 2)
-            _fc = 0.5 * float(cfg.cell_size_m) / 30.0   # flight min/cell
-            rl.rtime[:] = np.minimum(rl.rtime, t0 + _fc * dcell)
+            # EFFECTIVE ATTACK-FLIGHT SPEED ~120 km/h (2 km/min):
+            # cruise is faster, but the attack run includes climb,
+            # approach and line-up. The old constant (0.5 min per
+            # 30 m cell = 3.6 km/h!) made the helicopter slower than
+            # a walking crew, reach collapsed with map size, and the
+            # target-chasing loop piled up 26 helibases to buy back
+            # what one real aircraft covers.
+            _fc = float(cfg.cell_size_m) / 2000.0       # flight min/cell
+            # and it only sets the clock where it is actually the arm that
+            # would respond
+            # THE TWO ARMS ARE KEPT APART. Folding the flight time into
+            # R_time with a min() let one aircraft set the response clock
+            # for every cell, and the ground network - how many bases,
+            # where they stand - then changed nothing whatsoever. R_time
+            # stays the GROUND clock; the flight clock rides alongside it
+            # and pool_efficiency takes the better of the two arms, each
+            # with its own weight.
+            _at = t0 + _fc * dcell
+            _prev_at = getattr(rl, "rair_time", None)
+            rl.rair_time = (_at if _prev_at is None
+                            else np.minimum(_prev_at, _at))
         elif it.get("kind") == "depot":
             r = max(1, int(it.get("radius", 4)))
             c = float(np.clip(it.get("cap", 0.8), 0.0, 1.0))
@@ -296,15 +482,9 @@ def build_resource_layer(world, items: List[dict]):
                     + (yy - int(it["y"])) ** 2 <= r * r)
             cap[disk] = np.maximum(cap[disk], c)
             avail[disk] = np.maximum(avail[disk], av)
-            # inside the station area the response clock starts at the
-            # depot's own dispatch time (crew on site), growing with the
-            # distance from the depot
-            t0 = float(max(0.0, it.get("t_disp", 10.0)))
-            dcell = np.sqrt((xx - int(it["x"])) ** 2
-                            + (yy - int(it["y"])) ** 2)
-            _gc = 2.0 * float(cfg.cell_size_m) / 30.0   # ground min/cell
-            rl.rtime[disk] = np.minimum(rl.rtime[disk],
-                                        (t0 + _gc * dcell)[disk])
+            # (the response clock is set by _travel_time above: it starts
+            # at this depot with its own dispatch delay and runs out along
+            # the roads, so nothing is patched in here)
     rl.rcap[:] = cap * float(cfg.suppression.rcap_max)
     rl.ravail[:] = avail
     return rl
@@ -331,6 +511,30 @@ def _risk_field(world):
     return risk
 
 
+def _reach_field(world, base):
+    """Can the response physically work this ground, and how soon.
+
+    Two arms, each on its own clock. The old form folded the flight time
+    into R_time and the air share into the access field, so ONE helibase
+    lifted the reach of every cell on the map and the ground network - how
+    many bases and where they stand - had no effect on the metric at all.
+    A cell's reach is whichever arm serves it better: the crews on the
+    ground clock and terrain access, or the aircraft on the flight clock
+    weighted by the share of the work one airframe can be doing that far
+    from its base.
+    """
+    beta = float(getattr(world.config.suppression, "beta_t", 0.03))
+    acc = np.clip(world.topo.access, 0.0, 1.0)
+    ground = np.exp(-beta * np.asarray(base.rtime)) * acc
+    _ra = getattr(base, "rair", None)
+    if _ra is None:
+        return ground
+    _at = getattr(base, "rair_time", None)
+    _at = base.rtime if _at is None else _at
+    air = np.exp(-beta * np.asarray(_at)) * 0.9 * np.clip(_ra, 0.0, 1.0)
+    return np.maximum(ground, air)
+
+
 def pool_efficiency(world, base):
     """Expected intervention effectiveness of the STAGED pool in [0,1].
 
@@ -346,21 +550,28 @@ def pool_efficiency(world, base):
     Returns (score, dict(reach=..., capacity=..., air=...))."""
     cfg = world.config
     beta = float(getattr(cfg.suppression, "beta_t", 0.03))
-    acc = np.clip(world.topo.access, 0.0, 1.0)
     _ra = getattr(base, "rair", None)
-    if _ra is not None:
-        acc = np.maximum(acc, 0.9 * np.clip(_ra, 0.0, 1.0))
-    reach = np.exp(-beta * base.rtime) * acc
+    # both arms, each on its own clock: see _reach_field
+    reach = _reach_field(world, base)
     risk = _risk_field(world)
     r_score = float((risk * reach).sum() / max(risk.sum(), 1e-9))
     air_cov = (0.0 if _ra is None else
                float((risk * (np.clip(_ra, 0, 1) > 0.5)).sum()
                      / max(risk.sum(), 1e-9)))
-    ncells = cfg.nx * cfg.ny
-    need = 0.05 * ncells * max(cfg.suppression.rcap_max, 1e-6)
+    # capacity is needed against ground that CAN burn: a lake or bare
+    # rock demands none, and counting it inflated the reference need
+    # (a 59%-water map asked for twice the fleet it could ever use).
+    # NOTE: the z9 FEATURE keeps its per-region all-cells basis; this
+    # is the planner's own staging metric, not the perception input.
+    from disaster_phyengine.config import FUEL_NAME_TO_ID as _F2I
+    _wat = np.asarray(world.fuel.ftype) == _F2I["water"]
+    _burn_n = int((~_wat & (np.asarray(world.fuel.fload,
+                                       dtype=float) > 0.05)).sum())
+    need = 0.05 * max(_burn_n, 1) * max(cfg.suppression.rcap_max, 1e-6)
     have = 1.2 * float((base.rcap * np.clip(base.ravail, 0, 1)).sum())
     c_score = float(np.clip(have / need, 0.0, 1.0))
     return r_score * c_score, dict(reach=r_score, capacity=c_score,
+                                   cap_raw=float(have / max(need, 1e-9)),
                                    air=air_cov)
 
 

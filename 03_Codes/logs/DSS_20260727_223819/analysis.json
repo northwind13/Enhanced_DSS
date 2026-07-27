@@ -1,0 +1,71 @@
+{
+ "start_step": 0,
+ "seq0": 222,
+ "cycles": 2,
+ "satisficing_failed": 2,
+ "tried": 2,
+ "accepted": 0,
+ "rejected": 2,
+ "blocked": {},
+ "per_stage": {
+  "2": {
+   "tried": 1,
+   "accepted": 0,
+   "dJ": 0.0
+  },
+  "1": {
+   "tried": 1,
+   "accepted": 0,
+   "dJ": 0.0
+  }
+ },
+ "gates": {},
+ "reasons": {
+  "refined cell already covered": 1,
+  "no improving perturbation found": 1
+ },
+ "withheld": 0,
+ "dJ_accepted": 0.0,
+ "j_series": [
+  [
+   0,
+   0.40292494042305854,
+   0.4028216475503117,
+   0.25
+  ],
+  [
+   1,
+   0.40601160820875554,
+   0.4059686140791744,
+   0.25
+  ]
+ ],
+ "phys_series": [
+  [
+   0,
+   0.4566482658127997,
+   0.45653120055701996
+  ],
+  [
+   1,
+   0.4601464893032563,
+   0.4600977626230644
+  ]
+ ],
+ "persist_failed": 0,
+ "cooldown_refunds": 1,
+ "stage2_prefiltered": 0,
+ "stage_controller": {
+  "low|3": -0.0002,
+  "high+gap|2": -0.0011097483149569783,
+  "high|3": -1.8799656043428683e-06,
+  "high+gap|3": -0.0016813522954236767,
+  "high+gap|1": -0.0006584831743002543,
+  "low|2": 6.842151856589763e-07,
+  "mid+gap|3": -0.0002,
+  "high|2": -0.0002
+ },
+ "config_id": "DSS1-EV1-GA0-U12:1-U3:1",
+ "seed_profile": "minimal",
+ "persist_errors": []
+}

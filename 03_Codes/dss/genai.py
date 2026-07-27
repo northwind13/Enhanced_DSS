@@ -156,7 +156,16 @@ def propose_rule(ctx: ProposalContext,
         "Propose ONE new rule that would lower the residual cost without "
         "over-committing resources."
     )
-    return _propose_via_cli(ctx, user, model=os.environ.get("DSS_GENAI_MODEL"))
+    return _propose_via_cli(ctx, user, model=current_model())
+
+
+def current_model() -> str:
+    """The PINNED generative model for this campaign: the environment
+    override if set, the module default otherwise. Never None — an
+    unpinned call would silently take whatever the CLI defaults to
+    that day, and the campaign could not state which engine produced
+    its results. The run logger writes this value into meta.json."""
+    return os.environ.get("DSS_GENAI_MODEL") or DEFAULT_MODEL
 
 
 def _to_rule(payload: dict, ctx: ProposalContext) -> Optional[Rule]:

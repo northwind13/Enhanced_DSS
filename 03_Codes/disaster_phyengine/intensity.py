@@ -21,10 +21,18 @@ from .config import IntensityParams
 def fire_intensity(burning_next: np.ndarray, fload: np.ndarray, topo, meteo,
                    params: IntensityParams) -> np.ndarray:
     """Compute the next intensity proxy field I_{k+1}."""
-    f_norm = np.clip(fload / max(params.fload_max, 1e-6), 0.0, 1.0)
-    w_norm = np.clip(meteo.wws / max(params.wws_max, 1e-6), 0.0, 1.0)
+    # in-place bounds on this function's OWN temporaries (see suppression)
+    f_norm = fload / max(params.fload_max, 1e-6)
+    np.clip(f_norm, 0.0, 1.0, out=f_norm)
+    w_norm = meteo.wws / max(params.wws_max, 1e-6)
+    np.clip(w_norm, 0.0, 1.0, out=w_norm)
     denom = np.tan(params.slope_max_rad) if params.slope_max_rad > 0 else 1.0
-    s_norm = np.clip(np.tan(np.clip(topo.slope, -1.4, 1.4)) / denom, 0.0, 1.0)
+    s_norm = np.tan(np.clip(topo.slope, -1.4, 1.4))
+    s_norm /= denom
+    np.clip(s_norm, 0.0, 1.0, out=s_norm)
 
-    arg = params.beta * (f_norm + params.gamma_w * w_norm + params.gamma_s * s_norm)
+    arg = f_norm
+    arg += params.gamma_w * w_norm
+    arg += params.gamma_s * s_norm
+    arg *= params.beta
     return burning_next.astype(float) * np.tanh(arg)
