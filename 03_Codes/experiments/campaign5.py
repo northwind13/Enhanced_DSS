@@ -1,13 +1,11 @@
 """Chapter 5 Monte Carlo campaign on the THESIS scenario grid.
 
 Arms (thesis 5.4.2, Table 5.6):
-  Test0    no DSS: the cost of inaction
-  F5       minimal seed base (5 rules), adaptation off
-  F5Ev     F5 + evolving-fuzzy stages (1: tuning, 2: resolution)
-  F5AI     F5 + generative stage only (gate chain on)
-  F5EvAI   F5 + full staged adaptation (open decision space)
-  F22      doctrine block R1-R22 ("core"), static
-  F40      complete forty-rule base ("full"), static
+  Test0    no DSS: the cost of inaction              (T_0)
+  F5       five seed rules, static (adaptation off)  (T_F5)
+  F5Ev     F5 + the evolving-fuzzy stages            (T_F5+Ev)
+  F5EvAI   F5 + full staged adaptation (evolving stages + gated
+           generative stage together)                (T_DisasterAware)
 
 Scenarios (thesis Table 5.7):
   S1  remote forest (~2 settlements), sufficient pool, 1 remote ignition
@@ -18,8 +16,8 @@ Scenarios (thesis Table 5.7):
 
 Weather is critical fire weather in every scenario (dry fuel, strong
 wind), so the scenario axes are the only controlled difference. Every
-(scenario, seed) pair generates ONE world; all seven arms replay the
-identical world.
+(scenario, seed) pair generates ONE world; every arm replays the
+identical world, which is what makes the paired comparison legal.
 
 Resumable: finished (scenario, arm, seed) rows are skipped on restart.
 
@@ -56,19 +54,36 @@ OUT = os.path.join(os.path.dirname(os.path.abspath(__file__)), "out")
 CHECKPOINTS_MIN = (120.0, 360.0)
 MAX_HOURS = 6.0            # time-to-out censored at the 6 h cap
 COVER_THR = 0.45
+# quality gate of the decision engine (graduated fail-safe Q/eta).
+# Read from the environment so multiprocessing workers, which import
+# this module afresh under spawn, see the SAME value the main process
+# was started with; --eta sets it for both.
+ETA = float(os.environ.get("DSS_ETA", "0.60"))
 
 ARMS = {
     "Test0":  ("minimal", None),
+    # the STATIC control: the same five-rule seed base with no adaptation.
+    # Without it the campaign has nothing to attribute the growth to.
     "F5":     ("minimal", dict(adapt_on=False)),
+    # evolving stages WITHOUT the generative stage: not a table row of
+    # its own, but the report's best-of view (BEST_SRC) needs it per
+    # world to retire harmful generative products in hindsight
     "F5Ev":   ("minimal", dict(adapt_on=True, evfis_on=True,
                                genai_on=False)),
-    "F5AI":   ("minimal", dict(adapt_on=True, evfis_on=False,
-                               genai_on=True)),
+    # full staged adaptation ON TOP of the static control: evolving
+    # stages and the gated generative stage together
     "F5EvAI": ("minimal", dict(adapt_on=True, evfis_on=True,
                                genai_on=True)),
-    "F22":    ("core",    dict(adapt_on=False)),
+    # the upper reference: the whole written doctrine, run statically. The
+    # 22-rule "core" block is retired - a middle setting nobody used - so
+    # the campaign runs between the five seeds and the forty.
     "F40":    ("full",    dict(adapt_on=False)),
 }
+# WHAT A PLAIN RUN COVERS. The doctrine arm is defined above and can
+# still be asked for by name, but it is not run by default: the
+# thesis tables and figures no longer report it, so a fifth of the
+# campaign's time was being spent on numbers nobody reads.
+DEFAULT_ARMS = ("Test0", "F5", "F5Ev", "F5EvAI")
 SCENARIOS = ("S1", "S2", "S3", "S4", "S5")
 LIMITED = {"S2", "S4", "S5"}          # pool x0.6
 WUI = {"S3", "S4", "S5"}
@@ -182,6 +197,29 @@ def _make_template_proposer(seed: int):
         aer = d.get("asset_exposure_risk", "M")
         feas = d.get("suppression_feasibility", "M")
         urg = d.get("intervention_urgency", "M")
+        # POOL SATURATED (brief line or a G2d rejection): a competent
+        # officer stops ordering more physical work the budget cannot
+        # fund. What still helps is sustained capacity from water when
+        # the map carries it, otherwise the non-spending channels.
+        if ("POOL SATURATED" in situation or "G2d" in situation):
+            ants = [["fire_threat_level",
+                     (">=" + thr) if thr in ("L", "M", "H") else thr],
+                    ["suppression_feasibility", feas]]
+            if "a lake/sea lies" in situation:
+                return {"antecedents": ants,
+                        "consequents": [["water_drafting", 0.9]],
+                        "note": "template: pool saturated; raise "
+                                "sustained capacity from the water "
+                                "body instead of re-dividing the "
+                                "budget"}
+            return {"antecedents": [["asset_exposure_risk",
+                                     (">=" + aer) if aer in
+                                     ("L", "M", "H") else aer],
+                                    ["intervention_urgency", urg]],
+                    "consequents": [["public_warning", 1.0],
+                                    ["evacuation", 0.7]],
+                    "note": "template: pool saturated and no water "
+                            "body; spend nothing, protect people"}
         dup = ("duplicate cell" in situation
                or "G2 duplicate" in situation)
         pkg = dup or (state["n"] % 3 == 0)
@@ -252,7 +290,7 @@ def run_once(scenario: str, arm: str, seed: int):
             # learned, so the arms were not independent. See
             # dss.isolated_store_path.
             state_path=dss.isolated_store_path("campaign5"),
-            cycle_min=12.0, horizon_min=24.0, **ekw)
+            cycle_min=12.0, horizon_min=24.0, eta=ETA, **ekw)
         # campaign parameter: adaptation windows every 24 min, not
         # every cycle. Documented with the results; also what keeps a
         # 6 h run from spending most of its wall time on trial
@@ -410,6 +448,42 @@ def _worker(job):
                 f"{sc}/{arm}/{seed}: {type(exc).__name__}: {exc}")
 
 
+def _purge_arms(redo, runs_p, curves_p, funnel_p):
+    """Drop every finished row of the named arms from the resumable
+    outputs, so the scheduler sees them as not-done and re-runs them
+    under the current code. Nothing else is touched."""
+    import json as _js
+    n = 0
+    for path in (runs_p, curves_p, funnel_p):
+        if not os.path.exists(path):
+            continue
+        with open(path, encoding="utf-8") as f:
+            rows = list(csv.DictReader(f))
+            fields = rows[0].keys() if rows else None
+        if fields is None:
+            continue
+        keep = [r for r in rows if r.get("arm") not in redo]
+        n += len(rows) - len(keep)
+        with open(path, "w", newline="", encoding="utf-8") as f:
+            w = csv.DictWriter(f, fieldnames=list(fields))
+            w.writeheader()
+            w.writerows(keep)
+    prod_p = os.path.join(OUT, "ladder_products.jsonl")
+    if os.path.exists(prod_p):
+        with open(prod_p, encoding="utf-8") as f:
+            lines = [ln for ln in f if ln.strip()]
+        keep = [ln for ln in lines
+                if _js.loads(ln).get("arm") not in redo]
+        with open(prod_p, "w", encoding="utf-8") as f:
+            f.writelines(keep)
+    for a in redo:
+        rp = os.path.join(OUT, f"rep_cycles_{a}.json")
+        if os.path.exists(rp):
+            os.remove(rp)
+    print(f"purged {n} finished rows for re-run: "
+          + ", ".join(sorted(redo)))
+
+
 def main():
     ap = argparse.ArgumentParser()
     ap.add_argument("--seeds", type=int, default=50)
@@ -418,12 +492,28 @@ def main():
     ap.add_argument("--budget-s", type=float, default=0.0,
                     help="stop cleanly after this many seconds")
     ap.add_argument("--scenarios", default=",".join(SCENARIOS))
-    ap.add_argument("--arms", default=",".join(ARMS))
+    ap.add_argument("--arms", default=",".join(DEFAULT_ARMS),
+                    help="comma list; F40 is defined but not run by "
+                         "default (--arms Test0,F5,F5Ev,F5EvAI,F40)")
+    ap.add_argument("--redo", default="",
+                    help="comma list of arms whose finished runs are "
+                         "PURGED from the outputs first, so they are "
+                         "re-run under the current code (e.g. after "
+                         "a gate change: --redo F5EvAI)")
+    ap.add_argument("--eta", type=float, default=ETA,
+                    help="quality gate of the decision engine "
+                         "(default 0.60)")
     args = ap.parse_args()
+    globals()["ETA"] = args.eta
+    os.environ["DSS_ETA"] = str(args.eta)    # workers inherit this
     os.makedirs(OUT, exist_ok=True)
     runs_p = os.path.join(OUT, "ladder_runs.csv")
     curves_p = os.path.join(OUT, "ladder_curves.csv")
     funnel_p = os.path.join(OUT, "ladder_funnel.csv")
+
+    redo = {a for a in args.redo.split(",") if a}
+    if redo:
+        _purge_arms(redo, runs_p, curves_p, funnel_p)
 
     done = set()
     if os.path.exists(runs_p):

@@ -1,0 +1,3 @@
+block,param,value,arm,seed,n_ign,pool,coverage,n_regions,j_threshold,eta,attention_thr,cycle_min,horizon_min,revision_budget,w_burn,w_asset,w_pop,j_phys,j_total,burned,burned_ha,evacuated,affected,out_min,fs_frac,tried_3,acc_3,rules_final,seconds
+calibration,freeburn,1,freeburn,202,1,1.0,1.0,4,0.35,0.6,0.35,12.0,24.0,3,1.0,1.0,1.0,0.53647,0.47336,3151,283.59,0.0,3149.0,-1,,0,0,0,1.4
+calibration,freeburn,1,freeburn,201,1,1.0,1.0,4,0.35,0.6,0.35,12.0,24.0,3,1.0,1.0,1.0,0.52352,0.46193,3728,335.52,0.0,3403.0,-1,,0,0,0,1.4

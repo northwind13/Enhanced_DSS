@@ -51,7 +51,7 @@ class DecisionEngine:
                  min_gain: float = 0.05, run_logger=None,
                  cycle_min: float | None = None,
                  horizon_min: float | None = None,
-                 seed_profile: str = "full",
+                 seed_profile: str = "minimal",
                  learned_store: str | None = None,
                  revision_budget: int = 3,
                  use_evfis: bool = True, use_genai: bool = True,
@@ -105,7 +105,13 @@ class DecisionEngine:
         # adaptation stages engage even when the absolute cost is small
         self.min_gain = float(min_gain)
         self.run_logger = run_logger
-        self.seed_profile = str(seed_profile or "full")
+        # TWO PROFILES: the five-rule seed base (default) and the forty of
+        # the written doctrine. The 22-rule "core" block is retired, and
+        # any other name - a stale flag in a store, an old script - is read
+        # as "minimal" rather than silently starting a run on a base it
+        # did not ask for.
+        _p = str(seed_profile or "").lower()
+        self.seed_profile = "full" if _p.startswith("full") else "minimal"
         self.rules = make_runtime_rules(self.seed_profile)
         # the persistent learned-rule store survives fires, engines
         # and MAPS: knowledge accumulated anywhere is reloaded here

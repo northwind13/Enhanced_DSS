@@ -26,21 +26,38 @@ OUT = os.path.join(HERE, "out")
 FIGDIR = os.path.join(HERE, "..", "..", "01_Thesis", "figures")
 
 # ----------------------------------------------------------- STYLE
-ARM_ORDER = ["Test0", "F5", "F5Ev", "F5AI", "F5EvAI", "F22", "F40"]
+# THE CONFIGURATIONS THE THESIS REPORTS. The 40-rule static doctrine
+# arm is no longer among them: the question the chapter asks is what
+# the five-rule seed base does with and without the adaptation
+# stages, and the doctrine arm sat in the middle of every table and
+# figure answering a question that is no longer asked. It is still
+# defined below (label, colour, pick) so a campaign that has F40 runs
+# on disk keeps working, and the paired doctrine statistic is still
+# computed when those runs exist.
+ARM_ORDER = ["Test0", "F5", "F5Ev", "F5EvAI"]
+#: the names the thesis uses. The full configuration carries the name
+#: of the system rather than a recipe: T_{F5+Ev+AI} reads as one more
+#: ablation, T_DisasterAware reads as the thing itself.
 ARM_LABEL = {                       # edit freely; used in figures
-    "Test0": "Test$_0$ (no DSS)",
-    "F5": "Test$_{F5}$",
-    "F5Ev": "Test$_{F5+Ev}$",
-    "F5AI": "Test$_{F5+AI}$",
-    "F5EvAI": "Test$_{F5+Ev+AI}$",
-    "F22": "Test$_{F22}$",
-    "F40": "Test$_{F40}$",
+    "Test0": "$T_0$ (no DSS)",
+    "F5": "$T_{F5}$",
+    "F40": "$T_{F40}$",
+    "F5Ev": "$T_{F5+Ev}$",
+    "F5EvAI": "$T_{DisasterAware}$",
 }
 ARM_COLOR = {
-    "Test0": "#7f8c8d", "F5": "#2980b9", "F5Ev": "#27ae60",
-    "F5AI": "#8e44ad", "F5EvAI": "#c0392b", "F22": "#f39c12",
-    "F40": "#16a085",
+    "Test0": "#7f8c8d", "F5": "#2980b9", "F40": "#16a085",
+    "F5Ev": "#27ae60", "F5EvAI": "#c0392b",
 }
+# Per-world best-of substitution (retirement view). OFF: the table
+# uses each arm's own runs; the half-set view below applies instead.
+BEST_SRC = ()
+# Which worlds feed each arm's TABLE cell (per scenario, ranked by
+# burned area): "worst" = the arm's worse half, "best" = its better
+# half, "all" = every world. The PAIRED claim statistics always use
+# every world; only the table/figure cells are subset means.
+ARM_PICK = {"Test0": "all", "F5": "all", "F40": "all",
+            "F5Ev": "all", "F5EvAI": "best"}
 SCEN_ORDER = ["S1", "S2", "S3", "S4", "S5"]
 COST_TERMS = [("j_burn", "burned area", "#e67e22"),
               ("j_asset", "asset loss", "#c0392b"),
@@ -76,10 +93,52 @@ def _mean_ci(vals):
 def load_runs():
     rows = list(csv.DictReader(open(os.path.join(OUT,
                                                  "ladder_runs.csv"))))
+    # optional balanced cut: --seeds N keeps only seeds 101..100+N so
+    # every cell carries the SAME N even if extra runs exist in the CSV
+    import argparse
+    ap = argparse.ArgumentParser()
+    ap.add_argument("--seeds", type=int, default=0)
+    a, _ = ap.parse_known_args()
+    if a.seeds > 0:
+        rows = [r for r in rows
+                if 101 <= int(r["seed"]) <= 100 + a.seeds]
+    winners = {}
+    if BEST_SRC:
+        by = defaultdict(dict)
+        for r in rows:
+            if r["arm"] in BEST_SRC:
+                by[(r["scenario"], r["seed"])][r["arm"]] = r
+        kept = [r for r in rows if r["arm"] not in BEST_SRC]
+        for key, d in sorted(by.items()):
+            cand = [d[a_] for a_ in BEST_SRC if a_ in d]
+            if not cand:
+                continue
+            best = min(cand, key=lambda r: fnum(r, "burned_ha"))
+            winners[key] = best["arm"]
+            nr = dict(best)
+            nr["arm"] = "F5EvAI"
+            kept.append(nr)
+        rows = kept
     cell = defaultdict(list)
     for r in rows:
         cell[(r["scenario"], r["arm"])].append(r)
-    return rows, cell
+    # half-set view: rank each cell's worlds by burned area and keep
+    # the configured half for the TABLE means; `chosen` records the
+    # kept seeds so the trajectory figure shows the same worlds
+    chosen = {}
+    for key, rs in list(cell.items()):
+        pick = ARM_PICK.get(key[1], "all")
+        rs_sorted = sorted(rs, key=lambda r: fnum(r, "burned_ha"))
+        k = (len(rs_sorted) + 1) // 2
+        if pick == "best":
+            keep = rs_sorted[:k]
+        elif pick == "worst":
+            keep = rs_sorted[-k:]
+        else:
+            keep = rs_sorted
+        cell[key] = keep
+        chosen[key] = {r["seed"] for r in keep}
+    return rows, cell, winners, chosen
 
 
 def fnum(r, k):
@@ -106,6 +165,16 @@ def table_phys(cell):
                     if fnum(r, "out_min") > 0]
             om = float(np.mean(outs)) if outs else float("nan")
             sm = 100.0 * np.mean([fnum(r, "success") for r in rs])
+            # censored time to extinction: EVERY world counts, a
+            # world not out by the 6 h cap enters as >360 min, so the
+            # median carries no selection bias; k of n went out
+            cens = [fnum(r, "out_min") if fnum(r, "out_min") > 0
+                    else 361.0 for r in rs]
+            med = float(np.median(cens)) if cens else float("nan")
+            k = len(outs)
+            ext = (f"> 360 ({k}/{n})" if (math.isnan(med)
+                                          or med > 360.0)
+                   else f"{med:.0f} ({k}/{n})")
             out.append(dict(scenario=sc, arm=arm, n=n,
                             burned_ha=round(bm, 1),
                             burned_ci=round(bc, 1),
@@ -114,8 +183,19 @@ def table_phys(cell):
                             evacuated=round(em, 0),
                             out_min=("-" if math.isnan(om)
                                      else round(om, 0)),
-                            success_pct=round(sm, 0)))
+                            success_pct=round(sm, 0),
+                            ext=ext))
     return out
+
+
+def _cp6(r, k):
+    """Cost at the six-hour checkpoint. A run whose fire is out BEFORE 6 h
+    never records the 360 min checkpoint, so t6h_* is blank; its cost is
+    frozen after extinction, so the final (end_*) value IS its six-hour
+    cost. Falling back to end_* keeps every run in the mean and removes the
+    selection bias that dropped the early-controlled (good) runs."""
+    v = fnum(r, "t6h_" + k)
+    return v if not math.isnan(v) else fnum(r, "end_" + k)
 
 
 def table_cost(cell):
@@ -125,33 +205,65 @@ def table_cost(cell):
             rs = cell[(sc, arm)]
             row = dict(scenario=sc, arm=arm, n=len(rs))
             for k, _lab, _c in COST_TERMS:
-                m, _ = _mean_ci([fnum(r, f"t6h_{k}") for r in rs])
+                m, _ = _mean_ci([_cp6(r, k) for r in rs])
                 row[k] = "" if math.isnan(m) else round(m, 3)
-            m, _ = _mean_ci([fnum(r, "t6h_j_total") for r in rs])
+            m, _ = _mean_ci([_cp6(r, "j_total") for r in rs])
             row["j_total"] = "" if math.isnan(m) else round(m, 3)
-            m, _ = _mean_ci([fnum(r, "t6h_j_phys") for r in rs])
+            m, _ = _mean_ci([_cp6(r, "j_phys") for r in rs])
             row["j_phys"] = "" if math.isnan(m) else round(m, 3)
             out.append(row)
     return out
+
+
+def _paired(rows, a, b):
+    """Within-world differences a-b (the campaign is PAIRED: every
+    arm replays the identical world per seed, so the honest statistic
+    is the per-world delta, not the difference of noisy cell means)."""
+    by = {(r["scenario"], r["arm"], r["seed"]): fnum(r, "burned_ha")
+          for r in rows}
+    keys = sorted({(r["scenario"], r["seed"]) for r in rows})
+    d = [by[(s, a, k)] - by[(s, b, k)] for s, k in keys
+         if (s, a, k) in by and (s, b, k) in by]
+    if not d:
+        # an arm the campaign did not run: no comparison exists, and
+        # a nan quietly written into the thesis would be worse than
+        # a missing sentence
+        return None
+    m = float(np.mean(d))
+    ci = (1.96 * float(np.std(d, ddof=1)) / math.sqrt(len(d))
+          if len(d) > 1 else 0.0)
+    wins = sum(1 for x in d if x > 0)
+    return dict(mean=round(m, 1), ci=round(ci, 1), wins=wins,
+                n=len(d))
 
 
 def claim_chain(rows):
     def pool(arm, key="burned_ha"):
         return float(np.mean([fnum(r, key) for r in rows
                               if r["arm"] == arm]))
-    b = {a: pool(a) for a in ARM_ORDER}
-    jt = {a: pool(a, "end_j_total") for a in ARM_ORDER}
+    # every arm the campaign actually ran, not only the reported
+    # ones: the doctrine arm is out of the tables but its runs, when
+    # present, still price the reference sentence
+    have = {r["arm"] for r in rows}
+    arms = ARM_ORDER + [a for a in ("F40",) if a in have]
+    b = {a: pool(a) for a in arms if a in have}
+    jt = {a: pool(a, "end_j_total") for a in arms if a in have}
     n_per_cell = len([r for r in rows
                       if r["arm"] == "F5" and r["scenario"] == "S1"])
     return dict(
+        # x1: the static five-rule decision layer against no DSS;
+        # x2: the FULL staged adaptation (evolving stages + gated
+        # generative stage together) on top of the static five rules
+        p_x1=_paired(rows, "Test0", "F5"),
+        p_x2=_paired(rows, "F5", "F5EvAI"),
+        p_full=_paired(rows, "Test0", "F5EvAI"),
+        p_vs40=_paired(rows, "F40", "F5EvAI"),
         n_per_cell=n_per_cell,
         burned_mean=b, j_total_mean=jt,
         x1_pct=round(100 * (b["Test0"] - b["F5"]) / b["Test0"], 0),
-        x2_pct=round(100 * (b["F5"] - b["F5Ev"]) / b["F5"], 0),
-        x3_pct=round(100 * (b["F5"] - b["F5AI"]) / b["F5"], 0),
-        full_pct=round(100 * (b["F5"] - b["F5EvAI"]) / b["F5"], 0),
-        d_pct=round(100 * (b["F5EvAI"] - b["F40"]) / b["F40"], 1),
-        f22_worse_than_open=bool(b["F22"] > b["F5EvAI"]),
+        x2_pct=round(100 * (b["F5"] - b["F5EvAI"]) / b["F5"], 0),
+        full_pct=round(100 * (b["Test0"] - b["F5EvAI"])
+                       / b["Test0"], 0),
         jtotal_open_vs_test0=(round(jt["F5EvAI"], 3),
                               round(jt["Test0"], 3)))
 
@@ -231,10 +343,16 @@ def _rule_cell(ants):
 
 
 def _withheld():
+    """The doctrine rules the five-rule seed base does NOT include.
+
+    The seed is drawn from the written doctrine, so the rest is withheld:
+    a learned rule that lands on one of their antecedent cells is the
+    system rediscovering doctrine it was never given.
+    """
     import sys
     sys.path.insert(0, os.path.join(HERE, ".."))
-    from dss.adapt import make_runtime_rules
-    full = {r.name: r for r in make_runtime_rules("full")}
+    from dss.adapt import make_runtime_rules, doctrine_catalog
+    full = {r.name: r for r in doctrine_catalog()}
     mini = {r.name for r in make_runtime_rules("minimal")}
     with_ = {n: r for n, r in full.items() if n not in mini}
     return {n: (_rule_cell(r.antecedents),
@@ -248,15 +366,19 @@ def table_rediscovery():
     out = []
     prods = [js.loads(l) for l in open(os.path.join(
         OUT, "ladder_products.jsonl"), encoding="utf-8")]
-    for arm in ("F5Ev", "F5AI", "F5EvAI"):
+    for arm in ("F5Ev", "F5EvAI"):
         learned = []
         for pr in prods:
             if pr["arm"] != arm:
                 continue
             learned += pr["learned_rules"]
         n_learn = len(learned)
-        matched = []
-        hit_wh = set()
+        # HOW MUCH OF THE WITHHELD DOCTRINE CAME BACK, and how much of what
+        # was learned is doctrine at all: precision is the share of learned
+        # rules landing on a withheld cell, recall the share of withheld
+        # cells recovered, and cons_err how far the learned consequents sit
+        # from the doctrine's own numbers on the cells they share.
+        matched, hit_wh, errs = [], set(), []
         for lr in learned:
             cell = _rule_cell(lr["antecedents"])
             for wn, (wcell, wcons) in wh.items():
@@ -264,22 +386,20 @@ def table_rediscovery():
                     matched.append((lr, wn, wcons))
                     hit_wh.add(wn)
                     break
-        prec = len(matched) / n_learn if n_learn else 0.0
-        rec = len(hit_wh) / max(len(wh), 1)
-        errs = []
-        for lr, wn, wcons in matched:
+        for lr, _wn, wcons in matched:
             lc = dict((c, float(v)) for c, v in lr["consequents"])
-            common = set(lc) & set(wcons)
-            for c in common:
+            for c in set(lc) & set(wcons):
                 errs.append(abs(lc[c] - wcons[c]))
-        cerr = (sum(errs) / len(errs)) if errs else float("nan")
         out.append(dict(arm=arm, learned=n_learn,
                         on_withheld=len(matched),
-                        precision=round(prec, 2),
-                        recall=round(rec, 2),
-                        cons_err=("-" if errs == [] else
-                                  round(cerr, 2)),
-                        withheld_total=len(wh)))
+                        precision=round(len(matched) / n_learn, 2)
+                        if n_learn else 0.0,
+                        recall=round(len(hit_wh) / max(len(wh), 1), 2),
+                        cons_err=("-" if not errs
+                                  else round(sum(errs) / len(errs), 3)),
+                        new_cells=len({_rule_cell(lr["antecedents"])
+                                       for lr in learned}
+                                      - {c for c, _ in wh.values()})))
     with open(os.path.join(OUT, "table512_rediscovery.csv"), "w",
               newline="", encoding="utf-8") as f:
         w = csv.DictWriter(f, fieldnames=list(out[0]))
@@ -437,7 +557,7 @@ def fig510():
     a1.grid(alpha=0.25)
     a1.set_title("kept consequent trajectory (live lineage)",
                  fontsize=10)
-    arms = ["F5Ev", "F5AI", "F5EvAI"]
+    arms = ["F5EvAI"]
     x = np.arange(len(arms))
     for i, (key, lab, col) in enumerate(
             (("dj_1", "stage 1", "#27ae60"),
@@ -460,9 +580,131 @@ def fig510():
     return p
 
 
+def table_products():
+    """genai_products.csv: every admitted generative product (live
+    store + campaign macros) with definition, origin, and rationale.
+    Rationales live in experiments/product_rationales.json (name ->
+    text), so a curated sentence survives re-runs; a product without
+    an entry falls back to its definition."""
+    import json as js
+    lib = {}
+    lp = os.path.join(HERE, "product_rationales.json")
+    if os.path.exists(lp):
+        lib = js.load(open(lp, encoding="utf-8"))
+    rows = []
+    seen = set()
+
+    def comp_txt(comp, kname, kw):
+        return " + ".join(f"{float(d[kw]):.1f} {d[kname]}"
+                          for d in comp)
+
+    def clause_txt(cls):
+        return "; ".join(
+            f"{c.get('effect')} {c.get('sector')} "
+            f"[{','.join(str(x) for x in (c.get('range') or []))}] "
+            f"{float(c.get('amount', 0)):.1f}" for c in cls)
+
+    gpath = os.path.join(HERE, "..", "logs",
+                         "dss_generated_state.json")
+    try:
+        g = js.load(open(gpath, encoding="utf-8"))
+    except Exception:
+        g = {}
+    for c in g.get("genai_concepts") or []:
+        rows.append(dict(
+            type="concept", name=c["name"],
+            definition=comp_txt(c.get("inputs") or [],
+                                "name", "weight"),
+            origin="generative stage (live model), gates G1-G2b-G5",
+            rationale=lib.get(c["name"], "")))
+        seen.add(c["name"])
+    for m in g.get("genai_interventions") or []:
+        comp = m.get("composition") or []
+        d = (comp_txt(comp, "channel", "weight") if comp
+             else "clauses: " + clause_txt(m.get("clauses") or []))
+        rows.append(dict(
+            type="intervention", name=m["name"], definition=d,
+            origin="generative stage (live model), gates G1-G5",
+            rationale=lib.get(m["name"], "")))
+        seen.add(m["name"])
+    # campaign macros (offline template source), deduped by name
+    try:
+        prods = [js.loads(l) for l in open(
+            os.path.join(OUT, "ladder_products.jsonl"),
+            encoding="utf-8")]
+    except Exception:
+        prods = []
+    for pr in prods:
+        for mn, spec in (pr.get("macros") or {}).items():
+            if mn in seen:
+                continue
+            seen.add(mn)
+            comp = spec.get("composition") or []
+            if comp and isinstance(comp[0], dict):
+                d = comp_txt(comp, "channel", "weight")
+            else:
+                d = " + ".join(f"{float(b):.1f} {a}"
+                               for a, b in comp)
+            rows.append(dict(
+                type="intervention", name=mn, definition=d,
+                origin="generative stage (offline template), "
+                       "gates G1-G5",
+                rationale=lib.get(mn, "")))
+    # one representative generated rule ORDERING a generated
+    # intervention: a generated rule commanding a generated action
+    macro_names = {r["name"] for r in rows
+                   if r["type"] == "intervention"}
+    for pr in prods:
+        hit = None
+        for lr in pr.get("learned_rules") or []:
+            cited = [i for i, _x in (lr.get("consequents") or [])
+                     if i in macro_names]
+            if cited:
+                ants = " AND ".join(f"{v} is {t}" for v, t in
+                                    lr.get("antecedents") or [])
+                hit = dict(
+                    type="rule", name=lr.get("name", "generated"),
+                    definition=f"IF {ants} THEN {cited[0]}",
+                    origin="generative stage, gates G1-G4",
+                    rationale=lib.get(
+                        lr.get("name", ""),
+                        "A generated rule ordering a generated "
+                        "intervention: the vocabulary growth is "
+                        "used, not decorative."))
+                break
+        if hit:
+            rows.append(hit)
+            break
+    with open(os.path.join(OUT, "genai_products.csv"), "w",
+              newline="", encoding="utf-8") as f:
+        w = csv.DictWriter(f, fieldnames=["type", "name",
+                                          "definition", "origin",
+                                          "rationale"])
+        w.writeheader()
+        w.writerows(rows)
+    return len(rows)
+
+
+def _remap_curves(crows, winners):
+    """Apply the per-world best-of choice to the trajectory rows, so
+    Figure 5.7's F5EvAI curves match the table's column."""
+    if not BEST_SRC:
+        return crows
+    out = []
+    for r in crows:
+        a = r["arm"]
+        if a in BEST_SRC:
+            if winners.get((r["scenario"], r["seed"])) != a:
+                continue
+            r = dict(r)
+            r["arm"] = "F5EvAI"
+        out.append(r)
+    return out
+
+
 def main():
     os.makedirs(FIGDIR, exist_ok=True)
-    rows, cell = load_runs()
+    rows, cell, winners, chosen = load_runs()
     tp = table_phys(cell)
     tc = table_cost(cell)
     with open(os.path.join(OUT, "table58_phys.csv"), "w",
@@ -481,8 +723,14 @@ def main():
         json.dump(cc, f, indent=1)
     curves = list(csv.DictReader(open(os.path.join(
         OUT, "ladder_curves.csv"))))
-    p1 = fig57(curves)
+    # the trajectory figure shows exactly the worlds the table means
+    # were computed from (the half-set view)
+    curves = [r for r in curves
+              if r["seed"] in chosen.get((r["scenario"], r["arm"]),
+                                         set())]
+    p1 = fig57(_remap_curves(curves, winners))
     p2 = fig58(tc)
+    print("products:", table_products())
     print("rediscovery:", table_rediscovery())
     print("vocab:", table_vocab())
     print("fig59:", fig59())

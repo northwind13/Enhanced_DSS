@@ -1,0 +1,13 @@
+﻿quantity;value
+cycles;19
+satisficing_failed;19
+tried;1
+accepted;0
+rejected;1
+withheld;1
+persist_failed;0
+dJ_accepted;0.000000
+stage2_tried;1
+stage2_accepted;0
+blocked: cooldown between adaptation trials;18
+rejected: instantiated cell did not improve the physical forecast (0.036 vs 0.024, burn+asset+pop at >=45 min);1

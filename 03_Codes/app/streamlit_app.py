@@ -3840,27 +3840,30 @@ def page_simulation():
             # (the resulting mode is shown in the DSS configuration line below)
             # seed rule profile the DSS starts from (SAME key as the Layer 4
             # Rules panel, so the two stay in sync)
-            _sp_opts = {"40 rules (full)": "full",
-                        "core (22 rules)": "core",
-                        "minimal (5 rules)": "minimal"}
+            # TWO SEED BASES. The 22-rule "core" block is retired - a
+            # middle setting nobody used, which made every comparison a
+            # three-way one. What is left is the question the work is
+            # about: five seeds and learn the rest, or the forty of the
+            # written doctrine as the upper reference.
+            _sp_opts = {"minimal (5 rules) — learns the rest": "minimal",
+                        "full doctrine (40 rules)": "full"}
             _sp_cur = str(_sv("dss_seed_profile", "minimal"))
             _sp_idx = next((i for i, v in enumerate(_sp_opts.values())
                             if v == _sp_cur), 0)
             _sp_sel = st.selectbox("Seed rule base", list(_sp_opts),
                                    index=_sp_idx, key="l4_seed_profile",
-                                   help="How much doctrine the DSS starts "
-                                        "with: 40 (full), core 22, or minimal "
-                                        "5 (learns the rest). This is the "
-                                        "OPERATIONAL profile the DSS runs; the "
-                                        "Layer 4 Rules tab selector is "
-                                        "view-only.")
+                                   help="The OPERATIONAL base the DSS runs. "
+                                        "Minimal is five seeds, one per "
+                                        "intervention family, drawn from "
+                                        "the doctrine; the adaptation "
+                                        "stages have to rebuild the rest.")
             if _sp_opts[_sp_sel] != _sp_cur:
                 st.session_state["dss_seed_profile"] = _sp_opts[_sp_sel]
                 st.rerun()
             # one-line summary of the resulting DSS configuration
-            _prof_lbl = {"full": "40", "core": "22 core",
-                         "minimal": "5 minimal"}.get(
-                             str(_sv("dss_seed_profile", "minimal")), "?")
+            _prof_lbl = ("40 doctrine"
+                         if str(_sv("dss_seed_profile", "minimal")) == "full"
+                         else "5 minimal")
             if not _active:
                 st.markdown("**DSS configuration: No DSS** — the fire runs "
                             "free.")
@@ -4390,12 +4393,10 @@ def page_simulation():
         elif panel == "Layer 4 Rules":
             st.markdown("**Rule catalog \u2014 thesis seeds + "
                         "everything this run has learned**")
-            _profs = {
-                "40 rules (full seed set)": "full",
-                "core \u2014 doctrine R1-R22 only": "core",
-                "minimal \u2014 5 strongest seeds (one per "
-                "intervention family), LEARN the rest by trial":
-                "minimal"}
+            _profs = {"minimal \u2014 five seeds, one per intervention "
+                      "family; the rest is LEARNED": "minimal",
+                      "full doctrine \u2014 the 40 written seeds "
+                      "(Appendix E)": "full"}
             # VIEW-ONLY on this tab: picking a profile here just shows that
             # profile's seeds for inspection; it does NOT change the running
             # DSS. The operational seed base is set under Layer 4 Decision.
@@ -4409,13 +4410,12 @@ def page_simulation():
             _psel = st.selectbox(
                 "View seed profile (display only)", list(_profs),
                 index=(_pidx[0] if _pidx else 0),
-                help="Shows that profile's seed rules here for inspection "
+                help="Shows that base's seed rules here for inspection "
                      "only. It does NOT change the running DSS: the "
-                     "operational seed base is chosen under Layer 4 "
-                     "Decision.")
+                     "operational base is chosen under Layer 4 Decision.")
             st.session_state["rules_view_profile"] = _profs[_psel]
-            st.caption("Display only \u2014 the DSS runs the seed base set under "
-                       "Layer 4 Decision "
+            st.caption("Display only \u2014 the DSS runs the base set "
+                       "under Layer 4 Decision "
                        f"(**{_sv('dss_seed_profile', 'minimal')}**).")
             import os as _os_st
             _shared_store = _shared_store_path()
@@ -4613,14 +4613,14 @@ def page_simulation():
                                "(stage \u2460)")
                 return 0, "\U0001F7E6 seed"
 
-            # ---- SEED table: the never-deleted doctrine base for the chosen
-            # profile (40 / core 22 / minimal). Shown as defined; adaptation
-            # never edits this table.
+            # ---- SEED table: the never-deleted base. The DSS runs the
+            # five-rule minimal seed; the written doctrine is kept as a
+            # CATALOG to inspect and to measure the learned base against,
+            # not as something a run can start from.
             _seedsPure = _dss.make_runtime_rules(
-                str(_sv("rules_view_profile",
-                        _sv("dss_seed_profile", "minimal"))))
+                str(_sv("rules_view_profile", "minimal")))
             st.markdown(f"**Seed rules (never deleted) — "
-                        f"{len(_seedsPure)} in this profile (view)**")
+                        f"{len(_seedsPure)} shown**")
             _tblR = [dict(
                 name=_r.name,
                 IF=" AND ".join(f"{v} is {t}"
@@ -4900,17 +4900,26 @@ def page_simulation():
 
             _nnew = sum(1 for _r in _rlist if _r.name[0] in "AG")
             _ntun = sum(1 for _r in _rlist if "evFIS" in (_r.note or ""))
-            _fullR = _dss.make_runtime_rules("full")
-            _cellsN = [set(_r.antecedents) for _r in _rlist
-                       if _r.active]
+            # TWO READINGS, because both are the point: how much of the
+            # WRITTEN doctrine the learned base has come to cover, and how
+            # much ground it answers for beyond the seed it started from.
+            _fullR = _dss.doctrine_catalog()
+            _cellsN = [set(_r.antecedents) for _r in _rlist if _r.active]
             _hitR = sum(1 for _fr in _fullR if _fr.active and any(
                 set(_fr.antecedents) & _cn for _cn in _cellsN))
             _totR = sum(1 for _fr in _fullR if _fr.active)
+            _cellSet = {tuple(sorted(_r.antecedents)) for _r in _rlist
+                        if _r.active}
+            _seedC = {tuple(sorted(_r.antecedents))
+                      for _r in _dss.make_runtime_rules(
+                          str(_sv("dss_seed_profile", "minimal")))}
             st.caption(f"{len(_rlist)} rules \u00b7 adaptation-born: "
                        f"{_nnew} \u00b7 evFIS-tuned consequents: "
-                       f"{_ntun} \u00b7 convergence toward the "
- f" doctrine: {_hitR}/{_totR} doctrine "
-                       f"cells touched ({_hitR / max(_totR, 1):.0%})."
+                       f"{_ntun} \u00b7 doctrine cells touched: "
+                       f"{_hitR}/{_totR} "
+                       f"({_hitR / max(_totR, 1):.0%}) \u00b7 antecedent "
+                       f"cells beyond the seed base: "
+                       f"{len(_cellSet - _seedC)}."
                        " Learned rules persist in logs/"
                        "dss_generated_state.json across fires, engines and "
                        "MAPS; strength = accumulated fired weight.")

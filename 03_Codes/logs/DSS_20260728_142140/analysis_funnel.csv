@@ -1,0 +1,19 @@
+﻿quantity;value
+cycles;6
+satisficing_failed;5
+tried;4
+accepted;0
+rejected;4
+withheld;0
+persist_failed;0
+dJ_accepted;0.000000
+stage1_tried;1
+stage1_accepted;0
+stage3_tried;3
+stage3_accepted;0
+blocked: cooldown between adaptation trials;1
+gate: rejected at G3 (no improvement);1
+gate: model timeout;2
+rejected: rejected at G3 (claude);1
+rejected: no improving perturbation found;1
+"rejected: model call timed out after 90 s. The model is reachable, the answer just took longer than the budget for one whole attempt. The stage is skipped this cycle and tried again at the next window; set DSS_GENAI_TIMEOUT higher only for batch runs, since the decision cycle blocks for the whole wait";2

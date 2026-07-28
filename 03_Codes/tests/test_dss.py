@@ -329,8 +329,13 @@ def test_decision_engine_cycle_logs_and_applies():
     assert 0.0 <= rec.quality <= 1.0
     why = eng.log.why(rec)
     assert any("concepts" in ln for ln in why)
-    # adaptation may add rules but never removes the seed base
-    assert len(eng.rules) >= len(dss.SEED_RULES)
+    # adaptation may add rules but never removes the seed base, and the
+    # base a run starts from is the FIVE-rule minimal set (dss.SEED_RULES
+    # is the 40-rule doctrine those five are drawn from).
+    _seed = {r.name for r in dss.make_runtime_rules()}
+    assert len(_seed) == 5
+    assert _seed <= {r.name for r in eng.rules}
+    assert len(eng.rules) >= len(_seed)
 
 
 def test_counterfactual_replays_without_orders():
@@ -2390,16 +2395,30 @@ def test_a_containment_line_is_never_dug_through_a_settlement():
     cy, cx = int(ys[len(ys) // 2]), int(xs[len(xs) // 2])
     sim = Simulator(w)
     w.add_ignition(cx + 3, cy + 3, step=0, radius=1)   # right beside it
-    eng = dss.DecisionEngine(dss.partition_n(60, 40, 1), base_pool=base,
-                             j_threshold=0.05, cycle_min=2.0,
-                             horizon_min=30.0, adapt_on=True, genai_on=False)
+
+    # THE ORDER IS GIVEN, NOT WAITED FOR. This used to run the DSS and hope
+    # a containment order appeared; with the five-rule seed base (the 22-
+    # and 40-rule doctrine profiles are retired) the containment channel is
+    # driven weakly and no cells were ordered at all, so the test passed or
+    # failed on which seeds happened to fire rather than on the invariant
+    # it is about. The guard is what is under test, so the order is
+    # commanded at full strength and the map is checked.
+    chans = ["suppression_effort", "resource_deployment", "containment_line",
+             "asset_protection", "evacuation", "public_warning",
+             "tactical_burn", "water_drafting", "retardant_drop"]
+    u = {c: 0.0 for c in chans}
+    u["containment_line"] = 1.0
+    u["suppression_effort"] = 0.4
+    pairs = [(dss.partition_n(60, 40, 1)[0], dict(u))]
 
     ordered = on_built = cut_bad = 0
     for _ in range(80):
-        sim.step(resource_override=eng.maybe_decide(sim))
-        a = eng.last_actions
-        if a and a.get("cont") is not None:
-            c = np.asarray(a["cont"])
+        _ov = dss.decision_to_resources(w, sim.state.burning > 0.5,
+                                        pairs, base)
+        sim.step(resource_override=_ov)
+        _cut = getattr(_ov, "rcut", None)
+        if _cut is not None:
+            c = np.asarray(_cut) > 1e-6
             ordered += int(c.sum())
             on_built += int((c & built).sum())
         r = sim.last_applied_resource
@@ -4315,3 +4334,57 @@ def test_every_experiment_runs_on_its_own_learned_store():
             assert "state_path=" in (_tail if _close < 0 else _tail[:_close]), \
                 f"{path} builds an engine on the shared field store"
         assert "isolated_store_path" in src, path
+
+
+def test_the_seed_base_is_five_rules_and_the_doctrine_is_forty():
+    """Two bases, and the middle one is retired.
+
+    The 22-rule "core" block was a setting nobody used and it made every
+    comparison a three-way one. What is left is the question the work is
+    about: five seeds (one per intervention family, drawn from the
+    doctrine) with the rest to be LEARNED, or the forty written rules of
+    Appendix E as the upper reference. Anything else - a stale flag in a
+    store, a script written against a retired name - reads as minimal, so
+    a run cannot quietly start on a base it did not ask for.
+    """
+    import glob
+    import dss
+    from dss import adapt as A
+
+    five = [r.name for r in dss.make_runtime_rules()]
+    assert len(five) == 5, five
+    assert len(dss.make_runtime_rules("full")) == 42
+    # the retired names, and anything unknown, fall back to the seed base
+    for asked in ("core", "rule42", "minimal", None, ""):
+        assert [r.name for r in dss.make_runtime_rules(asked)] == five, asked
+    assert A.SEED_PROFILE == "minimal"
+    assert set(A.SEED_PROFILES) == {"minimal", "full"}
+
+    # the five come OUT of the doctrine: no rule exists in the seed base
+    # that the written doctrine does not contain
+    cat = dss.doctrine_catalog()
+    assert len(cat) == 42 and sum(1 for r in cat if r.active) == 40
+    assert set(five) <= {r.name for r in cat}
+
+    # and the seed still answers for every intervention family
+    _cons = {c for r in dss.make_runtime_rules() for c, _v in r.consequents}
+    assert {"suppression_effort", "resource_deployment", "containment_line",
+            "asset_protection", "evacuation", "public_warning"} <= _cons
+
+    # an engine reports the base it actually runs
+    for asked, want, n in (("full", "full", 42),
+                           ("core", "minimal", 5),
+                           (None, "minimal", 5)):
+        eng = dss.DecisionEngine(dss.partition_n(40, 30, 1),
+                                 seed_profile=asked,
+                                 state_path=dss.isolated_store_path("t"))
+        assert eng.seed_profile == want, asked
+        assert len(eng.rules) == n, asked
+
+    # and nothing offers the retired 22-rule block any more
+    for path in (['app/streamlit_app.py', 'dss/loop.py', 'dss/adapt.py']
+                 + sorted(glob.glob('experiments/*.py'))):
+        src = open(path, encoding='utf-8').read()
+        for bad in ('seed_profile="core"', '("core",',
+                    'make_runtime_rules("core")'):
+            assert bad not in src, f"{path} still offers {bad}"

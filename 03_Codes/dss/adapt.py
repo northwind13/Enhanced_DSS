@@ -43,36 +43,54 @@ from .evaluate import (candidate_vs_noaction, CONCEPT_FAMILY,
                        forecast_cost, physical_cost)
 
 
-def make_runtime_rules(profile: str = "full") -> List[Rule]:
+#: The two bases a run may start from. The 22-rule "core" doctrine block
+#: is retired: it was a middle setting nobody used and it made every
+#: comparison a three-way one. What remains is the question the work is
+#: about - can a system that starts with almost nothing rebuild what a
+#: written doctrine contains - so the choice is FIVE seeds or the FORTY of
+#: the doctrine (Appendix E), and the five are drawn from those forty.
+SEED_PROFILES = ("minimal", "full")
+SEED_PROFILE = "minimal"
+
+
+def make_runtime_rules(profile: str = SEED_PROFILE) -> List[Rule]:
     """Fresh, mutable copy of the seed base (adaptation never mutates
     the module-level catalog).
 
-    profile selects HOW MUCH doctrine the run starts with:
- "full" - the whole base (40 seeds + examples)
-      "core"    - the doctrine block R1-R22 only (no backbone): the
-                  adaptation stages must rebuild the rest
-      "minimal" - per intervention family only the SINGLE strongest
- seed (5 rules with the current: one seed
-                  answers two families): the system starts nearly
-                  naked and must LEARN its rule base by trial
-                  (stages 2/3)
+    "minimal" - per intervention family the SINGLE strongest seed: five
+                rules, because one seed answers two families. The system
+                starts nearly naked and has to LEARN the rest through the
+                adaptation stages. This is what a run uses by default.
+    "full"    - the whole written doctrine, 40 active seeds plus the two
+                inactive provenance placeholders (Appendix E). The upper
+                reference an ablation is measured against.
+
+    Anything else - including the retired "core" and any name left in an
+    old store or script - is read as "minimal", so a stale flag cannot
+    quietly start a run on a base it did not ask for.
     """
     rules = copy.deepcopy(SEED_RULES)
-    prof = (profile or "full").lower()
-    if prof.startswith("core"):
-        keep = {f"R{i}" for i in range(1, 23)}
-        return [r for r in rules if r.name in keep]
-    if prof.startswith("min"):
-        best: dict = {}
-        for r in rules:
-            if not r.active:
-                continue
-            for iv, v in r.consequents:
-                if iv not in best or v > best[iv][1]:
-                    best[iv] = (r, v)
-        ids = {id(r) for r, _v in best.values()}
-        return [r for r in rules if id(r) in ids]
-    return rules
+    if str(profile or "").lower().startswith("full"):
+        return rules
+    best: dict = {}
+    for r in rules:
+        if not r.active:
+            continue
+        for iv, v in r.consequents:
+            if iv not in best or v > best[iv][1]:
+                best[iv] = (r, v)
+    ids = {id(r) for r, _v in best.values()}
+    return [r for r in rules if id(r) in ids]
+
+
+def doctrine_catalog() -> List[Rule]:
+    """The written doctrine (Appendix E), for measuring against.
+
+    A run starts from the five-rule minimal base; this is what "how much
+    of the doctrine did the system rediscover on its own" is checked with,
+    and it is the same list the "full" profile hands out.
+    """
+    return copy.deepcopy(SEED_RULES)
 
 
 @dataclass
@@ -87,6 +105,21 @@ class AdaptOutcome:
 
 # ------------------------------------------------------------- stage 1
 TRIAL_BASIS_MIN = 45.0   # adaptation trials are judged at >= this
+
+
+def _trial_cost(rep, cost):
+    """Objective the adaptation trial is judged on. By default the test
+    is aligned with the REPORTED total decision cost J_total (the
+    physical terms plus the response and delay the commitment incurs),
+    so an adaptation is admitted only when it improves the objective the
+    campaign actually scores. This removes the case where a tuning that
+    lowered physical damage but spent more response effort was accepted
+    and yet raised the total cost. Set DSS_TRIAL_OBJ=phys to recover the
+    older physical-only basis (burned area, assets, population) for the
+    ablation."""
+    if os.environ.get("DSS_TRIAL_OBJ", "total").lower() == "phys":
+        return physical_cost(rep, cost)
+    return float(rep.j_total)
 
 # WHAT AN ATTEMPT ACTUALLY COST. A shadow forecast simulates 45 minutes of
 # physics and a model call blocks on the network; a gate that only looks up a
@@ -155,7 +188,7 @@ def _cva(build_override, sim, rules, horizon, reseed=None):
     else:
         rep = forecast_cost(sim, _ov, horizon,
                             reseed=reseed, horizon_min=hmin)
-        p_c = physical_cost(rep, sim.cfg.cost)
+        p_c = _trial_cost(rep, sim.cfg.cost)
         sim._dss_cva[_key] = float(p_c)
     # the no-action physical baseline is constant within a decision
     # step: cache it per (basis, reseed)
@@ -167,7 +200,7 @@ def _cva(build_override, sim, rules, horizon, reseed=None):
     if key not in sim._dss_p0c:
         rep0 = forecast_cost(sim, None, horizon, reseed=reseed,
                              horizon_min=hmin)
-        sim._dss_p0c[key] = physical_cost(rep0, sim.cfg.cost)
+        sim._dss_p0c[key] = _trial_cost(rep0, sim.cfg.cost)
     return float(p_c), float(sim._dss_p0c[key])
 
 
@@ -1009,6 +1042,21 @@ def _situation_brief(sim, engine) -> str:
                              + ("; air support can reach the whole map"
                                 if getattr(pool, "rair", None) is not None
                                 else ""))
+                _acts = getattr(engine, "last_actions", None) or {}
+                _dem, _bud = _acts.get("demand"), _acts.get("budget")
+                if _dem is not None and _bud and \
+                        float(_dem) > 0.95 * float(_bud):
+                    lines.append(
+                        f"- POOL SATURATED: the standing orders "
+                        f"already demand {float(_dem):.0f} capacity "
+                        f"against a funded budget of {float(_bud):.0f}. "
+                        "One more capacity-spending order cannot be "
+                        "funded; it would only re-divide the same "
+                        "budget and thin the current engagement. What "
+                        "still helps here: evacuation or "
+                        "public_warning (spend no capacity), or "
+                        "water_drafting (RAISES sustained capacity "
+                        "near water)")
         try:
             from disaster_phyengine.costs import compute_costs as _cc
             rep = _cc(sim)
@@ -1068,6 +1116,73 @@ def _availability(prop: dict, sim) -> Optional[str]:
                 + ", ".join(bad) + " cannot be supplied; choose an "
                 "action the terrain supports)")
     return None
+
+
+_NONSPENDING = ("evacuation", "public_warning", "water_drafting")
+
+
+def _macro_spends(md: dict) -> bool:
+    """A learned intervention spends capacity unless every component
+    (composite) or every clause effect (actuator) is non-spending.
+    'draft' raises capacity and 'evacuate' moves people; everything
+    else is physical work funded from the shared budget."""
+    comp = md.get("composition") or []
+    if comp:
+        return any(str(a) not in _NONSPENDING for a, _b in comp)
+    cls = md.get("clauses") or []
+    if cls:
+        return any(str(c.get("effect")) not in ("draft", "evacuate")
+                   for c in cls)
+    return True
+
+
+def _pool_saturation(prop: dict, engine=None) -> Optional[str]:
+    """G2d economy: when the standing orders already demand more
+    capacity than the funded budget, one more capacity-spending order
+    cannot be executed. Admitting such a rule would not add force; it
+    would re-divide the same budget and thin the engagement that is
+    already under way (the dispersion failure the ladder measured on
+    the limited-pool scenario). Orders that spend nothing (evacuation,
+    public_warning) or that RAISE capacity (water_drafting) pass."""
+    try:
+        acts = getattr(engine, "last_actions", None) or {}
+        dem, bud = acts.get("demand"), acts.get("budget")
+        if dem is None or not bud or float(bud) <= 1e-9:
+            return None
+        if float(dem) <= 0.95 * float(bud):
+            return None
+        dem, bud = float(dem), float(bud)
+    except Exception:
+        return None
+    macros = getattr(engine, "macros", {}) or {}
+    ni = prop.get("new_intervention") or {}
+    spend = set()
+    for i, x in (prop.get("consequents") or []):
+        i = str(i)
+        try:
+            if float(x) <= 1e-6:
+                continue
+        except Exception:
+            pass
+        if i in _NONSPENDING:
+            continue
+        if i == str(ni.get("name") or ""):
+            if _macro_spends(ni):
+                spend.add(i)
+            continue
+        if i in macros:
+            if _macro_spends(macros[i]):
+                spend.add(i)
+            continue
+        spend.add(i)
+    if not spend:
+        return None
+    return ("G2d pool saturation (the standing orders already demand "
+            f"{dem:.0f} capacity against a funded budget of {bud:.0f}; "
+            "ordering more physical work (" + ", ".join(sorted(spend))
+            + ") cannot be funded and would only thin the current "
+            "engagement. Order what still helps: evacuation or "
+            "public_warning, or water_drafting to RAISE capacity)")
 
 
 def _fires_now(prop: dict, eff) -> Optional[str]:
@@ -1482,7 +1597,8 @@ def _stage3_generative(build_override, sim, rules: List[Rule],
         _repair_relevance(prop, eff))
     LAST_PROPOSAL["repaired"] = copy.deepcopy(prop)
     err = (_g1_g2(prop, engine=engine) or _fires_now(prop, eff)
-           or _availability(prop, sim))
+           or _availability(prop, sim)
+           or _pool_saturation(prop, engine=engine))
     while err and len(_revisions) < _budget:
         _revisions.append(dict(proposal=prop, gate=err))
         LAST_PROPOSAL["revisions"] = list(_revisions)
@@ -1528,7 +1644,8 @@ def _stage3_generative(build_override, sim, rules: List[Rule],
         _repair_relevance(prop, eff))
     LAST_PROPOSAL["repaired"] = copy.deepcopy(prop)
     err = (_g1_g2(prop, engine=engine) or _fires_now(prop, eff)
-               or _availability(prop, sim))
+               or _availability(prop, sim)
+               or _pool_saturation(prop, engine=engine))
     if err:
         return AdaptOutcome(3, False, f"rejected at {err} ({src})",
                             info=dict(source=src, proposal=prop,

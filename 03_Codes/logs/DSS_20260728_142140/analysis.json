@@ -1,0 +1,129 @@
+{
+ "start_step": 0,
+ "seq0": 257,
+ "cycles": 6,
+ "satisficing_failed": 5,
+ "tried": 4,
+ "accepted": 0,
+ "rejected": 4,
+ "blocked": {
+  "cooldown between adaptation trials": 1
+ },
+ "per_stage": {
+  "3": {
+   "tried": 3,
+   "accepted": 0,
+   "dJ": 0.0
+  },
+  "1": {
+   "tried": 1,
+   "accepted": 0,
+   "dJ": 0.0
+  }
+ },
+ "gates": {
+  "rejected at G3 (no improvement)": 1,
+  "model timeout": 2
+ },
+ "reasons": {
+  "rejected at G3 (claude)": 1,
+  "no improving perturbation found": 1,
+  "model call timed out after 90 s. The model is reachable, the answer just took longer than the budget for one whole attempt. The stage is skipped this cycle and tried again at the next window; set DSS_GENAI_TIMEOUT higher only for batch runs, since the decision cycle blocks for the whole wait": 2
+ },
+ "withheld": 0,
+ "dJ_accepted": 0.0,
+ "j_series": [
+  [
+   0,
+   8.746545643760957e-05,
+   0.0,
+   0.0
+  ],
+  [
+   1,
+   0.0001499192430715317,
+   0.00010416074449765232,
+   0.00010207752960769927
+  ],
+  [
+   2,
+   0.00021733991655540434,
+   0.00019327073522486582,
+   0.0001894053205203685
+  ],
+  [
+   3,
+   0.0002874071217021039,
+   0.00027464193778104683,
+   0.0002691490990254259
+  ],
+  [
+   3,
+   0.0002874071217021039,
+   0.00027464193778104683,
+   0.0002691490990254259
+  ],
+  [
+   4,
+   0.0003589854855187862,
+   0.00035205259539471665,
+   0.0003450115434868223
+  ]
+ ],
+ "phys_series": [
+  [
+   0,
+   9.912751729595751e-05,
+   0.0
+  ],
+  [
+   1,
+   0.00016990847548106929,
+   0.00011804884376400598
+  ],
+  [
+   2,
+   0.00024631857209612496,
+   0.00021904016658818128
+  ],
+  [
+   3,
+   0.00032572807126238446,
+   0.00031126086281851975
+  ],
+  [
+   3,
+   0.00032572807126238446,
+   0.00031126086281851975
+  ],
+  [
+   4,
+   0.00040685021692129104,
+   0.00039899294144734557
+  ]
+ ],
+ "persist_failed": 0,
+ "cooldown_refunds": 0,
+ "stage2_prefiltered": 4,
+ "genai_ms": [
+  28097.2,
+  90033.0,
+  90070.4
+ ],
+ "stage_controller": {
+  "low|3": -0.00105393089375,
+  "high+gap|3": -0.0011406836153380747,
+  "high+gap|1": 0.0011947450582363546,
+  "low|1": -0.0014250137551039808,
+  "high|1": -0.000571,
+  "mid+gap|1": -0.0002,
+  "high|3": -0.00039,
+  "mid+gap|3": -0.0007419750000000001,
+  "high+gap|2": -0.0020429475972900788,
+  "mid+gap|2": -0.00039000000000000005,
+  "high|2": -0.0002
+ },
+ "config_id": "DSS1-EV1-GA1-U12:1-U3:1",
+ "seed_profile": "minimal",
+ "persist_errors": []
+}

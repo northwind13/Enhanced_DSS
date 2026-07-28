@@ -4,7 +4,10 @@ One campaign fills Tables I-IV and Figures A-E of the thesis:
 
   arms      A0 no-DSS | A1 minimal static (5 rules) | A2 +evFIS
             A2g +GenAI only | A3 minimal + full adaptation
-            A4 full static (40 rules) | A5 deployed (full + full)
+            A4 doctrine static (40 rules) | A5 doctrine + adaptation
+
+  (the 22-rule "core" block is retired: the ladder runs between the five
+  seeds and the forty of the written doctrine)
   scenarios S-A nominal (resources sufficient)
             S-B capacity-limited (2 remote ignitions, pool x0.6)
             S-C S-B + degraded observation (outage + noise)
@@ -64,8 +67,10 @@ COVER_THR = 0.45                      # gap threshold (Chapter 4)
 
 ARMS = {
     # name: (seed_profile, engine kwargs or None for no DSS)
-    # thesis Table 5.6 (merged 5.4): seven-arm ablation ladder
-    "A0":  ("full",    None),                                          # no DSS
+    # thesis Table 5.6 (merged 5.4): seven-arm ablation ladder. The
+    # 22-rule "core" block is retired - a middle setting nobody used - so
+    # the ladder runs between five seeds and the forty of the doctrine.
+    "A0":  ("minimal", None),                                          # no DSS
     "A1":  ("minimal", dict(adapt_on=False)),                          # 5 rules, static
     "A2":  ("minimal", dict(adapt_on=True, evfis_on=True,  genai_on=False)),
     "A2g": ("minimal", dict(adapt_on=True, evfis_on=False, genai_on=True)),
@@ -320,11 +325,13 @@ def aggregate(rows):
         v = [r[key] for r in rows if r["scenario"] == "SB"
              and r["arm"] == arm and isinstance(r.get(key), (int, float))]
         return float(np.mean(v)) if v else float("nan")
+    # HOW MUCH OF THE GAP DOES ADAPTATION CLOSE: from the five-rule seed
+    # base (A1) toward the written doctrine run statically (A4).
     a4, a1, a3 = _mean("A4"), _mean("A1"), _mean("A3")
     gap = ((a1 - a3) / (a1 - a4) * 100.0
            if a1 == a1 and a4 == a4 and abs(a1 - a4) > 1e-9
            else float("nan"))
-    t2 = [dict(config="A4 full static (upper ref)", j_phys=round(a4, 4)),
+    t2 = [dict(config="A4 doctrine static (upper ref)", j_phys=round(a4, 4)),
           dict(config="A1 minimal static (lower ref)", j_phys=round(a1, 4)),
           dict(config="A3 minimal + full adaptation", j_phys=round(a3, 4)),
           dict(config="gap to A4 closed (%)", j_phys=round(gap, 1))]

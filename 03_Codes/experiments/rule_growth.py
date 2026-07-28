@@ -10,9 +10,10 @@ a different spot, so the engine visits new situation cells and the
 growth stages get material to work on.
 
 Arms (same map, same ignitions, same weather, same rng):
-  A  profile=minimal, adaptation OFF   (static thin base, control)
-  B  profile=minimal, adaptation ON    (must LEARN the missing rules)
-  C  profile=full,    adaptation OFF   (the thesis doctrine, upper ref)
+  A  adaptation OFF   (static five-rule seed base, control)
+  B  adaptation ON     (must LEARN the missing rules)
+
+  C  profile=full, adaptation OFF   (the 40-rule doctrine, upper ref)
 
 Reported per arm: burned cells per episode, time-to-out, final rule
 count, coverage (fraction of episodes' decision cycles where a rule
@@ -78,8 +79,8 @@ def run_arm(arm: str, seed: int, episodes: int, max_steps: int = 150):
     base, _ = dss.resource_suggestion(w)
     w.config.cost.capacity_reference = max(
         100.0, 1.2 * float((base.rcap * base.ravail).sum()))
-    profile = "full" if arm == "C" else "minimal"
     adapt = arm == "B"
+    profile = "full" if arm == "C" else "minimal"
     eng = dss.DecisionEngine(
         dss.partition_n(w.config.nx, w.config.ny, 1), base_pool=base,
         cycle_min=8.0, horizon_min=15.0, adapt_on=adapt,
@@ -132,19 +133,31 @@ def run_arm(arm: str, seed: int, episodes: int, max_steps: int = 150):
 
 
 def rediscovery_table(eng):
-    """Which withheld doctrine cells did the learned rules re-occupy?"""
-    full = dss.make_runtime_rules("full")
+    """Which withheld doctrine cells did the learned rules re-occupy?
+
+    The five-rule seed base is drawn from the written doctrine, so the
+    other thirty-five rules are WITHHELD: a learned rule that lands on one
+    of their antecedent cells is the system rediscovering doctrine it was
+    never given. Cells that belong to no doctrine rule are reported too -
+    growth is not only rediscovery.
+    """
+    full = dss.doctrine_catalog()
     have = {r.name for r in eng.rules}
     withheld = [r for r in full if r.name not in have and r.active]
     learned = [r for r in eng.rules if r.name[0] in "AG"]
     out = []
     for lr in learned:
         la = set(lr.antecedents)
+        hit = False
         for wr in withheld:
             if la & set(wr.antecedents):
-                shared = la & set(wr.antecedents)
                 out.append((lr.name, wr.name,
-                            ", ".join(f"{v}={t}" for v, t in shared)))
+                            ", ".join(f"{v}={t}"
+                                      for v, t in la & set(wr.antecedents))))
+                hit = True
+        if not hit:
+            out.append((lr.name, "new cell",
+                        ", ".join(f"{v}={t}" for v, t in lr.antecedents)))
     return learned, out
 
 

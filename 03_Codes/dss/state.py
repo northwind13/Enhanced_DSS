@@ -2,7 +2,7 @@
 
 The store separates two things the old learned-rule file conflated:
 
-  BASELINE      the seed rule sets (minimal5 / core_doctrine / rule42) and the
+  BASELINE      the seed rule set (minimal5) and the
                 six base interventions. These live in the code and are the
                 factory value. They are never written here and a wipe never
                 deletes them, it only returns them to factory value.
@@ -107,7 +107,7 @@ def empty_state(active_rule_set: str = "minimal5") -> Dict[str, Any]:
         "schema_version": SCHEMA_VERSION,
         "last_updated": _now(),
         "baseline_ref": {
-            "rule_sets": ["minimal5", "core_doctrine", "rule42"],
+            "rule_sets": ["minimal5"],
             "intervention_count": 6,
         },
         "runtime_flags": flags,

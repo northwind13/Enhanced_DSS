@@ -1,0 +1,12 @@
+﻿step;t_min;hotspot;attended;shares;statement
+43;2580.0;Agent_3;Agent_1|Agent_2|Agent_3;Agent_1=1.0|Agent_2=1.0|Agent_3=1.0;Global DSS: focus on Agent_3 (priority 0.57), Agent_3 share 1.00, Agent_1 share 1.00, Agent_2 share 1.00
+0;0.0;Agent_3;Agent_1|Agent_2|Agent_3;Agent_1=1.0|Agent_2=1.0|Agent_3=1.0;Global DSS: focus on Agent_3 (priority 0.52), Agent_3 share 1.00, Agent_1 share 1.00, Agent_2 share 1.00
+1;60.0;Agent_3;Agent_1|Agent_2|Agent_3;Agent_1=1.0|Agent_2=1.0|Agent_3=1.0;Global DSS: focus on Agent_3 (priority 0.45), Agent_3 share 1.00, Agent_1 share 1.00, Agent_2 share 1.00
+1;60.0;Agent_3;Agent_1|Agent_2|Agent_3;Agent_1=1.0|Agent_2=1.0|Agent_3=1.0;Global DSS: focus on Agent_3 (priority 0.42), Agent_3 share 1.00, Agent_1 share 1.00, Agent_2 share 1.00
+2;120.0;Agent_3;Agent_1|Agent_2|Agent_3;Agent_1=1.0|Agent_2=1.0|Agent_3=1.0;Global DSS: focus on Agent_3 (priority 0.42), Agent_3 share 1.00, Agent_1 share 1.00, Agent_2 share 1.00
+3;180.0;Agent_3;Agent_1|Agent_2|Agent_3;Agent_1=1.0|Agent_2=1.0|Agent_3=1.0;Global DSS: focus on Agent_3 (priority 0.39), Agent_3 share 1.00, Agent_1 share 1.00, Agent_2 share 1.00
+4;240.0;Agent_3;Agent_1|Agent_2|Agent_3;Agent_1=1.0|Agent_2=1.0|Agent_3=1.0;Global DSS: focus on Agent_3 (priority 0.38), Agent_3 share 1.00, Agent_1 share 1.00, Agent_2 share 1.00
+5;300.0;Agent_3;Agent_1|Agent_2|Agent_3;Agent_1=1.0|Agent_2=1.0|Agent_3=1.0;Global DSS: focus on Agent_3 (priority 0.37), Agent_3 share 1.00, Agent_1 share 1.00, Agent_2 share 1.00
+6;360.0;Agent_3;Agent_1|Agent_2|Agent_3;Agent_1=1.0|Agent_2=1.0|Agent_3=1.0;Global DSS: focus on Agent_3 (priority 0.36), Agent_3 share 1.00, Agent_1 share 1.00, Agent_2 share 1.00
+7;420.0;Agent_3;Agent_1|Agent_2|Agent_3;Agent_1=1.0|Agent_2=1.0|Agent_3=1.0;Global DSS: focus on Agent_3 (priority 0.35), Agent_3 share 1.00, Agent_1 share 1.00, Agent_2 share 1.00
+8;480.0;Agent_3;Agent_1|Agent_2|Agent_3;Agent_1=1.0|Agent_2=1.0|Agent_3=1.0;Global DSS: focus on Agent_3 (priority 0.34), Agent_3 share 1.00, Agent_1 share 1.00, Agent_2 share 1.00

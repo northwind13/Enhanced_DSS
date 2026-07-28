@@ -34,7 +34,7 @@ from .resolve import resolve_active_set, ActiveSet
 from .adapt import (make_runtime_rules, StageController, AdaptOutcome,
                     stage1_evfis, stage2_resolution, stage3_generative,
                     genai_status, genai_config, genai_probe,
-                    genai_timeout)
+                    genai_timeout, doctrine_catalog)
 from .decision_log import DecisionLog, DecisionRecord, RunLogger
 from .loop import DecisionEngine, counterfactual
 

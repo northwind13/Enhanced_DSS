@@ -1,0 +1,16 @@
+﻿quantity;value
+cycles;91
+satisficing_failed;91
+tried;88
+accepted;2
+rejected;86
+withheld;0
+persist_failed;0
+dJ_accepted;-0.001920
+stage1_tried;71
+stage1_accepted;0
+stage2_tried;17
+stage2_accepted;2
+blocked: cooldown between adaptation trials;3
+rejected: no improving perturbation found;71
+rejected: refined cell already covered;15

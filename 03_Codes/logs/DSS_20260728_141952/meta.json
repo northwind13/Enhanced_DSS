@@ -1,0 +1,267 @@
+{
+ "map": {
+  "nx": 200,
+  "ny": 200,
+  "cell_m": 90.0,
+  "step_min": 30.0
+ },
+ "engine": {
+  "regions": 3,
+  "cycle_min": 1.0,
+  "horizon_min": 45.0,
+  "j_th": 0.25,
+  "eta": 0.75,
+  "adapt": true,
+  "genai": true,
+  "evfis": true,
+  "evfis_step": 0.05,
+  "ctrl_eps": 0.1,
+  "ctrl_lr": 0.05,
+  "attn": 0.35,
+  "min_gain": 0.02,
+  "seed_profile": "minimal",
+  "use_stage12": true,
+  "use_stage3": true
+ },
+ "weather": {
+  "wx_mode": "Manual",
+  "emc_on": true,
+  "dr_start": 12.0,
+  "dr_tday": 34.0,
+  "dr_tnight": 22.0,
+  "dr_rhday": 20.0,
+  "dr_rhnight": 70.0,
+  "dr_rain_mm": 0.0,
+  "dr_rain_start": 18.0,
+  "dr_rain_dur": 3.0
+ },
+ "sensors": [
+  {
+   "kind": "satellite",
+   "x": 0,
+   "y": 0
+  },
+  {
+   "kind": "aerial",
+   "x": 31,
+   "y": 157
+  },
+  {
+   "kind": "ground_camera",
+   "x": 157,
+   "y": 143
+  },
+  {
+   "kind": "in_situ",
+   "x": 80,
+   "y": 143
+  },
+  {
+   "kind": "field_report",
+   "x": 14,
+   "y": 192
+  },
+  {
+   "kind": "aerial",
+   "x": 24,
+   "y": 115
+  },
+  {
+   "kind": "ground_camera",
+   "x": 80,
+   "y": 157
+  },
+  {
+   "kind": "in_situ",
+   "x": 52,
+   "y": 17
+  },
+  {
+   "kind": "field_report",
+   "x": 25,
+   "y": 26
+  },
+  {
+   "kind": "aerial",
+   "x": 31,
+   "y": 24
+  },
+  {
+   "kind": "ground_camera",
+   "x": 94,
+   "y": 115
+  },
+  {
+   "kind": "in_situ",
+   "x": 17,
+   "y": 171
+  },
+  {
+   "kind": "field_report",
+   "x": 188,
+   "y": 173
+  },
+  {
+   "kind": "aerial",
+   "x": 171,
+   "y": 150
+  },
+  {
+   "kind": "ground_camera",
+   "x": 52,
+   "y": 45
+  },
+  {
+   "kind": "in_situ",
+   "x": 38,
+   "y": 185
+  },
+  {
+   "kind": "field_report",
+   "x": 124,
+   "y": 188
+  },
+  {
+   "kind": "public_report",
+   "x": 126,
+   "y": 186
+  },
+  {
+   "kind": "public_report",
+   "x": 181,
+   "y": 55
+  }
+ ],
+ "depots": [
+  {
+   "kind": "depot",
+   "x": 137,
+   "y": 154,
+   "radius": 3,
+   "cap": 0.8,
+   "avail": 1.0,
+   "t_disp": 10.0,
+   "label": "Fire station (Village 4)"
+  },
+  {
+   "kind": "depot",
+   "x": 126,
+   "y": 186,
+   "radius": 3,
+   "cap": 0.5,
+   "avail": 1.0,
+   "t_disp": 12.0,
+   "label": "town base (City centre)"
+  },
+  {
+   "kind": "depot",
+   "x": 181,
+   "y": 55,
+   "radius": 3,
+   "cap": 0.5,
+   "avail": 1.0,
+   "t_disp": 12.0,
+   "label": "town base (Village 1 centre)"
+  },
+  {
+   "kind": "depot",
+   "x": 20,
+   "y": 60,
+   "radius": 3,
+   "cap": 0.5,
+   "avail": 1.0,
+   "t_disp": 12.0,
+   "label": "town base (Village 2 centre)"
+  },
+  {
+   "kind": "depot",
+   "x": 36,
+   "y": 27,
+   "radius": 3,
+   "cap": 0.5,
+   "avail": 1.0,
+   "t_disp": 12.0,
+   "label": "town base (Village 3 centre)"
+  },
+  {
+   "kind": "depot",
+   "x": 161,
+   "y": 187,
+   "radius": 3,
+   "cap": 0.5,
+   "avail": 1.0,
+   "t_disp": 12.0,
+   "label": "town base (Village 5 centre)"
+  },
+  {
+   "kind": "depot",
+   "x": 182,
+   "y": 109,
+   "radius": 3,
+   "cap": 0.5,
+   "avail": 1.0,
+   "t_disp": 12.0,
+   "label": "town base (Village 6 centre)"
+  },
+  {
+   "kind": "depot",
+   "x": 13,
+   "y": 102,
+   "radius": 3,
+   "cap": 0.5,
+   "avail": 1.0,
+   "t_disp": 12.0,
+   "label": "town base (Village 7 centre)"
+  },
+  {
+   "kind": "depot",
+   "x": 30,
+   "y": 159,
+   "radius": 3,
+   "cap": 0.5,
+   "avail": 1.0,
+   "t_disp": 12.0,
+   "label": "town base (Village 8 centre)"
+  },
+  {
+   "kind": "depot",
+   "x": 185,
+   "y": 15,
+   "radius": 3,
+   "cap": 0.5,
+   "avail": 1.0,
+   "t_disp": 12.0,
+   "label": "town base (Village 9 centre)"
+  },
+  {
+   "kind": "road_corridor",
+   "cap": 0.4,
+   "avail": 1.0,
+   "label": "road corridor"
+  },
+  {
+   "kind": "helibase",
+   "x": 126,
+   "y": 186,
+   "radius": 50,
+   "cap": 0.6,
+   "avail": 1.0,
+   "t_disp": 6.0,
+   "label": "helibase (aerial)"
+  },
+  {
+   "kind": "helibase",
+   "x": 84,
+   "y": 142,
+   "radius": 25,
+   "cap": 0.7,
+   "avail": 1.0,
+   "t_disp": 8.0,
+   "label": "helibase 2 (target 90%)"
+  }
+ ],
+ "models": {
+  "genai": "claude-sonnet-5",
+  "rca": "opus"
+ }
+}
