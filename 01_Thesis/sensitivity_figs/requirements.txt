@@ -1,5 +1,0 @@
-# Sensitivity figures for the DisasterAware decision layer.
-# runner.py imports the engine in ../../03_Codes (pure Python + numpy);
-# plot.py needs matplotlib. No GIS/network deps are required here.
-numpy>=1.23
-matplotlib>=3.6
