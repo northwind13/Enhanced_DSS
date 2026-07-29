@@ -66,7 +66,11 @@ RUNS = os.path.join(OUT, "sens_runs.csv")
 POINT = os.path.join(OUT, "sens_point.json")
 
 MAX_MIN = 360.0            # six hours, the horizon Chapter 5 reports on
-SEEDS = [201, 202, 203, 204, 205]
+# REPETITION IS NOT OPTIONAL. One world cannot separate the effect of a
+# parameter from the noise of the map, which is the standing weakness
+# of a one-at-a-time design. Three seeds is the smallest number that
+# still yields an interval; raise it here if the machine allows.
+SEEDS = [201, 202, 203]
 CAL_SEEDS = [201, 202]
 
 # THE DECISION LAYER IS CONFIGURED AS IT IS IN THE CAMPAIGN. A
@@ -74,18 +78,25 @@ CAL_SEEDS = [201, 202]
 # describe the system the rest of the chapter reports.
 TUNE_BASE = dict(j_threshold=0.35, eta=0.60, attention_thr=0.35,
                  cycle_min=12.0, horizon_min=24.0, revision_budget=3)
-ENV_BASE = dict(n_ign=3, pool=1.0, coverage=1.0, n_regions=4)
+ENV_BASE = dict(n_ign=3, pool=1.0, n_sensors=None, n_regions=4)
 W_BASE = dict(w_burn=1.0, w_asset=1.0, w_pop=1.0)
 
 CAL_IGN = [1, 2, 4, 8, 12]
 CAL_POOL = [0.10, 0.25, 0.50, 1.00]
 
 ENV_SWEEPS = {
-    "n_ign":     [1, 2, 3, 4, 6, 8, 12],
-    "pool":      [0.10, 0.20, 0.30, 0.50, 0.75, 1.00],
-    "coverage":  [0.2, 0.4, 0.6, 0.8, 1.0],
-    "n_regions": [1, 2, 4, 6, 8],
+    "n_ign":     [1, 2, 4, 8, 12],
+    "pool":      [0.10, 0.25, 0.50, 0.75, 1.00],
+    "n_sensors": [1, 2, 3, 5, 9],
+    "n_regions": [1, 2, 4, 8],
 }
+# BOTH CONFIGURATIONS ARE RUN ONLY WHERE THE COMPARISON IS THE POINT.
+# Fire load and resource level define the capacity balance, so the
+# question there is whether adaptation earns more as the balance turns
+# against it. Sensor coverage and the region count describe the
+# decision layer's own inputs, and the static configuration adds
+# nothing to those two beyond runtime.
+ENV_TWO_ARM = ("n_ign", "pool")
 TUNE_SWEEPS = {
     "j_threshold":     [0.15, 0.25, 0.35, 0.45, 0.60],
     "eta":             [0.30, 0.45, 0.60, 0.75, 0.90],
@@ -101,7 +112,7 @@ W_SWEEPS = {
 }
 
 FIELDS = ["block", "param", "value", "arm", "seed",
-          "n_ign", "pool", "coverage", "n_regions",
+          "n_ign", "pool", "n_sensors", "n_regions",
           "j_threshold", "eta", "attention_thr", "cycle_min",
           "horizon_min", "revision_budget",
           "w_burn", "w_asset", "w_pop",
@@ -189,12 +200,27 @@ def run_point(seed, arm, env, tune, weights):
                     out_min=-1, fs_frac="", tried_3=0, acc_3=0,
                     rules_final=0, seconds=round(time.time() - t0, 1))
 
+    # OBSERVATION IS A DECISION-LAYER INPUT, not a physical one:
+    # suppression is aimed at the fire the network reports, so a map
+    # the network cannot see is a map the system cannot fight. The
+    # dial is the NUMBER OF ASSETS DEPLOYED, not a coverage target:
+    # the planner places assets in decreasing order of the risk-
+    # weighted coverage they add, so keeping the first k of them is a
+    # deployment of size k. A coverage target does not work as a dial,
+    # because one satellite and one aerial pass already carry it past
+    # any target the sweep could ask for.
+    # n_sensors of None means no network, which the decision layer
+    # reads as full observation; that is the setting every other block
+    # runs under, matching the campaign of the previous section.
     net = None
-    if env["coverage"] is not None and float(env["coverage"]) < 1.0:
-        # sensor coverage is a decision-layer input, not a physical one:
-        # suppression is aimed at the fire the network reports
-        net = dss.suggest_network(
-            w, coverage_target=float(env["coverage"]))
+    if env["n_sensors"] is not None:
+        placements, _log = dss.suggest_network(w)
+        keep = placements[:int(env["n_sensors"])]
+        net = dss.SensorNetwork(
+            [dss.Sensor(kind=q["kind"], x=int(q["x"]), y=int(q["y"]))
+             for q in keep],
+            ny=w.config.ny, nx=w.config.nx,
+            cell_m=w.config.cell_size_m, seed=seed)
 
     adaptive = (arm == "adaptive")
     from dss import adapt as _adapt
@@ -222,6 +248,13 @@ def run_point(seed, arm, env, tune, weights):
                 24.0, float(getattr(eng, "adapt_cooldown_min", 5.0)))
         out_at = None
         for i in range(max_steps):
+            # THE NETWORK HAS TO BE STEPPED. Its fused observation is
+            # zero until it is updated, and a decision layer reading a
+            # zero fire map does nothing at all, so an unstepped
+            # network does not measure poor coverage, it measures a
+            # broken harness. The application steps it the same way.
+            if net is not None:
+                net.update(sim, float(w.config.step_minutes))
             sim.step(resource_override=eng.maybe_decide(sim))
             if int((sim.state.burning > 0.5).sum()) == 0 and i > 5:
                 out_at = (i + 1) * w.config.step_minutes
@@ -283,8 +316,10 @@ def sweep_jobs(point):
     env0 = dict(ENV_BASE, **point)
     jobs = []
     for param, values in ENV_SWEEPS.items():
+        arms = (("static", "adaptive") if param in ENV_TWO_ARM
+                else ("adaptive",))
         for v in values:
-            for arm in ("static", "adaptive"):
+            for arm in arms:
                 for seed in SEEDS:
                     env = dict(env0)
                     env[param] = v
@@ -373,8 +408,11 @@ def choose_point():
     Read as a share of the free burn of the SAME map and ignition
     count: near 0 the fire is beaten whatever the settings, near 100 it
     is lost whatever the settings, and in neither place can a parameter
-    be seen. The point closest to half of the free burn is taken, which
-    is the middle of the band where the decision actually decides.
+    be seen. The band between 40 and 60 per cent is where the decision
+    actually decides, and among the settings inside it the LEAST SEVERE
+    one is taken, that is the smallest fire load and then the largest
+    pool. Sitting at the edge of the design space would make the result
+    a statement about an extreme rather than about the system.
     """
     rows = [r for r in csv.DictReader(open(RUNS, encoding="utf-8"))
             if r["block"] == "calibration"]
@@ -389,15 +427,24 @@ def choose_point():
             continue
         k = (int(r["n_ign"]), float(r["pool"]))
         cells.setdefault(k, []).append(float(r["j_phys"]))
-    best, best_d, table = None, 1e9, []
+    table = []
     for (n, p), vals in sorted(cells.items()):
         j = float(np.mean(vals))
         base = free.get(n, 0.0)
         share = 100.0 * j / base if base > 0 else 0.0
         table.append((n, p, j, base, share))
-        d = abs(share - 50.0)
-        if d < best_d:
-            best, best_d = (n, p), d
+    band = [(n, p, s) for n, p, _j, _b, s in table if 40.0 <= s <= 60.0]
+    if band:
+        near = min(abs(s - 50.0) for _n, _p, s in band)
+        # settings whose severity is equivalent within one point are
+        # not distinguishable by this grid, so the more ordinary
+        # incident is preferred: fewer simultaneous starts first, then
+        # the larger pool
+        tied = [t for t in band if abs(t[2] - 50.0) <= near + 1.0]
+        tied.sort(key=lambda t: (t[0], -t[1]))
+        best = (tied[0][0], tied[0][1])
+    else:
+        best = min(table, key=lambda t: abs(t[4] - 50.0))[:2]
     print("\ncalibration grid (share of free burn):")
     for n, p, j, base, share in table:
         mark = " <-- operating point" if (n, p) == best else ""

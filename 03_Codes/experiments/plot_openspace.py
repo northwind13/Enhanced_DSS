@@ -196,27 +196,39 @@ def fig_products():
 
 
 def _pick_run():
-    """Richest recorded run for an anatomy view: most adaptation activity
-    across the three stages, among runs long enough to read. Deterministic."""
+    """A representative CONTAINED run for the anatomy view: rich adaptation
+    activity across the three stages, but on an incident the layer actually
+    brings under control (final burned-area cost not saturated), so the fire
+    growth curve rises and then flattens rather than running away. The cost
+    of a lost fire would misrepresent the mechanism. Deterministic."""
     best = None; bestscore = -1
     for f in sorted(glob.glob(os.path.join(LOGS, "DSS_*", "cycles.jsonl"))):
-        n = ev = acc = s3 = 0
+        n = ev = acc = s3 = 0; jb_last = None; t0 = None
         for line in open(f, encoding="utf-8"):
+            if '"costs"' not in line:
+                continue
+            try:
+                d = json.loads(line)
+            except Exception:
+                continue
             n += 1
-            if '"adaptation"' not in line:
-                continue
-            a = _extract_adapt(line)
-            if not a:
-                continue
+            if t0 is None:
+                t0 = d.get("t_min")
+            jb = (d.get("costs") or {}).get("j_burn")
+            if jb is not None:
+                jb_last = jb
+            a = d.get("adaptation") or {}
             if a.get("stage", 0) >= 1 and (a.get("tried") or 0) > 0:
                 ev += 1
                 if a.get("accepted"):
                     acc += 1
                 if a.get("stage") == 3:
                     s3 += 1
-        if n < 120:
-            continue
-        score = ev + 2 * acc + 3 * s3
+        if n < 100 or jb_last is None or jb_last > 0.75:
+            continue           # skip lost / saturated fires
+        if t0 is None or t0 > 5:
+            continue           # start of the incident must be logged
+        score = 2 * acc + 3 * s3 + ev
         if score > bestscore:
             bestscore = score; best = f
     if best is None:
@@ -227,7 +239,7 @@ def _pick_run():
 
 def fig_timeline():
     f = _pick_run()
-    ts = []; jt = []; ev = []
+    ts = []; jt = []; bc = []; ev = []
     for line in open(f, encoding="utf-8"):
         try:
             d = json.loads(line)
@@ -236,21 +248,35 @@ def fig_timeline():
         t = d.get("t_min")
         if t is None:
             continue
-        costs = d.get("costs") or {}
-        ts.append(t); jt.append(costs.get("j_total", np.nan))
+        costs = d.get("costs") or {}; sim = d.get("sim") or {}
+        ts.append(t); jt.append(costs.get("j_burn", np.nan))
+        bc.append(sim.get("burning", np.nan))
         a = d.get("adaptation") or {}
         if a.get("stage", 0) >= 1 and (a.get("tried") or 0) > 0:
             ev.append((t, int(a.get("stage")), bool(a.get("accepted"))))
     order = np.argsort(ts)
     ts = list(np.array(ts)[order]); jt = list(np.array(jt)[order])
+    bc = list(np.array(bc)[order])
     fig, (axT, axB) = plt.subplots(
-        2, 1, figsize=(11.0, 4.4), sharex=True,
+        2, 1, figsize=(11.0, 4.6), sharex=True,
         gridspec_kw=dict(height_ratios=[3, 1.15], hspace=0.08))
-    axT.plot(ts, jt, color="#333", lw=1.4)
-    axT.set_ylabel("$J_{total}$")
-    axT.set_ylim(0, max(0.05, np.nanmax(jt) * 1.08))
+    # cumulative burned area (accumulates, then plateaus) - left axis
+    l1, = axT.plot(ts, jt, color="#b2452f", lw=1.7,
+                   label="cumulative burned area (left)")
+    axT.fill_between(ts, 0, jt, color="#b2452f", alpha=0.10)
+    axT.set_ylabel("normalized\nburned area", color="#b2452f")
+    axT.set_ylim(0, 1.02); axT.tick_params(axis="y", labelcolor="#b2452f")
     axT.set_title("anatomy of one recorded run", fontsize=11)
     axT.grid(axis="y", alpha=0.2)
+    # active fire front (rises, then is driven down) - right axis
+    axT2 = axT.twinx()
+    l2, = axT2.plot(ts, bc, color="#2166ac", lw=1.7,
+                    label="active burning cells (right)")
+    axT2.set_ylabel("active burning\ncells", color="#2166ac")
+    axT2.tick_params(axis="y", labelcolor="#2166ac")
+    axT2.set_ylim(0, max(bc) * 1.12 if bc else 1)
+    axT.legend(handles=[l1, l2], frameon=False, fontsize=8.5,
+               loc="center right")
     lane = {1: 1, 2: 2, 3: 3}
     for (t, stg, acc) in ev:
         axB.plot([t], [lane[stg]], "^" if acc else "x",
