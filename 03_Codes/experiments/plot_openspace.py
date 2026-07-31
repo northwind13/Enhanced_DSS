@@ -172,6 +172,10 @@ def fig_products():
     ax.set_xticks(range(len(chans)))
     ax.set_xticklabels([c.replace("_", " ") for c in chans],
                        rotation=30, ha="right", fontsize=9)
+    DISC = {"water_drafting", "retardant_drop", "tactical_burn"}
+    for lbl, ch in zip(ax.get_xticklabels(), chans):
+        if ch in DISC:
+            lbl.set_color("#b0530a"); lbl.set_fontweight("bold")
     ax.set_yticks(range(len(names))); ax.set_yticklabels(names, fontsize=9)
     for i in range(len(names)):
         for j in range(len(chans)):
@@ -186,6 +190,10 @@ def fig_products():
         c = concepts[0]
         inp = " + ".join(f"{i['weight']:.2f} {i['name'].replace('_',' ')}"
                          for i in c["inputs"])
+        ax.text(0.0, -0.40,
+                "orange columns: discoverable actuators (validated in the "
+                "physics, ordered by no seed rule)", transform=ax.transAxes,
+                fontsize=8.5, color="#b0530a")
         ax.text(0.0, -0.30,
                 f"generated concept (L{c['layer']}): "
                 f"{c['name'].replace('_',' ')} = {inp}",

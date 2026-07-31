@@ -38,7 +38,13 @@ import numpy as np
 
 from .fuzzy import TERMS, REGISTRY, default_partition
 from .concepts import DECISION_CONCEPTS
-from .rules import Rule, SEED_RULES, INTERVENTIONS, evaluate_rules
+from .rules import (Rule, SEED_RULES, INTERVENTIONS,
+                    DISCOVERABLE_INTERVENTIONS, evaluate_rules)
+# EFFECTS/SECTORS are needed at IMPORT time, because the stage-3 schema
+# string is built from them: the model must be told the verified effect
+# set rather than have it checked only after the fact. dss.actions pulls
+# in nothing from this package, so there is no import cycle.
+from .actions import EFFECTS, SECTORS
 from .evaluate import (candidate_vs_noaction, CONCEPT_FAMILY,
                        forecast_cost, physical_cost)
 
@@ -499,14 +505,32 @@ _GENAI_SCHEMA = ("Answer with the MINIFIED JSON object only, on one line, "
                  "RELATIVE PROPORTIONS of the bundle: they are rescaled "
                  "so the strongest component runs at the rule's own "
                  "intensity, so a composite is never weaker than "
-                 "ordering the same channels directly)}. A package must "
+                 "ordering the same channels directly)} or "
+                 "\"new_intervention\": {\"name\": str, "
+                 "\"clauses\": [{\"effect\": one of "
+                 f"{list(EFFECTS)}, \"sector\": one of {list(SECTORS)}, "
+                 "\"range\": [rin, rout] in cells from the front with "
+                 "0<=rin<rout<=15, \"amount\": (0,1]}, ...] (at most 3 "
+                 "clauses)} which defines a NEW ACTUATOR: a tactic that "
+                 "no existing channel expresses, compiled directly into "
+                 "the raster operators of the physics engine. A package "
+                 "must "
                  "still contain the rule, and the rule must USE the "
                  "new object (a new concept in its antecedents, a new "
                  "intervention in its consequents). FIXED by design: "
-                 "the ten features, the five decision axes and the "
-                 "six base physical channels. Only compositions of "
-                 "the EXISTING semantics are possible: no new "
-                 "physics, no new features.")
+                 "the ten features, the five decision axes, the nine "
+                 "executable intervention channels (the six doctrine "
+                 f"families plus {list(DISCOVERABLE_INTERVENTIONS)}, "
+                 "which are implemented and available but which no seed "
+                 f"rule orders) and the {len(EFFECTS)} verified physical "
+                 "effects a clause may invoke. Within that basis you may "
+                 "compose freely, and a clause actuator may place a "
+                 "verified effect where no existing action places it; "
+                 "you may NOT invent a new feature, a new decision axis "
+                 "or a physical effect outside the verified set. What "
+                 "the map itself can support is stated in the situation "
+                 "brief: an action the terrain cannot supply is "
+                 "rejected before it is ever simulated.")
 
 
 # wall time of the last live proposal call, so the run log can show WHY a
@@ -1118,6 +1142,78 @@ def _availability(prop: dict, sim) -> Optional[str]:
     return None
 
 
+def _cited_interventions(prop: dict) -> set:
+    """Every intervention the proposal orders, including the ones a
+    new object's composition or clauses reduce to."""
+    cited = set()
+    for i, _v in (prop.get("consequents") or []):
+        cited.add(str(i))
+    ni = prop.get("new_intervention") or {}
+    for a, _b in (ni.get("composition") or []):
+        cited.add(str(a))
+    for c in (ni.get("clauses") or []):
+        if str(c.get("effect")) == "draft":
+            cited.add("water_drafting")
+        if str(c.get("effect")) == "coat":
+            cited.add("retardant_drop")
+    return cited
+
+
+def _ground_proposal(prop: dict, sim, engine=None) -> Optional[str]:
+    """Deterministic action compiler (grounding). Before any
+    simulation gate runs, a proposal whose actions depend on a map
+    object is resolved against THIS map: the actual water body, the
+    transport that reaches it, and the travel it costs. A proposal
+    that resolves is annotated with the grounding (kept in its
+    provenance, so the audit trail shows WHAT the order would use);
+    one that cannot be supplied in time is rejected here, cheaply,
+    with the failing fact named."""
+    needs = _cited_interventions(prop) & set(_WATER_DEPENDENT)
+    if not needs:
+        return None
+    try:
+        import numpy as _np
+        w = sim.world
+        wat = _np.asarray(w.fuel.ftype == 5)
+        if not wat.any():
+            return None          # the availability gate already spoke
+        b = _np.asarray(sim.state.burning > 0.5)
+        if b.any():
+            ys, xs = _np.where(b)
+        else:
+            ys, xs = _np.where(_np.asarray(w.fuel.fload) > 0)
+        wy, wx = _np.where(wat)
+        # nearest water cell to the front
+        d2 = ((wx[None, :] - xs[:, None].astype(float)) ** 2
+              + (wy[None, :] - ys[:, None].astype(float)) ** 2)
+        j = int(_np.argmin(d2.min(axis=0)))
+        cell = float(getattr(w.config, "cell_size_m", 30.0))
+        dist_m = float(_np.sqrt(d2[:, j].min())) * cell
+        pool = getattr(engine, "base_pool", None)
+        air = bool(getattr(pool, "rair", None) is not None) \
+            if pool is not None else False
+        travel = float("nan")
+        if pool is not None and getattr(pool, "rtime", None) is not None:
+            travel = float(pool.rtime[int(wy[j]), int(wx[j])])
+        horizon = float(getattr(engine, "horizon_min", 24.0) or 24.0)
+    except Exception:
+        return None
+    import math as _m
+    if not air and not _m.isnan(travel) and travel > 4.0 * horizon:
+        return ("G2 grounding (the nearest water body lies "
+                f"~{dist_m:.0f} m from the front and ground travel "
+                f"to it is ~{travel:.0f} min with no air support; "
+                + ", ".join(sorted(needs))
+                + " cannot be supplied inside the operational "
+                "horizon; choose a tactic this map supports)")
+    prop["_grounding"] = dict(
+        water_cell=[int(wx[j]), int(wy[j])],
+        dist_m=round(dist_m, 0),
+        travel_min=(None if _m.isnan(travel) else round(travel, 0)),
+        transport=("air" if air else "ground"))
+    return None
+
+
 _NONSPENDING = ("evacuation", "public_warning", "water_drafting")
 
 
@@ -1548,7 +1644,7 @@ def _stage3_generative(build_override, sim, rules: List[Rule],
     # (there is no template; the model is required). Only the
     # simulation gates (G3-G5) end the stage outright: they are the
     # expensive verdicts and re-rolling them would buy noise.
-    _budget = int(getattr(engine, "revision_budget", 3) or 0) \
+    _budget = int(getattr(engine, "revision_budget", 1) or 0) \
         if engine is not None else 0
     _revisions = []
     # ONE WAIT BUDGET FOR THE WHOLE ATTEMPT, not one per call. The timeout
@@ -1598,7 +1694,8 @@ def _stage3_generative(build_override, sim, rules: List[Rule],
     LAST_PROPOSAL["repaired"] = copy.deepcopy(prop)
     err = (_g1_g2(prop, engine=engine) or _fires_now(prop, eff)
            or _availability(prop, sim)
-           or _pool_saturation(prop, engine=engine))
+           or _pool_saturation(prop, engine=engine)
+           or _ground_proposal(prop, sim, engine=engine))
     while err and len(_revisions) < _budget:
         _revisions.append(dict(proposal=prop, gate=err))
         LAST_PROPOSAL["revisions"] = list(_revisions)
@@ -1645,7 +1742,8 @@ def _stage3_generative(build_override, sim, rules: List[Rule],
     LAST_PROPOSAL["repaired"] = copy.deepcopy(prop)
     err = (_g1_g2(prop, engine=engine) or _fires_now(prop, eff)
                or _availability(prop, sim)
-               or _pool_saturation(prop, engine=engine))
+               or _pool_saturation(prop, engine=engine)
+               or _ground_proposal(prop, sim, engine=engine))
     if err:
         return AdaptOutcome(3, False, f"rejected at {err} ({src})",
                             info=dict(source=src, proposal=prop,
@@ -1710,7 +1808,16 @@ def _stage3_generative(build_override, sim, rules: List[Rule],
                          if LAST_PROPOSAL.get("repairs") else "")
                       + (" | WHY: "
                          + str(prop.get("rationale"))[:180]
-                         if prop.get("rationale") else "")))
+                         if prop.get("rationale") else "")
+                      # the deterministic grounding this order would
+                      # use, resolved for THIS map before the gates
+                      + ((lambda g: " | GROUNDED: water@"
+                          f"({g['water_cell'][0]},{g['water_cell'][1]})"
+                          f" {g['dist_m']:.0f} m, {g['transport']}"
+                          + (f", ~{g['travel_min']:.0f} min"
+                             if g.get("travel_min") is not None
+                             else ""))(prop["_grounding"])
+                         if prop.get("_grounding") else "")))
     j0c, j0 = _cva(build_override, sim, rules, horizon)
     rules.append(newr)
     j1a, _ = _cva(build_override, sim, rules, horizon, reseed=101)

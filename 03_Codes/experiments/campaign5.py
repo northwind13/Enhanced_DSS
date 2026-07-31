@@ -52,7 +52,10 @@ from disaster_phyengine.costs import compute_costs    # noqa: E402
 
 OUT = os.path.join(os.path.dirname(os.path.abspath(__file__)), "out")
 CHECKPOINTS_MIN = (120.0, 360.0)
-MAX_HOURS = 6.0            # time-to-out censored at the 6 h cap
+# Episodes run to extinction or 12 h (thesis 5.4: costs are READ at
+# the 6 h checkpoint; success and time to extinction over the full
+# episode)
+MAX_HOURS = 12.0
 COVER_THR = 0.45
 # quality gate of the decision engine (graduated fail-safe Q/eta).
 # Read from the environment so multiprocessing workers, which import
@@ -65,9 +68,8 @@ ARMS = {
     # the STATIC control: the same five-rule seed base with no adaptation.
     # Without it the campaign has nothing to attribute the growth to.
     "F5":     ("minimal", dict(adapt_on=False)),
-    # evolving stages WITHOUT the generative stage: not a table row of
-    # its own, but the report's best-of view (BEST_SRC) needs it per
-    # world to retire harmful generative products in hindsight
+    # evolving stages WITHOUT the generative stage: the evFIS rung of
+    # the four-configuration ladder (thesis Table 5.6)
     "F5Ev":   ("minimal", dict(adapt_on=True, evfis_on=True,
                                genai_on=False)),
     # full staged adaptation ON TOP of the static control: evolving
@@ -487,7 +489,10 @@ def _purge_arms(redo, runs_p, curves_p, funnel_p):
 def main():
     ap = argparse.ArgumentParser()
     ap.add_argument("--seeds", type=int, default=50)
-    ap.add_argument("--seed0", type=int, default=101)
+    # evaluation seeds are DISJOINT from every seed used during
+    # development and calibration (101-120): the final campaign
+    # starts at 201
+    ap.add_argument("--seed0", type=int, default=201)
     ap.add_argument("--workers", type=int, default=2)
     ap.add_argument("--budget-s", type=float, default=0.0,
                     help="stop cleanly after this many seconds")

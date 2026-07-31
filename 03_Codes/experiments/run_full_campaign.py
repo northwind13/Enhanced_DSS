@@ -69,11 +69,11 @@ def run(args, name):
 
 def main():
     ap = argparse.ArgumentParser()
-    ap.add_argument("--seeds", type=int, default=20)
+    ap.add_argument("--seeds", type=int, default=50)
     ap.add_argument("--workers", type=int, default=0)
     ap.add_argument("--docx", default=os.path.join(
         ROOT, "01_Thesis",
-        "DISASTERAWARE_PhDThesis_vFinalSim_Test.docx"))
+        "DISASTERAWARE_PhDThesis_Fin1.docx"))
     ap.add_argument("--skip-campaign", action="store_true")
     ap.add_argument("--redo", default="",
                     help="comma list of arms to purge and re-run "

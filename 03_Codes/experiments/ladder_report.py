@@ -93,15 +93,18 @@ def _mean_ci(vals):
 def load_runs():
     rows = list(csv.DictReader(open(os.path.join(OUT,
                                                  "ladder_runs.csv"))))
-    # optional balanced cut: --seeds N keeps only seeds 101..100+N so
-    # every cell carries the SAME N even if extra runs exist in the CSV
+    # optional balanced cut: --seeds N keeps only the first N seeds
+    # ABOVE the campaign's own base (the smallest seed on file), so
+    # every cell carries the SAME N whichever --seed0 the campaign
+    # used (development 101.., final evaluation 201..)
     import argparse
     ap = argparse.ArgumentParser()
     ap.add_argument("--seeds", type=int, default=0)
     a, _ = ap.parse_known_args()
-    if a.seeds > 0:
+    if a.seeds > 0 and rows:
+        s0 = min(int(r["seed"]) for r in rows)
         rows = [r for r in rows
-                if 101 <= int(r["seed"]) <= 100 + a.seeds]
+                if s0 <= int(r["seed"]) < s0 + a.seeds]
     winners = {}
     if BEST_SRC:
         by = defaultdict(dict)
@@ -166,14 +169,15 @@ def table_phys(cell):
             om = float(np.mean(outs)) if outs else float("nan")
             sm = 100.0 * np.mean([fnum(r, "success") for r in rs])
             # censored time to extinction: EVERY world counts, a
-            # world not out by the 6 h cap enters as >360 min, so the
-            # median carries no selection bias; k of n went out
+            # world not out by the episode cap (12 h) enters as
+            # >720 min, so the median carries no selection bias;
+            # k of n went out over the FULL episode
             cens = [fnum(r, "out_min") if fnum(r, "out_min") > 0
-                    else 361.0 for r in rs]
+                    else 721.0 for r in rs]
             med = float(np.median(cens)) if cens else float("nan")
             k = len(outs)
-            ext = (f"> 360 ({k}/{n})" if (math.isnan(med)
-                                          or med > 360.0)
+            ext = (f"> 720 ({k}/{n})" if (math.isnan(med)
+                                          or med > 720.0)
                    else f"{med:.0f} ({k}/{n})")
             out.append(dict(scenario=sc, arm=arm, n=n,
                             burned_ha=round(bm, 1),

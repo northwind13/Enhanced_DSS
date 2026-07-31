@@ -53,7 +53,12 @@ class DecisionEngine:
                  horizon_min: float | None = None,
                  seed_profile: str = "minimal",
                  learned_store: str | None = None,
-                 revision_budget: int = 3,
+                 # ONE revision by default: the mission brief promises
+                 # the model exactly one corrected retry per rejection
+                 # ("comes back to you once"), and the sensitivity
+                 # study found the budget flat, so the code now keeps
+                 # the promise the prompt makes
+                 revision_budget: int = 1,
                  use_evfis: bool = True, use_genai: bool = True,
                  state_path: str | None = None):
         self.regions = list(regions)

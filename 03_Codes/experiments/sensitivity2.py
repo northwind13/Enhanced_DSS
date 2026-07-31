@@ -69,9 +69,31 @@ MAX_MIN = 360.0            # six hours, the horizon Chapter 5 reports on
 # REPETITION IS NOT OPTIONAL. One world cannot separate the effect of a
 # parameter from the noise of the map, which is the standing weakness
 # of a one-at-a-time design. Three seeds is the smallest number that
-# still yields an interval; raise it here if the machine allows.
-SEEDS = [201, 202, 203]
-CAL_SEEDS = [201, 202]
+# still yields an interval, and it was the first setting used here, but
+# it is not enough to report one. The half width of an interval is
+# t(n-1) * sd / sqrt(n). At three worlds the Student factor is 4.303 and
+# the half width is 2.48 sd; at five worlds the factor falls to 2.776
+# and the half width to 1.24 sd, which is exactly half. Most of that
+# gain comes from the Student factor and not from sqrt(n), which is why
+# the step from three worlds to five buys far more than the step from
+# five to seven, where the half width only falls to 0.93 sd. Five is
+# also the number the calibration grid already carries, so every sweep
+# run divides by a free burn of its own world that is already on disk,
+# the operating point does not move, and the rows already written stay
+# valid because run_jobs appends only what is missing.
+SEEDS = [201, 202, 203, 204, 205]
+# THE GRID IS REPEATED AS OFTEN AS THE SWEEPS. It ran on two seeds to
+# save time, which cost more than it saved: an interval cannot be built
+# from two observations, and the cell that was chosen as the operating
+# point turned out to be the average of one world in which the fire was
+# lost and one in which it was largely held. The grid is what justifies
+# every later sweep, so it is the last place to economise. Five
+# observations keep one unusual map from carrying a third of every cell
+# mean, which matters most in the cells where the free burn itself is
+# small and the reported quantity is a ratio. The grid and the sweeps
+# now stand on the same five worlds, so the denominator of every
+# reported ratio is a world that the grid also reports.
+CAL_SEEDS = list(SEEDS)
 
 # THE DECISION LAYER IS CONFIGURED AS IT IS IN THE CAMPAIGN. A
 # sensitivity study of a differently configured system would not
@@ -82,13 +104,22 @@ ENV_BASE = dict(n_ign=3, pool=1.0, n_sensors=None, n_regions=4)
 W_BASE = dict(w_burn=1.0, w_asset=1.0, w_pop=1.0)
 
 CAL_IGN = [1, 2, 4, 8, 12]
-CAL_POOL = [0.10, 0.25, 0.50, 1.00]
+# THE GRID CARRIES THE SAME RESOURCE LEVELS AS THE SWEEP. With 0.75
+# missing, the calibration answered the question at four levels while
+# the sweep asked it at five, and the widest gap in the grid sat exactly
+# where the outcome turns over.
+CAL_POOL = [0.10, 0.25, 0.50, 0.75, 1.00]
 
 ENV_SWEEPS = {
     "n_ign":     [1, 2, 4, 8, 12],
     "pool":      [0.10, 0.25, 0.50, 0.75, 1.00],
     "n_sensors": [1, 2, 3, 5, 9],
-    "n_regions": [1, 2, 4, 8],
+    # THE REGION COUNT IS SWEPT AS A POWER OF TWO UP TO SIXTEEN. The
+    # expectation taken from the coordination literature is that the
+    # outcome is near flat in N and only degrades once each region holds
+    # too few cells to carry a priority. That claim cannot be tested on
+    # a range that stops at eight, so the last doubling is run.
+    "n_regions": [1, 2, 4, 8, 16],
 }
 # BOTH CONFIGURATIONS ARE RUN ONLY WHERE THE COMPARISON IS THE POINT.
 # Fire load and resource level define the capacity balance, so the
@@ -100,7 +131,13 @@ ENV_TWO_ARM = ("n_ign", "pool")
 TUNE_SWEEPS = {
     "j_threshold":     [0.15, 0.25, 0.35, 0.45, 0.60],
     "eta":             [0.30, 0.45, 0.60, 0.75, 0.90],
-    "attention_thr":   [0.15, 0.25, 0.35, 0.50, 0.70],
+    # THE TWO EXTREMES ARE WHERE THE EXPECTATION LIVES. The threshold is
+    # expected to be flat across its middle and to weaken only when it
+    # is so low that everything claims full attention or so high that
+    # nothing does. Sweeping 0.15 to 0.70 tests only the flat middle,
+    # which cannot confirm or refute the expectation, so 0.05 and 0.95
+    # are carried as well.
+    "attention_thr":   [0.05, 0.15, 0.25, 0.35, 0.50, 0.70, 0.95],
     "horizon_min":     [8.0, 16.0, 24.0, 32.0, 48.0],
     "cycle_min":       [2.0, 4.0, 8.0, 12.0, 20.0],
     "revision_budget": [1, 2, 3, 4, 6],
@@ -110,6 +147,25 @@ W_SWEEPS = {
     "w_asset": [0.5, 1.0, 2.0],
     "w_pop":   [0.5, 1.0, 2.0],
 }
+
+# A FLAT LINE AT ONE OPERATING POINT IS NOT EVIDENCE THAT A GUARDRAIL
+# DOES NOTHING. The satisficing bound and the no-harm horizon are
+# expected to be inert while the fire is large and the pool is scarce,
+# because a harder constraint binds first, and to move only where the
+# fire is small enough and the pool ample enough for the guardrail
+# itself to become the tightest thing in the loop. The sweep therefore
+# runs a second time at the opposite corner of the calibration grid.
+# Two dials are enough: these are the two the expectation names.
+MARGINAL_POINT = dict(n_ign=1, pool=1.00)
+#: EVERY DIAL IS SWEPT IN BOTH REGIMES, NOT ONLY THE TWO GUARDRAILS. A
+#: flat line at the operating point can mean that the dial does nothing or
+#: that the operating point leaves it no room to act. The comparison is
+#: only informative when the same dial is also swept where resources are
+#: not the binding constraint, so the marginal regime carries the whole
+#: set rather than the two bounds it was first written for.
+MARGINAL_SWEEPS = ("j_threshold", "horizon_min", "cycle_min", "eta",
+                   "attention_thr")
+MARGINAL_ENV_SWEEPS = ("n_sensors", "n_regions")
 
 FIELDS = ["block", "param", "value", "arm", "seed",
           "n_ign", "pool", "n_sensors", "n_regions",
@@ -339,6 +395,21 @@ def sweep_jobs(point):
                 wts[param] = v
                 jobs.append(_row("weights", param, v, "adaptive", seed,
                                  env0, TUNE_BASE, wts))
+    envm = dict(ENV_BASE, **MARGINAL_POINT)
+    for param in MARGINAL_SWEEPS:
+        for v in TUNE_SWEEPS[param]:
+            for seed in SEEDS:
+                tune = dict(TUNE_BASE)
+                tune[param] = v
+                jobs.append(_row("marginal", param, v, "adaptive", seed,
+                                 envm, tune, W_BASE))
+    for param in MARGINAL_ENV_SWEEPS:
+        for v in ENV_SWEEPS[param]:
+            for seed in SEEDS:
+                env = dict(envm)
+                env[param] = v
+                jobs.append(_row("marginal", param, v, "adaptive", seed,
+                                 env, TUNE_BASE, W_BASE))
     return jobs
 
 
@@ -402,40 +473,58 @@ def _emit(w, f, row, err, i, n, t0):
 
 
 # --------------------------------------------------- the operating point
-def choose_point():
+BAND = (40.0, 60.0)        # where a parameter can be seen at all
+SPREAD_FLAG = 10.0         # the smallest disagreement worth reporting
+
+
+def choose_point(repoint=False):
     """The cell where the decision layer is neither winning nor losing.
 
-    Read as a share of the free burn of the SAME map and ignition
-    count: near 0 the fire is beaten whatever the settings, near 100 it
+    Read as a share of the free burn of the SAME map, ignition count AND
+    SEED: near 0 the fire is beaten whatever the settings, near 100 it
     is lost whatever the settings, and in neither place can a parameter
     be seen. The band between 40 and 60 per cent is where the decision
     actually decides, and among the settings inside it the LEAST SEVERE
     one is taken, that is the smallest fire load and then the largest
     pool. Sitting at the edge of the design space would make the result
     a statement about an extreme rather than about the system.
+
+    THE DENOMINATOR IS THE SAME SEED, not the mean of the seeds. Any
+    other choice measures one world against another world's reference.
+
+    THE SPREAD OVER SEEDS IS PRINTED for every cell, and a cell whose
+    worlds fall on different sides of the band is marked. A mean of 54
+    built from 28 and 80 is not a contested world; it is one lost world
+    and one held world, and whoever reads the operating point off this
+    table has to be told that.
     """
     rows = [r for r in csv.DictReader(open(RUNS, encoding="utf-8"))
             if r["block"] == "calibration"]
     free = {}
     for r in rows:
         if r["arm"] == "freeburn":
-            free.setdefault(int(r["n_ign"]), []).append(float(r["j_phys"]))
-    free = {k: float(np.mean(v)) for k, v in free.items()}
+            free[(int(r["n_ign"]), int(r["seed"]))] = float(r["j_phys"])
     cells = {}
     for r in rows:
         if r["arm"] != "adaptive":
             continue
-        k = (int(r["n_ign"]), float(r["pool"]))
-        cells.setdefault(k, []).append(float(r["j_phys"]))
-    table = []
-    for (n, p), vals in sorted(cells.items()):
-        j = float(np.mean(vals))
-        base = free.get(n, 0.0)
-        share = 100.0 * j / base if base > 0 else 0.0
-        table.append((n, p, j, base, share))
-    band = [(n, p, s) for n, p, _j, _b, s in table if 40.0 <= s <= 60.0]
+        n = int(r["n_ign"])
+        base = free.get((n, int(r["seed"])))
+        if not base or base <= 0:
+            continue
+        cells.setdefault((n, float(r["pool"])), []).append(
+            100.0 * float(r["j_phys"]) / base)
+    if not cells:
+        raise SystemExit("no calibration rows with a free-burn reference")
+    table = [(n, p, float(np.mean(v)), min(v), max(v), len(v))
+             for (n, p), v in sorted(cells.items())]
+
+    def regime(s):
+        return 0 if s < BAND[0] else (1 if s <= BAND[1] else 2)
+
+    band = [t for t in table if BAND[0] <= t[2] <= BAND[1]]
     if band:
-        near = min(abs(s - 50.0) for _n, _p, s in band)
+        near = min(abs(t[2] - 50.0) for t in band)
         # settings whose severity is equivalent within one point are
         # not distinguishable by this grid, so the more ordinary
         # incident is preferred: fewer simultaneous starts first, then
@@ -444,15 +533,49 @@ def choose_point():
         tied.sort(key=lambda t: (t[0], -t[1]))
         best = (tied[0][0], tied[0][1])
     else:
-        best = min(table, key=lambda t: abs(t[4] - 50.0))[:2]
-    print("\ncalibration grid (share of free burn):")
-    for n, p, j, base, share in table:
-        mark = " <-- operating point" if (n, p) == best else ""
-        print(f"  ignitions {n:2d}  pool {p:.2f}  J={j:.4f}  "
-              f"free={base:.4f}  {share:5.1f}%{mark}")
+        best = min(table, key=lambda t: abs(t[2] - 50.0))[:2]
+    print("\ncalibration grid, as a share of the free burn of the same "
+          "world and seed:")
+    for n, p, share, lo, hi, k in table:
+        mark = "  <-- operating point" if (n, p) == best else ""
+        warn = ("  WORLDS DISAGREE ON THE REGIME"
+                if regime(lo) != regime(hi) and hi - lo > SPREAD_FLAG
+                else "")
+        print(f"  ignitions {n:2d}  pool {p:.2f}  {share:5.1f}%  "
+              f"[{lo:5.1f}, {hi:5.1f}] over {k} worlds{mark}{warn}")
+
     point = dict(n_ign=best[0], pool=best[1])
+    old = None
+    if os.path.exists(POINT):
+        with open(POINT, encoding="utf-8") as f:
+            old = json.load(f)
+    swept = False
+    if os.path.exists(RUNS):
+        with open(RUNS, encoding="utf-8") as f:
+            swept = any(r["block"] != "calibration"
+                        for r in csv.DictReader(f))
+    moved = (old is not None
+             and (int(old["n_ign"]), float(old["pool"]))
+             != (point["n_ign"], point["pool"]))
+    if moved and swept and not repoint:
+        # THE RESUME KEY DOES NOT RECORD THE OPERATING POINT. Moving the
+        # point while sweep rows are already on disk would leave one
+        # file holding two studies, with no column in it to tell them
+        # apart, and every later figure would average across both. The
+        # stored point is therefore kept and the disagreement reported.
+        print(f"\n*** the grid now prefers {point}, but "
+              f"{os.path.basename(POINT)} holds {old} and "
+              f"{os.path.basename(RUNS)} already contains sweep rows "
+              "taken at the stored point.")
+        print("*** KEEPING THE STORED POINT. To move it, delete the "
+              "non-calibration rows of sens_runs.csv and rerun with "
+              "--repoint.")
+        return old
     with open(POINT, "w", encoding="utf-8") as f:
         json.dump(point, f, indent=1)
+    if moved:
+        print(f"\n*** the operating point has moved from {old} "
+              f"to {point}.")
     print(f"\noperating point -> {point}")
     return point
 
@@ -463,12 +586,17 @@ def main():
                     choices=("calibrate", "sweep", "all"))
     ap.add_argument("--workers", type=int, default=0,
                     help="0 = all cores minus one")
+    ap.add_argument("--repoint", action="store_true",
+                    help="allow the calibration to move the operating "
+                         "point even though sweep rows already exist; "
+                         "delete those rows first, or the file will hold "
+                         "two studies at once")
     a = ap.parse_args()
     workers = a.workers or max(1, (os.cpu_count() or 2) - 1)
 
     if a.phase in ("calibrate", "all"):
         run_jobs(calibration_jobs(), workers, "calibration")
-        point = choose_point()
+        point = choose_point(a.repoint)
     else:
         with open(POINT, encoding="utf-8") as f:
             point = json.load(f)
