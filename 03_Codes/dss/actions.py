@@ -47,10 +47,18 @@ RESOURCE_KINDS: Dict[str, dict] = {
 
 
 def resource_kind_label(kind: str) -> str:
+    """The operator-facing name of a resource kind, falling back to the
+    internal key so an unknown kind is still readable in a log."""
     return RESOURCE_KINDS.get(kind, {}).get("label", str(kind))
 
 
 def _dilate(mask: np.ndarray, r: int) -> np.ndarray:
+    """Grow a boolean mask by r cells in the four directions.
+
+    Orders are placed on a band around the fire rather than on the
+    flames themselves, because a containment line cut where the fire
+    already is has nothing left to protect.
+    """
     out = mask.copy()
     for _ in range(int(max(0, r))):
         d = out.copy()
@@ -589,6 +597,12 @@ SECTORS = ("head", "flank", "rear", "ring", "at_fire", "assets",
 
 
 def _sector_mask(sector, fire, world, rin, rout, cosang):
+    """The cells a generated intervention names as its target.
+
+    The generative stage may compose an action that speaks about a
+    sector of the incident rather than about the whole of it, so the
+    vocabulary of sectors is resolved to a mask here and nowhere else.
+    """
     ny, nx = world.config.ny, world.config.nx
     if sector == "populated":
         return np.asarray(world.value.vpop, dtype=float) > 1e-6
@@ -1034,11 +1048,29 @@ def decision_to_resources(world, burning, regions_intensities, base=None,
         # tell a comfortable response from one that is already short.
         _demand = committed
         _budget = budget
+        # WHERE THE FUNDED CAPACITY WENT, and what each region would
+        # have taken at full strength. The first says whether the
+        # concentration actually concentrated; the second is the only
+        # way to estimate the smallest force that changes the outcome
+        # in a region, which is what decides how many regions a pool
+        # can carry at once.
+        _cost_full = out.rcap * np.clip(out.ravail, 0.0, 1.0)
+        _per_region = {}
+        for _ro in region_orders:
+            x0, y0, x1, y1 = _ro["box"]
+            _per_region[_ro["name"]] = float(
+                _cost_full[y0:y1, x0:x1].sum())
+        _tot = sum(_per_region.values())
+        _focus = (max(_per_region.values()) / _tot
+                  if _tot > 1e-9 else 0.0)
     else:
         _demand = _budget = None
+        _per_region, _focus = {}, None
     if return_actions:
         return out, dict(supp=m_supp, cont=m_cont, prot=m_prot,
                          demand=_demand, budget=_budget,
+                         demand_per_region=_per_region,
+                         funded_focus_share=_focus,
                          regions=region_orders,
                          macro_cells={k: v for k, v in
                                       _macro_cells.items()

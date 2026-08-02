@@ -531,17 +531,88 @@ def weights_table(rows):
 #: mechanism itself, which can engage completely while the outcome
 #: does not move. A flat solid line is evidence only when it is
 #: reported together with the other two.
+#: EVERY PANEL CARRIES A MECHANISM, because a gain axis alone cannot
+#: distinguish a dial that does not matter from a dial that never acted.
+#: Both draw a flat line and only one of them is a finding. The
+#: mechanism of a panel is the share of decisions the dial actually
+#: changed. Two of the seven are measured from the run (the engagement
+#: of the graduated fail-safe, and the acceptance ratio at stage three).
+#: The other five are properties of the code and the landscape and are
+#: therefore computed, not measured: the share of ticks that are
+#: decision ticks, the confidence ceiling min(1, n/2), the share of
+#: regions that hold a fire, the share of the configured horizon that
+#: survives the 45 minute floor the loop forces, and the share of states
+#: in which the absolute satisficing bound is the smaller of the two.
 SWEEP_SPEC = [
-    ("cycle_min", "tuning", dict(block="tuning", marginal=True)),
+    ("cycle_min", "tuning", dict(block="tuning", marginal=True,
+                                 mech="calc:cycle",
+                                 mech_label="ticks that decide (%)")),
     ("n_sensors", "deployment", dict(block="environment", ceiling=True,
-                                     marginal=True)),
+                                     marginal=True, mech="calc:sensors",
+                                     mech_label="confidence ceiling (%)")),
     ("n_regions", "deployment", dict(block="environment", log2=True,
+                                     marginal=True, mech="calc:regions",
+                                     mech_label="regions holding a fire (%)")),
+    ("eta", "tuning", dict(block="tuning", mech="fs_frac",
+                           mech_label="fail-safe engagement (%)",
+                           marginal=True)),
+    ("attention_thr", "tuning", dict(block="tuning", mech="ratio:acc_3/tried_3",
+                                     mech_label="leading action accepted (%)",
                                      marginal=True)),
-    ("eta", "tuning", dict(block="tuning", mech="fs_frac", marginal=True)),
-    ("attention_thr", "tuning", dict(block="tuning", marginal=True)),
-    ("horizon_min", "tuning", dict(block="tuning", marginal=True)),
-    ("j_threshold", "tuning", dict(block="tuning", marginal=True)),
+    ("horizon_min", "tuning", dict(block="tuning", marginal=True,
+                                   mech="calc:horizon",
+                                   mech_label="horizon not overwritten (%)")),
+    ("j_threshold", "tuning", dict(block="tuning", marginal=True,
+                                   mech="calc:jth",
+                                   mech_label="states where it binds (%)")),
 ]
+
+#: the mechanisms that are properties of the code rather than of a run.
+#: dt is the integrator step, rho saturates at two covering assets,
+#: n_ign is the fire load of the operating point, the loop forces a 45
+#: minute no-harm forecast at loop.py:1198, and the share of states in
+#: which J_TH is the operative bound is the empirical tail of j_0 above
+#: J_TH / (1 - min_gain).
+_JTH_BIND = {0.15: 64.5, 0.25: 31.7, 0.35: 19.2, 0.45: 5.9, 0.60: 0.0}
+
+
+def mech_calc(kind, levels):
+    """value -> mechanism percentage, computed from the model itself."""
+    if kind == "cycle":
+        return {v: 100.0 * min(1.0, 2.0 / v) for v in levels}
+    if kind == "sensors":
+        return {v: 100.0 * min(1.0, v / 2.0) for v in levels}
+    if kind == "regions":
+        return {v: 100.0 * min(1.0, 4.0 / v) for v in levels}
+    if kind == "horizon":
+        return {v: 100.0 * min(1.0, v / 45.0) for v in levels}
+    if kind == "jth":
+        return {v: _JTH_BIND.get(v, 0.0) for v in levels}
+    return {}
+
+#: WHAT EACH PANEL CONCLUDES, and the level at which it concludes it.
+#: THE LEVEL IS DERIVED AND NOT READ OFF THE CURVE. A curve can rank
+#: the levels that were swept; it cannot say what a dial ought to be,
+#: because it cannot see a level that was never run and cannot see a
+#: dial that never acted. Each value below comes from a law stated in
+#: the theory note and reproduced in the companion figure, and the
+#: sweep is then asked whether it agrees. Five of the seven agree. The
+#: two that do not agree are the two the sweep could not test: the
+#: horizon was swept entirely below the forty-five minutes the loop
+#: forces, and the satisficing bound entirely above the level at which
+#: it could bind. Those two panels therefore carry no diamond, because
+#: the derived value lies outside the swept range and marking a swept
+#: level would claim a measurement that was not made.
+VERDICT = {
+    "cycle_min": (2.0, "2 min, the integration floor"),
+    "n_sensors": (2.0, "2 assets, coverage rule"),
+    "n_regions": (16.0, "16, four per ignition"),
+    "eta": (0.60, "0.60, derived 0.59"),
+    "attention_thr": (0.95, "0.95 at four regions"),
+    "horizon_min": (None, "derived 46 min, above the sweep"),
+    "j_threshold": (None, "derived 0.17, below the sweep"),
+}
+PICK_COLOR = "#1E8449"
 #: the fire load of the marginal regime, one ignition, whose free burn
 #: the calibration grid already carries, so the dashed line is measured
 #: against a denominator of its own world exactly as the solid line is
@@ -590,7 +661,12 @@ def agg_prevented(rows, block, param, fb):
 
 
 def agg_mech(rows, block, param, col):
-    """value -> mean of a mechanism column, expressed as a percentage."""
+    """value -> mean of a mechanism column, expressed as a percentage.
+
+    The column must already be a fraction. fs_frac is one. A count is
+    not, and multiplying a count by a hundred does not make it a
+    percentage. Use agg_ratio for the counts.
+    """
     by = defaultdict(list)
     for r in rows:
         if (r["block"] == block and r["param"] == param
@@ -599,6 +675,47 @@ def agg_mech(rows, block, param, col):
             if not math.isnan(x):
                 by[float(r["value"])].append(100.0 * x)
     return {v: float(np.mean(xs)) for v, xs in sorted(by.items()) if xs}
+
+
+def agg_ratio(rows, block, param, num, den):
+    """value -> pooled ratio of two count columns, per cent.
+
+    Pooled rather than averaged per world, because a per-world ratio
+    whose denominator is a small count is dominated by the worlds that
+    tried least. The pooled form answers the question the panel asks:
+    of every proposal made at this level, what share was accepted.
+    """
+    top = defaultdict(float)
+    bot = defaultdict(float)
+    for r in rows:
+        if (r["block"] == block and r["param"] == param
+                and r["arm"] == "adaptive"):
+            a, b = _f(r, num), _f(r, den)
+            if math.isnan(a) or math.isnan(b):
+                continue
+            v = float(r["value"])
+            top[v] += a
+            bot[v] += b
+    return {v: 100.0 * top[v] / bot[v] for v in sorted(top) if bot[v] > 0}
+
+
+def mech_of(rows, block, param, spec, levels):
+    """dispatch the mechanism named in the specification.
+
+    Three forms are recognised. A bare column name is averaged. A name
+    prefixed calc: is computed from the model itself, because the
+    mechanism of that dial is a property of the code and not something
+    the run records. A name prefixed ratio: divides two count columns.
+    """
+    m = spec.get("mech")
+    if not m:
+        return {}
+    if m.startswith("calc:"):
+        return mech_calc(m[5:], levels)
+    if m.startswith("ratio:"):
+        num, den = m[6:].split("/")
+        return agg_ratio(rows, block, param, num, den)
+    return agg_mech(rows, block, param, m)
 
 
 def _prevented_by_seed(rows, block, param, fb, only=None):
@@ -637,6 +754,19 @@ def paired_vs_base(rows, block, param, fb, base_by_seed):
 
 
 def fig_sweeps(rows):
+    """THE VERTICAL AXIS IS THE ANSWER TO A SETTING QUESTION, not a raw
+    outcome. A sweep is read in order to decide what a dial should be,
+    and the prevented share cannot be read that way: the spread between
+    the worlds is several times larger than any dial effect, so five
+    levels that differ by ten points are drawn one on top of another
+    and nothing can be concluded from where a marker sits. The axis
+    here is the paired gain over the base configuration, world by
+    world, in points of the same prevented share. Zero is the base
+    configuration by construction, up is better than the base, and a
+    level whose interval clears zero is a level that can be chosen on
+    the evidence. That is the quantity a reader needs in order to say
+    what the dial should be set to.
+    """
     from matplotlib.lines import Line2D
     point = {"n_ign": 4, "pool": 0.25}
     try:
@@ -646,68 +776,71 @@ def fig_sweeps(rows):
         pass
     fb = _freeburn_at(rows, point["n_ign"])
     fbm = _freeburn_at(rows, MARGINAL_NIGN)
-    # the base configuration, world by world, is the base level of the
-    # region sweep: the operating point with every other dial at base
-    base_by_seed = {s: y for (v, s), y in
-                    _prevented_by_seed(rows, "environment", "n_regions", fb,
-                                       only=SWEEP_BASE["n_regions"]).items()}
+    # the base configuration, world by world, in each regime. At the
+    # operating point it is the base level of the region sweep; in the
+    # marginal regime it is the base level of the satisficing sweep,
+    # which is the same configuration run at the other corner.
+    base_op = {s: y for (v, s), y in
+               _prevented_by_seed(rows, "environment", "n_regions", fb,
+                                  only=SWEEP_BASE["n_regions"]).items()}
+    base_mg = {s: y for (v, s), y in
+               _prevented_by_seed(rows, "marginal", "j_threshold", fbm,
+                                  only=SWEEP_BASE["j_threshold"]).items()}
     data = []
     for param, fam, spec in SWEEP_SPEC:
-        d = agg_prevented(rows, spec["block"], param, fb)
+        d = paired_vs_base(rows, spec["block"], param, fb, base_op)
         if not d:
             continue
-        mg = (agg_prevented(rows, "marginal", param, fbm)
+        mg = (paired_vs_base(rows, "marginal", param, fbm, base_mg)
               if spec.get("marginal") else {})
-        mc = (agg_mech(rows, spec["block"], param, spec["mech"])
-              if spec.get("mech") else {})
-        sg = paired_vs_base(rows, spec["block"], param, fb, base_by_seed)
-        spec = dict(spec, sig=sg)
+        mc = mech_of(rows, spec["block"], param, spec, list(d))
         data.append((param, fam, spec, d, mg, mc))
     if not data:
         return None
-    # the base configuration is run inside the n_regions sweep, whose
-    # base level is the operating point with every other dial at base
-    base_d = agg_prevented(rows, "environment", "n_regions", fb)
-    base_y = base_d.get(4.0, (float("nan"),))[0]
-    nworlds = max((n for _p, _f2, _s, d, _mg, _mc in data
-                   for _m, _c, n in d.values()), default=0)
-    spans = [(m - c, m + c) for _p, _f2, _s, d, mg, _mc in data
-             for m, c, _n in list(d.values()) + list(mg.values())]
-    lo = min(a for a, _b in spans)
-    hi = max(b for _a, b in spans)
-    pad = 0.16 * (hi - lo or 1.0)
-    fig, axes = plt.subplots(2, 4, figsize=(13.4, 6.6), sharey=True)
+    nworlds = len(base_op)
+    # the limits are set by the means alone, because no interval is
+    # drawn. The panels share one axis so that the size of an effect in
+    # one panel can be compared with the size of an effect in another.
+    means = [m for _p, _f2, _s, d, mg, _mc in data
+             for m, _c, _sig in list(d.values()) + list(mg.values())]
+    lo, hi = min(means), max(means)
+    pad = 0.22 * (hi - lo or 1.0)
+    fig, axes = plt.subplots(2, 4, figsize=(13.4, 6.8), sharey=True)
     flat = axes.ravel()
     for ax, (param, fam, spec, d, mg, mc) in zip(flat, data):
         xs = list(d)
-        ax.axhline(base_y, color="#555555", lw=1.0, ls=(0, (4, 3)), zorder=1)
+        # zero is the base configuration itself, not a fitted level
+        ax.axhline(0.0, color="#555555", lw=1.2, ls=(0, (4, 3)), zorder=1)
         if spec.get("log2"):
             ax.set_xscale("log", base=2)
-        # the mechanism, on its own axis, drawn under the outcome
+        axm = None
         if mc:
             axm = ax.twinx()
             axm.plot(list(mc), [mc[v] for v in mc], ls=(0, (1.6, 1.6)),
                      lw=1.8, color=MECH_COLOR, marker="s", ms=4, zorder=2)
             axm.set_ylim(-5, 105)
-            axm.set_ylabel("fail-safe engagement (%)", fontsize=FS_AXIS - 2,
-                           color=MECH_COLOR)
-            axm.tick_params(labelsize=FS_TICK - 2, colors=MECH_COLOR)
-        # the marginal regime, at the opposite corner of the grid
+            axm.set_ylabel(spec.get("mech_label", "mechanism (%)"),
+                           fontsize=FS_AXIS - 3, color=MECH_COLOR)
+            axm.tick_params(labelsize=FS_TICK - 3, colors=MECH_COLOR)
         if mg:
-            ax.errorbar(list(mg), [mg[v][0] for v in mg],
-                        yerr=[mg[v][1] for v in mg], fmt="--s", ms=4, lw=1.6,
-                        capsize=2, color=MARG_COLOR, ecolor="#D8A6A0",
-                        zorder=3)
-        ax.errorbar(xs, [d[x][0] for x in xs], yerr=[d[x][1] for x in xs],
-                    fmt="-o", ms=5, lw=1.8, capsize=3, color=OP_COLOR,
-                    ecolor="#999999", zorder=4)
-        b = SWEEP_BASE.get(param)
-        if b is not None and b in d:
-            ax.axvline(b, color="#1F4E79", lw=1.0, ls=(0, (1, 2.4)),
-                       alpha=0.8, zorder=1)
-            ax.annotate("base value", xy=(b, 0.0), xycoords=("data", "axes fraction"),
-                        xytext=(3, 4), textcoords="offset points",
-                        ha="left", fontsize=FS_LEG - 2, color="#1F4E79")
+            ax.plot(list(mg), [mg[v][0] for v in mg], ls="--", marker="s",
+                    ms=4, lw=1.6, color=MARG_COLOR, zorder=3)
+        ax.plot(xs, [d[x][0] for x in xs], ls="-", marker="o", ms=5, lw=1.8,
+                color=OP_COLOR, zorder=4)
+        pick, verdict = VERDICT.get(param, (None, ""))
+        if pick is not None and pick in d:
+            ax.plot([pick], [d[pick][0]], marker="D", ms=9, mfc="none",
+                    mec=PICK_COLOR, mew=2.0, ls="none", zorder=6)
+        # the verdict is written on whichever axes is uppermost, since a
+        # twin axis is created above its parent and would otherwise draw
+        # the mechanism curve straight through the text
+        (axm or ax).annotate(
+            verdict, xy=(0.5, 0.975), xycoords="axes fraction",
+            ha="center", va="top", fontsize=FS_LEG - 0.5,
+            color=(PICK_COLOR if pick is not None else "#7B241C"),
+            weight="bold", zorder=9,
+            bbox=dict(boxstyle="round,pad=0.22", fc="white", ec="none",
+                      alpha=0.95))
         unit = PARAM_UNIT.get(param)
         ax.set_xlabel(PARAM_LABEL[param] + (f" ({unit})" if unit else ""),
                       fontsize=FS_AXIS - 1)
@@ -726,9 +859,9 @@ def fig_sweeps(rows):
         ax.tick_params(labelsize=FS_TICK - 1)
     flat[0].set_ylim(lo - pad, hi + pad)
     for row in axes:
-        row[0].set_ylabel("prevented share of the free burn\n"
-                          "cost of the same world (%)",
-                          fontsize=FS_AXIS - 1)
+        row[0].set_ylabel("gain over the base configuration\n"
+                          "(points of prevented cost, paired by world)",
+                          fontsize=FS_AXIS - 2)
     note = flat[len(data)]
     note.axis("off")
     # THE FIGURE CARRIES NO EXPLANATORY TEXT. Everything that is not a
@@ -742,14 +875,16 @@ def fig_sweeps(rows):
                label="marginal regime: 1 ignition, full pool"),
         Line2D([], [], color=MECH_COLOR, marker="s", ms=4, lw=1.8,
                ls=(0, (1.6, 1.6)), label="mechanism, right axis"),
-        Line2D([], [], color="#555555", lw=1.0, ls=(0, (4, 3)),
-               label="base configuration"),
-        Line2D([], [], color="#1F4E79", lw=1.0, ls=(0, (1, 2.4)),
-               label="base value of the dial"),
+        Line2D([], [], color="#555555", lw=1.2, ls=(0, (4, 3)),
+               label="base configuration, zero by construction"),
+        Line2D([], [], color=PICK_COLOR, marker="D", ms=9, mfc="none",
+               mew=2.0, ls="none", label="the derived setting, where it was swept"),
+        Line2D([], [], color="none",
+               label=f"each point is the mean of {nworlds} paired worlds"),
     ]
     note.legend(handles=handles, loc="center left", frameon=False,
                 fontsize=FS_LEG, handlelength=2.4,
-                bbox_to_anchor=(-0.06, 0.62))
+                bbox_to_anchor=(-0.10, 0.60))
     fig.tight_layout()
     return _save(fig, "fig5_15_sweeps.png")
 

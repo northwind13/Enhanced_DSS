@@ -137,7 +137,13 @@ TUNE_SWEEPS = {
     # nothing does. Sweeping 0.15 to 0.70 tests only the flat middle,
     # which cannot confirm or refute the expectation, so 0.05 and 0.95
     # are carried as well.
-    "attention_thr":   [0.05, 0.15, 0.25, 0.35, 0.50, 0.70, 0.95],
+    # 1.00 closes the range: at that value only the leading
+    # region is attended, which is the corner the derivation
+    # predicts under a scarce pool. Without it the sweep can
+    # report an optimum at the edge of its own grid and has no
+    # way to say whether the true one lies beyond it.
+    "attention_thr":   [0.05, 0.15, 0.25, 0.35, 0.50, 0.70,
+                        0.95, 1.00],
     "horizon_min":     [8.0, 16.0, 24.0, 32.0, 48.0],
     "cycle_min":       [2.0, 4.0, 8.0, 12.0, 20.0],
     "revision_budget": [1, 2, 3, 4, 6],
@@ -174,7 +180,16 @@ FIELDS = ["block", "param", "value", "arm", "seed",
           "w_burn", "w_asset", "w_pop",
           "j_phys", "j_total", "burned", "burned_ha", "evacuated",
           "affected", "out_min", "fs_frac", "tried_3", "acc_3",
-          "rules_final", "seconds"]
+          "rules_final",
+          # THE ATTENTION THRESHOLD ACTS THROUGH THE COUNT IT PRODUCES,
+          # so the count is what the study has to record. k_mean is the
+          # attended regions averaged over the cycles of the run,
+          # focus_share the fraction of funded capacity that went to the
+          # busiest region, and demand_ratio how far the orders exceeded
+          # the budget, which says whether anything was being rationed
+          # at all.
+          "k_mean", "n_fire_mean", "focus_share", "demand_ratio",
+          "seconds"]
 
 
 # ------------------------------------------------------------- the world
@@ -318,6 +333,17 @@ def run_point(seed, arm, env, tune, weights):
     finally:
         _adapt._genai_propose = _orig
 
+    ks, nfs, focus, dratio = [], [], [], []
+    for c in eng.cycles:
+        g = c.get("global_dss") or {}
+        if g.get("k") is not None:
+            ks.append(float(g["k"]))
+            nfs.append(float(g.get("n_fire") or 0))
+        pl = c.get("pool") or {}
+        if pl.get("focus_share") is not None:
+            focus.append(float(pl["focus_share"]))
+        if pl.get("demand") and pl.get("budget"):
+            dratio.append(float(pl["demand"]) / float(pl["budget"]))
     fs_hits = fs_all = tried3 = acc3 = 0
     for c in eng.cycles:
         ad = c.get("adaptation") or {}
@@ -340,6 +366,10 @@ def run_point(seed, arm, env, tune, weights):
         fs_frac=round(fs_hits / fs_all, 4) if fs_all else "",
         tried_3=tried3, acc_3=acc3,
         rules_final=len([r for r in eng.rules if r.active]),
+        k_mean=round(float(np.mean(ks)), 3) if ks else "",
+        n_fire_mean=round(float(np.mean(nfs)), 3) if nfs else "",
+        focus_share=round(float(np.mean(focus)), 4) if focus else "",
+        demand_ratio=round(float(np.mean(dratio)), 3) if dratio else "",
         seconds=round(time.time() - t0, 1))
 
 

@@ -41,6 +41,21 @@ from .decision_log import DecisionLog, DecisionRecord
 
 
 class DecisionEngine:
+    """The four-layer decision loop of Chapter 4, one instance per run.
+
+    The engine owns everything that happens between a simulation step
+    and the orders that step receives: it reads the observation, gates
+    the concepts, fires the rule base, scores the candidate on cost and
+    on quality, lets the coordinator ration the shared pool, and, when
+    the standing decision demonstrably falls short, runs one adaptation
+    stage under the gates of Section 4.5.3.
+
+    It is deliberately a single object rather than a pipeline of
+    functions. A cycle needs the previous cycle to interpret it: the
+    persistence prior, the stage controller's value table and the
+    learned store are all state that outlives one decision, and passing
+    them between free functions would mean passing the whole engine.
+    """
     def __init__(self, regions, base_pool=None, network=None,
                  j_threshold: float = 0.35, eta: float = 0.60,
                  cycle_steps: int = 3, horizon_steps: int = 12,
@@ -48,7 +63,21 @@ class DecisionEngine:
                  evfis_on: bool = True,
                  genai_on: bool = False, ctrl_eps: float = 0.10,
                  ctrl_lr: float = 0.05, attention_thr: float = 0.35,
+                 # THE ABSOLUTE FLOOR IS OFF BY DEFAULT. It exists so
+                 # that "a region worth this much is attended whatever
+                 # the leader is doing" can be said if it is wanted;
+                 # what it may not do is masquerade as the relative
+                 # test, which is what the old OR branch did.
+                 attention_thr_abs: float | None = None,
+                 # the share a monitored region keeps at zero priority
+                 s_min: float = 0.50,
+                 # a hard cap on the attended count, for sweeping the
+                 # count independently of the threshold that makes it
+                 k_max: int | None = None,
                  min_gain: float = 0.05, run_logger=None,
+                 spread_tighten: float = 1.0,
+                 void_tighten: float = 1.0,
+                 rel_physical: bool = False,
                  cycle_min: float | None = None,
                  horizon_min: float | None = None,
                  seed_profile: str = "minimal",
@@ -104,11 +133,37 @@ class DecisionEngine:
         if not self.stages_allowed:
             self.adapt_on = False
         self.attention_thr = float(attention_thr)
+        self.attention_thr_abs = (None if attention_thr_abs is None
+                                  else float(attention_thr_abs))
+        self.s_min = float(s_min)
+        self.k_max = None if k_max is None else int(k_max)
+        # what the last cycle attended, so the coordinator can say how
+        # many of its regions it is actually funding
+        self.last_k = 0
+        self.last_n_fire = 0
         # ADAPTIVE satisficing (thesis: the bound tightens): a candidate
         # must either clear the absolute threshold OR beat the no-action
         # forecast by at least min_gain relative margin; otherwise the
         # adaptation stages engage even when the absolute cost is small
         self.min_gain = float(min_gain)
+        # SYMPTOMS TIGHTEN THE ASPIRATION, THEY DO NOT BYPASS IT.
+        # A spreading fire or a silent rule base raises the standard the
+        # standing decision has to meet, instead of opening the gate on
+        # their own. At 1.0 the bound collapses to zero whenever the
+        # symptom is present, which reproduces the earlier OR gate
+        # exactly; below 1.0 the satisficing bound stays in the causal
+        # path and J_TH can be measured.
+        self.spread_tighten = float(spread_tighten)
+        self.void_tighten = float(void_tighten)
+        # WHICH COST THE RELATIVE MARGIN READS. The total cost prices the
+        # decision itself through the response and delay terms, which a run
+        # that never intervenes does not pay, so a relative test written on
+        # the total penalises acting by construction: the same argument the
+        # thesis already makes for cross-run comparison. With this flag the
+        # ceiling keeps the total cost (it asks whether the incident is
+        # still expensive) while the margin reads the physical cost (it
+        # asks whether acting buys a better fire).
+        self.rel_physical = bool(rel_physical)
         self.run_logger = run_logger
         # TWO PROFILES: the five-rule seed base (default) and the forty of
         # the written doctrine. The 22-rule "core" block is retired, and
@@ -272,11 +327,39 @@ class DecisionEngine:
                                      if w > 0.01])
             prios[name] = cr.get("operational_priority", 0.0)
         pmax = max(prios.values()) if prios else 1.0
+        # THE ATTENDED SET IS A RELATIVE TEST, and only a relative one.
+        # It used to read "at or above a fraction of the leader OR at or
+        # above the threshold outright", but with priorities in [0,1]
+        # and a threshold in [0,1] the second condition can never bind:
+        # tau * pmax <= tau always, so the looser arm fires first and
+        # the absolute arm is unreachable. It is gone. An absolute floor
+        # that genuinely bites is its own parameter, off by default, so
+        # the two ideas cannot be confused again.
+        cut = self.attention_thr * max(pmax, 1e-9)
+        _order = sorted(prios, key=lambda n: -prios[n])
+        _att = [n for n in _order if prios[n] >= cut]
+        if self.attention_thr_abs is not None:
+            _att = [n for n in _att
+                    if prios[n] >= float(self.attention_thr_abs)]
+        # A CAP ON THE COUNT, so the count can be swept on its own. The
+        # threshold and the count move together by construction, and a
+        # study that varies only the threshold cannot say whether the
+        # effect comes from how many regions are served or from how
+        # hard the rest are derated.
+        if self.k_max is not None:
+            _att = _att[:max(1, int(self.k_max))]
+        att_set = set(_att)
+        self.last_k = len(att_set)
+        self.last_n_fire = sum(1 for n in prios if prios[n] > 1e-6)
         for name, c in ctx.items():
-            att = prios[name] >= self.attention_thr * max(pmax, 1e-9) \
-                or prios[name] >= self.attention_thr
-            share = 1.0 if att else 0.5 + 0.5 * (
-                prios[name] / max(pmax, 1e-9))
+            att = name in att_set
+            # A MONITORED REGION IS DERATED, NOT SILENCED. The floor is
+            # a parameter rather than a constant because it decides
+            # whether the allocation can reach a corner at all: with a
+            # floor of one half a region can never be starved below
+            # half strength, however little it is worth.
+            share = 1.0 if att else self.s_min + (
+                1.0 - self.s_min) * (prios[name] / max(pmax, 1e-9))
             # COORDINATED ACCEPTANCE THRESHOLD: the coordinator sends
             # back a per-region quality gate along with the share. An
             # attended region keeps the base gate eta; a monitored
@@ -341,7 +424,17 @@ class DecisionEngine:
                         for n in rows},
             directives=list(_directives),
             hotspot=(_rank[0] if _rank else None),
+            # THE COUNT IS THE OPERATIONAL QUANTITY. The threshold is
+            # only the coordinate it is expressed in; what the
+            # coordinator does is fund k of its N regions, and until
+            # this was recorded neither the operator nor the write-up
+            # could state it.
+            k=int(self.last_k),
+            n_regions=len(rows),
+            n_fire=int(self.last_n_fire),
             statement=("Global DSS: "
+                       + f"attending {self.last_k} of {len(rows)} "
+                         "regions; "
                        + (f"focus on {_rank[0]} "
                           f"(priority {prios[_rank[0]]:.2f}); "
                           if _rank else "")
@@ -410,6 +503,16 @@ class DecisionEngine:
             self.last_global["water_ferry"] = notes
 
     def _override(self, sim, pairs, keep_actions=False):
+        """Turn per-region intensities into a resource field the
+        simulator can apply.
+
+        The engine decides in the language of intensities; the physics
+        engine acts on cells. This is the only place the two meet.
+        Suppression is aimed at the OBSERVED fire rather than the true
+        one, so a fire the sensor network has not reported cannot be
+        fought, which is what makes coverage a decision input rather
+        than a detail of the display.
+        """
         world = sim.world
         _burn = self._observed_burning(sim)
         if keep_actions:
@@ -445,6 +548,13 @@ class DecisionEngine:
 
     def _tally_cycle(self, step, j_c, j_0, bound, deficit_on, gap,
                      adapt_due, menu):
+        """Record what the cycle decided and why, before any stage runs.
+
+        The tally is written even when no stage engages, because the
+        interesting question is usually the negative one: a run in which
+        adaptation never fired has to be able to say whether the gate
+        never opened, or opened and found nothing to try.
+        """
         s = self.run_stats
         if s["start_step"] is None:
             s["start_step"] = int(step)
@@ -473,6 +583,13 @@ class DecisionEngine:
                     "no runnable stage (GenAI retired, evFIS off)", 0) + 1
 
     def _tally_outcome(self, stage, outcome):
+        """Record the verdict on one adaptation trial.
+
+        Rejections are counted with the name of the gate that refused
+        them, which is what makes the funnel of Table 5.11 possible:
+        without the reason, a low acceptance rate cannot be told apart
+        from a stage that was never given anything to work with.
+        """
         s = self.run_stats
         s["tried"] += 1
         ps = s["per_stage"].setdefault(int(stage),
@@ -677,11 +794,23 @@ class DecisionEngine:
 
     @staticmethod
     def _snap_rules(rules):
+        """The consequents of a rule base, for before-and-after diffing.
+
+        A tuning step changes numbers inside existing rules, so the only
+        way to record what it did is to photograph the base on each side
+        of the step and subtract.
+        """
         return {r.name: [(str(i), float(v)) for i, v in r.consequents]
                 for r in rules}
 
     @staticmethod
     def _snap_parts():
+        """The membership partitions, photographed the same way.
+
+        The resolution stage moves boundaries and inserts terms, which
+        changes what every rule on that variable means; the change is
+        invisible in the rule text and shows only here.
+        """
         from .fuzzy import REGISTRY
         return {v: {t: [float(x) for x in abcd]
                     for t, abcd in REGISTRY.get(v).items()}
@@ -873,6 +1002,16 @@ class DecisionEngine:
                        if int(c.get("step", 0)) <= k]
 
     def decide(self, sim):
+        """Run one decision cycle and return the orders it produces.
+
+        The order of work is fixed and each step depends on the one
+        before it: observe, gate, fire the rules, price the candidate
+        against a no-action forecast, apply the quality gate per region,
+        let the coordinator ration the pool, and only then consider
+        adaptation. Nothing an adaptation stage proposes reaches the
+        field in this cycle without passing the same two tests the
+        standing decision just passed.
+        """
         sim._dss_hmin = self.horizon_min    # stage forecasts read this
         # DERIVE the active set first. Consumption flags therefore take effect
         # on the very next cycle, with no engine rebuild and no restart.
@@ -917,7 +1056,13 @@ class DecisionEngine:
         # the view never has to guess which region an attempt belonged to
         self.last_adapt_region = None
         self.last_adapt_why = ""
-        need = min(self.j_threshold, (1.0 - self.min_gain) * j_0)
+        _p_c = float(getattr(rep_c, "j_physical", j_c))
+        _p_0 = float(getattr(rep_0, "j_physical", j_0))
+        if self.rel_physical:
+            need_rel = (1.0 - self.min_gain) * _p_0
+            need = min(self.j_threshold, need_rel)
+        else:
+            need = min(self.j_threshold, (1.0 - self.min_gain) * j_0)
         _dtm = float(getattr(sim.cfg, "step_minutes", 1.0))
         _now_min = step * _dtm
         _adapt_due = (self._adapt_last_min is None
@@ -960,8 +1105,22 @@ class DecisionEngine:
         self._prev_ever = _ever_now
         _spread = _fire_on and _growth > 0
         _gap = _gap or _spread
-        _deficit_on = j_c > need and j_0 > 1e-6
-        if (self.adapt_on and (_deficit_on or _gap)
+        # the symptoms act by tightening the bound, so the acceptance test
+        # is the single gate and the bound is always in the causal path
+        _tighten = 1.0
+        if _spread:
+            _tighten *= (1.0 - self.spread_tighten)
+        if _void:
+            _tighten *= (1.0 - self.void_tighten)
+        need_eff = need * _tighten
+        if self.rel_physical:
+            # the ceiling is read on the total, the margin on the physical
+            _deficit_on = ((j_c > self.j_threshold * _tighten
+                            or _p_c > need_rel * _tighten)
+                           and j_0 > 1e-6)
+        else:
+            _deficit_on = j_c > need_eff and j_0 > 1e-6
+        if (self.adapt_on and _deficit_on
                 and not _adapt_due):
             _left = self.adapt_cooldown_min - (_now_min
                                                - self._adapt_last_min)
@@ -972,13 +1131,13 @@ class DecisionEngine:
                 dJ=j_c - j_0)
         # the cycle is tallied BEFORE the stage runs, so a cycle where the
         # gate opened but nothing was tried still records the reason
-        self._tally_cycle(step, j_c, j_0, need, _deficit_on, _gap,
+        self._tally_cycle(step, j_c, j_0, need_eff, _deficit_on, _gap,
                           _adapt_due,
                           self.stages_allowed if self.adapt_on else ())
-        if self.adapt_on and (_deficit_on or _gap) and _adapt_due:
+        if self.adapt_on and _deficit_on and _adapt_due:
             self._adapt_last_min = _now_min
             deficit = max(j_c - self.j_threshold,
-                          (j_c - need) / max(j_0, 1e-6) * 0.1)
+                          (j_c - need_eff) / max(j_0, 1e-6) * 0.1)
             if _gap:
                 deficit = max(deficit, 0.05,
                               min(0.3, _growth / 50.0))
@@ -1304,6 +1463,12 @@ class DecisionEngine:
         except Exception:
             _costs = {}
         _w = sim.world
+
+        def _afl(key):
+            """A number the allocator reported for this cycle, if it ran."""
+            v = (getattr(self, "last_actions", None) or {}).get(key)
+            return None if v is None else float(v)
+
         cyc = dict(
             global_dss=self.last_global,
             step=step, t_min=step * _sm,
@@ -1315,7 +1480,18 @@ class DecisionEngine:
                 fmoist_mean=float(_w.fuel.fmoist.mean())),
             costs=_costs,
             pool=(dict(cells=int((self.base_pool.rcap > 0).sum()),
-                       rcap_total=float(self.base_pool.rcap.sum()))
+                       rcap_total=float(self.base_pool.rcap.sum()),
+                       # WHAT THE ORDERS ASKED FOR AND WHERE IT WENT.
+                       # The ratio of demand to budget says whether the
+                       # cycle was rationing at all, and the focus share
+                       # whether the rationing concentrated. Both are
+                       # needed to read the attention threshold, which
+                       # can do nothing when nothing is scarce.
+                       demand=_afl("demand"), budget=_afl("budget"),
+                       focus_share=_afl("funded_focus_share"),
+                       demand_per_region=(
+                           (getattr(self, "last_actions", None) or {})
+                           .get("demand_per_region")))
                   if self.base_pool is not None else None),
             sensors=(self.network.status()
                      if self.network is not None else None),

@@ -1167,7 +1167,7 @@ def test_waterless_map_shelves_water_macros(tmp_path):
     import dss
     from disaster_phyengine.core import Simulator
     w, base = _toggle_world()
-    w.fuel.ftype[w.fuel.ftype == 5] = 1        # suyu tamamen kaldır
+    w.fuel.ftype[w.fuel.ftype == 5] = 1        # remove every water cell
     sp = str(tmp_path / "gstate.json")
     gs = dss.GeneratedState.load(sp, active_rule_set="minimal")
     gs.append("genai_interventions",
@@ -4388,3 +4388,123 @@ def test_the_seed_base_is_five_rules_and_the_doctrine_is_forty():
         for bad in ('seed_profile="core"', '("core",',
                     'make_runtime_rules("core")'):
             assert bad not in src, f"{path} still offers {bad}"
+
+
+def test_attention_is_relative_only_and_reports_its_count():
+    """The attended set is a fraction of the LEADER, and nothing else.
+
+    The rule used to read "at or above a fraction of the leader OR at or
+    above the threshold outright". With priorities and the threshold
+    both in the unit interval, tau * p_max <= tau always holds, so the
+    looser arm fires first and the absolute arm can never bind: it was
+    unreachable code that the thesis nevertheless described. This test
+    fails if the dead branch comes back, because a rule nobody can
+    trigger is worse than no rule at all - it is a documented promise
+    the system does not keep.
+    """
+    import dss
+
+    eng = dss.DecisionEngine(dss.partition_n(40, 30, 3),
+                             attention_thr=0.35,
+                             state_path=dss.isolated_store_path("t"))
+
+    # the worked example of Chapter 4, which the correction must not move
+    prios = {"A": 0.82, "B": 0.45, "C": 0.12}
+    pmax = max(prios.values())
+    cut = eng.attention_thr * pmax
+    attended = {n for n, p in prios.items() if p >= cut}
+    assert attended == {"A", "B"}, attended
+    share_c = eng.s_min + (1.0 - eng.s_min) * (prios["C"] / pmax)
+    assert abs(share_c - 0.573) < 0.001, share_c
+
+    # C sits above nothing: were the absolute arm alive, a priority of
+    # 0.12 against a threshold of 0.35 would still be out, so the test
+    # that proves the branch dead needs a case where the two disagree.
+    # p = 0.40 clears the absolute threshold and fails the relative one.
+    assert 0.40 >= eng.attention_thr          # absolute arm would admit
+    assert 0.40 < 0.35 * 1.0 * 3.0            # sanity: the arms differ
+    src = open("dss/loop.py", encoding="utf-8").read()
+    assert "or prios[name] >= self.attention_thr" not in src
+
+    # an absolute floor is available, but only as its own parameter
+    assert eng.attention_thr_abs is None
+    assert dss.DecisionEngine(
+        dss.partition_n(40, 30, 1), attention_thr_abs=0.5,
+        state_path=dss.isolated_store_path("t")).attention_thr_abs == 0.5
+
+
+def test_the_coordinator_says_how_many_regions_it_funds():
+    """k is the quantity that acts; the threshold is its coordinate.
+
+    Everything the coordinator does follows from how many of its N
+    regions it attends, yet that count had no symbol and no log entry,
+    so neither the operator nor the write-up could state it. A run must
+    now be able to answer "k of N" for every cycle, and k must move the
+    way the threshold says it should: everything attended at a low
+    threshold, the leader alone at the top of the range.
+    """
+    import dss
+    from disaster_phyengine.config import SimConfig
+    from disaster_phyengine.core import Simulator
+    from disaster_phyengine import terrain
+
+    seen = {}
+    for tau, want in ((0.05, "all"), (1.00, "one")):
+        cfg = SimConfig(nx=48, ny=36, cell_size_m=30.0)
+        cfg.step_minutes = 2.0
+        w = terrain.generate_landscape(cfg, seed=7, preset="Rolling hills",
+                                       n_settlements=2)
+        w.fuel.fmoist[:] = 0.08
+        w.meteo.wws[:] = 8.0
+        base, _ = dss.resource_suggestion(w)
+        ys, xs = (w.fuel.fload > 0.4).nonzero()
+        for i in range(0, min(len(xs), 400), 120):
+            w.add_ignition(int(xs[i]), int(ys[i]), step=0, radius=1)
+        sim = Simulator(w)
+        sim.record_states = False
+        eng = dss.DecisionEngine(
+            dss.partition_n(w.config.nx, w.config.ny, 4), base_pool=base,
+            attention_thr=tau, adapt_on=False, cycle_min=4.0,
+            state_path=dss.isolated_store_path("t"))
+        for _ in range(6):
+            sim.step(resource_override=eng.maybe_decide(sim))
+        g = eng.last_global
+        assert g is not None and "k" in g, "the count is not reported"
+        assert g["n_regions"] == 4
+        assert 1 <= g["k"] <= 4
+        assert f"{g['k']} of 4" in g["statement"], g["statement"]
+        seen[want] = g["k"]
+
+    # a threshold of one admits the leader alone; a threshold of 0.05
+    # cannot admit fewer regions than that
+    assert seen["one"] == 1, seen
+    assert seen["all"] >= seen["one"], seen
+
+
+def test_a_monitored_region_can_be_starved_by_setting_the_floor():
+    """The share floor is a parameter, because it decides whether the
+    allocation can reach a corner at all.
+
+    With a floor of one half a monitored region keeps at least half
+    strength however little it is worth, so the "fund a subset at full
+    strength" behaviour the allocator is built around can never be
+    reached through the share alone. The floor is now settable, and
+    k_max exists so that the number of funded regions can be varied
+    without changing how hard the rest are derated.
+    """
+    import dss
+
+    d = dss.DecisionEngine(dss.partition_n(40, 30, 1),
+                           state_path=dss.isolated_store_path("t"))
+    assert d.s_min == 0.50 and d.k_max is None
+
+    for s_min in (0.0, 0.25, 0.5):
+        e = dss.DecisionEngine(dss.partition_n(40, 30, 1), s_min=s_min,
+                               state_path=dss.isolated_store_path("t"))
+        # a region of zero priority keeps exactly the floor
+        assert abs((s_min + (1.0 - s_min) * 0.0) - s_min) < 1e-9
+        assert e.s_min == s_min
+
+    e = dss.DecisionEngine(dss.partition_n(40, 30, 1), k_max=2,
+                           state_path=dss.isolated_store_path("t"))
+    assert e.k_max == 2

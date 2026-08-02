@@ -36,6 +36,13 @@ class ActiveSet:
 
     def __init__(self, rules, hierarchy, decision_concepts, macros,
                  warnings, idle=False):
+        """Hold the active set the cycle will reason with.
+
+        The warnings matter as much as the contents: a learned rule that
+        could not be installed, because the concept it speaks about is
+        no longer in the vocabulary, has to be reported rather than
+        dropped, or the base would shrink without anyone noticing.
+        """
         self.rules: List[Rule] = rules
         self.hierarchy: Dict[str, Any] = hierarchy
         self.decision_concepts: List[str] = decision_concepts
@@ -49,6 +56,7 @@ class ActiveSet:
 
     @property
     def counts(self) -> Dict[str, int]:
+        """How large the active set is, for the log and the dashboard."""
         return {"rules": len(self.rules),
                 "concepts": len(self.hierarchy),
                 "interventions": len(INTERVENTIONS) + len(self.macros)}
@@ -143,6 +151,12 @@ def _apply_modification(mod: Dict[str, Any], rules_by_name: Dict[str, Rule],
 
 # --------------------------------------------------------------- stage 3
 def _install_concepts(state, hierarchy, decision_concepts, warnings):
+    """Add the concepts the generative stage defined to the hierarchy.
+
+    A generated concept is an intermediate node with weighted inputs, so
+    it can only be installed after the nodes it reads already exist;
+    the store is replayed in sequence order for exactly that reason.
+    """
     for c in state.sorted_records("genai_concepts"):
         name = c.get("name")
         if not name:
@@ -159,6 +173,12 @@ def _install_concepts(state, hierarchy, decision_concepts, warnings):
 
 
 def _install_macros(state, macros):
+    """Add the composed interventions the generative stage admitted.
+
+    A macro is a weighted mixture of base channels, so the executor
+    never learns a new verb: it still writes capacity onto cells, and
+    the novelty lives entirely in the mixture.
+    """
     for m in state.sorted_records("genai_interventions"):
         name = m.get("name")
         if not name:
@@ -176,6 +196,12 @@ def _install_macros(state, macros):
 
 def _install_genai_rules(state, rules, rules_by_name, hierarchy, macros,
                          warnings):
+    """Add the generated rules, skipping any whose name is already taken.
+
+    Sessions run independently and may write a rule under a name the
+    standing base already uses; the standing rule wins, because a
+    silently replaced rule is the hardest kind of change to notice.
+    """
     for r in state.sorted_records("genai_rules"):
         name = str(r.get("name") or r.get("id"))
         if name in rules_by_name:

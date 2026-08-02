@@ -95,6 +95,16 @@ OFFENSIVE = ("suppression_effort", "containment_line")
 
 @dataclass
 class Rule:
+    """One IF-THEN rule of the decision layer.
+
+    A rule is a cell of the antecedent space with an answer attached:
+    the antecedents name a concept and a linguistic term, the
+    consequents name an intervention family and how hard to order it.
+    Rules written by hand and rules the system wrote itself are the
+    same object, which is what lets an adaptation stage add one without
+    the evaluator knowing the difference. The provenance lives in the
+    note and in the learned store, not in the type.
+    """
     name: str
     antecedents: List[Tuple[str, str]]          # (concept, term)
     consequents: List[Tuple[str, float]]        # (intervention, intensity)
@@ -106,6 +116,12 @@ class Rule:
                              # persistent learned-rule store
 
     def text(self) -> str:
+        """The rule as a sentence, for the log and the dashboard.
+
+        An operator has to be able to read the rule that fired without
+        opening the source, which is the whole argument for a fuzzy
+        rule base over a fitted model.
+        """
         a = " AND ".join(f"{v.replace('_', ' ')} is {t}"
                          for v, t in self.antecedents)
         c = ", ".join(f"{i.replace('_', ' ')} {v:.1f}"
@@ -124,6 +140,8 @@ class Rule:
 
 
 def _R(name, ants, cons, effects=None, note="", active=True):
+    """Shorthand for a seed rule, so the catalogue below reads as a
+    table rather than as constructor calls."""
     return Rule(name, ants, cons, list(effects or []), note, active)
 
 

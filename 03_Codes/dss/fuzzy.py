@@ -68,9 +68,21 @@ class PartitionRegistry:
     variable WITHOUT touching any other variable's semantics."""
 
     def __init__(self):
+        """Start with every variable on the default five-term partition.
+
+        A variable only gets an entry of its own once something has
+        changed it, so an untouched run carries no per-variable state
+        and two engines cannot drift apart by accident.
+        """
         self._parts: dict = {}
 
     def get(self, var: str | None) -> dict:
+        """The partition in force for a variable.
+
+        Asking for a variable that has never been reshaped installs the
+        default for it, so a caller never has to know whether the
+        resolution stage has been here.
+        """
         if var is None:
             return default_partition()
         if var not in self._parts:
@@ -78,6 +90,13 @@ class PartitionRegistry:
         return self._parts[var]
 
     def set_term(self, var: str, term: str, abcd) -> None:
+        """Replace one trapezoid, keeping the partition well formed.
+
+        The assertion is not decoration: a term whose corners are out of
+        order produces a membership that is negative somewhere, and the
+        activation that comes out of it would be silently wrong rather
+        than obviously broken.
+        """
         part = dict(self.get(var))
         a, b, c, d = (float(v) for v in abcd)
         assert a <= b <= c <= d, "trapezoid must satisfy a <= b <= c <= d"
@@ -85,6 +104,12 @@ class PartitionRegistry:
         self._parts[var] = part
 
     def variables(self):
+        """Every variable whose partition has been reshaped, in order.
+
+        Sorted because this drives the before-and-after diff of a
+        resolution step, and a diff that depends on dictionary order is
+        not a diff.
+        """
         return sorted(self._parts)
 
     def snapshot(self, var: str) -> dict:
@@ -92,6 +117,12 @@ class PartitionRegistry:
         return dict(self.get(var))
 
     def restore(self, var: str, part: dict) -> None:
+        """Put a partition back after a trial is rejected.
+
+        Every adaptation trial is evaluated on a shadow forecast and
+        most are refused, so the ability to undo cleanly is what makes
+        trying cheap.
+        """
         self._parts[var] = dict(part)
 
     def shift_boundary(self, var: str, term: str, delta: float) -> float:

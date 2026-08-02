@@ -151,6 +151,13 @@ class GatedConcepts:
     """Keeps the persistence prior and applies the gate of."""
 
     def __init__(self, rho: float = RHO_PERSIST):
+        """Hold the persistence prior between cycles.
+
+        A concept that was strongly active a moment ago is unlikely to
+        have vanished, so the gate keeps a decayed memory of the last
+        activation and blends it with the current observation. rho sets
+        how fast that memory fades.
+        """
         self.rho = float(rho)
         self.prev: Dict[str, np.ndarray] = {}
         self.step = None
@@ -174,4 +181,10 @@ class GatedConcepts:
 
 
 def crisp(act: Dict[str, np.ndarray]) -> Dict[str, float]:
+    """Collapse each concept activation to a single number.
+
+    The rule base fires on distributions, but the coordinator ranks
+    regions and the quality test compares demand with order, and both
+    of those need one value per concept.
+    """
     return {k: expected_value(v) for k, v in act.items()}

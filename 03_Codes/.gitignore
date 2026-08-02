@@ -12,3 +12,14 @@ validation/runs/
 app/_gis_*
 app/_upload_*
 app/_obs_*
+
+# RUN LOGS ARE NOT SOURCE. Every dashboard session writes a dated
+# folder here; 1709 of them were being carried in the repository, which
+# is 306 MB of output that no build reads and no reader wants in a
+# diff. They are kept on disk and out of version control.
+logs/
+
+# one-off patch files: the change either lands in the source or it does
+# not, and a .diff sitting beside the file it patches only invites the
+# question of whether it was applied
+*.diff

@@ -1,0 +1,15 @@
+dial,level,mech_deficit_pct,mech_ceiling_binds_pct,mech_failsafe_pct
+j_threshold,0.05,100.0,100.0,
+j_threshold,0.1,99.3,95.3,
+j_threshold,0.15,93.3,83.3,
+j_threshold,0.2,87.3,59.3,
+j_threshold,0.25,85.3,42.0,
+j_threshold,0.3,82.0,30.0,
+j_threshold,0.35,80.7,25.3,
+j_threshold,0.45,78.0,0.0,
+j_threshold,0.6,78.0,0.0,
+eta,0.3,,,0.0
+eta,0.45,,,0.0
+eta,0.6,,,4.0
+eta,0.75,,,61.0
+eta,0.9,,,100.0

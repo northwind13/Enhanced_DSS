@@ -23,13 +23,22 @@ class Region:
 
     @property
     def box(self):
+        """The region as (x0, y0, x1, y1), the form the log uses."""
         return (self.x0, self.y0, self.x1, self.y1)
 
     def slices(self):
+        """Row and column slices, for indexing a field of the grid."""
         return slice(self.y0, self.y1), slice(self.x0, self.x1)
 
     @property
     def n_cells(self) -> int:
+        """How many cells the region covers.
+
+        Used to normalise per-region quantities: a priority computed
+        over a large region and one over a small region are otherwise
+        not comparable, and the coordinator ranks them against each
+        other.
+        """
         return (self.x1 - self.x0) * (self.y1 - self.y0)
 
 
