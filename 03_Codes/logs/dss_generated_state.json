@@ -1,6 +1,6 @@
 {
  "schema_version": "1.0",
- "last_updated": "2026-07-28T12:08:36Z",
+ "last_updated": "2026-08-04T09:37:37Z",
  "baseline_ref": {
   "rule_sets": [
    "minimal5",
@@ -95,19 +95,20 @@
    "d969668f82975e1e": {
     "q": {
      "low/3": -0.001201,
-     "high+gap/3": -0.001141,
-     "high+gap/1": 0.001195,
+     "high+gap/3": -0.001284,
+     "high+gap/1": -0.004412,
      "low/1": -0.001792,
-     "high/1": -0.000571,
+     "high/1": -0.008321,
      "mid+gap/1": -0.00039,
-     "high/3": -0.00039,
+     "high/3": -0.000571,
      "mid+gap/3": -0.000905,
-     "high+gap/2": -0.002043,
+     "high+gap/2": -0.002322,
      "mid+gap/2": -0.001839,
-     "high/2": -1.2e-05
+     "high/2": -1.2e-05,
+     "low/2": -0.000571
     },
-    "updates": 206,
-    "seen": "2026-07-28T12:08:36Z"
+    "updates": 279,
+    "seen": "2026-08-04T09:37:37Z"
    }
   }
  },
@@ -6643,6 +6644,56 @@
    "lseq": 81,
    "id": "prop_00081",
    "timestamp": "2026-07-28T12:08:11Z",
+   "config": "DSS1-EV1-GA1-U12:1-U3:1"
+  },
+  {
+   "situation": {
+    "fire_threat_level": 0.377,
+    "asset_exposure_risk": 0.7462,
+    "suppression_feasibility": 0.7182,
+    "intervention_urgency": 0.4226,
+    "evacuation_pressure": 0.4993
+   },
+   "coverage_gap": false,
+   "cov_w": 0.6382,
+   "step": 6,
+   "accepted": false,
+   "gate": "transport",
+   "detail": "generative model not reachable (launch failed (FileNotFoundError)); install Claude Code and run /login",
+   "dJ": 0.0,
+   "raw": null,
+   "repaired": null,
+   "repairs": [],
+   "revisions": [],
+   "measured": {},
+   "lseq": 82,
+   "id": "prop_00082",
+   "timestamp": "2026-08-04T09:34:57Z",
+   "config": "DSS1-EV1-GA1-U12:1-U3:1"
+  },
+  {
+   "situation": {
+    "fire_threat_level": 0.1475,
+    "asset_exposure_risk": 0.6315,
+    "suppression_feasibility": 0.7182,
+    "intervention_urgency": 0.256,
+    "evacuation_pressure": 0.2842
+   },
+   "coverage_gap": true,
+   "cov_w": 0.6287,
+   "step": 1,
+   "accepted": false,
+   "gate": "transport",
+   "detail": "generative model not reachable (launch failed (FileNotFoundError)); install Claude Code and run /login",
+   "dJ": 0.0,
+   "raw": null,
+   "repaired": null,
+   "repairs": [],
+   "revisions": [],
+   "measured": {},
+   "lseq": 83,
+   "id": "prop_00083",
+   "timestamp": "2026-08-04T09:36:19Z",
    "config": "DSS1-EV1-GA1-U12:1-U3:1"
   }
  ],
@@ -17582,6 +17633,466 @@
     "genai_active": true
    },
    "timestamp": "2026-07-28T12:08:36Z"
+  },
+  {
+   "base_rule_id": "A19",
+   "base_rule_set": "minimal",
+   "modification_type": "consequent_update",
+   "before": {
+    "consequents": [
+     [
+      "asset_protection",
+      0.8494379020732716
+     ],
+     [
+      "resource_deployment",
+      0.5322153503188316
+     ]
+    ]
+   },
+   "after": {
+    "consequents": [
+     [
+      "asset_protection",
+      0.8994379020732717
+     ],
+     [
+      "resource_deployment",
+      0.5822153503188316
+     ]
+    ]
+   },
+   "trigger": {
+    "step": 11,
+    "minute": 11.0,
+    "deficit": 0.3868482703604981,
+    "stage": 1
+   },
+   "id": "evfis_mod_0258",
+   "seq": 258,
+   "origin": "evfis",
+   "source_stage": 1,
+   "produced_under_flags": {
+    "use_stage12_rules": true,
+    "use_stage3_rules": true,
+    "evfis_active": true,
+    "genai_active": true
+   },
+   "timestamp": "2026-08-04T09:35:03Z"
+  },
+  {
+   "base_rule_id": "A19",
+   "base_rule_set": "minimal",
+   "modification_type": "consequent_update",
+   "before": {
+    "consequents": [
+     [
+      "asset_protection",
+      0.8994379020732717
+     ],
+     [
+      "resource_deployment",
+      0.5822153503188316
+     ]
+    ]
+   },
+   "after": {
+    "consequents": [
+     [
+      "asset_protection",
+      0.9494379020732717
+     ],
+     [
+      "resource_deployment",
+      0.6322153503188317
+     ]
+    ]
+   },
+   "trigger": {
+    "step": 16,
+    "minute": 16.0,
+    "deficit": 0.42228427079239633,
+    "stage": 1
+   },
+   "id": "evfis_mod_0259",
+   "seq": 259,
+   "origin": "evfis",
+   "source_stage": 1,
+   "produced_under_flags": {
+    "use_stage12_rules": true,
+    "use_stage3_rules": true,
+    "evfis_active": true,
+    "genai_active": true
+   },
+   "timestamp": "2026-08-04T09:35:10Z"
+  },
+  {
+   "base_rule_id": "A19",
+   "base_rule_set": "minimal",
+   "modification_type": "consequent_update",
+   "before": {
+    "consequents": [
+     [
+      "asset_protection",
+      0.9494379020732717
+     ],
+     [
+      "resource_deployment",
+      0.6322153503188317
+     ]
+    ]
+   },
+   "after": {
+    "consequents": [
+     [
+      "asset_protection",
+      0.9994379020732718
+     ],
+     [
+      "resource_deployment",
+      0.6822153503188317
+     ]
+    ]
+   },
+   "trigger": {
+    "step": 21,
+    "minute": 630.0,
+    "deficit": 0.6423506865289142,
+    "stage": 1
+   },
+   "id": "evfis_mod_0260",
+   "seq": 260,
+   "origin": "evfis",
+   "source_stage": 1,
+   "produced_under_flags": {
+    "use_stage12_rules": true,
+    "use_stage3_rules": true,
+    "evfis_active": true,
+    "genai_active": true
+   },
+   "timestamp": "2026-08-04T09:35:36Z"
+  },
+  {
+   "base_rule_id": "A19",
+   "base_rule_set": "minimal",
+   "modification_type": "consequent_update",
+   "before": {
+    "consequents": [
+     [
+      "asset_protection",
+      0.9994379020732718
+     ],
+     [
+      "resource_deployment",
+      0.6822153503188317
+     ]
+    ]
+   },
+   "after": {
+    "consequents": [
+     [
+      "asset_protection",
+      1.0
+     ],
+     [
+      "resource_deployment",
+      0.7322153503188318
+     ]
+    ]
+   },
+   "trigger": {
+    "step": 22,
+    "minute": 660.0,
+    "deficit": 0.72083525006048,
+    "stage": 1
+   },
+   "id": "evfis_mod_0261",
+   "seq": 261,
+   "origin": "evfis",
+   "source_stage": 1,
+   "produced_under_flags": {
+    "use_stage12_rules": true,
+    "use_stage3_rules": true,
+    "evfis_active": true,
+    "genai_active": true
+   },
+   "timestamp": "2026-08-04T09:35:38Z"
+  },
+  {
+   "base_rule_id": "A19",
+   "base_rule_set": "minimal",
+   "modification_type": "consequent_update",
+   "before": {
+    "consequents": [
+     [
+      "asset_protection",
+      1.0
+     ],
+     [
+      "resource_deployment",
+      0.7322153503188318
+     ]
+    ]
+   },
+   "after": {
+    "consequents": [
+     [
+      "asset_protection",
+      1.0
+     ],
+     [
+      "resource_deployment",
+      0.7822153503188318
+     ]
+    ]
+   },
+   "trigger": {
+    "step": 23,
+    "minute": 690.0,
+    "deficit": 0.7780973645161091,
+    "stage": 1
+   },
+   "id": "evfis_mod_0262",
+   "seq": 262,
+   "origin": "evfis",
+   "source_stage": 1,
+   "produced_under_flags": {
+    "use_stage12_rules": true,
+    "use_stage3_rules": true,
+    "evfis_active": true,
+    "genai_active": true
+   },
+   "timestamp": "2026-08-04T09:35:40Z"
+  },
+  {
+   "base_rule_id": "A19",
+   "base_rule_set": "minimal",
+   "modification_type": "consequent_update",
+   "before": {
+    "consequents": [
+     [
+      "asset_protection",
+      1.0
+     ],
+     [
+      "resource_deployment",
+      0.7822153503188318
+     ]
+    ]
+   },
+   "after": {
+    "consequents": [
+     [
+      "asset_protection",
+      1.0
+     ],
+     [
+      "resource_deployment",
+      0.8322153503188319
+     ]
+    ]
+   },
+   "trigger": {
+    "step": 24,
+    "minute": 720.0,
+    "deficit": 0.756511828732944,
+    "stage": 1
+   },
+   "id": "evfis_mod_0263",
+   "seq": 263,
+   "origin": "evfis",
+   "source_stage": 1,
+   "produced_under_flags": {
+    "use_stage12_rules": true,
+    "use_stage3_rules": true,
+    "evfis_active": true,
+    "genai_active": true
+   },
+   "timestamp": "2026-08-04T09:35:41Z"
+  },
+  {
+   "base_rule_id": "A19",
+   "base_rule_set": "minimal",
+   "modification_type": "consequent_update",
+   "before": {
+    "consequents": [
+     [
+      "asset_protection",
+      1.0
+     ],
+     [
+      "resource_deployment",
+      0.8322153503188319
+     ]
+    ]
+   },
+   "after": {
+    "consequents": [
+     [
+      "asset_protection",
+      1.0
+     ],
+     [
+      "resource_deployment",
+      0.8822153503188319
+     ]
+    ]
+   },
+   "trigger": {
+    "step": 5,
+    "minute": 150.0,
+    "deficit": 0.3,
+    "stage": 1
+   },
+   "id": "evfis_mod_0264",
+   "seq": 264,
+   "origin": "evfis",
+   "source_stage": 1,
+   "produced_under_flags": {
+    "use_stage12_rules": true,
+    "use_stage3_rules": true,
+    "evfis_active": true,
+    "genai_active": true
+   },
+   "timestamp": "2026-08-04T09:36:22Z"
+  },
+  {
+   "base_rule_id": "A19",
+   "base_rule_set": "minimal",
+   "modification_type": "consequent_update",
+   "before": {
+    "consequents": [
+     [
+      "asset_protection",
+      1.0
+     ],
+     [
+      "resource_deployment",
+      0.8822153503188319
+     ]
+    ]
+   },
+   "after": {
+    "consequents": [
+     [
+      "asset_protection",
+      1.0
+     ],
+     [
+      "resource_deployment",
+      0.932215350318832
+     ]
+    ]
+   },
+   "trigger": {
+    "step": 6,
+    "minute": 180.0,
+    "deficit": 0.3,
+    "stage": 1
+   },
+   "id": "evfis_mod_0265",
+   "seq": 265,
+   "origin": "evfis",
+   "source_stage": 1,
+   "produced_under_flags": {
+    "use_stage12_rules": true,
+    "use_stage3_rules": true,
+    "evfis_active": true,
+    "genai_active": true
+   },
+   "timestamp": "2026-08-04T09:36:23Z"
+  },
+  {
+   "base_rule_id": "A19",
+   "base_rule_set": "minimal",
+   "modification_type": "consequent_update",
+   "before": {
+    "consequents": [
+     [
+      "asset_protection",
+      1.0
+     ],
+     [
+      "resource_deployment",
+      0.932215350318832
+     ]
+    ]
+   },
+   "after": {
+    "consequents": [
+     [
+      "asset_protection",
+      1.0
+     ],
+     [
+      "resource_deployment",
+      0.982215350318832
+     ]
+    ]
+   },
+   "trigger": {
+    "step": 7,
+    "minute": 210.0,
+    "deficit": 0.3,
+    "stage": 1
+   },
+   "id": "evfis_mod_0266",
+   "seq": 266,
+   "origin": "evfis",
+   "source_stage": 1,
+   "produced_under_flags": {
+    "use_stage12_rules": true,
+    "use_stage3_rules": true,
+    "evfis_active": true,
+    "genai_active": true
+   },
+   "timestamp": "2026-08-04T09:36:25Z"
+  },
+  {
+   "base_rule_id": "A19",
+   "base_rule_set": "minimal",
+   "modification_type": "consequent_update",
+   "before": {
+    "consequents": [
+     [
+      "asset_protection",
+      1.0
+     ],
+     [
+      "resource_deployment",
+      0.982215350318832
+     ]
+    ]
+   },
+   "after": {
+    "consequents": [
+     [
+      "asset_protection",
+      1.0
+     ],
+     [
+      "resource_deployment",
+      1.0
+     ]
+    ]
+   },
+   "trigger": {
+    "step": 8,
+    "minute": 240.0,
+    "deficit": 0.3,
+    "stage": 1
+   },
+   "id": "evfis_mod_0267",
+   "seq": 267,
+   "origin": "evfis",
+   "source_stage": 1,
+   "produced_under_flags": {
+    "use_stage12_rules": true,
+    "use_stage3_rules": true,
+    "evfis_active": true,
+    "genai_active": true
+   },
+   "timestamp": "2026-08-04T09:36:26Z"
   }
  ],
  "genai_rules": [

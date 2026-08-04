@@ -35,8 +35,8 @@ HERE = os.path.dirname(os.path.abspath(__file__))
 sys.path.insert(0, os.path.dirname(HERE))
 sys.path.insert(0, HERE)
 
-from fill_sensitivity import (DATE, _el, _ins_row, _nid,  # noqa: E402
-                              fill_cell, ins_run)
+from docx_track import (DATE, _el, _ins_row, _nid,        # noqa: E402
+                        fill_cell, ins_run)
 import omml as M                                          # noqa: E402
 
 AUTHOR = "Claude"
@@ -60,7 +60,7 @@ def _ins():
 # ------------------------------------------------------------ the cycle
 def run_example():
     """One decision cycle, reproduced."""
-    import sensitivity2 as S
+    import scenario as S
     import dss
     from dss import loop as L
     from dss.evaluate import CONCEPT_FAMILY

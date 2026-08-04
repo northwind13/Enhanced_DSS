@@ -4508,3 +4508,303 @@ def test_a_monitored_region_can_be_starved_by_setting_the_floor():
     e = dss.DecisionEngine(dss.partition_n(40, 30, 1), k_max=2,
                            state_path=dss.isolated_store_path("t"))
     assert e.k_max == 2
+
+
+# ---------------------------------------------------------------------
+# the geometry diagnosis: capacity exhausted while the fire still grows
+# ---------------------------------------------------------------------
+def _diag_engine(demand=None, budget=None):
+    import dss as _d
+    eng = _d.DecisionEngine(_d.partition_n(20, 20, 1))
+    if budget is not None:
+        eng.last_actions = dict(demand=demand, budget=budget)
+    return eng
+
+
+def test_the_diagnosis_stays_silent_while_the_pool_has_headroom():
+    """A growing fire under a HALF-SPENT pool is a shortage of force.
+
+    Advising geometry there would be wrong: the obvious answer, to buy
+    more force, has not been tried yet.
+    """
+    eng = _diag_engine(demand=400.0, budget=1000.0)
+    for _ in range(5):
+        eng._diagnose_geometry({}, "Agent_1", True, 40)
+    assert eng.last_geometry_diag is None
+
+
+def test_one_cycle_of_growth_is_not_enough_to_raise_it():
+    """An order needs time to reach the fire.
+
+    A fire that grew during the FIRST cycle of a saturated pool has not
+    refused it yet, so the streak has to be met before anything is said.
+    """
+    eng = _diag_engine(demand=990.0, budget=1000.0)
+    eng._diagnose_geometry({}, "Agent_1", True, 30)
+    assert eng.last_geometry_diag is None
+    eng._diagnose_geometry({}, "Agent_1", True, 30)
+    assert eng.last_geometry_diag is not None
+
+
+def test_the_diagnosis_reports_what_it_measured():
+    eng = _diag_engine(demand=1200.0, budget=1000.0)
+    eng._diagnose_geometry({}, "Agent_1", True, 12)
+    eng._diagnose_geometry({}, "Agent_1", True, 17)
+    d = eng.last_geometry_diag
+    assert d["region"] == "Agent_1"
+    assert d["demand_ratio"] == 1.2
+    assert d["streak"] == 2
+    assert d["growth"] == 17
+    assert eng.run_stats["geometry_diagnosis"] == 1
+
+
+def test_a_fire_that_stops_growing_clears_the_streak():
+    """The diagnosis describes the PRESENT cycle, not a past one.
+
+    Latching it would keep telling the generator that capacity is
+    exhausted long after the orders started working.
+    """
+    eng = _diag_engine(demand=990.0, budget=1000.0)
+    eng._diagnose_geometry({}, "Agent_1", True, 20)
+    eng._diagnose_geometry({}, "Agent_1", False, 0)
+    assert eng.last_geometry_diag is None
+    assert eng._sat_streak == 0
+    eng._diagnose_geometry({}, "Agent_1", True, 20)
+    assert eng.last_geometry_diag is None
+
+
+def test_a_run_without_an_allocation_yet_says_nothing():
+    """The first decision has no measured allocation behind it."""
+    eng = _diag_engine()
+    eng._diagnose_geometry({}, "Agent_1", True, 50)
+    eng._diagnose_geometry({}, "Agent_1", True, 50)
+    assert eng.last_geometry_diag is None
+
+
+def test_the_diagnosis_reaches_the_generative_stage_brief():
+    """The measurement is worthless if the stage never sees it."""
+    import dss as _d
+    from dss import adapt as _a
+    eng = _diag_engine()
+    eng.last_geometry_diag = dict(region="Agent_2", demand_ratio=1.31,
+                                  streak=3, growth=44)
+    seen = {}
+
+    def _spy(situation, timeout=None, engine=None, mission=""):
+        seen["text"] = situation
+        return None
+
+    _orig = _a._genai_propose
+    _a._genai_propose = _spy
+    try:
+        from disaster_phyengine.config import SimConfig
+        from disaster_phyengine import terrain
+        from disaster_phyengine.core import Simulator
+        import numpy as _np
+        cfg = SimConfig(nx=20, ny=20, cell_size_m=30.0)
+        world = terrain.generate_landscape(cfg, seed=3)
+        world.add_ignition(10, 10, step=0, radius=1)
+        sim = Simulator(world)
+        sim.record_states = False
+        sim.step()
+        eff = {c: _np.array([0.2, 0.2, 0.2, 0.2, 0.2])
+               for c in _d.DECISION_CONCEPTS}
+        crisp = {c: 0.5 for c in _d.DECISION_CONCEPTS}
+        _a.stage3_generative(lambda *_a2, **_k: None, sim,
+                             list(_d.SEED_RULES), eff, crisp, 6,
+                             engine=eng)
+    finally:
+        _a._genai_propose = _orig
+    assert "MEASURED THIS CYCLE" in seen.get("text", "")
+    assert "Agent_2" in seen["text"]
+    assert "1.31" in seen["text"]
+
+
+def test_the_brief_states_what_a_coating_needs_on_this_map():
+    """The proposer cannot design around a threshold it is not told.
+
+    Twenty-one clause actuators were proposed across three campaign
+    slices and none was admitted, because the coating landed just under
+    the extinction moisture of the lightest fuel. The note is generated
+    from the fuel models and the engine constant, so it moves when they
+    move.
+    """
+    import sys, os
+    sys.path.insert(0, os.path.join(os.path.dirname(__file__), "..",
+                                    "experiments"))
+    from scenario import build_world
+    from dss.mission import _effect_notes
+    from disaster_phyengine.config import FUEL_MODELS
+    txt = _effect_notes(build_world(201))
+    assert "coat" in txt and "clear" in txt
+    # every burnable fuel on the map is quoted with its own requirement
+    for i, m in FUEL_MODELS.items():
+        if i in (0, 5):
+            continue
+        assert f"{m.m_ext / 0.45:.2f}" in txt, m.name
+    # and the note says the amount is scaled by the realised intensity
+    assert "MULTIPLIED" in txt
+
+
+def test_the_brief_separates_the_effects_that_spend_the_pool():
+    """A saturated pool rations clear and wet away, coat and draft act.
+
+    Hand-built clause actuators measured on two reseeded rollouts: coat
+    at full strength cleared the package margin on both, while clear and
+    wet produced bit-identical costs however large the amount, because a
+    cut cell is only dug once crew capacity reaches it and the pool was
+    already oversubscribed. The proposer needs that distinction, and a
+    campaign that does not carry it spends every attempt on tactics the
+    forecast cannot see.
+    """
+    import sys, os
+    sys.path.insert(0, os.path.join(os.path.dirname(__file__), "..",
+                                    "experiments"))
+    from scenario import build_world
+    from dss.mission import _effect_notes
+    txt = _effect_notes(build_world(201)).lower()
+    assert "saturated" in txt
+    for word in ("clear and wet", "coat", "draft"):
+        assert word in txt
+
+
+def test_a_package_refused_at_g5_comes_back_with_the_measurement():
+    """The revision protocol has to reach past the rollouts.
+
+    Every gate above the simulation sends the model back with the defect
+    named. G5 did not: a package that failed the margin was dropped in
+    silence, so twenty-three clause actuators were refused across three
+    campaign slices without one of them being told by how much it had
+    missed. The rejection now carries both rollouts and the shortfall,
+    and the stage spends its already-promised retry on it.
+    """
+    import dss
+    from dss import adapt as _a
+    from disaster_phyengine.config import SimConfig
+    from disaster_phyengine import terrain
+    from disaster_phyengine.core import Simulator
+    import numpy as _np
+
+    cfg = SimConfig(nx=24, ny=24, cell_size_m=30.0)
+    world = terrain.generate_landscape(cfg, seed=5)
+    world.add_ignition(12, 12, step=0, radius=1)
+    sim = Simulator(world)
+    sim.record_states = False
+    sim.step()
+    eng = dss.DecisionEngine(dss.partition_n(24, 24, 1))
+    eng.revision_budget = 1
+
+    seen = []
+
+    def _spy(situation, timeout=None, engine=None, mission=""):
+        seen.append(situation)
+        # a package that cannot buy anything: it names a real effect but
+        # asks for none of it, so the rollouts come out equal
+        return {"antecedents": [("fire_threat_level", ">=VL")],
+                "consequents": [("nothing_band", 1.0)],
+                "new_intervention": {
+                    "name": "nothing_band",
+                    "clauses": [{"effect": "coat", "sector": "head",
+                                 "range": [0, 1], "amount": 0.001}]}}
+
+    _orig = _a._genai_propose
+    _a._genai_propose = _spy
+    try:
+        eff = {c: _np.array([0.2] * 5) for c in dss.DECISION_CONCEPTS}
+        crisp = {c: 0.5 for c in dss.DECISION_CONCEPTS}
+
+        def build(rules):
+            _, pairs = eng._decide_regions(sim, eng._perceive(sim), rules)
+            return eng._override(sim, pairs)
+
+        out = _a.stage3_generative(build, sim, list(dss.SEED_RULES),
+                                   eff, crisp, 6, engine=eng)
+    finally:
+        _a._genai_propose = _orig
+
+    assert not out.accepted
+    # the model was asked twice: once for the proposal, once to revise it
+    assert len(seen) >= 2, f"only {len(seen)} call(s), no G5 retry"
+    assert "rejected at G5" in seen[-1]
+    assert "rollout 1 measured" in seen[-1] or "Rollout 1 measured" in seen[-1]
+
+
+def test_g5b_refuses_a_package_that_rides_on_an_ordinary_order():
+    """A new vocabulary object may not be admitted on borrowed credit.
+
+    G5 weighs the whole package against no package, and a rule is free
+    to order ordinary interventions in the same consequent list. A
+    campaign slice showed what that permits: two entirely different
+    clause geometries proposed on the same seed returned bit-identical
+    rollouts, because the forecast was moved by the resource deployment
+    both of them carried and not by either geometry. G5b re-runs the
+    same two futures with the new object struck out and the ordinary
+    orders left standing, and admits the object only when the cost
+    rises without it.
+
+    The rollouts are stubbed here so the gate is tested and not the
+    physics: the package beats no-package, and ties with its own rule
+    stripped of the object. G5 passes, G5b must refuse.
+    """
+    import dss
+    from dss import adapt as _a
+    from disaster_phyengine.config import SimConfig
+    from disaster_phyengine import terrain
+    from disaster_phyengine.core import Simulator
+    import numpy as _np
+
+    cfg = SimConfig(nx=24, ny=24, cell_size_m=30.0)
+    world = terrain.generate_landscape(cfg, seed=5)
+    world.add_ignition(12, 12, step=0, radius=1)
+    sim = Simulator(world)
+    sim.record_states = False
+    sim.step()
+    eng = dss.DecisionEngine(dss.partition_n(24, 24, 1))
+    eng.revision_budget = 0
+
+    def _spy(situation, timeout=None, engine=None, mission=""):
+        return {"antecedents": [("fire_threat_level", ">=VL")],
+                "consequents": [("borrowed_band", 1.0),
+                                ("resource_deployment", 0.8)],
+                "new_intervention": {
+                    "name": "borrowed_band",
+                    "clauses": [{"effect": "coat", "sector": "head",
+                                 "range": [0, 2], "amount": 1.0}]}}
+
+    #: no rule -> 0.20; the package -> 0.10; the package with the new
+    #: object struck out -> 0.10 as well, so the object earned nothing.
+    #: The base is identified by its LENGTH, because the seed base of
+    #: this profile may already carry admitted generative rules and a
+    #: test that keyed on the note would mistake them for the candidate.
+    base_n = []
+
+    def _stub(build, sim_, rules, horizon, reseed=None):
+        if not base_n:
+            base_n.append(len(rules))
+        if len(rules) <= base_n[0]:
+            return 0.20, 0.20
+        note = str(getattr(rules[-1], "note", "") or "")
+        if "ablation" in note:
+            return 0.10, 0.20
+        return 0.10, 0.20
+
+    _orig_p, _orig_c = _a._genai_propose, _a._cva
+    _a._genai_propose, _a._cva = _spy, _stub
+    try:
+        eff = {c: _np.array([0.2] * 5) for c in dss.DECISION_CONCEPTS}
+        crisp = {c: 0.5 for c in dss.DECISION_CONCEPTS}
+
+        def build(rules):
+            _, pairs = eng._decide_regions(sim, eng._perceive(sim), rules)
+            return eng._override(sim, pairs)
+
+        out = _a.stage3_generative(build, sim, list(dss.SEED_RULES),
+                                   eff, crisp, 6, engine=eng)
+    finally:
+        _a._genai_propose, _a._cva = _orig_p, _orig_c
+
+    assert not out.accepted, out.detail
+    assert "G5b" in out.detail, out.detail
+    g5b = ((out.info or {}).get("gates") or {}).get("g5b") or {}
+    assert g5b.get("base_orders") == ["resource_deployment"], g5b
+    assert abs(g5b["j_with_object"] - g5b["j_ablated"]) < 1e-12, g5b

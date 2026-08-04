@@ -34,9 +34,22 @@ import os
 from types import SimpleNamespace
 from typing import Callable, Dict, List, Optional
 
+import sys
+
 import numpy as np
 
-from . import auto_validate as av
+# THE PACKAGE-RELATIVE IMPORT NEVER WORKED. validation/ carries no
+# __init__.py, so "from . import auto_validate" raised ImportError on
+# every run and this script could not be started at all, by the CLI it
+# documents or by anything else. Both directories are put on the path
+# instead: the folder itself for auto_validate, and its parent for the
+# engine package.
+_HERE = os.path.dirname(os.path.abspath(__file__))
+for _p in (_HERE, os.path.dirname(_HERE)):
+    if _p not in sys.path:
+        sys.path.insert(0, _p)
+
+import auto_validate as av                              # noqa: E402
 from disaster_phyengine.validation import (compare_masks,
                                            front_distance_errors,
                                            arrival_agreement)

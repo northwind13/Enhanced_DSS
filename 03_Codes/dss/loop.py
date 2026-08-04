@@ -30,7 +30,7 @@ import numpy as np
 from .features import ten_features, feature_confidence
 from .concepts import (infer_concepts, concept_gates, crisp,
                        GatedConcepts)
-from .rules import evaluate_rules
+from .rules import evaluate_rules, OFFENSIVE
 from .actions import decision_to_resources
 from .evaluate import (candidate_vs_noaction, quality_Q,
                        graduated_failsafe, forecast_cost,
@@ -88,6 +88,17 @@ class DecisionEngine:
                  # study found the budget flat, so the code now keeps
                  # the promise the prompt makes
                  revision_budget: int = 1,
+                 # HOW MANY CONSECUTIVE REJECTIONS RETIRE STAGE 3. The
+                 # default of three is what the recorded campaigns ran
+                 # on. It is a parameter because it decides WHEN the
+                 # generative stage is allowed to speak, and that turned
+                 # out to matter more than what it says: a stage retired
+                 # after three early rejections only ever sees the first
+                 # minutes of an incident, when the fire is small and far
+                 # from the assets a preventive tactic would defend, so
+                 # every geometry it proposes is measured where it can
+                 # do least.
+                 genai_patience: int = 3,
                  use_evfis: bool = True, use_genai: bool = True,
                  state_path: str | None = None):
         self.regions = list(regions)
@@ -101,6 +112,7 @@ class DecisionEngine:
         # how many times a rejected Stage-3 proposal may return to the
         # generator with the gate verdict before the stage gives up
         self.revision_budget = max(0, int(revision_budget))
+        self.genai_patience = max(1, int(genai_patience))
         self.cycle_steps = max(1, int(cycle_steps))
         self.horizon_steps = max(2, int(horizon_steps))
         # minute-based scheduling wins over step counts when given: a
@@ -282,6 +294,10 @@ class DecisionEngine:
         self.last_override = None
         self.last_actions = None
         self.last_cycle_step = -10 ** 9
+        # the geometry diagnosis of the current cycle, and the run of
+        # consecutive cycles that produced it
+        self.last_geometry_diag = None
+        self._sat_streak = 0
 
     # ------------------------------------------------------------ cycle
     def _perceive(self, sim):
@@ -687,6 +703,64 @@ class DecisionEngine:
             float(cov_by_region.get(n, 0.0)),
             -float(rows[n]["crisp"].get("operational_priority", 0.0))))
         return pick, why
+
+    #: POOL SATURATION, the same 0.95 the situation brief already uses
+    #: when it announces that one more spending order cannot be funded.
+    #: Sharing the constant is deliberate: two thresholds for the same
+    #: fact would eventually disagree and the brief would contradict
+    #: itself in front of the model.
+    SAT_BUDGET = 0.95
+
+    #: How many consecutive decisions must show the same picture before
+    #: the diagnosis is raised. One cycle is noise: an order needs time
+    #: to reach the fire, so a fire that grew during the first cycle of
+    #: a saturated pool has not yet refused it.
+    SAT_STREAK = 2
+
+    def _diagnose_geometry(self, rows, hot, spreading, growth) -> None:
+        """Decide whether force is exhausted while the fire still grows.
+
+        THIS DIAGNOSES, IT DOES NOT DICTATE. What it produces is evidence
+        placed in front of the generative stage; the stage still chooses
+        for itself whether to answer with a rule, a concept, a composite
+        or a clause actuator. The distinction carries the contribution:
+        an open decision space stops being open the moment the code
+        enumerates the situations in which each kind of novelty is due,
+        because the catalogue then moves from the actions to the
+        situations and is a catalogue either way.
+
+        SATURATION IS MEASURED ON THE POOL, NOT ON THE ORDERED INTENSITY.
+        The first version of this method asked whether the offensive
+        channels stood above 0.80 of full strength, and it never fired
+        once: the weighted-average aggregation of the rule base puts a
+        realistic order at 0.38 to 0.47, so the test was unreachable by
+        construction of the inference rather than by the incident. What
+        is meaningful is whether the standing orders already demand more
+        capacity than is funded. Together with a fire that keeps growing
+        that says the deficit is not a shortage of force, because no
+        further force can be bought; the open question is WHERE the
+        capacity already committed is placed. That is the question a
+        clause actuator answers, and until now the generative stage had
+        no way to see it was being asked.
+        """
+        self.last_geometry_diag = None
+        acts = getattr(self, "last_actions", None) or {}
+        demand, budget = acts.get("demand"), acts.get("budget")
+        if demand is None or not budget or not spreading:
+            self._sat_streak = 0
+            return
+        ratio = float(demand) / float(budget)
+        if ratio < self.SAT_BUDGET:
+            self._sat_streak = 0
+            return
+        self._sat_streak = int(getattr(self, "_sat_streak", 0)) + 1
+        if self._sat_streak < self.SAT_STREAK:
+            return
+        self.last_geometry_diag = dict(
+            region=str(hot), demand_ratio=round(ratio, 3),
+            streak=int(self._sat_streak), growth=int(growth))
+        self.run_stats["geometry_diagnosis"] = (
+            self.run_stats.get("geometry_diagnosis", 0) + 1)
 
     def _sync_active_set(self) -> None:
         """Rebuild what the inference reasons with, from the baseline plus
@@ -1147,6 +1221,7 @@ class DecisionEngine:
             # before the menu is built.
             hot, _hot_why = self._adapt_region(rows, ctx, _cov_by_region)
             self.last_adapt_region = hot
+            self._diagnose_geometry(rows, hot, _spread, _growth)
             self.last_adapt_why = (
                 f"{_hot_why} (coverage "
                 + ", ".join(f"{_n} {float(_cov_by_region.get(_n, 0.0)):.2f}"
@@ -1249,7 +1324,7 @@ class DecisionEngine:
                         pass    # a slow answer is not a bad proposal
                     else:
                         self._genai_fails += 1
-                        if self._genai_fails >= 3:
+                        if self._genai_fails >= self.genai_patience:
                             self._genai_dead = True
                 outcome.stage = stage
                 # REFUND A FREE REJECTION. Neither a shadow forecast nor a
@@ -1507,6 +1582,11 @@ class DecisionEngine:
                                           False)),
             adapt_region=getattr(self, "last_adapt_region", None),
             adapt_region_why=getattr(self, "last_adapt_why", ""),
+            # WHAT THE STAGE WAS TOLD, kept beside what it did. Counting
+            # how often the diagnosis was raised against how often a
+            # clause actuator followed is the only way to report whether
+            # the evidence reached the generator or stopped at it.
+            geometry_diagnosis=getattr(self, "last_geometry_diag", None),
             adaptation=dict(stage=int(outcome.stage),
                             tried=int(stage),
                             accepted=bool(outcome.accepted),

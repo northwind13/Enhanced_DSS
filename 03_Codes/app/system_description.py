@@ -154,7 +154,7 @@ def _sec_0(ctx):
         "wildfire state; the **DSS Core** observes the state and decides "
         "the intervention. No block ever writes another block's memory: "
         "all coupling happens through the labelled interfaces.")
-    st.image(_ARCH_SVG, use_container_width=True)
+    st.image(_ARCH_SVG, width="stretch")
     st.markdown("The four interfaces, written out:")
     _eq(r"\Theta_{UI}\;\rightarrow\;\big(\mathcal{F}_{in,k},\,"
         r"\mathcal{F}_{DSS,k}\big)",
@@ -1928,9 +1928,9 @@ def render():
         "Search", key="sd_search", placeholder=
         "Search all sections… e.g. suppression, theta_ign, cost, Table A.1",
         label_visibility="collapsed")
-    if c_e.button("Expand all", use_container_width=True):
+    if c_e.button("Expand all", width="stretch"):
         st.session_state.sd_exp = True
-    if c_c.button("Collapse all", use_container_width=True):
+    if c_c.button("Collapse all", width="stretch"):
         st.session_state.sd_exp = False
     flag = st.session_state.get("sd_exp")
 

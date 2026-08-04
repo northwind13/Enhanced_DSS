@@ -713,6 +713,12 @@ def _genai_propose(situation: str, timeout: float | None = None,
     return p
 
 
+#: G5b, the attribution margin. The new object must beat its OWN rule
+#: stripped of that object by at least this much, on both futures, so a
+#: package cannot be admitted on the strength of the ordinary orders it
+#: happens to carry alongside. Same size as the G5 margin: the two gates
+#: ask the same question of two different baselines.
+G5B_MARGIN = 1e-4
 G5_MARGIN = 1e-4     # a vocabulary-growing package must clear this on both
                      # reseeded rollouts (the vocabulary margin delta_v). Kept
                      # small so a genuinely-helpful new concept / composite
@@ -1441,6 +1447,24 @@ def stage3_generative(build_override, sim, rules: List[Rule],
     out = _stage3_generative(build_override, sim, rules, eff, crisp_c,
                              horizon, coverage_gap=coverage_gap,
                              cov_w=cov_w, engine=engine)
+    # ONE CORRECTED RETRY AFTER THE ROLLOUTS, the same allowance the
+    # cheap gates already grant. A package refused at G5 now comes back
+    # carrying what the two rollouts measured, so the model can raise a
+    # coating that fell under the extinction threshold or move off an
+    # effect the saturated pool rationed away. The gate is untouched:
+    # the revised package is simulated again and admitted only if it
+    # clears the same margin on both rollouts.
+    _g5_budget = int(getattr(engine, "revision_budget", 1) or 0)
+    _tries = 0
+    while (_tries < _g5_budget and not out.accepted
+           and (out.info or {}).get("g5_feedback")):
+        _tries += 1
+        out = _stage3_generative(build_override, sim, rules, eff, crisp_c,
+                                 horizon, coverage_gap=coverage_gap,
+                                 cov_w=cov_w, engine=engine,
+                                 retry_hint=out.info["g5_feedback"])
+        if out.accepted:
+            out.detail = f"{out.detail} [after a G5 revision]"
     try:
         _file_proposal(engine, out, crisp_c, coverage_gap, cov_w, sim)
     except Exception as exc:      # the ledger must never break a decision
@@ -1492,7 +1516,7 @@ def _stage3_generative(build_override, sim, rules: List[Rule],
                        eff, crisp_c, horizon: int,
                        coverage_gap: bool = False,
                        cov_w: float = 1.0,
-                       engine=None) -> AdaptOutcome:
+                       engine=None, retry_hint: str = "") -> AdaptOutcome:
     _mb = ""
     if engine is not None and hasattr(engine, "mission"):
         try:
@@ -1502,6 +1526,30 @@ def _stage3_generative(build_override, sim, rules: List[Rule],
     situation = _situation_brief(sim, engine)
     situation += ", ".join(f"{c}={crisp_c.get(c, 0.0):.2f}"
                            for c in DECISION_CONCEPTS)
+    if retry_hint:
+        situation += "\n\n" + retry_hint
+    # THE GEOMETRY DIAGNOSIS, when the loop raised one. It states a
+    # measurement and names the question it opens; it does NOT say what
+    # to propose. The stage remains free to answer with a rule, a
+    # concept, a composite or a clause actuator, and the gates judge the
+    # answer either way. Before this the brief carried only generic
+    # advice about when a tactic "needs its own geometry", which the
+    # model had no way to evaluate against the present incident.
+    _diag = getattr(engine, "last_geometry_diag", None) if engine else None
+    if _diag:
+        situation += (
+            f"\n\nMEASURED THIS CYCLE, around {_diag['region']}: the "
+            f"standing orders already demand "
+            f"{_diag['demand_ratio']:.2f} of the funded capacity, and "
+            f"the fire has grown through them for {_diag['streak']} "
+            f"consecutive decisions ({_diag['growth']} new cells since "
+            "the last one). No further force can be bought, so raising "
+            "the same channels again would only re-divide a budget "
+            "this incident has already refused. What remains open is "
+            "WHERE the capacity already committed is placed, rather "
+            "than how much of it there is. Read that as evidence, not "
+            "as an instruction: decide for yourself what it calls "
+            "for.")
     _dom = _dominant_terms(eff)
     situation += ("\nCurrent dominant terms: "
                   + ", ".join(f"{c}={_dom[c]}" for c in DECISION_CONCEPTS)
@@ -1837,8 +1885,92 @@ def _stage3_generative(build_override, sim, rules: List[Rule],
         # G5 complexity: growing the vocabulary must BUY something -
         # both reseeded rollouts must improve by at least the margin
         if j1a < j0a - G5_MARGIN and j1b < j0b - G5_MARGIN:
+            # ---- G5b: ATTRIBUTION -------------------------------------
+            # G5 weighs the WHOLE package against no package, and a rule
+            # is free to order ordinary interventions alongside its new
+            # object. A package can therefore clear G5 on the strength of
+            # a resource deployment written in the same consequent list,
+            # while the new object itself moves nothing. That was not a
+            # hypothesis: in one recorded slice two different clause sets
+            # proposed on the same seed returned bit-identical rollouts,
+            # because what moved the forecast was the ordinary order both
+            # of them carried. A gate that cannot tell the object from
+            # its company cannot support a claim about the object.
+            #
+            # G5b re-runs the same two futures with the new object's
+            # consequent removed and every ordinary order of that rule
+            # left standing. The object is admitted only when the cost
+            # rises without it, on both futures. When the object is the
+            # only order the rule carries, the ablated rule is the base
+            # itself and G5b coincides with G5. A new CONCEPT is not
+            # ablated: the rule is written on it, so removing it leaves
+            # no rule to measure, and the object is load-bearing by
+            # construction.
+            _abl = None
+            _base_cons = ([(i, float(x)) for i, x in prop["consequents"]
+                           if i != _nin] if _nin else [])
+            # Only a rule that ALSO carries ordinary orders needs this
+            # gate. When the new object is the whole consequent list, G5
+            # has already measured the object and nothing else, so a
+            # second pair of rollouts would repeat that measurement
+            # against the same baseline and cost two simulations for no
+            # information.
+            if _nin and _base_cons:
+                _full = rules.pop()
+                rules.append(Rule(name + "_ablated",
+                                  [(v, t) for v, t in
+                                   prop["antecedents"]],
+                                  _base_cons,
+                                  note="G5b attribution ablation"))
+                _j1a_ab = _cva(build_override, sim, rules, horizon,
+                               reseed=101)[0]
+                _j1b_ab = _cva(build_override, sim, rules, horizon,
+                               reseed=202)[0]
+                rules.pop()
+                rules.append(_full)
+                _abl = dict(j_with_object=float(j1a),
+                            j_ablated=float(_j1a_ab),
+                            j_with_object_b=float(j1b),
+                            j_ablated_b=float(_j1b_ab),
+                            base_orders=[i for i, _x in _base_cons])
+                info["gates"]["g5b"] = _abl
+            elif _nin:
+                info["gates"]["g5b"] = dict(
+                    note="not applicable: the new object is the only "
+                         "consequent, so G5 measured it alone",
+                    base_orders=[])
+            if _abl and not (j1a < _abl["j_ablated"] - G5B_MARGIN
+                             and j1b < _abl["j_ablated_b"] - G5B_MARGIN):
+                rules.pop()
+                if _undo:
+                    _uninstall_package(_undo, engine)
+                info["gates"]["verdict"] = ("rejected at G5b "
+                                            "(attribution)")
+                _b = ", ".join(_abl["base_orders"]) or "none"
+                _n5b = (
+                    "Your package cleared G5 but failed G5b, the "
+                    "attribution gate. G5b runs the same two futures "
+                    f"again with the consequent on {_nin} removed and "
+                    f"the ordinary orders of the same rule ({_b}) left "
+                    f"standing. Rollout 1 measured {j1a:.5f} with the "
+                    f"object and {_abl['j_ablated']:.5f} without it; "
+                    f"rollout 2 measured {j1b:.5f} against "
+                    f"{_abl['j_ablated_b']:.5f}. The gain therefore "
+                    "belongs to the ordinary orders, not to the new "
+                    "object, and the vocabulary is not allowed to grow "
+                    "on borrowed credit. TWO LEGAL ESCAPES: write the "
+                    "rule with the new object as its ONLY consequent, "
+                    "so the object stands on its own, or give the "
+                    "object clauses that do work the ordinary orders "
+                    "cannot do, aimed at a sector that holds cells now. "
+                    "Return the corrected JSON only.")
+                return AdaptOutcome(3, False,
+                                    f"rejected at G5b attribution ({src})",
+                                    info=dict(info, g5_feedback=_n5b))
             info["gates"]["verdict"] = ("admitted (package, G5 "
-                                        "margin cleared)")
+                                        "margin cleared)"
+                                        + (", G5b attributed"
+                                           if _abl else ""))
             if prop.get("new_concept"):
                 info["new_concept"] = prop["new_concept"]
             if prop.get("new_intervention"):
@@ -1850,9 +1982,41 @@ def _stage3_generative(build_override, sim, rules: List[Rule],
         if _undo:
             _uninstall_package(_undo, engine)
         info["gates"]["verdict"] = "rejected at G5 (package margin)"
+        # THE REVISION PROTOCOL DID NOT REACH THIS FAR. Every gate above
+        # the rollouts sends the model back with the defect named, and
+        # the mission brief promises exactly that. G5 did not: a package
+        # that failed the margin was dropped in silence, so the stage
+        # spent a model call, learned that the tactic bought nothing,
+        # and threw the finding away. Twenty-three clause actuators were
+        # refused this way across three campaign slices and not one of
+        # them was ever told by how much it had missed. The gate is
+        # unchanged; what changes is that the measurement now goes back
+        # with the rejection, which is what the protocol always claimed
+        # to do.
+        _short_a = (j1a - (j0a - G5_MARGIN))
+        _short_b = (j1b - (j0b - G5_MARGIN))
+        _g5_note = (
+            "Your package was simulated on two reseeded rollouts and "
+            "rejected at G5, which asks a NEW vocabulary object to lower "
+            "the physical cost on BOTH of them. Rollout 1 measured "
+            f"{j1a:.5f} against {j0a:.5f} without it "
+            f"({'a gain of ' + format(-_short_a, '.5f') if _short_a < 0 else 'short by ' + format(_short_a, '.5f')}"
+            "), rollout 2 measured "
+            f"{j1b:.5f} against {j0b:.5f} "
+            f"({'a gain of ' + format(-_short_b, '.5f') if _short_b < 0 else 'short by ' + format(_short_b, '.5f')})"
+            ". A difference of exactly zero means the tactic touched "
+            "nothing that the forecast reads: the sector resolved to no "
+            "cells, or the effect needs crew capacity the pool cannot "
+            "fund. Revise the SAME idea so that it acts: raise the "
+            "clause amounts to 1.0 and the consequent intensity to 1.0, "
+            "aim at a sector that holds cells now, and prefer an effect "
+            "that does not draw on the pool. Return the corrected JSON "
+            "only.")
         return AdaptOutcome(3, False,
                             f"rejected at G5 package margin ({src})",
-                            info=info)
+                            info=dict(info, g5_feedback=_g5_note,
+                                      g5_shortfall=(float(_short_a),
+                                                    float(_short_b))))
     # STRICT admission: a generated rule must ACTUALLY improve the physical
     # forecast on BOTH reseeded rollouts (G3 + G4), even for a coverage void.
     # (Earlier a void-filling rule was admitted when merely non-inferior; it

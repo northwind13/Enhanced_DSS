@@ -254,7 +254,7 @@ def _export_panel(world, sim=None, key: str = "exp") -> None:
                    f"at 1:1, 300 dpi. Two files: the map on its own, and "
                    "the map with the sensors, the resource bases and the "
                    "ignition points.")
-        if st.button("Render", key=f"{key}_go", use_container_width=True,
+        if st.button("Render", key=f"{key}_go", width="stretch",
                      type="primary"):
             with st.spinner("Rendering..."):
                 _p, _s, _scl, _sz, _lists = _export_maps(world, sim,
@@ -272,7 +272,7 @@ def _export_panel(world, sim=None, key: str = "exp") -> None:
         # frame - and the app felt dead: pressing Step appeared to do
         # nothing. It is built when it is asked for, like the maps.
         if st.button("Render legend sheet", key=f"{key}_lego",
-                     use_container_width=True):
+                     width="stretch"):
             from io import BytesIO as _BIO
             with st.spinner("Rendering the legend..."):
                 _lg = viz.legend_sheet(macros=_all_macros(None) or None,
@@ -284,7 +284,7 @@ def _export_panel(world, sim=None, key: str = "exp") -> None:
         if _lgot:
             st.download_button(f"Legend ({_lgot[1][0]}x{_lgot[1][1]})",
                                _lgot[0], file_name="legend.png",
-                               mime="image/png", use_container_width=True,
+                               mime="image/png", width="stretch",
                                key=f"{key}_dleg")
 
         _got = st.session_state.get(f"{key}_png")
@@ -293,10 +293,10 @@ def _export_panel(world, sim=None, key: str = "exp") -> None:
             c1, c2 = st.columns(2)
             c1.download_button(f"Map ({_sz[0]}x{_sz[1]})", _p,
                                file_name="map.png", mime="image/png",
-                               use_container_width=True, key=f"{key}_d1")
+                               width="stretch", key=f"{key}_d1")
             c2.download_button("Map + sensors + resources + ignitions", _s,
                                file_name="map_operational.png",
-                               mime="image/png", use_container_width=True,
+                               mime="image/png", width="stretch",
                                key=f"{key}_d2")
 
 
@@ -1634,16 +1634,32 @@ def legend_html(horizontal: bool = False, macros=None) -> str:
 # surfaces as confusing TypeErrors deep inside the pages ----
 import disaster_phyengine as _dpe
 import dss as _dss_pkg
-_EXPECTED_ENGINE_BUILD = 50
-_EXPECTED_DSS_BUILD = 91
-if (getattr(_dpe, "ENGINE_BUILD", 0) != _EXPECTED_ENGINE_BUILD
-        or getattr(_dss_pkg, "DSS_BUILD", 0) != _EXPECTED_DSS_BUILD):
+_EXPECTED_ENGINE_BUILD = 51
+_EXPECTED_DSS_BUILD = 92
+_ENGINE_SEEN = getattr(_dpe, "ENGINE_BUILD", 0)
+_DSS_SEEN = getattr(_dss_pkg, "DSS_BUILD", 0)
+if (_ENGINE_SEEN != _EXPECTED_ENGINE_BUILD
+        or _DSS_SEEN != _EXPECTED_DSS_BUILD):
+    # THE GATE MUST SAY WHICH OF THE TWO CAUSES IT IS. A bare "old code is
+    # running" reads as a zombie server and sends the reader to kill
+    # processes, but the same mismatch appears when a package build number
+    # is raised and this file is not, and no amount of restarting fixes
+    # that one. Printing seen against expected separates them in one look.
+    _mismatch = ", ".join(
+        f"{_n} on disk {_s}, this file expects {_e}"
+        for _n, _s, _e in (
+            ("disaster_phyengine", _ENGINE_SEEN, _EXPECTED_ENGINE_BUILD),
+            ("dss", _DSS_SEEN, _EXPECTED_DSS_BUILD))
+        if _s != _e)
     st.error(
-        "**Old engine code is still running in this process.**\n\n"
-        "The files on disk are up to date, but an older DisasterAware "
-        "server is still alive and your browser is talking to it (check "
-        "the port in the address bar vs. the one the launcher printed).\n\n"
-        "Fix:\n"
+        "**Build numbers do not agree: " + _mismatch + ".**\n\n"
+        "Two things produce this. If the numbers on disk are the newer "
+        "ones, an older DisasterAware server is still alive and the "
+        "browser is talking to it: compare the port in the address bar "
+        "with the one the launcher printed. If they are not, a package "
+        "build number was raised without raising the matching constant "
+        "at the top of this block, and restarting will not help.\n\n"
+        "For a stale server:\n"
         "1. Close **every** DisasterAware terminal window \u2014 or run "
         "`taskkill /F /IM python.exe` in a command prompt,\n"
         "2. start `run_dashboard.bat` again,\n"
@@ -1848,7 +1864,7 @@ def _wind_compass(cur_deg: float, key: str):
                                  fixedrange=True),
                       yaxis=dict(visible=False, range=[-1.4, 1.4],
                                  fixedrange=True, scaleanchor="x"))
-    ev = st.plotly_chart(fig, use_container_width=True,
+    ev = st.plotly_chart(fig, width="stretch",
                          config={"displayModeBar": False},
                          on_select="rerun", selection_mode="points", key=key)
     for pt in _selection_points(ev):
@@ -2297,7 +2313,7 @@ with st.sidebar:
     with st.container(border=True):
         st.markdown("**Simulation**")
         # controls stacked one under another so they read top to bottom
-        if st.button("Step", use_container_width=True,
+        if st.button("Step", width="stretch",
                      help="Advance the fire by one time step."):
             _step_sim(); _record_costs(); st.rerun()
         _sc1, _sc0 = st.columns([0.6, 0.4])
@@ -2306,7 +2322,7 @@ with st.sidebar:
             label_visibility="collapsed",
             help="How many steps the 'Step X' button advances at "
                  "once."))
-        if _sc1.button(f"Step {xsteps}", use_container_width=True,
+        if _sc1.button(f"Step {xsteps}", width="stretch",
                        help="Advance X steps at once (set X in the box "
                             "beside)."):
             _step_sim(xsteps); _record_costs(); st.rerun()
@@ -2320,7 +2336,7 @@ with st.sidebar:
                        "is out or the step cap (max_steps) is "
                        "reached; press again to stop. The map "
                        "refreshes after every chunk.")
-        if st.button("Reset fire", use_container_width=True,
+        if st.button("Reset fire", width="stretch",
                      help="Clear the fire and the cost series; the map and "
                           "all edits stay."):
             sim.reset(); st.session_state.cost_series = []
@@ -2378,7 +2394,7 @@ with st.sidebar:
             rnum = rc1.number_input("k", lo, hi, hi, 1, key="rw_num",
                                     label_visibility="collapsed",
                                     help="Type the exact step, then press Go.")
-            if rc2.button("Go", use_container_width=True,
+            if rc2.button("Go", width="stretch",
                           disabled=int(rnum) >= hi,
                           help="Restore the full state at step k. The "
                                "history after it is discarded; replay with "
@@ -2411,7 +2427,7 @@ with st.sidebar:
 
         _c1, _c2 = st.columns([1, 4])
         _c1.markdown(_lamp(_net_ok))
-        if _c2.button("Suggest sensors", use_container_width=True,
+        if _c2.button("Suggest sensors", width="stretch",
                       key="side_sugg_net",
                       help="Layer 1: greedy maximum weighted coverage, the "
                            "same action as 'Suggest network' in the Layer 1 "
@@ -2436,7 +2452,7 @@ with st.sidebar:
 
         _c3, _c4 = st.columns([1, 4])
         _c3.markdown(_lamp(_res_ok))
-        if _c4.button("Suggest resources", use_container_width=True,
+        if _c4.button("Suggest resources", width="stretch",
                       key="side_sugg_res",
                       help="Layer 1: build the baseline suppression pool "
                            "from the map's fire stations, roads and "
@@ -2485,7 +2501,7 @@ with st.sidebar:
         _c5.markdown(_lamp(_dss_ok))
         _lbl = ("Local DSS: ON" if st.session_state.get("dss_apply")
                 else "Local DSS: OFF")
-        if _c6.button(_lbl, use_container_width=True, key="side_dss_apply",
+        if _c6.button(_lbl, width="stretch", key="side_dss_apply",
                       help="Layer 2 and up: let the local agents observe and "
                            "issue orders. Needs a resource pool, so the lamp "
                            "stays red until 'Suggest resources' has run."):
@@ -2586,7 +2602,7 @@ with st.sidebar:
               "`claude` not reachable")))
         _t1, _t2 = st.columns([1, 4])
         _t1.markdown("🧪")
-        if _t2.button("Test GenAI", use_container_width=True,
+        if _t2.button("Test GenAI", width="stretch",
                       key="side_genai_test",
                       help="One real call over the same path stage ③ uses, "
                            "so the latency and the served model are the ones "
@@ -2680,7 +2696,7 @@ def page_simulation():
         with st.expander("DSS Dashboard — situational awareness",
                          expanded=True):
             if st.button("Cost settings & charts",
-                         key="sa_cost_dlg", use_container_width=True,
+                         key="sa_cost_dlg", width="stretch",
                          help="The J_k equation, the operational "
                               "priority and protection weights, the "
                               "advanced thresholds and the per-term "
@@ -2881,7 +2897,7 @@ def page_simulation():
                 _lbl = _pn
                 if _cols[_ci].button(
                         _lbl, key=f"panelbtn_{_pn}",
-                        use_container_width=True,
+                        width="stretch",
                         type=("primary" if _pcur == _pn else "secondary")):
                     st.session_state["sim_panel_v"] = _pn
                     st.rerun()
@@ -3023,7 +3039,7 @@ def page_simulation():
                      "aerial ~2, in-situ ~0).") )
             sa7.markdown("<div style='height:1.75em'></div>",
                          unsafe_allow_html=True)
-            if sa7.button("Add", use_container_width=True):
+            if sa7.button("Add", width="stretch"):
                 _new = dict(kind=_kadd, x=_xadd, y=_yadd,
                             latency_min=float(_ladd))
                 if _radd is not None:
@@ -3056,7 +3072,7 @@ def page_simulation():
                 st.rerun()
             sb1, sb2 = st.columns(2)
             if sb1.button(
-                    "Suggest network", use_container_width=True,
+                    "Suggest network", width="stretch",
                     help="Optimized field deployment: greedy maximum "
                          "weighted coverage, i.e. place assets one at a "
                          "time to maximize $\\sum_{x,y} r(x,y)\\,"
@@ -3083,7 +3099,7 @@ def page_simulation():
                     for _ln in st.session_state["dss_suggest_why"]:
                         st.caption(_ln)
             if _slist and sb2.button("Clear sensors",
-                                     use_container_width=True):
+                                     width="stretch"):
                 st.session_state["dss_sensors"] = []
                 st.rerun()
             if _slist:
@@ -3183,7 +3199,7 @@ def page_simulation():
                         e7.markdown("<div style='height:1.75em'></div>",
                                     unsafe_allow_html=True)
                         if e7.button("Save", key=f"dss_se_s_{_i}",
-                                     use_container_width=True):
+                                     width="stretch"):
                             _upd = dict(kind=_nk, x=_nx_, y=_ny_,
                                         latency_min=float(_nl))
                             if _nr is not None:
@@ -3270,7 +3286,7 @@ def page_simulation():
                 st.rerun()
             rp1, rp2 = st.columns(2)
             if rp1.button(
-                    "Suggest resources", use_container_width=True,
+                    "Suggest resources", width="stretch",
                     help="Builds the baseline pool as EDITABLE rows: a "
                          "ground depot at each FIRE STATION (capacity "
                          "$0.8\\,R_{cap}^{max}$, station radius; a town "
@@ -3297,7 +3313,7 @@ def page_simulation():
                     st.session_state["dss_eff_target"])
                 st.rerun()
             if _ritems and rp2.button("Clear pool",
-                                      use_container_width=True):
+                                      width="stretch"):
                 st.session_state["dss_res_items"] = None
                 st.session_state["dss_res_base"] = None
                 st.rerun()
@@ -3367,7 +3383,7 @@ def page_simulation():
                             f3.markdown("<div style='height:1.75em'>"
                                         "</div>", unsafe_allow_html=True)
                             if f3.button("Save", key=f"res_e_s_{_j}",
-                                         use_container_width=True):
+                                         width="stretch"):
                                 _it.update(cap=_nc, avail=_na)
                                 st.session_state["res_edit"] = None
                                 st.rerun()
@@ -3403,7 +3419,7 @@ def page_simulation():
                             f7.markdown("<div style='height:1.75em'>"
                                         "</div>", unsafe_allow_html=True)
                             if f7.button("Save", key=f"res_e_s_{_j}",
-                                         use_container_width=True):
+                                         width="stretch"):
                                 _it.update(x=_nx_, y=_ny_, cap=_nc,
                                            radius=_nr, avail=_na,
                                            t_disp=_nt)
@@ -3439,7 +3455,7 @@ def page_simulation():
                                       key="res_a_r"))
             a5.markdown("<div style='height:1.75em'></div>",
                         unsafe_allow_html=True)
-            if a5.button("Add", key="res_a_b", use_container_width=True):
+            if a5.button("Add", key="res_a_b", width="stretch"):
                 _ritems.append(dict(kind=_akind, x=_ax, y=_ay,
                                     cap=_ac, radius=_ar, avail=1.0,
                                     t_disp=float(_kd["t_disp"]),
@@ -4621,7 +4637,7 @@ def page_simulation():
                                for iv, x in _r.consequents),
                 active="yes" if _r.active else "no")
                 for _r in _seedsPure]
-            st.dataframe(_tblR, use_container_width=True, height=360)
+            st.dataframe(_tblR, width="stretch", height=360)
 
             # a rule counts as LEARNED only if it differs from the pristine
             # seed baseline: a born A#/G# rule, or a seed R# whose consequents
@@ -4781,7 +4797,7 @@ def page_simulation():
                 _cols_g = ["stage", "rule", "description", "step",
                            "in_use", "strength", "seq"]
                 st.dataframe([{k: r.get(k) for k in _cols_g} for r in _recs],
-                             use_container_width=True, height=280,
+                             width="stretch", height=280,
                              column_order=_cols_g)
                 st.caption(
                     "Which stage does what: **stage ①** only MODIFIES what "
@@ -4838,7 +4854,7 @@ def page_simulation():
                       if _m.get("modification_type") in ("membership_shift",
                                                          "term_insert")]
             if _modsR:
-                st.dataframe(_modsR, use_container_width=True)
+                st.dataframe(_modsR, width="stretch")
                 st.caption("Currently applied to the registry.")
             elif _pmods:
                 st.caption(
@@ -4961,7 +4977,7 @@ def page_simulation():
                 # lives on its own page; what stays here is a preview.
                 if st.button("Open the full table as a page",
                              key="goto_steps_page",
-                             use_container_width=True,
+                             width="stretch",
                              help="Opens 'Step analysis' in the navigation: "
                                   "the same table across the whole window."):
                     st.session_state["nav_page"] = "Step analysis"
@@ -4970,7 +4986,7 @@ def page_simulation():
                 if hasattr(st, "dialog"):
                     @st.dialog("What happened at each step", width="large")
                     def _steps_window():
-                        st.dataframe(_rows, use_container_width=True,
+                        st.dataframe(_rows, width="stretch",
                                      height=620, column_order=_COLS_A,
                                      column_config=_STEP_COL_CONFIG)
                         st.caption(
@@ -4984,7 +5000,7 @@ def page_simulation():
                             file_name="layer4_steps.xlsx", mime=XLSX_MIME,
                             key="dl_steps_xlsx")
                     if _ob1.button("Open in a window", key="open_steps",
-                                   use_container_width=True,
+                                   width="stretch",
                                    help="Shows the full table with every "
                                         "column, wider than this panel "
                                         "allows."):
@@ -4992,7 +5008,7 @@ def page_simulation():
                 _prev = _ob2.checkbox("Preview here", value=True,
                                       key="prev_steps")
                 if _prev:
-                    st.dataframe(_rows, use_container_width=True, height=300,
+                    st.dataframe(_rows, width="stretch", height=300,
                                  column_order=_COLS_A,
                                  column_config=_STEP_COL_CONFIG)
                 st.markdown(_STEP_COL_HELP)
@@ -5564,7 +5580,7 @@ def page_simulation():
                         d[f"cost_{_k}"] = round(float(_cs.get(_k, 0)), 3)
                     return d
                 _tbl = [_row(r) for r in _eng4.log.records]
-                st.dataframe(_tbl, use_container_width=True, height=280)
+                st.dataframe(_tbl, width="stretch", height=280)
                 import json as _js_all
                 _dlc1, _dlc2 = st.columns(2)
                 # a semicolon CSV "that opens in Excel" still arrives as
@@ -5790,7 +5806,7 @@ def page_simulation():
                         world.ignitions.pop(_igi)
                         st.rerun()
                 if st.button("Clear all ignitions",
-                             use_container_width=True):
+                             width="stretch"):
                     world.ignitions.clear()
                     st.rerun()
             else:
@@ -6026,7 +6042,7 @@ def page_simulation():
             with _map_card():
                 fig = viz.fire_surface_figure(world, sim=sim)
                 key3d = f"plot3d_{st.session_state.map_version}"
-                st.plotly_chart(fig, use_container_width=True,
+                st.plotly_chart(fig, width="stretch",
                                 config={"scrollZoom": True}, key=key3d)
         else:
             place = st.checkbox(
@@ -6112,7 +6128,7 @@ def page_simulation():
                                             sensors=_sens, depots=_deps,
                                             alloc=_alloc, actions=_acts,
                                             **flags),
-                             use_container_width=True)
+                             width="stretch")
             elif place and HAS_CANVAS:
                 # ignition placement works exactly like the Map editor:
                 # a click canvas over the rendered map; each click drops a
@@ -6192,7 +6208,7 @@ def page_simulation():
                                           actions=_acts,
                                           uirevision=f"m{st.session_state.map_version}",
                                           **flags),
-                        use_container_width=True,
+                        width="stretch",
                         key=f"plot2d_{st.session_state.map_version}",
                         config={"scrollZoom": True,
                                 "modeBarButtonsToRemove": ["lasso2d", "select2d"]})
@@ -6264,7 +6280,7 @@ def page_simulation():
                 if hasattr(st, "dialog"):
                     @st.dialog("Decision log", width="large")
                     def _dlog_window():
-                        st.dataframe(_rows_dl, use_container_width=True,
+                        st.dataframe(_rows_dl, width="stretch",
                                      height=620)
                         _cd = list(_rows_dl[0].keys()) if _rows_dl else []
                         st.download_button(
@@ -6275,9 +6291,9 @@ def page_simulation():
                             file_name="decision_log.xlsx", mime=XLSX_MIME,
                             key="dl_declog_xlsx")
                     if st.button("Open in a window", key="open_dlog",
-                                 use_container_width=True):
+                                 width="stretch"):
                         _dlog_window()
-                st.dataframe(_rows_dl, use_container_width=True, height=300)
+                st.dataframe(_rows_dl, width="stretch", height=300)
                 st.caption(
                     "**local_dss** is the regional agent that produced the "
                     "orders. **role** is the coordinator's call for that "
@@ -6637,7 +6653,7 @@ def _cost_panel():
                 a.tick_params(labelsize=7)
                 a.grid(alpha=0.25)
                 f.tight_layout()
-                st.pyplot(f, use_container_width=True)
+                st.pyplot(f, width="stretch")
                 plt.close(f)
 
 
@@ -6676,7 +6692,7 @@ def _asset_manager(world) -> None:
                    "radius or a value in place. Nothing changes until you "
                    "press Apply.")
         _ed = st.data_editor(
-            _rows, key="asset_mgr", use_container_width=True, height=280,
+            _rows, key="asset_mgr", width="stretch", height=280,
             column_order=_ASSET_COLS, hide_index=True,
             disabled=["kind"],
             column_config={
@@ -6699,7 +6715,7 @@ def _asset_manager(world) -> None:
                     "population", min_value=0.0, step=100.0,
                     width="small")})
         c1, c2 = st.columns([1, 2])
-        if c1.button("Apply asset edits", use_container_width=True,
+        if c1.button("Apply asset edits", width="stretch",
                      type="primary", key="asset_mgr_apply"):
             from disaster_phyengine.world import Asset
             _new = []
@@ -6763,7 +6779,7 @@ def _settlement_manager(world) -> None:
                    "it (the block is repainted at the new place). Rename in "
                    "place. Nothing changes until you press Apply.")
         _ed = st.data_editor(
-            _rows, key="sett_mgr", use_container_width=True, height=210,
+            _rows, key="sett_mgr", width="stretch", height=210,
             column_order=["keep", "name", "x", "y", "population",
                           "facilities", "parts"],
             hide_index=True, disabled=["facilities", "parts"],
@@ -6783,7 +6799,7 @@ def _settlement_manager(world) -> None:
                 "parts": st.column_config.NumberColumn(
                     "assets", width="small")})
         c1, c2 = st.columns([1, 2])
-        if c1.button("Apply settlement edits", use_container_width=True,
+        if c1.button("Apply settlement edits", width="stretch",
                      type="primary", key="sett_mgr_apply"):
             _keys = list(_sets)
             _rm = _mv = _rn = 0
@@ -6845,7 +6861,7 @@ def _map_library(world) -> None:
         _nt = c2.text_input("Note (optional)", key="lib_note",
                             placeholder="what this map is for")
         c3.markdown("&nbsp;", unsafe_allow_html=True)
-        if c3.button("Save map", use_container_width=True, type="primary",
+        if c3.button("Save map", width="stretch", type="primary",
                      key="lib_save"):
             if not _nm.strip():
                 c3.error("Name?")
@@ -6872,22 +6888,22 @@ def _map_library(world) -> None:
               "extent": f"{m.get('km', '?')} km", "towns": m.get("settlements"),
               "assets": m.get("assets"), "saved": m.get("saved"),
               "note": m.get("note")} for m in _maps],
-            use_container_width=True, hide_index=True)
+            width="stretch", hide_index=True)
         _names = [str(m.get("name")) for m in _maps]
         _pick = st.selectbox("Map", _names, key="lib_pick")
         d1, d2, d3 = st.columns(3)
-        if d1.button("Open", use_container_width=True, key="lib_open"):
+        if d1.button("Open", width="stretch", key="lib_open"):
             _new_simulator(_ml.load_map(_pick))
             st.session_state["_opened_map"] = _pick
             st.rerun()
         _isdef = any(m.get("default") and str(m.get("name")) == _pick
                      for m in _maps)
         if d2.button("Unset default" if _isdef else "Make default",
-                     use_container_width=True, key="lib_def",
+                     width="stretch", key="lib_def",
                      help="The default map opens with the app."):
             _ml.set_default(None if _isdef else _pick)
             st.rerun()
-        if d3.button("Delete", use_container_width=True, key="lib_del"):
+        if d3.button("Delete", width="stretch", key="lib_del"):
             # TWO PRESSES, NOT ONE. A map can be an afternoon's editing and
             # the button sits next to Open.
             if st.session_state.get("_lib_del_armed") == _pick:
@@ -7022,7 +7038,7 @@ def page_editor():
             _sgA, _sgB = st.columns([1, 1.6],
                                     vertical_alignment="bottom")
             seed = _sgA.number_input("Seed", 0, 99999, 42)
-            if _sgB.button("Generate map", use_container_width=True,
+            if _sgB.button("Generate map", width="stretch",
                            type="primary"):
                 _new_simulator(terrain.generate_landscape(
                     SimConfig(nx=int(nx), ny=int(ny), cell_size_m=float(cell)),
@@ -7040,12 +7056,12 @@ def page_editor():
                 st.rerun()
         elif src == "Built in scenario":
             scen = st.selectbox("Scenario", list(scenarios.SCENARIOS.keys()))
-            if st.button("Load scenario", use_container_width=True,
+            if st.button("Load scenario", width="stretch",
                          type="primary"):
                 _new_simulator(scenarios.SCENARIOS[scen]()); st.rerun()
         else:
             dfuel = st.selectbox("Default fuel", FUEL_TYPES)
-            if st.button("Create blank grid", use_container_width=True,
+            if st.button("Create blank grid", width="stretch",
                          type="primary"):
                 _new_simulator(World.blank(
                     SimConfig(nx=int(nx), ny=int(ny), cell_size_m=float(cell)),
@@ -7066,7 +7082,7 @@ def page_editor():
         rny = rz2.number_input("ny", 20, 600, int(cfg.ny), 10, key="res_ny")
         rz3.markdown("<div style='height:1.75em'></div>",
                      unsafe_allow_html=True)
-        if rz3.button("Resize", use_container_width=True,
+        if rz3.button("Resize", width="stretch",
                       disabled=(int(rnx) == cfg.nx and int(rny) == cfg.ny)):
             _new_simulator(_resize_world(world, int(rnx), int(rny),
                                          keep_extent=bool(_keep_ext)))
@@ -7204,7 +7220,7 @@ def page_editor():
                 st.plotly_chart(
                     viz.map_figure_2d(world, sim=sim,
                                       scale=_fit_scale(cfg.nx), **eflags),
-                    use_container_width=True,
+                    width="stretch",
                     key=f"edpz_{st.session_state.map_version}",
                     config={"scrollZoom": True,
                             "modeBarButtonsToRemove": ["lasso2d", "select2d"]})
@@ -7218,7 +7234,7 @@ def page_editor():
             with _map_card():
                 fig3 = viz.fire_surface_figure(world, sim=sim)
                 key3e = f"edit3d_{st.session_state.map_version}"
-                st.plotly_chart(fig3, use_container_width=True,
+                st.plotly_chart(fig3, width="stretch",
                                 config={"scrollZoom": True}, key=key3e)
         else:
             from io import BytesIO
@@ -7231,8 +7247,8 @@ def page_editor():
             _buf = BytesIO(); bg.save(_buf, format="PNG")
             t1.download_button("Download PNG", _buf.getvalue(),
                                file_name="map.png", mime="image/png",
-                               use_container_width=True)
-            if t2.button("Undo edit", use_container_width=True,
+                               width="stretch")
+            if t2.button("Undo edit", width="stretch",
                          disabled=not st.session_state.get("edit_undo"),
                          help="Reverts the last APPLIED map edit (fuel, "
                               "firebreak, road, asset, elevation). Up to 12 "
@@ -7241,7 +7257,7 @@ def page_editor():
             # Clear strokes only matters when strokes are NOT applied live
             _export_panel(world, sim, key="exped")
             if not live and t3.button(
-                    "Clear strokes", use_container_width=True,
+                    "Clear strokes", width="stretch",
                     help="Discards the drawn strokes WITHOUT applying them; "
                          "the map itself never changes."):
                 st.session_state.canvas_key += 1; st.rerun()
@@ -7273,7 +7289,7 @@ def page_editor():
                         _simP._fmoist0 = world.fuel.fmoist.copy()
                     st.session_state.canvas_key += 1; st.rerun()
                 if not live and st.button("Apply edits", type="primary",
-                                          use_container_width=True):
+                                          width="stretch"):
                     _push_snapshot(); _apply_edits(objs, scale, kw)
                     _simP = st.session_state.get("sim")
                     if _simP is not None:
@@ -7281,7 +7297,7 @@ def page_editor():
                     st.session_state.canvas_key += 1; st.rerun()
             else:
                 with _map_card():
-                    st.image(bg, use_container_width=True)
+                    st.image(bg, width="stretch")
 
     st.divider()
     e1, e2 = st.columns(2)
@@ -7419,7 +7435,7 @@ def page_layers():
         try:
             with _map_card():
                 st.plotly_chart(viz.fire_surface_figure(world, sim=sim),
-                                use_container_width=True)
+                                width="stretch")
         except Exception as exc:
             st.info(f"3D needs plotly. {exc}")
 
@@ -7447,7 +7463,7 @@ def page_layers():
         fig.colorbar(im, ax=ax, shrink=0.8)
         ax.set_title(f"{name}  [{_u}]")
         ax.set_xticks([]); ax.set_yticks([])
-        st.pyplot(fig, use_container_width=True); plt.close(fig)
+        st.pyplot(fig, width="stretch"); plt.close(fig)
 
     st.divider()
     with st.expander("Operational diagnostics (viewer only \u2014 not part "
@@ -7480,7 +7496,7 @@ def page_params():
  "is defined in the System Description page; defaults follow its "
  "tables.")
     rc1, rc2 = st.columns([1.2, 3])
-    if rc1.button("Reset to defaults", use_container_width=True):
+    if rc1.button("Reset to defaults", width="stretch"):
         cfg.spread = SpreadParams()
         cfg.suppression = SuppressionParams()
         cfg.intensity = IntensityParams()
@@ -8233,7 +8249,7 @@ def page_validation():
                 img[max(0, gy - rr):gy + rr + 1,
                     max(0, gx - rr):gx + rr + 1] = (255, 235, 60)
                 ha = float(burned.sum()) * cell_ha
-                live.image(img, use_container_width=True,
+                live.image(img, width="stretch",
                            caption=f"t = {t_h:.1f} h \u00b7 simulated burn "
                                    f"{ha:,.0f} ha \u00b7 wind {ws_now:.1f} "
                                    "m/s \u00b7 red/green = simulation, "
@@ -8603,13 +8619,13 @@ def page_validation():
             _figm.update_layout(height=640, dragmode="pan",
                                 margin=dict(l=0, r=0, t=6, b=0))
             with _map_card():
-                st.plotly_chart(_figm, use_container_width=True,
+                st.plotly_chart(_figm, width="stretch",
                                 config={"scrollZoom": True,
                                         "displayModeBar": True,
                                         "displaylogo": False})
         except Exception:
             with _map_card():
-                st.image(img, use_container_width=True)
+                st.image(img, width="stretch")
         st.caption("Agreement map on the real terrain \u2014 green: correctly "
                    "predicted burn, red: simulated only, blue: observed only, "
                    "yellow: ignition. Scroll or use the toolbar to zoom and "
@@ -9002,7 +9018,7 @@ def page_steps():
             _view = [r for r in _view if r.get("verdict") == "ACCEPTED"]
         _c3.caption(f"showing {len(_view)} of {len(_rows)} cycle(s), "
                     f"latest first")
-        st.dataframe(_view, use_container_width=True, height=560,
+        st.dataframe(_view, width="stretch", height=560,
                      column_order=STEP_COLS, column_config=_STEP_COL_CONFIG)
         # ONE WORKBOOK, ALL THREE TABLES. They describe the same cycles
         # from three angles, so shipping them as three files left the
@@ -9046,7 +9062,7 @@ def page_steps():
         if _fs_only:
             _av = [r for r in _av if r.get("failsafe") != "ok"]
         _a2.caption(f"showing {len(_av)} of {len(_arows)} row(s)")
-        st.dataframe(_av, use_container_width=True, height=560,
+        st.dataframe(_av, width="stretch", height=560,
                      column_order=AGENT_COLS,
                      column_config=_STEP_COL_CONFIG)
         st.download_button(
@@ -9064,7 +9080,7 @@ def page_steps():
             "share each got, and which ones it decided to only monitor. "
             "The share scales the offensive tempo of that agent and steers "
             "the budget concentration in the allocator.")
-        st.dataframe(_grows, use_container_width=True, height=560,
+        st.dataframe(_grows, width="stretch", height=560,
                      column_order=GLOBAL_COLS,
                      column_config=_STEP_COL_CONFIG)
         st.download_button(

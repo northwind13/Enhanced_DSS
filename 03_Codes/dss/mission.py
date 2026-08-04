@@ -39,6 +39,59 @@ def _landcover(world) -> str:
     return ", ".join(bits)
 
 
+
+#: THE COATING IS THE ONLY EFFECT WITH A THRESHOLD, and the proposer was
+#: not told. A clause writes an amount, the engine multiplies it by the
+#: intensity the rule realises, and the coated cells stop burning only
+#: once the moisture floor that the coating imposes reaches the fuel's
+#: extinction moisture. Three campaign slices produced twenty-one clause
+#: actuators and none was admitted; the coatings landed at a floor of
+#: about 0.15 against a grass extinction moisture of 0.15, so they
+#: slowed the fire without stopping it and the forecast gates measured
+#: no gain. The numbers below are read from the fuel models and from the
+#: engine constant, so this note cannot drift from the physics it
+#: describes.
+_RETARD_TO_MOISTURE = 0.45
+
+
+def _effect_notes(world) -> str:
+    """What each verified effect needs in order to bite."""
+    import numpy as _np
+    from disaster_phyengine.config import FUEL_MODELS
+    ft = _np.asarray(world.fuel.ftype)
+    present = [(FUEL_MODELS[i].name, FUEL_MODELS[i].m_ext)
+               for i in sorted(set(int(v) for v in _np.unique(ft)))
+               if i in FUEL_MODELS and i not in (0, 5)]
+    worst = max((m for _n, m in present), default=0.30)
+    need = worst / _RETARD_TO_MOISTURE
+    lines = ["EFFECT STRENGTH (what an amount actually buys):",
+             "  the amount you write on a clause is MULTIPLIED by the "
+             "intensity your rule realises, and a rule rarely realises "
+             "more than about half of the consequent you give it, so an "
+             "amount of 0.5 typically lands near 0.25 in the physics.",
+             "  coat: a coated cell keeps burning until the coating "
+             f"reaches {need:.2f} of full strength on this map "
+             f"({', '.join(f'{n} needs {m / _RETARD_TO_MOISTURE:.2f}' for n, m in present)}). "
+             "Below that it only slows the fire, and a forecast gate "
+             "that measures no gain will reject the package. Write the "
+             "amount at 1.0 and the consequent intensity at 0.9 or "
+             "above if the tactic depends on stopping the fire rather "
+             "than slowing it.",
+             "  clear, wet, draft, evacuate, prime, ignite: no "
+             "threshold. They act in proportion to what you order.",
+             "  WHAT SPENDS THE POOL AND WHAT DOES NOT. clear and wet "
+             "need crews: a cut cell is only dug once the capacity and "
+             "the availability reach it, so on a saturated pool they "
+             "are rationed away and the forecast measures nothing, "
+             "however large the amount. coat lays retardant as a "
+             "moisture floor and draft raises capacity from a water "
+             "body; neither draws on the pool, so both still act when "
+             "the pool is spent. When the brief reports the pool "
+             "saturated, a tactic built on coat or draft can be "
+             "measured and one built on clear or wet cannot."]
+    return "\n".join(lines)
+
+
 def _water(world, cell: float) -> str:
     wat = np.asarray(world.fuel.ftype == 5)
     if not wat.any():
@@ -122,6 +175,7 @@ def build_mission_brief(world, base_pool=None) -> str:
         "genuinely new tactic (WHERE and HOW); a mere re-weighting "
         "of channels is the tuning stage's job and fails the "
         "novelty gates.")
+    L.append(_effect_notes(world))
     L.append(
         "WHEN TO INVENT WHAT (think like an incident commander):\n"
         "  - a plain rule: the situation is expressible in the "
@@ -138,6 +192,18 @@ def build_mission_brief(world, base_pool=None) -> str:
         "only what THIS map supports: no water means no drafting "
         "and no aerial drops; no population nearby means evacuate "
         "and prime are wasted orders.")
+    L.append(
+        "A NEW OBJECT MUST STAND ON ITS OWN. A package is measured "
+        "twice: once against no package at all, and once against the "
+        "SAME rule with the new object struck out and the ordinary "
+        "orders of that rule left standing. If the forecast is no "
+        "worse without the new object, the gain belonged to the "
+        "ordinary orders and the package is refused, however large "
+        "the gain was. So do not pad a new actuator with a resource "
+        "deployment or a suppression effort that would have earned "
+        "the same result by itself. Either give the new object the "
+        "consequent list to itself, or make sure its clauses do work "
+        "that the ordinary orders cannot do.")
     L.append(
         "STANDING RULES OF THE GAME: every proposal must FIRE in "
         "the situation it is proposed for (use current dominant "

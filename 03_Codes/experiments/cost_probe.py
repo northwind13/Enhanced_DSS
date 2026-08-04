@@ -32,7 +32,7 @@ import dss                                            # noqa: E402
 from disaster_phyengine import terrain                # noqa: E402
 from disaster_phyengine.config import SimConfig       # noqa: E402
 from disaster_phyengine.core import Simulator         # noqa: E402
-from sensitivity2 import pick_ignitions               # noqa: E402
+from scenario import pick_ignitions                   # noqa: E402
 
 OUT = os.path.join(HERE, "out")
 os.makedirs(OUT, exist_ok=True)
@@ -78,8 +78,8 @@ def run(seed, nx=80, ny=60, n_regions=4, n_ign=4, pool=0.25, genai=True):
     from dss import adapt as _adapt
     _orig = _adapt._genai_propose
     if genai:
-        from campaign5 import _make_template_proposer
-        _adapt._genai_propose = _make_template_proposer(seed)
+        from offline_proposer import make_template_proposer
+        _adapt._genai_propose = make_template_proposer(seed)
 
     dt_min = float(w.config.step_minutes)
     max_steps = int(round(MAX_MIN / dt_min))

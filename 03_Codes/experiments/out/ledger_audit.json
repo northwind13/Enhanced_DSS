@@ -1,0 +1,94 @@
+{
+ "campaign_funnel": {
+  "attempts": 211,
+  "sources": {
+   "template": 211
+  },
+  "accepted": 74,
+  "rejected": 137,
+  "accepted_plain": 48,
+  "accepted_package": 26,
+  "by_gate": {
+   "(not recorded)": 101,
+   "G2 duplicate cell": 24,
+   "G2 package (name empty or taken)": 12
+  },
+  "scenarios": {
+   "S3": 53,
+   "S4": 44,
+   "S5": 40,
+   "S1": 35,
+   "S2": 39
+  },
+  "seeds": 10,
+  "dJ_mean": -0.01004,
+  "dJ_best": -0.04881
+ },
+ "campaign_products": {
+  "rows": 100,
+  "macros": [
+   "town_shield"
+  ],
+  "distinct_macros": 1,
+  "distinct_rule_names": 11,
+  "rule_entries": 327
+ },
+ "live_store": {
+  "proposals": 83,
+  "accepted": 11,
+  "rejected": 72,
+  "by_gate": {
+   "G2": 15,
+   "G3": 31,
+   "transport": 9,
+   "G5": 5,
+   "G2c": 10,
+   "G4 A/B": 2
+  },
+  "rules": 42,
+  "concepts": [
+   "interface_exposure"
+  ],
+  "interventions": [
+   "downwind_backburn",
+   "downwind_retardant_shield",
+   "drafting_sustained_attack",
+   "head_knockdown",
+   "wet_containment_line",
+   "counterfire_strip",
+   "drafting_retardant_shuttle"
+  ],
+  "composite_interventions": 7,
+  "clause_actuators": 0,
+  "recruited_discoverable": [
+   "retardant_drop",
+   "tactical_burn",
+   "water_drafting"
+  ],
+  "evfis_modifications": 217,
+  "created_objects": 8
+ },
+ "naming_errors": [
+  {
+   "name": "downwind_backburn",
+   "composition": [
+    "containment_line",
+    "suppression_effort"
+   ],
+   "clauses": [],
+   "verdict": "name claims fire, definition carries none"
+  }
+ ],
+ "ordered_in_logs": {
+  "downwind_backburn": 6494,
+  "downwind_firebreak": 520,
+  "downwind_containment_burn": 565,
+  "downwind_interdiction": 350,
+  "downwind_retardant_shield": 7716,
+  "drafting_sustained_attack": 7041,
+  "head_knockdown": 6855,
+  "wet_containment_line": 4931,
+  "counterfire_strip": 4046,
+  "drafting_retardant_shuttle": 1002
+ }
+}

@@ -29,7 +29,7 @@ sys.path.insert(0, HERE)
 import dss                                            # noqa: E402
 from disaster_phyengine.core import Simulator         # noqa: E402
 from disaster_phyengine.costs import compute_costs    # noqa: E402
-from sensitivity2 import build_world, pick_ignitions  # noqa: E402
+from scenario import build_world, pick_ignitions      # noqa: E402
 
 OUT = os.path.join(HERE, "out")
 os.makedirs(OUT, exist_ok=True)
@@ -79,8 +79,8 @@ def run_one(seed, tune, env=ENV, adaptive=True, trace=None,
     from dss import adapt as _adapt
     _orig = _adapt._genai_propose
     if adaptive and genai:
-        from campaign5 import _make_template_proposer
-        _adapt._genai_propose = _make_template_proposer(seed)
+        from offline_proposer import make_template_proposer
+        _adapt._genai_propose = make_template_proposer(seed)
     max_steps = int(round(MAX_MIN / w.config.step_minutes))
     try:
         for i in range(max_steps):
