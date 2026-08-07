@@ -5,7 +5,7 @@ it lands in [0, 1]; J is their weighted mean. The formulas:
 
   J_burn  = x / (1 + x),  x = A_burned / A_ref
             A_burned = burned cells (any fuel; forest reported
-            separately), A_ref = burn_reference_fraction (5%) of the
+            separately), A_ref = burn_reference_fraction (50%) of the
             burnable cells = a "major fire". RATIONAL saturation, not
             exponential: 1 - exp(-x) is numerically DEAD past x ~ 5
             (a fire growing 2900 -> 3500 cells moved J_phys only in
@@ -110,7 +110,11 @@ def compute_costs(sim, cost: CostParams | None = None) -> CostReport:
     burned_area_ha = n_burned * cell_ha
     burned_forest_ha = float((burned & forest).sum()) * cell_ha
 
-    _bref = float(getattr(cost, "burn_reference_fraction", 0.05))
+    # THE FALLBACK MUST MATCH THE CONFIGURED DEFAULT. It read 0.05
+    # while SimConfig ships 0.50, so a caller that passed a cost
+    # object without the field was scored on a reference ten times
+    # smaller than the one the thesis reports.
+    _bref = float(getattr(cost, "burn_reference_fraction", 0.50))
     _xb = n_burned / max(_bref * n_burnable, 1.0)
     j_burn = float(_xb / (1.0 + _xb))
 

@@ -579,7 +579,7 @@ class Simulator:
             # min time constant, so the front dies out gradually, not in
             # one frame)
             if float(_pr.max()) >= 3.0:
-                _quench = (_pr >= 3.0) & (fuel.fmoist >= 0.34)
+                _quench = (_pr >= 3.0) & (fuel.fmoist >= 0.35)
                 b_pers = b_pers * (~_quench)
             leak = min(1.0, cfg.spread.buildup_leak * sub)
             self.ign_buildup *= (1.0 - leak)
@@ -765,7 +765,11 @@ class Simulator:
 
         # 5. ignition time update, once per outer step
         cont = (s.burning > 0.5) & (B_start > 0.5)
-        s.tau = np.where(cont, s.tau + cfg.dt, 0.0)
+        # THE RESIDENCE CLOCK IS IN MINUTES, which is what (34) and
+        # every reader of tau assume. It used to advance by cfg.dt,
+        # which counts STEPS, so on any configuration whose step is
+        # not one minute the clock silently ran at the wrong rate.
+        s.tau = np.where(cont, s.tau + float(cfg.step_minutes), 0.0)
         s.step += 1
         world.fuel.fload = s.fload  # keep the layer in sync for observation
 
