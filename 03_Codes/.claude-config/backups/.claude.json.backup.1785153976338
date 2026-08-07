@@ -1,0 +1,58 @@
+{
+  "firstStartTime": "2026-07-27T12:00:46.583Z",
+  "machineID": "a0b5fa54b2210eb55eb51ee66328e3203a36816513a1cce132c9f553ea4ce7f2",
+  "opusProMigrationComplete": true,
+  "sonnet1m45MigrationComplete": true,
+  "seenNotifications": {},
+  "hasResetAutoModeOptInForDefaultOffer": true,
+  "migrationVersion": 13,
+  "userID": "92d2cfa945343878ff4b2cf5008df4b3d87a4f056d8e404aef687f46db2bcf83",
+  "claudeCodeFirstTokenDate": "2026-04-12T09:14:20.317647Z",
+  "oauthAccount": {
+    "accountUuid": "a1fc28ed-95ec-445b-a864-79baa487085f",
+    "emailAddress": "2f5k6h82w4@privaterelay.appleid.com",
+    "organizationUuid": "4254a022-cd98-4a81-8e81-565ff344659a",
+    "hasExtraUsageEnabled": false,
+    "billingType": "apple_subscription",
+    "accountCreatedAt": "2026-04-03T17:52:57.359935Z",
+    "subscriptionCreatedAt": "2026-04-03T17:54:46.455290Z",
+    "ccOnboardingFlags": {},
+    "claudeCodeTrialEndsAt": null,
+    "claudeCodeTrialDurationDays": null,
+    "seatTier": null,
+    "displayName": "Çağlar Akman",
+    "profileFetchedAt": 1785153801462,
+    "organizationRole": "admin",
+    "workspaceRole": null,
+    "organizationName": "2f5k6h82w4@privaterelay.appleid.com's Organization",
+    "organizationType": "claude_max",
+    "organizationRateLimitTier": "default_claude_max_20x",
+    "userRateLimitTier": null
+  },
+  "clientDataCacheSlots": {
+    "bi1-2cf351ae673b5910": {
+      "data": {
+        "cedar_lagoon": {
+          "claude-fable": true,
+          "claude-mythos": true
+        },
+        "cedar_basin": "2026-08-31"
+      },
+      "at": 1785153802285,
+      "entrypoint": "cli",
+      "model": "claude-opus-5",
+      "org": "4254a022-cd98-4a81-8e81-565ff344659a"
+    }
+  },
+  "additionalModelOptionsCache": [
+    {
+      "value": "claude-fable-5[1m]",
+      "label": "Fable",
+      "description": "Fable 5 · Most capable for your hardest and longest-running tasks"
+    }
+  ],
+  "additionalModelCostsCache": {},
+  "modelAccessCache": [],
+  "orgModelDefaultCache": null,
+  "autoCompactWindowsCache": null
+}
