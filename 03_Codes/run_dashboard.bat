@@ -3,6 +3,12 @@ REM DisasterAware simulator - dashboard launcher
 setlocal
 cd /d "%~dp0"
 
+REM Claude Code oturumu claude-login.bat ile bu klasordeki .claude-config
+REM dizinine yaziliyor. Ayni dizini BURADA da vermek sart: verilmezse
+REM dashboard'un cagirdigi `claude -p` varsayilan %%USERPROFILE%%\.claude
+REM dizinine bakar, oturumu bulamaz ve "baglanti yok / not logged in" der.
+set "CLAUDE_CONFIG_DIR=%~dp0.claude-config"
+
 where py >nul 2>nul && (set "PY=py") || (set "PY=python")
 
 if not exist ".venv\Scripts\activate.bat" (
@@ -48,19 +54,18 @@ where claude >nul 2>nul
 if errorlevel 1 (
     echo [genai] Claude Code was installed but is not on PATH for THIS
     echo [genai] window yet. Close this window, open a NEW one, run
-    echo [genai]     claude login
+    echo [genai]     claude-login.bat
     echo [genai] once with your Pro/Max plan, then start run_dashboard.bat
     echo [genai] again. ^(Manual login - the launcher never sees your creds.^)
     goto claude_done
 )
 :claude_ready
-echo [genai] Claude Code is available.
-echo [genai] To power the GenAI stage with your Pro/Max subscription, open a
-echo [genai] SEPARATE terminal, run:  claude
-echo [genai] then type  /login  inside it and sign in with your Max plan
-echo [genai] (this switches Claude Code off API billing onto your plan).
-echo [genai] Do this ONCE. The launcher never handles your credentials and
-echo [genai] does NOT block on it, so the dashboard starts normally below.
+echo [genai] Claude Code is available. Config dir: %CLAUDE_CONFIG_DIR%
+echo [genai] Login status:
+call claude auth status --text 2>nul
+echo [genai] Not logged in? Run  claude-login.bat  ONCE (Pro/Max plan), then
+echo [genai] start run_dashboard.bat again. The launcher never handles your
+echo [genai] credentials and does NOT block on it; the dashboard starts below.
 :claude_done
 
 echo [run] Starting dashboard. Close this window or press Ctrl+C to stop.

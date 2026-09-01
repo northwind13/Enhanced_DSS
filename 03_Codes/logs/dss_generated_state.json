@@ -1,6 +1,6 @@
 {
  "schema_version": "1.0",
- "last_updated": "2026-08-04T09:37:37Z",
+ "last_updated": "2026-08-31T13:36:40Z",
  "baseline_ref": {
   "rule_sets": [
    "minimal5",
@@ -18,7 +18,7 @@
   "use_stage3_rules": true
  },
  "stage_controller": {
-  "map_key": "d969668f82975e1e",
+  "map_key": "27fecc890f17f68f",
   "maps": {
    "bb433f06acdc2147": {
     "q": {
@@ -109,6 +109,25 @@
     },
     "updates": 279,
     "seen": "2026-08-04T09:37:37Z"
+   },
+   "27fecc890f17f68f": {
+    "q": {
+     "low/3": -0.001207,
+     "mid+gap/2": -0.006055,
+     "mid+gap/1": -0.003614,
+     "low/2": -0.005739,
+     "low/1": -0.003785,
+     "mid/2": -0.0002,
+     "high/2": -0.003974,
+     "high/1": -0.007339,
+     "high+gap/2": -0.004281,
+     "high+gap/1": -0.007425,
+     "high/3": -0.0002,
+     "mid/3": -0.0002,
+     "mid/1": -0.002763
+    },
+    "updates": 585,
+    "seen": "2026-08-31T13:36:40Z"
    }
   }
  },
@@ -6694,6 +6713,231 @@
    "lseq": 83,
    "id": "prop_00083",
    "timestamp": "2026-08-04T09:36:19Z",
+   "config": "DSS1-EV1-GA1-U12:1-U3:1"
+  },
+  {
+   "situation": {
+    "fire_threat_level": 0.3934,
+    "asset_exposure_risk": 0.7245,
+    "suppression_feasibility": 0.9401,
+    "intervention_urgency": 0.411,
+    "evacuation_pressure": 0.326
+   },
+   "coverage_gap": false,
+   "cov_w": 0.5622,
+   "step": 0,
+   "accepted": false,
+   "gate": "transport",
+   "detail": "generative model not reachable (launch failed (FileNotFoundError)); install Claude Code and run /login",
+   "dJ": 0.0,
+   "raw": null,
+   "repaired": null,
+   "repairs": [],
+   "revisions": [],
+   "measured": {},
+   "lseq": 84,
+   "id": "prop_00084",
+   "timestamp": "2026-08-31T04:30:46Z",
+   "config": "DSS1-EV1-GA1-U12:1-U3:1"
+  },
+  {
+   "situation": {
+    "fire_threat_level": 0.3201,
+    "asset_exposure_risk": 0.5213,
+    "suppression_feasibility": 0.7034,
+    "intervention_urgency": 0.2561,
+    "evacuation_pressure": 0.41
+   },
+   "coverage_gap": false,
+   "cov_w": 0.7603,
+   "step": 0,
+   "accepted": false,
+   "gate": "transport",
+   "detail": "generative model not reachable (launch failed (FileNotFoundError)); install Claude Code and run /login",
+   "dJ": 0.0,
+   "raw": null,
+   "repaired": null,
+   "repairs": [],
+   "revisions": [],
+   "measured": {},
+   "lseq": 85,
+   "id": "prop_00085",
+   "timestamp": "2026-08-31T04:33:14Z",
+   "config": "DSS1-EV1-GA1-U12:1-U3:1"
+  },
+  {
+   "situation": {
+    "fire_threat_level": 0.4647,
+    "asset_exposure_risk": 0.4033,
+    "suppression_feasibility": 0.5135,
+    "intervention_urgency": 0.4502,
+    "evacuation_pressure": 0.3599
+   },
+   "coverage_gap": false,
+   "cov_w": 0.6773,
+   "step": 99,
+   "accepted": false,
+   "gate": "transport",
+   "detail": "generative model not reachable (launch failed (FileNotFoundError)); install Claude Code and run /login",
+   "dJ": 0.0,
+   "raw": null,
+   "repaired": null,
+   "repairs": [],
+   "revisions": [],
+   "measured": {},
+   "lseq": 86,
+   "id": "prop_00086",
+   "timestamp": "2026-08-31T06:57:59Z",
+   "config": "DSS1-EV1-GA1-U12:1-U3:1"
+  },
+  {
+   "situation": {
+    "fire_threat_level": 0.1673,
+    "asset_exposure_risk": 0.603,
+    "suppression_feasibility": 0.9401,
+    "intervention_urgency": 0.278,
+    "evacuation_pressure": 0.2714
+   },
+   "coverage_gap": false,
+   "cov_w": 0.6003,
+   "step": 0,
+   "accepted": false,
+   "gate": "transport",
+   "detail": "generative model not reachable (launch failed (FileNotFoundError)); install Claude Code and run /login",
+   "dJ": 0.0,
+   "raw": null,
+   "repaired": null,
+   "repairs": [],
+   "revisions": [],
+   "measured": {},
+   "lseq": 87,
+   "id": "prop_00087",
+   "timestamp": "2026-08-31T07:16:27Z",
+   "config": "DSS1-EV1-GA1-U12:1-U3:1"
+  },
+  {
+   "situation": {
+    "fire_threat_level": 0.4651,
+    "asset_exposure_risk": 0.3595,
+    "suppression_feasibility": 0.5135,
+    "intervention_urgency": 0.4472,
+    "evacuation_pressure": 0.354
+   },
+   "coverage_gap": false,
+   "cov_w": 0.6773,
+   "step": 81,
+   "accepted": false,
+   "gate": "transport",
+   "detail": "generative model not reachable (launch failed (FileNotFoundError)); install Claude Code and run /login",
+   "dJ": 0.0,
+   "raw": null,
+   "repaired": null,
+   "repairs": [],
+   "revisions": [],
+   "measured": {},
+   "lseq": 88,
+   "id": "prop_00088",
+   "timestamp": "2026-08-31T07:18:38Z",
+   "config": "DSS1-EV1-GA1-U12:1-U3:1"
+  },
+  {
+   "situation": {
+    "fire_threat_level": 0.0001,
+    "asset_exposure_risk": 0.3594,
+    "suppression_feasibility": 0.5135,
+    "intervention_urgency": 0.0002,
+    "evacuation_pressure": 0.4201
+   },
+   "coverage_gap": false,
+   "cov_w": 0.6746,
+   "step": 0,
+   "accepted": false,
+   "gate": "transport",
+   "detail": "generative model not reachable (launch failed (FileNotFoundError)); install Claude Code and run /login",
+   "dJ": 0.0,
+   "raw": null,
+   "repaired": null,
+   "repairs": [],
+   "revisions": [],
+   "measured": {},
+   "lseq": 89,
+   "id": "prop_00089",
+   "timestamp": "2026-08-31T07:22:20Z",
+   "config": "DSS1-EV1-GA1-U12:1-U3:1"
+  },
+  {
+   "situation": {
+    "fire_threat_level": 0.1673,
+    "asset_exposure_risk": 0.603,
+    "suppression_feasibility": 0.9401,
+    "intervention_urgency": 0.278,
+    "evacuation_pressure": 0.2714
+   },
+   "coverage_gap": false,
+   "cov_w": 0.6003,
+   "step": 0,
+   "accepted": false,
+   "gate": "transport",
+   "detail": "generative model not reachable (launch failed (FileNotFoundError)); install Claude Code and run /login",
+   "dJ": 0.0,
+   "raw": null,
+   "repaired": null,
+   "repairs": [],
+   "revisions": [],
+   "measured": {},
+   "lseq": 90,
+   "id": "prop_00090",
+   "timestamp": "2026-08-31T13:33:58Z",
+   "config": "DSS1-EV1-GA1-U12:1-U3:1"
+  },
+  {
+   "situation": {
+    "fire_threat_level": 0.1673,
+    "asset_exposure_risk": 0.603,
+    "suppression_feasibility": 0.9401,
+    "intervention_urgency": 0.278,
+    "evacuation_pressure": 0.2714
+   },
+   "coverage_gap": false,
+   "cov_w": 0.6003,
+   "step": 0,
+   "accepted": false,
+   "gate": "transport",
+   "detail": "generative model not reachable (launch failed (FileNotFoundError)); install Claude Code and run /login",
+   "dJ": 0.0,
+   "raw": null,
+   "repaired": null,
+   "repairs": [],
+   "revisions": [],
+   "measured": {},
+   "lseq": 91,
+   "id": "prop_00091",
+   "timestamp": "2026-08-31T13:35:32Z",
+   "config": "DSS1-EV1-GA1-U12:1-U3:1"
+  },
+  {
+   "situation": {
+    "fire_threat_level": 0.1673,
+    "asset_exposure_risk": 0.603,
+    "suppression_feasibility": 0.9401,
+    "intervention_urgency": 0.278,
+    "evacuation_pressure": 0.2714
+   },
+   "coverage_gap": false,
+   "cov_w": 0.6003,
+   "step": 0,
+   "accepted": false,
+   "gate": "transport",
+   "detail": "generative model not reachable (launch failed (FileNotFoundError)); install Claude Code and run /login",
+   "dJ": 0.0,
+   "raw": null,
+   "repaired": null,
+   "repairs": [],
+   "revisions": [],
+   "measured": {},
+   "lseq": 92,
+   "id": "prop_00092",
+   "timestamp": "2026-08-31T13:35:59Z",
    "config": "DSS1-EV1-GA1-U12:1-U3:1"
   }
  ],
@@ -18093,6 +18337,1152 @@
     "genai_active": true
    },
    "timestamp": "2026-08-04T09:36:26Z"
+  },
+  {
+   "base_rule_id": "A42",
+   "base_rule_set": "minimal",
+   "modification_type": "rule_add",
+   "before": {
+    "rule": null
+   },
+   "after": {
+    "rule": {
+     "name": "A42",
+     "antecedents": [
+      [
+       "asset_exposure_risk",
+       "H"
+      ],
+      [
+       "evacuation_pressure",
+       "M"
+      ]
+     ],
+     "consequents": [
+      [
+       "asset_protection",
+       0.6472088736860779
+      ],
+      [
+       "evacuation",
+       0.6240137123069947
+      ],
+      [
+       "suppression_effort",
+       0.35525849964063194
+      ]
+     ],
+     "note": "adaptation-born: resolution increase (instantiated antecedent cell)",
+     "strength": 0.0
+    }
+   },
+   "trigger": {
+    "step": 5,
+    "minute": 5.0,
+    "deficit": 0.14011102127459002,
+    "stage": 2
+   },
+   "id": "evfis_mod_0268",
+   "seq": 268,
+   "origin": "evfis",
+   "source_stage": 2,
+   "produced_under_flags": {
+    "use_stage12_rules": true,
+    "use_stage3_rules": true,
+    "evfis_active": true,
+    "genai_active": true
+   },
+   "timestamp": "2026-08-31T04:30:52Z"
+  },
+  {
+   "base_rule_id": "A17",
+   "base_rule_set": "minimal",
+   "modification_type": "consequent_update",
+   "before": {
+    "consequents": [
+     [
+      "evacuation",
+      0.6160229318261994
+     ],
+     [
+      "suppression_effort",
+      0.2055911052020038
+     ]
+    ]
+   },
+   "after": {
+    "consequents": [
+     [
+      "evacuation",
+      0.5660229318261993
+     ],
+     [
+      "suppression_effort",
+      0.1555911052020038
+     ]
+    ]
+   },
+   "trigger": {
+    "step": 10,
+    "minute": 10.0,
+    "deficit": 0.13935851032254262,
+    "stage": 1
+   },
+   "id": "evfis_mod_0269",
+   "seq": 269,
+   "origin": "evfis",
+   "source_stage": 1,
+   "produced_under_flags": {
+    "use_stage12_rules": true,
+    "use_stage3_rules": true,
+    "evfis_active": true,
+    "genai_active": true
+   },
+   "timestamp": "2026-08-31T04:31:00Z"
+  },
+  {
+   "base_rule_id": "A43",
+   "base_rule_set": "minimal",
+   "modification_type": "rule_add",
+   "before": {
+    "rule": null
+   },
+   "after": {
+    "rule": {
+     "name": "A43",
+     "antecedents": [
+      [
+       "asset_exposure_risk",
+       "X1"
+      ],
+      [
+       "evacuation_pressure",
+       "M"
+      ]
+     ],
+     "consequents": [
+      [
+       "asset_protection",
+       0.6591407916219711
+      ],
+      [
+       "evacuation",
+       0.6303890508946448
+      ],
+      [
+       "suppression_effort",
+       0.3874140165044266
+      ]
+     ],
+     "note": "adaptation-born: resolution increase: term X1 inserted into asset_exposure_risk at 0.66 (catalog grew)",
+     "strength": 0.0
+    }
+   },
+   "trigger": {
+    "step": 15,
+    "minute": 15.0,
+    "deficit": 0.043776251841175916,
+    "stage": 2
+   },
+   "id": "evfis_mod_0270",
+   "seq": 270,
+   "origin": "evfis",
+   "source_stage": 2,
+   "produced_under_flags": {
+    "use_stage12_rules": true,
+    "use_stage3_rules": true,
+    "evfis_active": true,
+    "genai_active": true
+   },
+   "timestamp": "2026-08-31T04:31:07Z"
+  },
+  {
+   "base_rule_id": "A17",
+   "base_rule_set": "minimal",
+   "modification_type": "consequent_update",
+   "before": {
+    "consequents": [
+     [
+      "evacuation",
+      0.5660229318261993
+     ],
+     [
+      "suppression_effort",
+      0.1555911052020038
+     ]
+    ]
+   },
+   "after": {
+    "consequents": [
+     [
+      "evacuation",
+      0.5160229318261993
+     ],
+     [
+      "suppression_effort",
+      0.10559110520200381
+     ]
+    ]
+   },
+   "trigger": {
+    "step": 57,
+    "minute": 57.0,
+    "deficit": 0.47000280456523824,
+    "stage": 1
+   },
+   "id": "evfis_mod_0271",
+   "seq": 271,
+   "origin": "evfis",
+   "source_stage": 1,
+   "produced_under_flags": {
+    "use_stage12_rules": true,
+    "use_stage3_rules": true,
+    "evfis_active": true,
+    "genai_active": true
+   },
+   "timestamp": "2026-08-31T04:32:06Z"
+  },
+  {
+   "base_rule_id": "A44",
+   "base_rule_set": "minimal",
+   "modification_type": "rule_add",
+   "before": {
+    "rule": null
+   },
+   "after": {
+    "rule": {
+     "name": "A44",
+     "antecedents": [
+      [
+       "asset_exposure_risk",
+       "M"
+      ],
+      [
+       "evacuation_pressure",
+       "M"
+      ]
+     ],
+     "consequents": [
+      [
+       "asset_protection",
+       0.6424245222292289
+      ],
+      [
+       "evacuation",
+       0.6252108148071794
+      ],
+      [
+       "suppression_effort",
+       0.30920857513391564
+      ]
+     ],
+     "note": "adaptation-born: resolution increase (instantiated antecedent cell)",
+     "strength": 0.0
+    }
+   },
+   "trigger": {
+    "step": 72,
+    "minute": 72.0,
+    "deficit": 0.3872241315746155,
+    "stage": 2
+   },
+   "id": "evfis_mod_0272",
+   "seq": 272,
+   "origin": "evfis",
+   "source_stage": 2,
+   "produced_under_flags": {
+    "use_stage12_rules": true,
+    "use_stage3_rules": true,
+    "evfis_active": true,
+    "genai_active": true
+   },
+   "timestamp": "2026-08-31T04:32:29Z"
+  },
+  {
+   "base_rule_id": "A45",
+   "base_rule_set": "minimal",
+   "modification_type": "rule_add",
+   "before": {
+    "rule": null
+   },
+   "after": {
+    "rule": {
+     "name": "A45",
+     "antecedents": [
+      [
+       "suppression_feasibility",
+       "M"
+      ],
+      [
+       "asset_exposure_risk",
+       "M"
+      ]
+     ],
+     "consequents": [
+      [
+       "asset_protection",
+       0.5127679563611299
+      ],
+      [
+       "evacuation",
+       0.40444677229860826
+      ]
+     ],
+     "note": "adaptation-born: resolution increase (instantiated antecedent cell)",
+     "strength": 0.0
+    }
+   },
+   "trigger": {
+    "step": 73,
+    "minute": 730.0,
+    "deficit": 0.4507195424526253,
+    "stage": 2
+   },
+   "id": "evfis_mod_0273",
+   "seq": 273,
+   "origin": "evfis",
+   "source_stage": 2,
+   "produced_under_flags": {
+    "use_stage12_rules": true,
+    "use_stage3_rules": true,
+    "evfis_active": true,
+    "genai_active": true
+   },
+   "timestamp": "2026-08-31T04:34:34Z"
+  },
+  {
+   "base_rule_id": "A46",
+   "base_rule_set": "minimal",
+   "modification_type": "rule_add",
+   "before": {
+    "rule": null
+   },
+   "after": {
+    "rule": {
+     "name": "A46",
+     "antecedents": [
+      [
+       "suppression_feasibility",
+       "X2"
+      ],
+      [
+       "asset_exposure_risk",
+       "M"
+      ]
+     ],
+     "consequents": [
+      [
+       "asset_protection",
+       0.4031492112399327
+      ],
+      [
+       "evacuation",
+       0.36008336146708275
+      ]
+     ],
+     "note": "adaptation-born: resolution increase: term X2 inserted into suppression_feasibility at 0.51 (catalog grew)",
+     "strength": 0.0
+    }
+   },
+   "trigger": {
+    "step": 104,
+    "minute": 104.0,
+    "deficit": 0.10076037658231979,
+    "stage": 2
+   },
+   "id": "evfis_mod_0274",
+   "seq": 274,
+   "origin": "evfis",
+   "source_stage": 2,
+   "produced_under_flags": {
+    "use_stage12_rules": true,
+    "use_stage3_rules": true,
+    "evfis_active": true,
+    "genai_active": true
+   },
+   "timestamp": "2026-08-31T06:58:04Z"
+  },
+  {
+   "base_rule_id": "A20",
+   "base_rule_set": "minimal",
+   "modification_type": "consequent_update",
+   "before": {
+    "consequents": [
+     [
+      "asset_protection",
+      0.5981230941534599
+     ],
+     [
+      "evacuation",
+      0.5063331012766288
+     ]
+    ]
+   },
+   "after": {
+    "consequents": [
+     [
+      "asset_protection",
+      0.6481230941534599
+     ],
+     [
+      "evacuation",
+      0.5563331012766288
+     ]
+    ]
+   },
+   "trigger": {
+    "step": 134,
+    "minute": 1340.0,
+    "deficit": 0.4512586338722859,
+    "stage": 1
+   },
+   "id": "evfis_mod_0275",
+   "seq": 275,
+   "origin": "evfis",
+   "source_stage": 1,
+   "produced_under_flags": {
+    "use_stage12_rules": true,
+    "use_stage3_rules": true,
+    "evfis_active": true,
+    "genai_active": true
+   },
+   "timestamp": "2026-08-31T06:58:39Z"
+  },
+  {
+   "base_rule_id": "A47",
+   "base_rule_set": "minimal",
+   "modification_type": "rule_add",
+   "before": {
+    "rule": null
+   },
+   "after": {
+    "rule": {
+     "name": "A47",
+     "antecedents": [
+      [
+       "evacuation_pressure",
+       "X1"
+      ],
+      [
+       "asset_exposure_risk",
+       "M"
+      ]
+     ],
+     "consequents": [
+      [
+       "evacuation",
+       0.6348562377967959
+      ],
+      [
+       "asset_protection",
+       0.5299601385755308
+      ]
+     ],
+     "note": "adaptation-born: resolution increase: term X1 inserted into evacuation_pressure at 0.63 (catalog grew)",
+     "strength": 0.0
+    }
+   },
+   "trigger": {
+    "step": 142,
+    "minute": 1420.0,
+    "deficit": 0.39258096026555706,
+    "stage": 2
+   },
+   "id": "evfis_mod_0276",
+   "seq": 276,
+   "origin": "evfis",
+   "source_stage": 2,
+   "produced_under_flags": {
+    "use_stage12_rules": true,
+    "use_stage3_rules": true,
+    "evfis_active": true,
+    "genai_active": true
+   },
+   "timestamp": "2026-08-31T06:58:54Z"
+  },
+  {
+   "base_rule_id": "A48",
+   "base_rule_set": "minimal",
+   "modification_type": "rule_add",
+   "before": {
+    "rule": null
+   },
+   "after": {
+    "rule": {
+     "name": "A48",
+     "antecedents": [
+      [
+       "suppression_feasibility",
+       "X1"
+      ],
+      [
+       "evacuation_pressure",
+       "VL"
+      ]
+     ],
+     "consequents": [
+      [
+       "evacuation",
+       0.3713579617575706
+      ],
+      [
+       "asset_protection",
+       0.3704795292872791
+      ]
+     ],
+     "note": "adaptation-born: resolution increase: term X1 inserted into suppression_feasibility at 0.70 (catalog grew)",
+     "strength": 0.0
+    }
+   },
+   "trigger": {
+    "step": 157,
+    "minute": 1570.0,
+    "deficit": 0.3,
+    "stage": 2
+   },
+   "id": "evfis_mod_0277",
+   "seq": 277,
+   "origin": "evfis",
+   "source_stage": 2,
+   "produced_under_flags": {
+    "use_stage12_rules": true,
+    "use_stage3_rules": true,
+    "evfis_active": true,
+    "genai_active": true
+   },
+   "timestamp": "2026-08-31T06:59:22Z"
+  },
+  {
+   "base_rule_id": "G27",
+   "base_rule_set": "minimal",
+   "modification_type": "consequent_update",
+   "before": {
+    "consequents": [
+     [
+      "retardant_drop",
+      1.0
+     ],
+     [
+      "containment_line",
+      0.9500000000000002
+     ]
+    ]
+   },
+   "after": {
+    "consequents": [
+     [
+      "retardant_drop",
+      1.0
+     ],
+     [
+      "containment_line",
+      1.0
+     ]
+    ]
+   },
+   "trigger": {
+    "step": 158,
+    "minute": 1580.0,
+    "deficit": 0.3,
+    "stage": 1
+   },
+   "id": "evfis_mod_0278",
+   "seq": 278,
+   "origin": "evfis",
+   "source_stage": 1,
+   "produced_under_flags": {
+    "use_stage12_rules": true,
+    "use_stage3_rules": true,
+    "evfis_active": true,
+    "genai_active": true
+   },
+   "timestamp": "2026-08-31T06:59:27Z"
+  },
+  {
+   "base_rule_id": "G27",
+   "base_rule_set": "minimal",
+   "modification_type": "consequent_update",
+   "before": {
+    "consequents": [
+     [
+      "retardant_drop",
+      1.0
+     ],
+     [
+      "containment_line",
+      1.0
+     ]
+    ]
+   },
+   "after": {
+    "consequents": [
+     [
+      "retardant_drop",
+      0.95
+     ],
+     [
+      "containment_line",
+      0.95
+     ]
+    ]
+   },
+   "trigger": {
+    "step": 174,
+    "minute": 1740.0,
+    "deficit": 0.3,
+    "stage": 1
+   },
+   "id": "evfis_mod_0279",
+   "seq": 279,
+   "origin": "evfis",
+   "source_stage": 1,
+   "produced_under_flags": {
+    "use_stage12_rules": true,
+    "use_stage3_rules": true,
+    "evfis_active": true,
+    "genai_active": true
+   },
+   "timestamp": "2026-08-31T06:59:55Z"
+  },
+  {
+   "base_rule_id": "G27",
+   "base_rule_set": "minimal",
+   "modification_type": "consequent_update",
+   "before": {
+    "consequents": [
+     [
+      "retardant_drop",
+      0.95
+     ],
+     [
+      "containment_line",
+      0.95
+     ]
+    ]
+   },
+   "after": {
+    "consequents": [
+     [
+      "retardant_drop",
+      0.8999999999999999
+     ],
+     [
+      "containment_line",
+      0.8999999999999999
+     ]
+    ]
+   },
+   "trigger": {
+    "step": 190,
+    "minute": 1900.0,
+    "deficit": 0.3,
+    "stage": 1
+   },
+   "id": "evfis_mod_0280",
+   "seq": 280,
+   "origin": "evfis",
+   "source_stage": 1,
+   "produced_under_flags": {
+    "use_stage12_rules": true,
+    "use_stage3_rules": true,
+    "evfis_active": true,
+    "genai_active": true
+   },
+   "timestamp": "2026-08-31T07:00:07Z"
+  },
+  {
+   "base_rule_id": "G27",
+   "base_rule_set": "minimal",
+   "modification_type": "consequent_update",
+   "before": {
+    "consequents": [
+     [
+      "retardant_drop",
+      0.8999999999999999
+     ],
+     [
+      "containment_line",
+      0.8999999999999999
+     ]
+    ]
+   },
+   "after": {
+    "consequents": [
+     [
+      "retardant_drop",
+      0.95
+     ],
+     [
+      "containment_line",
+      0.95
+     ]
+    ]
+   },
+   "trigger": {
+    "step": 235,
+    "minute": 2350.0,
+    "deficit": 0.3,
+    "stage": 1
+   },
+   "id": "evfis_mod_0281",
+   "seq": 281,
+   "origin": "evfis",
+   "source_stage": 1,
+   "produced_under_flags": {
+    "use_stage12_rules": true,
+    "use_stage3_rules": true,
+    "evfis_active": true,
+    "genai_active": true
+   },
+   "timestamp": "2026-08-31T07:00:45Z"
+  },
+  {
+   "base_rule_id": "G27",
+   "base_rule_set": "minimal",
+   "modification_type": "consequent_update",
+   "before": {
+    "consequents": [
+     [
+      "retardant_drop",
+      0.95
+     ],
+     [
+      "containment_line",
+      0.95
+     ]
+    ]
+   },
+   "after": {
+    "consequents": [
+     [
+      "retardant_drop",
+      1.0
+     ],
+     [
+      "containment_line",
+      1.0
+     ]
+    ]
+   },
+   "trigger": {
+    "step": 274,
+    "minute": 2740.0,
+    "deficit": 0.1456200699453054,
+    "stage": 1
+   },
+   "id": "evfis_mod_0282",
+   "seq": 282,
+   "origin": "evfis",
+   "source_stage": 1,
+   "produced_under_flags": {
+    "use_stage12_rules": true,
+    "use_stage3_rules": true,
+    "evfis_active": true,
+    "genai_active": true
+   },
+   "timestamp": "2026-08-31T07:01:21Z"
+  },
+  {
+   "base_rule_id": "A49",
+   "base_rule_set": "minimal",
+   "modification_type": "rule_add",
+   "before": {
+    "rule": null
+   },
+   "after": {
+    "rule": {
+     "name": "A49",
+     "antecedents": [
+      [
+       "suppression_feasibility",
+       "VH"
+      ],
+      [
+       "asset_exposure_risk",
+       "L"
+      ]
+     ],
+     "consequents": [
+      [
+       "asset_protection",
+       0.35150281594306376
+      ],
+      [
+       "evacuation",
+       0.34993899318752775
+      ]
+     ],
+     "note": "adaptation-born: resolution increase (instantiated antecedent cell)",
+     "strength": 0.0
+    }
+   },
+   "trigger": {
+    "step": 358,
+    "minute": 3580.0,
+    "deficit": 0.04666184856787091,
+    "stage": 2
+   },
+   "id": "evfis_mod_0283",
+   "seq": 283,
+   "origin": "evfis",
+   "source_stage": 2,
+   "produced_under_flags": {
+    "use_stage12_rules": true,
+    "use_stage3_rules": true,
+    "evfis_active": true,
+    "genai_active": true
+   },
+   "timestamp": "2026-08-31T07:03:07Z"
+  },
+  {
+   "base_rule_id": "A50",
+   "base_rule_set": "minimal",
+   "modification_type": "rule_add",
+   "before": {
+    "rule": null
+   },
+   "after": {
+    "rule": {
+     "name": "A50",
+     "antecedents": [
+      [
+       "suppression_feasibility",
+       "X2"
+      ],
+      [
+       "asset_exposure_risk",
+       "L"
+      ]
+     ],
+     "consequents": [
+      [
+       "asset_protection",
+       0.35150281594306376
+      ],
+      [
+       "evacuation",
+       0.3473731362472529
+      ]
+     ],
+     "note": "adaptation-born: resolution increase: term X2 inserted into suppression_feasibility at 0.51 (catalog grew)",
+     "strength": 0.0
+    }
+   },
+   "trigger": {
+    "step": 368,
+    "minute": 3680.0,
+    "deficit": 0.14431909279467958,
+    "stage": 2
+   },
+   "id": "evfis_mod_0284",
+   "seq": 284,
+   "origin": "evfis",
+   "source_stage": 2,
+   "produced_under_flags": {
+    "use_stage12_rules": true,
+    "use_stage3_rules": true,
+    "evfis_active": true,
+    "genai_active": true
+   },
+   "timestamp": "2026-08-31T07:03:23Z"
+  },
+  {
+   "base_rule_id": "G5",
+   "base_rule_set": "minimal",
+   "modification_type": "consequent_update",
+   "before": {
+    "consequents": [
+     [
+      "downwind_retardant_shield",
+      1.0
+     ],
+     [
+      "asset_protection",
+      1.0
+     ],
+     [
+      "resource_deployment",
+      1.0
+     ]
+    ]
+   },
+   "after": {
+    "consequents": [
+     [
+      "downwind_retardant_shield",
+      0.95
+     ],
+     [
+      "asset_protection",
+      0.95
+     ],
+     [
+      "resource_deployment",
+      0.95
+     ]
+    ]
+   },
+   "trigger": {
+    "step": 31,
+    "minute": 31.0,
+    "deficit": 1.1966528329523074,
+    "stage": 1
+   },
+   "id": "evfis_mod_0285",
+   "seq": 285,
+   "origin": "evfis",
+   "source_stage": 1,
+   "produced_under_flags": {
+    "use_stage12_rules": true,
+    "use_stage3_rules": true,
+    "evfis_active": true,
+    "genai_active": true
+   },
+   "timestamp": "2026-08-31T07:16:50Z"
+  },
+  {
+   "base_rule_id": "G5",
+   "base_rule_set": "minimal",
+   "modification_type": "consequent_update",
+   "before": {
+    "consequents": [
+     [
+      "downwind_retardant_shield",
+      0.95
+     ],
+     [
+      "asset_protection",
+      0.95
+     ],
+     [
+      "resource_deployment",
+      0.95
+     ]
+    ]
+   },
+   "after": {
+    "consequents": [
+     [
+      "downwind_retardant_shield",
+      1.0
+     ],
+     [
+      "asset_protection",
+      1.0
+     ],
+     [
+      "resource_deployment",
+      1.0
+     ]
+    ]
+   },
+   "trigger": {
+    "step": 108,
+    "minute": 108.0,
+    "deficit": 0.3,
+    "stage": 1
+   },
+   "id": "evfis_mod_0286",
+   "seq": 286,
+   "origin": "evfis",
+   "source_stage": 1,
+   "produced_under_flags": {
+    "use_stage12_rules": true,
+    "use_stage3_rules": true,
+    "evfis_active": true,
+    "genai_active": true
+   },
+   "timestamp": "2026-08-31T07:19:02Z"
+  },
+  {
+   "base_rule_id": "G27",
+   "base_rule_set": "minimal",
+   "modification_type": "consequent_update",
+   "before": {
+    "consequents": [
+     [
+      "retardant_drop",
+      1.0
+     ],
+     [
+      "containment_line",
+      1.0
+     ]
+    ]
+   },
+   "after": {
+    "consequents": [
+     [
+      "retardant_drop",
+      0.95
+     ],
+     [
+      "containment_line",
+      0.95
+     ]
+    ]
+   },
+   "trigger": {
+    "step": 217,
+    "minute": 217.0,
+    "deficit": 0.20246753625056818,
+    "stage": 1
+   },
+   "id": "evfis_mod_0287",
+   "seq": 287,
+   "origin": "evfis",
+   "source_stage": 1,
+   "produced_under_flags": {
+    "use_stage12_rules": true,
+    "use_stage3_rules": true,
+    "evfis_active": true,
+    "genai_active": true
+   },
+   "timestamp": "2026-08-31T07:20:46Z"
+  },
+  {
+   "base_rule_id": "G27",
+   "base_rule_set": "minimal",
+   "modification_type": "consequent_update",
+   "before": {
+    "consequents": [
+     [
+      "retardant_drop",
+      1.0
+     ],
+     [
+      "containment_line",
+      1.0
+     ]
+    ]
+   },
+   "after": {
+    "consequents": [
+     [
+      "retardant_drop",
+      0.95
+     ],
+     [
+      "containment_line",
+      0.95
+     ]
+    ]
+   },
+   "trigger": {
+    "step": 217,
+    "minute": 2170.0,
+    "deficit": 0.10638238249225057,
+    "stage": 1
+   },
+   "id": "evfis_mod_0288",
+   "seq": 288,
+   "origin": "evfis",
+   "source_stage": 1,
+   "produced_under_flags": {
+    "use_stage12_rules": true,
+    "use_stage3_rules": true,
+    "evfis_active": true,
+    "genai_active": true
+   },
+   "timestamp": "2026-08-31T07:20:46Z"
+  },
+  {
+   "base_rule_id": "G27",
+   "base_rule_set": "minimal",
+   "modification_type": "consequent_update",
+   "before": {
+    "consequents": [
+     [
+      "retardant_drop",
+      0.95
+     ],
+     [
+      "containment_line",
+      0.95
+     ]
+    ]
+   },
+   "after": {
+    "consequents": [
+     [
+      "retardant_drop",
+      1.0
+     ],
+     [
+      "containment_line",
+      1.0
+     ]
+    ]
+   },
+   "trigger": {
+    "step": 227,
+    "minute": 2270.0,
+    "deficit": 0.3,
+    "stage": 1
+   },
+   "id": "evfis_mod_0289",
+   "seq": 289,
+   "origin": "evfis",
+   "source_stage": 1,
+   "produced_under_flags": {
+    "use_stage12_rules": true,
+    "use_stage3_rules": true,
+    "evfis_active": true,
+    "genai_active": true
+   },
+   "timestamp": "2026-08-31T07:21:05Z"
+  },
+  {
+   "base_rule_id": "A51",
+   "base_rule_set": "minimal",
+   "modification_type": "rule_add",
+   "before": {
+    "rule": null
+   },
+   "after": {
+    "rule": {
+     "name": "A51",
+     "antecedents": [
+      [
+       "suppression_feasibility",
+       "M"
+      ],
+      [
+       "asset_exposure_risk",
+       "L"
+      ]
+     ],
+     "consequents": [
+      [
+       "asset_protection",
+       0.35437896152423565
+      ],
+      [
+       "evacuation",
+       0.33347833810546074
+      ]
+     ],
+     "note": "adaptation-born: resolution increase (instantiated antecedent cell)",
+     "strength": 0.0
+    }
+   },
+   "trigger": {
+    "step": 293,
+    "minute": 2930.0,
+    "deficit": 0.3,
+    "stage": 2
+   },
+   "id": "evfis_mod_0290",
+   "seq": 290,
+   "origin": "evfis",
+   "source_stage": 2,
+   "produced_under_flags": {
+    "use_stage12_rules": true,
+    "use_stage3_rules": true,
+    "evfis_active": true,
+    "genai_active": true
+   },
+   "timestamp": "2026-08-31T07:21:57Z"
   }
  ],
  "genai_rules": [
