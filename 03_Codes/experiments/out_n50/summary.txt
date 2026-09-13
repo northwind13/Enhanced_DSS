@@ -1,0 +1,7 @@
+runs: 1000 of 1000 (seeds 201..250)
+mean burned area (ha): T0 250.8, F5 84.7, F5+Ev 83.0, DisasterAware 76.1
+reduction vs no action: 70 %
+reduction vs static F5: 10 %
+mean physical cost: T0 0.596, F5 0.16, DisasterAware 0.14
+mean total cost: T0 0.526, F5 0.193, DisasterAware 0.168
+S4 -> S5 burned area, DisasterAware: 52.3 -> 54.3 ha

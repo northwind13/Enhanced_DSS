@@ -1,0 +1,9 @@
+arm,stage,tried,accepted,accept_pct
+T_F5+Ev,1,3774,2396,63.5
+T_F5+Ev,2,1667,779,46.7
+T_F5+Ev,3,0,0,0.0
+T_DisasterAware,1,2304,1480,64.2
+T_DisasterAware,2,2272,552,24.3
+T_DisasterAware,3,1144,392,34.3
+T_DisasterAware,gate:G2 duplicate cell,150,0,0.0
+T_DisasterAware,gate:G2 package (name empty or taken),72,0,0.0

@@ -1,0 +1,1145 @@
+scenario,arm,seed,source,package,gate,accepted,dJ
+S1,F5EvAI,201,template,False,,False,0.0
+S1,F5EvAI,201,template,False,,False,0.0
+S2,F5EvAI,201,template,False,,False,0.0
+S2,F5EvAI,201,template,False,,True,-0.00266
+S2,F5EvAI,201,template,False,G2 duplicate cell,False,0.0
+S3,F5EvAI,201,template,False,,False,0.0
+S3,F5EvAI,201,template,False,,False,0.0
+S4,F5EvAI,201,template,False,,False,0.0
+S4,F5EvAI,201,template,False,,False,0.0
+S4,F5EvAI,201,template,True,,True,-0.00303
+S5,F5EvAI,201,template,False,,False,0.0
+S5,F5EvAI,201,template,False,,True,0.00068
+S5,F5EvAI,201,template,True,,True,0.00542
+S5,F5EvAI,201,template,False,,True,-0.0003
+S5,F5EvAI,201,template,False,,True,-0.00913
+S1,F5EvAI,202,template,False,,False,0.0
+S1,F5EvAI,202,template,False,,True,-0.01325
+S1,F5EvAI,202,template,True,,True,-0.00765
+S1,F5EvAI,202,template,False,,True,-0.00239
+S1,F5EvAI,202,template,False,,False,0.0
+S1,F5EvAI,202,template,True,G2 package (name empty or taken),False,0.0
+S1,F5EvAI,202,template,False,,False,0.0
+S2,F5EvAI,202,template,False,,False,0.0
+S2,F5EvAI,202,template,False,,False,0.0
+S2,F5EvAI,202,template,False,G2 duplicate cell,False,0.0
+S3,F5EvAI,202,template,False,,False,0.0
+S3,F5EvAI,202,template,False,,True,-0.00641
+S3,F5EvAI,202,template,True,,True,-0.00312
+S3,F5EvAI,202,template,False,G2 duplicate cell,False,0.0
+S3,F5EvAI,202,template,False,G2 duplicate cell,False,0.0
+S3,F5EvAI,202,template,True,G2 package (name empty or taken),False,0.0
+S4,F5EvAI,202,template,False,,False,0.0
+S4,F5EvAI,202,template,False,,True,-0.00472
+S4,F5EvAI,202,template,True,,True,-0.01347
+S4,F5EvAI,202,template,False,,False,0.0
+S5,F5EvAI,202,template,False,,False,0.0
+S5,F5EvAI,202,template,False,,True,-0.00536
+S5,F5EvAI,202,template,True,,True,-0.00121
+S5,F5EvAI,202,template,False,,True,-0.00214
+S5,F5EvAI,202,template,False,G2 duplicate cell,False,0.0
+S1,F5EvAI,203,template,False,,False,0.0
+S1,F5EvAI,203,template,False,,False,0.0
+S1,F5EvAI,203,template,True,,True,-0.00203
+S1,F5EvAI,203,template,False,,True,-0.00088
+S1,F5EvAI,203,template,False,,False,0.0
+S1,F5EvAI,203,template,True,G2 package (name empty or taken),False,0.0
+S1,F5EvAI,203,template,False,G2 duplicate cell,False,0.0
+S2,F5EvAI,203,template,False,,False,0.0
+S2,F5EvAI,203,template,False,,False,0.0
+S2,F5EvAI,203,template,False,,False,0.0
+S3,F5EvAI,203,template,False,,False,0.0
+S3,F5EvAI,203,template,False,,False,0.0
+S4,F5EvAI,203,template,False,,False,0.0
+S4,F5EvAI,203,template,False,,True,-0.01824
+S4,F5EvAI,203,template,False,,False,0.0
+S5,F5EvAI,203,template,False,,False,0.0
+S5,F5EvAI,203,template,False,,True,-0.01881
+S5,F5EvAI,203,template,True,,True,-0.02449
+S5,F5EvAI,203,template,False,,True,0.00922
+S5,F5EvAI,203,template,False,G2 duplicate cell,False,0.0
+S5,F5EvAI,203,template,True,G2 package (name empty or taken),False,0.0
+S1,F5EvAI,204,template,False,,False,0.0
+S1,F5EvAI,204,template,False,,False,0.0
+S1,F5EvAI,204,template,False,,False,0.0
+S2,F5EvAI,204,template,False,,False,0.0
+S2,F5EvAI,204,template,False,,False,0.0
+S2,F5EvAI,204,template,False,,False,0.0
+S3,F5EvAI,204,template,False,,False,0.0
+S3,F5EvAI,204,template,False,,True,-0.00369
+S3,F5EvAI,204,template,False,G2 duplicate cell,False,0.0
+S3,F5EvAI,204,template,True,,False,0.0
+S3,F5EvAI,204,template,False,,False,0.0
+S4,F5EvAI,204,template,False,,False,0.0
+S4,F5EvAI,204,template,False,,True,-0.0517
+S4,F5EvAI,204,template,True,,True,-0.00286
+S5,F5EvAI,204,template,False,,False,0.0
+S5,F5EvAI,204,template,False,,True,-0.05186
+S5,F5EvAI,204,template,True,,True,-0.00061
+S1,F5EvAI,205,template,False,,False,0.0
+S1,F5EvAI,205,template,False,,True,-0.03244
+S1,F5EvAI,205,template,False,,False,0.0
+S1,F5EvAI,205,template,False,,False,0.0
+S1,F5EvAI,205,template,False,,False,0.0
+S2,F5EvAI,205,template,False,,False,0.0
+S2,F5EvAI,205,template,False,,True,-0.03162
+S2,F5EvAI,205,template,False,,False,0.0
+S2,F5EvAI,205,template,False,,False,0.0
+S2,F5EvAI,205,template,False,,False,0.0
+S3,F5EvAI,205,template,False,,False,0.0
+S3,F5EvAI,205,template,False,,False,0.0
+S3,F5EvAI,205,template,False,,False,0.0
+S4,F5EvAI,205,template,False,,False,0.0
+S4,F5EvAI,205,template,False,,True,-0.00189
+S4,F5EvAI,205,template,True,,True,-0.00445
+S4,F5EvAI,205,template,False,,False,0.0
+S4,F5EvAI,205,template,False,,False,0.0
+S1,F5EvAI,206,template,False,,False,0.0
+S1,F5EvAI,206,template,False,,False,0.0
+S5,F5EvAI,205,template,False,,False,0.0
+S5,F5EvAI,205,template,False,,True,-0.00108
+S5,F5EvAI,205,template,True,,True,-0.01168
+S5,F5EvAI,205,template,False,G2 duplicate cell,False,0.0
+S5,F5EvAI,205,template,True,G2 package (name empty or taken),False,0.0
+S5,F5EvAI,205,template,True,G2 package (name empty or taken),False,0.0
+S2,F5EvAI,206,template,False,,False,0.0
+S2,F5EvAI,206,template,False,,False,0.0
+S2,F5EvAI,206,template,False,,False,0.0
+S3,F5EvAI,206,template,False,,False,0.0
+S3,F5EvAI,206,template,False,,True,-0.00437
+S3,F5EvAI,206,template,True,,True,-0.00077
+S3,F5EvAI,206,template,False,,False,0.0
+S4,F5EvAI,206,template,False,,False,0.0
+S4,F5EvAI,206,template,False,,True,-0.00092
+S4,F5EvAI,206,template,False,,True,-0.00114
+S4,F5EvAI,206,template,False,G2 duplicate cell,False,0.0
+S4,F5EvAI,206,template,False,G2 duplicate cell,False,0.0
+S4,F5EvAI,206,template,True,,False,0.0
+S5,F5EvAI,206,template,False,,False,0.0
+S5,F5EvAI,206,template,False,,True,-0.00054
+S5,F5EvAI,206,template,False,,True,-0.00244
+S5,F5EvAI,206,template,False,,False,0.0
+S1,F5EvAI,207,template,False,,False,0.0
+S1,F5EvAI,207,template,False,,True,-0.01019
+S1,F5EvAI,207,template,False,,False,0.0
+S1,F5EvAI,207,template,False,,False,0.0
+S1,F5EvAI,207,template,False,,False,0.0
+S2,F5EvAI,207,template,False,,False,0.0
+S2,F5EvAI,207,template,False,,False,0.0
+S2,F5EvAI,207,template,False,,False,0.0
+S3,F5EvAI,207,template,False,,False,0.0
+S3,F5EvAI,207,template,False,,False,0.0
+S3,F5EvAI,207,template,False,,False,0.0
+S4,F5EvAI,207,template,False,,False,0.0
+S4,F5EvAI,207,template,False,,True,-0.02295
+S4,F5EvAI,207,template,False,,True,-0.00079
+S4,F5EvAI,207,template,False,,True,-0.00012
+S4,F5EvAI,207,template,False,G2 duplicate cell,False,0.0
+S4,F5EvAI,207,template,True,,False,0.0
+S4,F5EvAI,207,template,False,G2 duplicate cell,False,0.0
+S5,F5EvAI,207,template,False,,False,0.0
+S5,F5EvAI,207,template,False,,True,-0.02388
+S5,F5EvAI,207,template,False,,True,-0.00013
+S5,F5EvAI,207,template,False,,False,0.0
+S1,F5EvAI,208,template,False,,False,0.0
+S1,F5EvAI,208,template,False,,False,0.0
+S1,F5EvAI,208,template,True,,True,-0.00341
+S1,F5EvAI,208,template,False,,True,-0.00021
+S2,F5EvAI,208,template,False,,False,0.0
+S2,F5EvAI,208,template,False,,False,0.0
+S2,F5EvAI,208,template,False,,False,0.0
+S3,F5EvAI,208,template,False,,False,0.0
+S3,F5EvAI,208,template,False,,False,0.0
+S3,F5EvAI,208,template,False,,False,0.0
+S4,F5EvAI,208,template,False,,False,0.0
+S4,F5EvAI,208,template,False,,True,-0.00683
+S4,F5EvAI,208,template,False,G2 duplicate cell,False,0.0
+S4,F5EvAI,208,template,False,,False,0.0
+S5,F5EvAI,208,template,False,,False,0.0
+S5,F5EvAI,208,template,False,,False,0.0
+S5,F5EvAI,208,template,True,,True,-0.00029
+S1,F5EvAI,209,template,False,,False,0.0
+S1,F5EvAI,209,template,False,,False,0.0
+S1,F5EvAI,209,template,False,,False,0.0
+S2,F5EvAI,209,template,False,,False,0.0
+S2,F5EvAI,209,template,False,,False,0.0
+S2,F5EvAI,209,template,False,G2 duplicate cell,False,0.0
+S3,F5EvAI,209,template,False,,False,0.0
+S3,F5EvAI,209,template,False,,False,0.0
+S3,F5EvAI,209,template,True,,True,-0.00142
+S3,F5EvAI,209,template,False,,False,0.0
+S4,F5EvAI,209,template,False,,False,0.0
+S4,F5EvAI,209,template,False,,True,-0.00166
+S4,F5EvAI,209,template,False,,False,0.0
+S5,F5EvAI,209,template,False,,False,0.0
+S5,F5EvAI,209,template,False,,True,-0.08457
+S5,F5EvAI,209,template,False,,True,-0.00187
+S5,F5EvAI,209,template,False,,True,-0.00014
+S5,F5EvAI,209,template,False,G2 duplicate cell,False,0.0
+S1,F5EvAI,210,template,False,,False,0.0
+S1,F5EvAI,210,template,False,,False,0.0
+S1,F5EvAI,210,template,False,,True,-0.02311
+S1,F5EvAI,210,template,False,,True,0.00023
+S1,F5EvAI,210,template,True,,True,-0.00386
+S1,F5EvAI,210,template,False,,False,0.0
+S1,F5EvAI,210,template,False,,False,0.0
+S1,F5EvAI,210,template,False,,True,-0.0004
+S1,F5EvAI,210,template,False,G2 duplicate cell,False,0.0
+S1,F5EvAI,210,template,False,G2 duplicate cell,False,0.0
+S1,F5EvAI,210,template,False,G2 duplicate cell,False,0.0
+S2,F5EvAI,210,template,False,,False,0.0
+S2,F5EvAI,210,template,False,,False,0.0
+S2,F5EvAI,210,template,False,,False,0.0
+S3,F5EvAI,210,template,False,,False,0.0
+S3,F5EvAI,210,template,False,,False,0.0
+S3,F5EvAI,210,template,False,,True,-0.0015
+S4,F5EvAI,210,template,False,,False,0.0
+S4,F5EvAI,210,template,False,,False,0.0
+S4,F5EvAI,210,template,False,,False,0.0
+S5,F5EvAI,210,template,False,,False,0.0
+S5,F5EvAI,210,template,False,,False,0.0
+S5,F5EvAI,210,template,False,,False,0.0
+S1,F5EvAI,211,template,False,,False,0.0
+S1,F5EvAI,211,template,False,,False,0.0
+S1,F5EvAI,211,template,False,,False,0.0
+S2,F5EvAI,211,template,False,,False,0.0
+S2,F5EvAI,211,template,False,G2 duplicate cell,False,0.0
+S2,F5EvAI,211,template,False,G2 duplicate cell,False,0.0
+S3,F5EvAI,211,template,False,,True,-0.001
+S3,F5EvAI,211,template,False,,True,-0.00312
+S3,F5EvAI,211,template,False,,True,-0.00027
+S4,F5EvAI,211,template,False,,True,-0.00013
+S4,F5EvAI,211,template,False,,True,0.00501
+S4,F5EvAI,211,template,True,,True,-0.00368
+S5,F5EvAI,211,template,False,,True,-0.00013
+S5,F5EvAI,211,template,False,,False,0.0
+S1,F5EvAI,212,template,False,,False,0.0
+S1,F5EvAI,212,template,False,,False,0.0
+S1,F5EvAI,212,template,False,,False,0.0
+S2,F5EvAI,212,template,False,,False,0.0
+S2,F5EvAI,212,template,False,,False,0.0
+S2,F5EvAI,212,template,False,,True,-0.01182
+S2,F5EvAI,212,template,False,G2 duplicate cell,False,0.0
+S2,F5EvAI,212,template,False,G2 duplicate cell,False,0.0
+S2,F5EvAI,212,template,False,G2 duplicate cell,False,0.0
+S3,F5EvAI,212,template,False,,False,0.0
+S3,F5EvAI,212,template,False,,True,-0.0474
+S3,F5EvAI,212,template,True,,True,-0.00288
+S3,F5EvAI,212,template,False,,True,-0.00024
+S3,F5EvAI,212,template,False,G2 duplicate cell,False,0.0
+S3,F5EvAI,212,template,True,G2 package (name empty or taken),False,0.0
+S3,F5EvAI,212,template,True,G2 package (name empty or taken),False,0.0
+S4,F5EvAI,212,template,False,,False,0.0
+S4,F5EvAI,212,template,False,,True,-0.00296
+S4,F5EvAI,212,template,True,,True,-0.03469
+S4,F5EvAI,212,template,False,,True,-0.00105
+S4,F5EvAI,212,template,False,G2 duplicate cell,False,0.0
+S4,F5EvAI,212,template,True,G2 package (name empty or taken),False,0.0
+S4,F5EvAI,212,template,True,G2 package (name empty or taken),False,0.0
+S5,F5EvAI,212,template,False,,False,0.0
+S5,F5EvAI,212,template,False,,True,-0.00375
+S5,F5EvAI,212,template,True,,True,-0.01416
+S5,F5EvAI,212,template,False,,False,0.0
+S1,F5EvAI,213,template,False,,False,0.0
+S1,F5EvAI,213,template,False,,False,0.0
+S1,F5EvAI,213,template,False,,False,0.0
+S2,F5EvAI,213,template,False,,False,0.0
+S2,F5EvAI,213,template,False,,False,0.0
+S2,F5EvAI,213,template,False,,False,0.0
+S3,F5EvAI,213,template,False,,False,0.0
+S3,F5EvAI,213,template,False,,True,-0.16741
+S3,F5EvAI,213,template,True,,True,-0.01243
+S3,F5EvAI,213,template,False,,True,-0.00081
+S4,F5EvAI,213,template,False,,False,0.0
+S4,F5EvAI,213,template,False,,True,-0.18072
+S4,F5EvAI,213,template,True,,True,-0.0371
+S4,F5EvAI,213,template,False,,True,-0.00068
+S4,F5EvAI,213,template,False,G2 duplicate cell,False,0.0
+S4,F5EvAI,213,template,True,G2 package (name empty or taken),False,0.0
+S4,F5EvAI,213,template,False,G2 duplicate cell,False,0.0
+S5,F5EvAI,213,template,False,,False,0.0
+S5,F5EvAI,213,template,False,,True,-0.15694
+S5,F5EvAI,213,template,True,,True,-0.0258
+S5,F5EvAI,213,template,False,G2 duplicate cell,False,0.0
+S5,F5EvAI,213,template,True,G2 package (name empty or taken),False,0.0
+S5,F5EvAI,213,template,True,G2 package (name empty or taken),False,0.0
+S1,F5EvAI,214,template,False,,False,0.0
+S1,F5EvAI,214,template,False,,False,0.0
+S1,F5EvAI,214,template,True,,True,-0.01091
+S1,F5EvAI,214,template,False,,True,-0.00079
+S1,F5EvAI,214,template,False,G2 duplicate cell,False,0.0
+S1,F5EvAI,214,template,True,G2 package (name empty or taken),False,0.0
+S1,F5EvAI,214,template,False,G2 duplicate cell,False,0.0
+S2,F5EvAI,214,template,False,,False,0.0
+S2,F5EvAI,214,template,False,,False,0.0
+S2,F5EvAI,214,template,False,G2 duplicate cell,False,0.0
+S3,F5EvAI,214,template,False,,False,0.0
+S3,F5EvAI,214,template,False,,False,0.0
+S4,F5EvAI,214,template,False,,False,0.0
+S4,F5EvAI,214,template,False,,True,-0.02052
+S4,F5EvAI,214,template,True,,True,-0.0085
+S5,F5EvAI,214,template,False,,False,0.0
+S5,F5EvAI,214,template,False,,True,-0.01405
+S5,F5EvAI,214,template,True,,True,-0.01005
+S5,F5EvAI,214,template,False,,False,0.0
+S1,F5EvAI,215,template,False,,False,0.0
+S1,F5EvAI,215,template,False,,False,0.0
+S2,F5EvAI,215,template,False,,False,0.0
+S2,F5EvAI,215,template,False,,False,0.0
+S2,F5EvAI,215,template,True,,True,-0.09326
+S2,F5EvAI,215,template,False,,True,-0.01441
+S2,F5EvAI,215,template,False,,True,0.07394
+S2,F5EvAI,215,template,False,,True,-0.011
+S3,F5EvAI,215,template,False,,False,0.0
+S3,F5EvAI,215,template,False,,True,-0.00794
+S3,F5EvAI,215,template,True,,True,-0.01609
+S3,F5EvAI,215,template,False,G2 duplicate cell,False,0.0
+S3,F5EvAI,215,template,True,G2 package (name empty or taken),False,0.0
+S3,F5EvAI,215,template,True,G2 package (name empty or taken),False,0.0
+S4,F5EvAI,215,template,False,,False,0.0
+S4,F5EvAI,215,template,False,,True,-0.00457
+S4,F5EvAI,215,template,True,,True,-0.00195
+S5,F5EvAI,215,template,False,,False,0.0
+S5,F5EvAI,215,template,False,,True,-0.00496
+S5,F5EvAI,215,template,True,,True,-0.00197
+S1,F5EvAI,216,template,False,,False,0.0
+S1,F5EvAI,216,template,False,,False,0.0
+S1,F5EvAI,216,template,False,,False,0.0
+S2,F5EvAI,216,template,False,,False,0.0
+S2,F5EvAI,216,template,False,,True,0.00193
+S2,F5EvAI,216,template,True,,True,0.00874
+S2,F5EvAI,216,template,False,,False,0.0
+S2,F5EvAI,216,template,False,G2 duplicate cell,False,0.0
+S3,F5EvAI,216,template,False,,False,0.0
+S3,F5EvAI,216,template,False,,False,0.0
+S3,F5EvAI,216,template,False,,False,0.0
+S4,F5EvAI,216,template,False,,False,0.0
+S4,F5EvAI,216,template,False,,True,0.01086
+S4,F5EvAI,216,template,True,,True,-0.00675
+S4,F5EvAI,216,template,False,,True,-0.00049
+S4,F5EvAI,216,template,False,G2 duplicate cell,False,0.0
+S5,F5EvAI,216,template,False,,False,0.0
+S5,F5EvAI,216,template,False,,True,0.0119
+S5,F5EvAI,216,template,True,,True,-0.00367
+S5,F5EvAI,216,template,False,,True,-5e-05
+S1,F5EvAI,217,template,False,,False,0.0
+S1,F5EvAI,217,template,False,,False,0.0
+S1,F5EvAI,217,template,False,,False,0.0
+S2,F5EvAI,217,template,False,,False,0.0
+S2,F5EvAI,217,template,False,,False,0.0
+S2,F5EvAI,217,template,False,G2 duplicate cell,False,0.0
+S3,F5EvAI,217,template,False,,False,0.0
+S3,F5EvAI,217,template,False,,True,-0.04639
+S4,F5EvAI,217,template,False,,False,0.0
+S4,F5EvAI,217,template,False,,False,0.0
+S4,F5EvAI,217,template,False,,False,0.0
+S5,F5EvAI,217,template,False,,False,0.0
+S5,F5EvAI,217,template,False,,False,0.0
+S5,F5EvAI,217,template,False,,False,0.0
+S1,F5EvAI,218,template,False,,False,0.0
+S1,F5EvAI,218,template,False,,False,0.0
+S1,F5EvAI,218,template,True,,True,-0.002
+S1,F5EvAI,218,template,False,,False,0.0
+S1,F5EvAI,218,template,False,,False,0.0
+S1,F5EvAI,218,template,True,G2 package (name empty or taken),False,0.0
+S2,F5EvAI,218,template,False,,False,0.0
+S2,F5EvAI,218,template,False,,False,0.0
+S2,F5EvAI,218,template,False,,False,0.0
+S3,F5EvAI,218,template,False,,False,0.0
+S3,F5EvAI,218,template,False,,True,-0.01056
+S4,F5EvAI,218,template,False,,False,0.0
+S4,F5EvAI,218,template,False,,True,-0.01369
+S4,F5EvAI,218,template,True,,True,-0.01821
+S4,F5EvAI,218,template,False,,True,-0.00074
+S4,F5EvAI,218,template,False,,True,-0.00247
+S4,F5EvAI,218,template,True,G2 package (name empty or taken),False,0.0
+S4,F5EvAI,218,template,False,G2 duplicate cell,False,0.0
+S4,F5EvAI,218,template,False,G2 duplicate cell,False,0.0
+S5,F5EvAI,218,template,False,,False,0.0
+S5,F5EvAI,218,template,False,,True,-0.0092
+S5,F5EvAI,218,template,True,,True,-0.01125
+S5,F5EvAI,218,template,False,,False,0.0
+S5,F5EvAI,218,template,False,,True,-0.00037
+S5,F5EvAI,218,template,True,G2 package (name empty or taken),False,0.0
+S5,F5EvAI,218,template,False,G2 duplicate cell,False,0.0
+S5,F5EvAI,218,template,False,,True,-5e-05
+S5,F5EvAI,218,template,True,G2 package (name empty or taken),False,0.0
+S5,F5EvAI,218,template,False,,True,-0.00012
+S5,F5EvAI,218,template,False,G2 duplicate cell,False,0.0
+S5,F5EvAI,218,template,True,G2 package (name empty or taken),False,0.0
+S5,F5EvAI,218,template,True,G2 package (name empty or taken),False,0.0
+S1,F5EvAI,219,template,False,,False,0.0
+S1,F5EvAI,219,template,False,,False,0.0
+S1,F5EvAI,219,template,True,,True,-0.00124
+S2,F5EvAI,219,template,False,,False,0.0
+S2,F5EvAI,219,template,False,,False,0.0
+S2,F5EvAI,219,template,True,,True,-0.00067
+S3,F5EvAI,219,template,False,,False,0.0
+S3,F5EvAI,219,template,False,,True,-0.00346
+S3,F5EvAI,219,template,False,G2 duplicate cell,False,0.0
+S4,F5EvAI,219,template,False,,False,0.0
+S4,F5EvAI,219,template,False,,True,-0.00706
+S4,F5EvAI,219,template,False,,False,0.0
+S5,F5EvAI,219,template,False,,False,0.0
+S5,F5EvAI,219,template,False,,True,-0.00576
+S5,F5EvAI,219,template,False,,False,0.0
+S1,F5EvAI,220,template,False,,False,0.0
+S1,F5EvAI,220,template,False,,False,0.0
+S1,F5EvAI,220,template,True,,True,-0.00211
+S2,F5EvAI,220,template,False,,False,0.0
+S2,F5EvAI,220,template,False,,False,0.0
+S2,F5EvAI,220,template,False,,True,-0.00064
+S2,F5EvAI,220,template,False,,False,0.0
+S3,F5EvAI,220,template,False,,False,0.0
+S3,F5EvAI,220,template,False,,False,0.0
+S3,F5EvAI,220,template,True,,True,-0.01484
+S4,F5EvAI,220,template,False,,False,0.0
+S4,F5EvAI,220,template,False,,True,-0.01814
+S4,F5EvAI,220,template,True,,True,-0.01524
+S4,F5EvAI,220,template,False,G2 duplicate cell,False,0.0
+S4,F5EvAI,220,template,False,G2 duplicate cell,False,0.0
+S4,F5EvAI,220,template,True,G2 package (name empty or taken),False,0.0
+S5,F5EvAI,220,template,False,,False,0.0
+S5,F5EvAI,220,template,False,,True,0.00024
+S5,F5EvAI,220,template,False,G2 duplicate cell,False,0.0
+S1,F5EvAI,221,template,False,,False,0.0
+S1,F5EvAI,221,template,False,,True,-0.00718
+S1,F5EvAI,221,template,False,,False,0.0
+S2,F5EvAI,221,template,False,,False,0.0
+S2,F5EvAI,221,template,False,,True,-0.11667
+S2,F5EvAI,221,template,False,G2 duplicate cell,False,0.0
+S2,F5EvAI,221,template,False,G2 duplicate cell,False,0.0
+S3,F5EvAI,221,template,False,,False,0.0
+S3,F5EvAI,221,template,False,,True,-0.00836
+S4,F5EvAI,221,template,False,,False,0.0
+S4,F5EvAI,221,template,False,,True,-0.00286
+S4,F5EvAI,221,template,True,,True,-0.01326
+S5,F5EvAI,221,template,False,,False,0.0
+S5,F5EvAI,221,template,False,,True,-0.01765
+S5,F5EvAI,221,template,True,,True,-0.01553
+S1,F5EvAI,222,template,False,,False,0.0
+S1,F5EvAI,222,template,False,,False,0.0
+S1,F5EvAI,222,template,True,,True,-0.00072
+S1,F5EvAI,222,template,False,,True,-0.0043
+S1,F5EvAI,222,template,False,,True,-0.00038
+S1,F5EvAI,222,template,True,G2 package (name empty or taken),False,0.0
+S1,F5EvAI,222,template,False,,True,-0.00019
+S1,F5EvAI,222,template,False,G2 duplicate cell,False,0.0
+S1,F5EvAI,222,template,True,G2 package (name empty or taken),False,0.0
+S1,F5EvAI,222,template,True,G2 package (name empty or taken),False,0.0
+S2,F5EvAI,222,template,False,,False,0.0
+S2,F5EvAI,222,template,False,,True,-0.01022
+S2,F5EvAI,222,template,True,,True,-0.00164
+S2,F5EvAI,222,template,False,,True,0.00318
+S2,F5EvAI,222,template,False,,True,0.01754
+S3,F5EvAI,222,template,False,,False,0.0
+S3,F5EvAI,222,template,False,,True,-0.0239
+S3,F5EvAI,222,template,True,,True,-0.00948
+S3,F5EvAI,222,template,False,,True,-0.0042
+S3,F5EvAI,222,template,False,G2 duplicate cell,False,0.0
+S3,F5EvAI,222,template,True,G2 package (name empty or taken),False,0.0
+S3,F5EvAI,222,template,False,G2 duplicate cell,False,0.0
+S3,F5EvAI,223,template,False,,False,0.0
+S3,F5EvAI,223,template,False,,False,0.0
+S3,F5EvAI,223,template,True,,True,-0.02299
+S3,F5EvAI,223,template,False,,True,-0.00019
+S5,F5EvAI,222,template,False,,True,-0.00151
+S5,F5EvAI,222,template,False,,True,-0.00158
+S5,F5EvAI,222,template,True,,True,-0.01277
+S4,F5EvAI,222,template,False,,True,-0.00152
+S4,F5EvAI,222,template,False,,True,-0.00649
+S4,F5EvAI,222,template,True,,True,-0.01457
+S4,F5EvAI,222,template,False,G2 duplicate cell,False,0.0
+S4,F5EvAI,223,template,False,,False,0.0
+S4,F5EvAI,223,template,False,,False,0.0
+S4,F5EvAI,223,template,True,,True,-0.00556
+S4,F5EvAI,223,template,False,,False,0.0
+S4,F5EvAI,223,template,False,,True,-0.00038
+S4,F5EvAI,223,template,True,G2 package (name empty or taken),False,0.0
+S4,F5EvAI,223,template,False,G2 duplicate cell,False,0.0
+S5,F5EvAI,223,template,False,,False,0.0
+S5,F5EvAI,223,template,False,,True,-0.01056
+S5,F5EvAI,223,template,True,,True,-0.01732
+S5,F5EvAI,223,template,False,,True,-0.00111
+S5,F5EvAI,223,template,False,G2 duplicate cell,False,0.0
+S5,F5EvAI,223,template,True,G2 package (name empty or taken),False,0.0
+S1,F5EvAI,223,template,False,,False,0.0
+S1,F5EvAI,223,template,False,,False,0.0
+S1,F5EvAI,223,template,False,,False,0.0
+S2,F5EvAI,223,template,False,,False,0.0
+S2,F5EvAI,223,template,False,,True,-0.00203
+S2,F5EvAI,223,template,False,,False,0.0
+S2,F5EvAI,223,template,False,,False,0.0
+S2,F5EvAI,223,template,False,G2 duplicate cell,False,0.0
+S3,F5EvAI,224,template,False,,False,0.0
+S3,F5EvAI,224,template,False,,False,0.0
+S3,F5EvAI,224,template,True,,True,-0.00289
+S3,F5EvAI,224,template,False,,False,0.0
+S3,F5EvAI,224,template,False,,False,0.0
+S5,F5EvAI,224,template,False,,False,0.0
+S5,F5EvAI,224,template,False,,False,0.0
+S5,F5EvAI,224,template,False,,True,-0.00052
+S5,F5EvAI,224,template,False,,False,0.0
+S4,F5EvAI,224,template,False,,False,0.0
+S4,F5EvAI,224,template,False,,False,0.0
+S4,F5EvAI,224,template,True,,True,-0.00329
+S4,F5EvAI,224,template,False,,False,0.0
+S4,F5EvAI,224,template,False,,False,0.0
+S4,F5EvAI,224,template,True,G2 package (name empty or taken),False,0.0
+S1,F5EvAI,224,template,False,,False,0.0
+S1,F5EvAI,224,template,False,,False,0.0
+S1,F5EvAI,224,template,True,,True,-0.03013
+S1,F5EvAI,224,template,False,G2 duplicate cell,False,0.0
+S3,F5EvAI,225,template,False,,False,0.0
+S3,F5EvAI,225,template,False,,True,-0.00579
+S3,F5EvAI,225,template,True,,True,-0.00256
+S3,F5EvAI,225,template,False,G2 duplicate cell,False,0.0
+S3,F5EvAI,225,template,False,G2 duplicate cell,False,0.0
+S3,F5EvAI,225,template,True,G2 package (name empty or taken),False,0.0
+S2,F5EvAI,224,template,False,,False,0.0
+S2,F5EvAI,224,template,False,,False,0.0
+S2,F5EvAI,224,template,False,,True,0.0139
+S2,F5EvAI,224,template,False,,False,0.0
+S2,F5EvAI,224,template,False,,False,0.0
+S4,F5EvAI,225,template,False,,False,0.0
+S4,F5EvAI,225,template,False,,True,-0.00372
+S4,F5EvAI,225,template,True,,True,-0.01016
+S4,F5EvAI,225,template,False,,True,-0.00025
+S4,F5EvAI,225,template,False,,True,-0.00018
+S4,F5EvAI,225,template,True,G2 package (name empty or taken),False,0.0
+S4,F5EvAI,225,template,False,G2 duplicate cell,False,0.0
+S4,F5EvAI,225,template,False,G2 duplicate cell,False,0.0
+S1,F5EvAI,225,template,False,,False,0.0
+S1,F5EvAI,225,template,False,,False,0.0
+S1,F5EvAI,225,template,False,G2 duplicate cell,False,0.0
+S5,F5EvAI,225,template,False,,False,0.0
+S5,F5EvAI,225,template,False,,True,-0.01164
+S5,F5EvAI,225,template,True,,True,-0.01001
+S5,F5EvAI,225,template,False,,True,-0.00033
+S5,F5EvAI,225,template,False,,True,-6e-05
+S2,F5EvAI,225,template,False,,False,0.0
+S2,F5EvAI,225,template,False,,True,-0.04134
+S2,F5EvAI,225,template,False,G2 duplicate cell,False,0.0
+S2,F5EvAI,225,template,False,G2 duplicate cell,False,0.0
+S2,F5EvAI,225,template,False,,False,0.0
+S1,F5EvAI,227,template,False,,False,0.0
+S1,F5EvAI,227,template,False,,True,-0.03565
+S1,F5EvAI,227,template,True,,True,-0.00266
+S1,F5EvAI,227,template,False,G2 duplicate cell,False,0.0
+S1,F5EvAI,227,template,False,G2 duplicate cell,False,0.0
+S1,F5EvAI,227,template,True,G2 package (name empty or taken),False,0.0
+S1,F5EvAI,226,template,False,,False,0.0
+S1,F5EvAI,226,template,False,,True,-0.0077
+S1,F5EvAI,226,template,False,,False,0.0
+S1,F5EvAI,226,template,False,,True,-0.00013
+S1,F5EvAI,226,template,False,,False,0.0
+S1,F5EvAI,226,template,False,G2 duplicate cell,False,0.0
+S1,F5EvAI,226,template,True,,False,0.0
+S3,F5EvAI,226,template,False,,False,0.0
+S3,F5EvAI,226,template,False,,False,0.0
+S3,F5EvAI,226,template,True,,True,-0.00366
+S3,F5EvAI,226,template,False,,True,-0.00107
+S3,F5EvAI,226,template,False,G2 duplicate cell,False,0.0
+S3,F5EvAI,226,template,True,G2 package (name empty or taken),False,0.0
+S3,F5EvAI,226,template,False,,True,-0.00027
+S3,F5EvAI,226,template,False,G2 duplicate cell,False,0.0
+S3,F5EvAI,226,template,True,G2 package (name empty or taken),False,0.0
+S3,F5EvAI,226,template,False,,True,-0.00019
+S3,F5EvAI,226,template,False,,True,-0.02276
+S3,F5EvAI,226,template,True,G2 package (name empty or taken),False,0.0
+S3,F5EvAI,226,template,False,G2 duplicate cell,False,0.0
+S3,F5EvAI,226,template,False,G2 duplicate cell,False,0.0
+S4,F5EvAI,226,template,False,,False,0.0
+S4,F5EvAI,226,template,False,,False,0.0
+S4,F5EvAI,226,template,True,,True,-0.01376
+S4,F5EvAI,226,template,False,,True,-0.00817
+S4,F5EvAI,226,template,False,G2 duplicate cell,False,0.0
+S4,F5EvAI,226,template,True,G2 package (name empty or taken),False,0.0
+S4,F5EvAI,226,template,False,G2 duplicate cell,False,0.0
+S2,F5EvAI,226,template,False,,False,0.0
+S2,F5EvAI,226,template,False,,False,0.0
+S2,F5EvAI,226,template,False,,True,0.00254
+S2,F5EvAI,226,template,False,G2 duplicate cell,False,0.0
+S5,F5EvAI,226,template,False,,False,0.0
+S5,F5EvAI,226,template,False,,True,-0.0081
+S5,F5EvAI,226,template,True,,True,0.0012
+S4,F5EvAI,227,template,False,,False,0.0
+S4,F5EvAI,227,template,False,,True,-0.02038
+S4,F5EvAI,227,template,True,,True,-0.01729
+S4,F5EvAI,227,template,False,,True,-0.02351
+S4,F5EvAI,227,template,False,G2 duplicate cell,False,0.0
+S4,F5EvAI,227,template,True,G2 package (name empty or taken),False,0.0
+S4,F5EvAI,227,template,True,G2 package (name empty or taken),False,0.0
+S3,F5EvAI,228,template,False,,False,0.0
+S3,F5EvAI,228,template,False,,True,-0.01209
+S3,F5EvAI,228,template,False,,False,0.0
+S3,F5EvAI,228,template,False,,True,-0.00029
+S3,F5EvAI,228,template,False,,False,0.0
+S2,F5EvAI,227,template,False,,False,0.0
+S2,F5EvAI,227,template,False,,True,-0.02375
+S2,F5EvAI,227,template,False,G2 duplicate cell,False,0.0
+S2,F5EvAI,227,template,True,,False,0.0
+S2,F5EvAI,227,template,True,,False,0.0
+S3,F5EvAI,227,template,False,,False,0.0
+S3,F5EvAI,227,template,False,,True,-0.00214
+S3,F5EvAI,227,template,True,,True,-0.01346
+S3,F5EvAI,227,template,False,,False,0.0
+S3,F5EvAI,227,template,False,,False,0.0
+S3,F5EvAI,227,template,True,G2 package (name empty or taken),False,0.0
+S5,F5EvAI,228,template,False,,False,0.0
+S5,F5EvAI,228,template,False,,True,-0.01293
+S5,F5EvAI,228,template,True,,True,-0.0076
+S5,F5EvAI,228,template,False,,True,-0.00338
+S5,F5EvAI,228,template,False,,False,0.0
+S2,F5EvAI,228,template,False,,False,0.0
+S2,F5EvAI,228,template,False,,False,0.0
+S2,F5EvAI,228,template,False,,True,-0.02373
+S2,F5EvAI,228,template,False,,True,-0.00498
+S2,F5EvAI,228,template,False,G2 duplicate cell,False,0.0
+S2,F5EvAI,228,template,True,,False,0.0
+S2,F5EvAI,228,template,True,,False,0.0
+S5,F5EvAI,227,template,False,,False,0.0
+S5,F5EvAI,227,template,False,,True,-0.00814
+S5,F5EvAI,227,template,True,,True,-0.01203
+S4,F5EvAI,228,template,False,,False,0.0
+S4,F5EvAI,228,template,False,,True,-0.00075
+S4,F5EvAI,228,template,True,,True,-0.00313
+S4,F5EvAI,228,template,False,G2 duplicate cell,False,0.0
+S4,F5EvAI,228,template,False,G2 duplicate cell,False,0.0
+S1,F5EvAI,228,template,False,,False,0.0
+S1,F5EvAI,228,template,False,,False,0.0
+S1,F5EvAI,228,template,False,,False,0.0
+S3,F5EvAI,229,template,False,,False,0.0
+S3,F5EvAI,229,template,False,,True,-0.00426
+S3,F5EvAI,229,template,True,,True,-0.00124
+S4,F5EvAI,229,template,False,,False,0.0
+S4,F5EvAI,229,template,False,,True,-0.03145
+S4,F5EvAI,229,template,True,,True,-0.0071
+S1,F5EvAI,230,template,False,,False,0.0
+S1,F5EvAI,230,template,False,,False,0.0
+S3,F5EvAI,230,template,False,,False,0.0
+S3,F5EvAI,230,template,False,,False,0.0
+S5,F5EvAI,229,template,False,,False,0.0
+S5,F5EvAI,229,template,False,,True,-0.03377
+S5,F5EvAI,229,template,True,,True,-0.00677
+S1,F5EvAI,229,template,False,,False,0.0
+S1,F5EvAI,229,template,False,,False,0.0
+S1,F5EvAI,229,template,False,,False,0.0
+S2,F5EvAI,229,template,False,,False,0.0
+S2,F5EvAI,229,template,False,,False,0.0
+S2,F5EvAI,229,template,False,,False,0.0
+S5,F5EvAI,230,template,False,,False,0.0
+S5,F5EvAI,230,template,False,,True,0.02483
+S5,F5EvAI,230,template,True,,True,-0.00246
+S4,F5EvAI,230,template,False,,False,0.0
+S4,F5EvAI,230,template,False,,True,0.02533
+S4,F5EvAI,230,template,True,,True,-0.0273
+S3,F5EvAI,231,template,False,,False,0.0
+S3,F5EvAI,231,template,False,,True,-0.02465
+S3,F5EvAI,231,template,False,,False,0.0
+S2,F5EvAI,230,template,False,,False,0.0
+S2,F5EvAI,230,template,False,,False,0.0
+S2,F5EvAI,230,template,False,,False,0.0
+S1,F5EvAI,232,template,False,,False,0.0
+S1,F5EvAI,232,template,False,,False,0.0
+S4,F5EvAI,231,template,False,,False,0.0
+S4,F5EvAI,231,template,False,,True,-0.02294
+S4,F5EvAI,231,template,False,,True,-0.01741
+S4,F5EvAI,231,template,False,,True,-0.00709
+S4,F5EvAI,231,template,False,,True,-0.00669
+S4,F5EvAI,231,template,False,G2 duplicate cell,False,0.0
+S4,F5EvAI,231,template,True,,True,-0.00176
+S4,F5EvAI,231,template,True,G2 package (name empty or taken),False,0.0
+S4,F5EvAI,231,template,False,G2 duplicate cell,False,0.0
+S3,F5EvAI,232,template,False,,False,0.0
+S3,F5EvAI,232,template,False,,True,-0.00385
+S3,F5EvAI,232,template,True,,True,-0.00096
+S1,F5EvAI,231,template,False,,False,0.0
+S1,F5EvAI,231,template,False,,False,0.0
+S1,F5EvAI,231,template,False,,False,0.0
+S4,F5EvAI,232,template,False,,False,0.0
+S4,F5EvAI,232,template,False,,True,-0.00077
+S4,F5EvAI,232,template,False,,False,0.0
+S4,F5EvAI,232,template,False,G2 duplicate cell,False,0.0
+S4,F5EvAI,232,template,False,,False,0.0
+S2,F5EvAI,231,template,False,,False,0.0
+S2,F5EvAI,231,template,False,,True,0.00081
+S2,F5EvAI,231,template,False,,False,0.0
+S2,F5EvAI,231,template,False,G2 duplicate cell,False,0.0
+S2,F5EvAI,231,template,False,G2 duplicate cell,False,0.0
+S5,F5EvAI,231,template,False,,False,0.0
+S5,F5EvAI,231,template,False,,True,-0.02015
+S5,F5EvAI,231,template,True,,True,-0.00301
+S5,F5EvAI,231,template,False,,True,-0.00013
+S5,F5EvAI,231,template,False,,False,0.0
+S5,F5EvAI,231,template,True,G2 package (name empty or taken),False,0.0
+S5,F5EvAI,231,template,False,,True,-0.0
+S5,F5EvAI,231,template,False,,False,0.0
+S5,F5EvAI,231,template,True,G2 package (name empty or taken),False,0.0
+S5,F5EvAI,231,template,False,,False,0.0
+S5,F5EvAI,232,template,False,,False,0.0
+S5,F5EvAI,232,template,False,,False,0.0
+S5,F5EvAI,232,template,False,,False,0.0
+S2,F5EvAI,232,template,False,,False,0.0
+S2,F5EvAI,232,template,False,G2 duplicate cell,False,0.0
+S2,F5EvAI,232,template,False,,True,-0.00257
+S2,F5EvAI,232,template,True,,True,-0.00681
+S2,F5EvAI,232,template,True,G2 package (name empty or taken),False,0.0
+S2,F5EvAI,232,template,False,,False,0.0
+S2,F5EvAI,232,template,False,,False,0.0
+S3,F5EvAI,233,template,False,,True,-0.00072
+S3,F5EvAI,233,template,False,,False,0.0
+S3,F5EvAI,233,template,True,,True,-0.00634
+S5,F5EvAI,233,template,False,,False,0.0
+S5,F5EvAI,233,template,False,,True,0.00336
+S5,F5EvAI,233,template,True,,True,-0.01552
+S5,F5EvAI,233,template,False,,True,-0.0011
+S1,F5EvAI,233,template,False,,False,0.0
+S1,F5EvAI,233,template,False,,True,-0.01955
+S1,F5EvAI,233,template,False,G2 duplicate cell,False,0.0
+S1,F5EvAI,233,template,False,G2 duplicate cell,False,0.0
+S1,F5EvAI,233,template,True,,True,-0.00965
+S1,F5EvAI,233,template,False,G2 duplicate cell,False,0.0
+S1,F5EvAI,233,template,False,G2 duplicate cell,False,0.0
+S1,F5EvAI,233,template,True,G2 package (name empty or taken),False,0.0
+S4,F5EvAI,233,template,False,,True,0.00281
+S4,F5EvAI,233,template,False,,False,0.0
+S4,F5EvAI,233,template,True,,True,-0.00865
+S4,F5EvAI,233,template,False,,False,0.0
+S2,F5EvAI,233,template,False,,False,0.0
+S2,F5EvAI,233,template,False,,True,-0.00789
+S2,F5EvAI,233,template,True,,True,0.0041
+S2,F5EvAI,233,template,False,,False,0.0
+S3,F5EvAI,234,template,False,,False,0.0
+S3,F5EvAI,234,template,False,,True,-0.04058
+S3,F5EvAI,234,template,True,,True,-0.00787
+S3,F5EvAI,234,template,False,G2 duplicate cell,False,0.0
+S3,F5EvAI,234,template,False,G2 duplicate cell,False,0.0
+S3,F5EvAI,234,template,True,G2 package (name empty or taken),False,0.0
+S1,F5EvAI,234,template,False,,False,0.0
+S1,F5EvAI,234,template,False,,True,-0.01475
+S1,F5EvAI,234,template,True,,True,-0.00094
+S1,F5EvAI,234,template,False,G2 duplicate cell,False,0.0
+S1,F5EvAI,234,template,False,G2 duplicate cell,False,0.0
+S1,F5EvAI,234,template,True,G2 package (name empty or taken),False,0.0
+S4,F5EvAI,234,template,False,,False,0.0
+S4,F5EvAI,234,template,False,,True,-0.06362
+S4,F5EvAI,234,template,True,,True,-0.03497
+S4,F5EvAI,234,template,False,G2 duplicate cell,False,0.0
+S4,F5EvAI,234,template,False,G2 duplicate cell,False,0.0
+S4,F5EvAI,234,template,True,G2 package (name empty or taken),False,0.0
+S2,F5EvAI,234,template,False,,False,0.0
+S2,F5EvAI,234,template,False,,True,-0.04071
+S2,F5EvAI,234,template,False,,False,0.0
+S2,F5EvAI,234,template,False,,True,-0.0219
+S2,F5EvAI,234,template,False,,True,-0.001
+S2,F5EvAI,234,template,False,G2 duplicate cell,False,0.0
+S2,F5EvAI,234,template,False,G2 duplicate cell,False,0.0
+S2,F5EvAI,234,template,False,G2 duplicate cell,False,0.0
+S5,F5EvAI,234,template,False,,False,0.0
+S5,F5EvAI,234,template,False,,True,-0.03632
+S5,F5EvAI,234,template,True,,True,-0.0172
+S5,F5EvAI,234,template,False,G2 duplicate cell,False,0.0
+S5,F5EvAI,234,template,False,G2 duplicate cell,False,0.0
+S5,F5EvAI,234,template,True,G2 package (name empty or taken),False,0.0
+S3,F5EvAI,235,template,False,,False,0.0
+S3,F5EvAI,235,template,False,,True,-0.0824
+S3,F5EvAI,235,template,True,,True,-0.0023
+S3,F5EvAI,235,template,False,,False,0.0
+S3,F5EvAI,235,template,False,,True,-1e-05
+S3,F5EvAI,235,template,True,G2 package (name empty or taken),False,0.0
+S3,F5EvAI,235,template,False,G2 duplicate cell,False,0.0
+S3,F5EvAI,235,template,False,G2 duplicate cell,False,0.0
+S1,F5EvAI,235,template,False,,False,0.0
+S1,F5EvAI,235,template,False,,False,0.0
+S1,F5EvAI,235,template,True,,True,-0.00221
+S1,F5EvAI,235,template,False,,False,0.0
+S2,F5EvAI,235,template,False,,False,0.0
+S2,F5EvAI,235,template,False,,False,0.0
+S2,F5EvAI,235,template,True,,True,-0.00197
+S2,F5EvAI,235,template,False,,True,0.01067
+S2,F5EvAI,235,template,False,,True,0.00095
+S2,F5EvAI,235,template,True,G2 package (name empty or taken),False,0.0
+S2,F5EvAI,235,template,False,,True,-0.00046
+S2,F5EvAI,235,template,False,,True,-6e-05
+S2,F5EvAI,235,template,False,,False,0.0
+S4,F5EvAI,235,template,False,,False,0.0
+S4,F5EvAI,235,template,False,,True,-0.08223
+S4,F5EvAI,235,template,True,,True,-0.00179
+S4,F5EvAI,235,template,False,,True,-0.0006
+S4,F5EvAI,235,template,False,,True,-0.00041
+S4,F5EvAI,235,template,True,G2 package (name empty or taken),False,0.0
+S4,F5EvAI,235,template,False,G2 duplicate cell,False,0.0
+S4,F5EvAI,235,template,False,G2 duplicate cell,False,0.0
+S3,F5EvAI,236,template,False,,False,0.0
+S3,F5EvAI,236,template,False,,False,0.0
+S3,F5EvAI,236,template,False,,False,0.0
+S5,F5EvAI,235,template,False,,False,0.0
+S5,F5EvAI,235,template,False,,True,-0.01685
+S5,F5EvAI,235,template,True,,True,-0.02072
+S5,F5EvAI,235,template,False,,True,-0.00245
+S5,F5EvAI,235,template,False,G2 duplicate cell,False,0.0
+S5,F5EvAI,235,template,True,G2 package (name empty or taken),False,0.0
+S5,F5EvAI,235,template,False,,True,-0.07097
+S5,F5EvAI,235,template,False,,True,-0.00216
+S5,F5EvAI,235,template,False,,False,0.0
+S5,F5EvAI,235,template,False,,True,-0.00068
+S5,F5EvAI,235,template,False,,True,-0.002
+S5,F5EvAI,235,template,True,G2 package (name empty or taken),False,0.0
+S5,F5EvAI,235,template,False,,False,0.0
+S5,F5EvAI,235,template,False,,False,0.0
+S4,F5EvAI,236,template,False,,False,0.0
+S4,F5EvAI,236,template,False,,True,-0.05947
+S4,F5EvAI,236,template,True,,True,-0.00634
+S4,F5EvAI,236,template,False,,False,0.0
+S1,F5EvAI,236,template,False,,False,0.0
+S1,F5EvAI,236,template,False,,False,0.0
+S1,F5EvAI,236,template,True,,True,-0.00168
+S1,F5EvAI,236,template,False,,True,-0.00419
+S1,F5EvAI,236,template,False,G2 duplicate cell,False,0.0
+S1,F5EvAI,236,template,False,G2 duplicate cell,False,0.0
+S1,F5EvAI,236,template,False,G2 duplicate cell,False,0.0
+S2,F5EvAI,236,template,False,,False,0.0
+S2,F5EvAI,236,template,False,,False,0.0
+S2,F5EvAI,236,template,False,,True,-0.02305
+S2,F5EvAI,236,template,False,,False,0.0
+S2,F5EvAI,236,template,False,,False,0.0
+S2,F5EvAI,236,template,False,,False,0.0
+S5,F5EvAI,236,template,False,,False,0.0
+S5,F5EvAI,236,template,False,,True,-0.03506
+S5,F5EvAI,236,template,False,,False,0.0
+S5,F5EvAI,236,template,False,G2 duplicate cell,False,0.0
+S5,F5EvAI,236,template,False,G2 duplicate cell,False,0.0
+S3,F5EvAI,237,template,False,,False,0.0
+S3,F5EvAI,237,template,False,,True,-0.0072
+S3,F5EvAI,237,template,True,,True,-0.00357
+S3,F5EvAI,237,template,False,G2 duplicate cell,False,0.0
+S1,F5EvAI,237,template,False,,False,0.0
+S1,F5EvAI,237,template,False,,False,0.0
+S1,F5EvAI,237,template,False,,False,0.0
+S3,F5EvAI,238,template,False,,False,0.0
+S3,F5EvAI,238,template,False,,False,0.0
+S3,F5EvAI,238,template,True,,True,-0.01382
+S2,F5EvAI,237,template,False,,False,0.0
+S2,F5EvAI,237,template,False,,False,0.0
+S2,F5EvAI,237,template,False,G2 duplicate cell,False,0.0
+S4,F5EvAI,237,template,False,,False,0.0
+S4,F5EvAI,237,template,False,,True,-0.00689
+S4,F5EvAI,237,template,True,,True,-0.00279
+S4,F5EvAI,237,template,False,G2 duplicate cell,False,0.0
+S4,F5EvAI,237,template,False,G2 duplicate cell,False,0.0
+S4,F5EvAI,237,template,True,G2 package (name empty or taken),False,0.0
+S5,F5EvAI,237,template,False,,False,0.0
+S5,F5EvAI,237,template,False,,True,0.01297
+S5,F5EvAI,237,template,True,,True,-0.00817
+S5,F5EvAI,237,template,False,,True,-0.00261
+S5,F5EvAI,237,template,False,,True,-0.00024
+S3,F5EvAI,239,template,False,,False,0.0
+S3,F5EvAI,239,template,False,,True,-0.00338
+S1,F5EvAI,238,template,False,,False,0.0
+S1,F5EvAI,238,template,False,,False,0.0
+S1,F5EvAI,238,template,False,,False,0.0
+S4,F5EvAI,238,template,False,,False,0.0
+S4,F5EvAI,238,template,False,,False,0.0
+S4,F5EvAI,238,template,True,,True,-0.01478
+S4,F5EvAI,238,template,False,,False,0.0
+S2,F5EvAI,238,template,False,,False,0.0
+S2,F5EvAI,238,template,False,,True,0.01741
+S2,F5EvAI,238,template,False,,False,0.0
+S2,F5EvAI,238,template,False,,True,-0.00021
+S5,F5EvAI,238,template,False,,False,0.0
+S5,F5EvAI,238,template,False,,False,0.0
+S5,F5EvAI,238,template,True,,True,-0.00085
+S5,F5EvAI,238,template,False,,False,0.0
+S3,F5EvAI,240,template,False,,False,0.0
+S3,F5EvAI,240,template,False,,True,-0.0093
+S1,F5EvAI,239,template,False,,False,0.0
+S1,F5EvAI,239,template,False,,False,0.0
+S1,F5EvAI,239,template,True,,True,-0.00296
+S1,F5EvAI,239,template,False,,True,-0.00165
+S1,F5EvAI,239,template,False,,False,0.0
+S1,F5EvAI,239,template,True,G2 package (name empty or taken),False,0.0
+S1,F5EvAI,239,template,False,,False,0.0
+S2,F5EvAI,239,template,False,,False,0.0
+S2,F5EvAI,239,template,False,,False,0.0
+S2,F5EvAI,239,template,False,G2 duplicate cell,False,0.0
+S4,F5EvAI,239,template,False,,False,0.0
+S4,F5EvAI,239,template,False,,True,-0.0002
+S4,F5EvAI,239,template,True,,True,-0.00956
+S4,F5EvAI,239,template,False,,True,-0.00044
+S4,F5EvAI,239,template,False,,False,0.0
+S4,F5EvAI,239,template,True,G2 package (name empty or taken),False,0.0
+S4,F5EvAI,239,template,False,,True,-0.00022
+S4,F5EvAI,239,template,False,G2 duplicate cell,False,0.0
+S4,F5EvAI,239,template,True,G2 package (name empty or taken),False,0.0
+S4,F5EvAI,239,template,False,G2 duplicate cell,False,0.0
+S1,F5EvAI,241,template,False,,False,0.0
+S1,F5EvAI,241,template,False,,False,0.0
+S1,F5EvAI,241,template,False,,False,0.0
+S5,F5EvAI,239,template,False,,False,0.0
+S5,F5EvAI,239,template,False,,True,-0.01496
+S5,F5EvAI,239,template,False,,True,-0.00097
+S5,F5EvAI,239,template,False,,False,0.0
+S4,F5EvAI,240,template,False,,False,0.0
+S4,F5EvAI,240,template,False,,True,-0.00343
+S4,F5EvAI,240,template,False,,True,-0.00397
+S4,F5EvAI,240,template,False,G2 duplicate cell,False,0.0
+S1,F5EvAI,240,template,False,,False,0.0
+S1,F5EvAI,240,template,False,,False,0.0
+S1,F5EvAI,240,template,False,,True,-0.00129
+S1,F5EvAI,240,template,False,G2 duplicate cell,False,0.0
+S1,F5EvAI,240,template,False,,False,0.0
+S1,F5EvAI,240,template,False,G2 duplicate cell,False,0.0
+S5,F5EvAI,240,template,False,,False,0.0
+S5,F5EvAI,240,template,False,,True,-0.00562
+S5,F5EvAI,240,template,True,,True,-0.02044
+S5,F5EvAI,240,template,False,,True,-0.00263
+S5,F5EvAI,240,template,False,,False,0.0
+S2,F5EvAI,240,template,False,,False,0.0
+S2,F5EvAI,240,template,False,G2 duplicate cell,False,0.0
+S2,F5EvAI,240,template,False,,True,-0.02029
+S2,F5EvAI,240,template,False,G2 duplicate cell,False,0.0
+S2,F5EvAI,240,template,False,,True,-0.00019
+S2,F5EvAI,240,template,False,G2 duplicate cell,False,0.0
+S1,F5EvAI,242,template,False,,False,0.0
+S1,F5EvAI,242,template,False,,False,0.0
+S1,F5EvAI,242,template,False,,False,0.0
+S3,F5EvAI,242,template,False,,False,0.0
+S3,F5EvAI,242,template,False,,False,0.0
+S3,F5EvAI,242,template,False,,False,0.0
+S4,F5EvAI,242,template,False,,False,0.0
+S4,F5EvAI,242,template,False,,True,-0.00162
+S4,F5EvAI,242,template,True,,True,-0.00013
+S3,F5EvAI,241,template,False,,False,0.0
+S3,F5EvAI,241,template,False,,False,0.0
+S3,F5EvAI,241,template,False,,False,0.0
+S2,F5EvAI,241,template,False,,False,0.0
+S2,F5EvAI,241,template,False,,True,-0.01348
+S2,F5EvAI,241,template,True,,True,-0.00156
+S2,F5EvAI,241,template,False,G2 duplicate cell,False,0.0
+S2,F5EvAI,241,template,True,G2 package (name empty or taken),False,0.0
+S2,F5EvAI,241,template,False,G2 duplicate cell,False,0.0
+S5,F5EvAI,242,template,False,,False,0.0
+S5,F5EvAI,242,template,False,,False,0.0
+S5,F5EvAI,242,template,False,,False,0.0
+S4,F5EvAI,241,template,False,,False,0.0
+S4,F5EvAI,241,template,False,,True,-0.00687
+S4,F5EvAI,241,template,True,,True,-0.0019
+S4,F5EvAI,241,template,False,,False,0.0
+S4,F5EvAI,241,template,False,,False,0.0
+S4,F5EvAI,241,template,True,G2 package (name empty or taken),False,0.0
+S2,F5EvAI,242,template,False,,False,0.0
+S2,F5EvAI,242,template,False,,False,0.0
+S2,F5EvAI,242,template,False,,False,0.0
+S5,F5EvAI,241,template,False,,False,0.0
+S5,F5EvAI,241,template,False,,True,-0.00549
+S5,F5EvAI,241,template,False,,True,-0.0002
+S5,F5EvAI,241,template,False,,False,0.0
+S5,F5EvAI,241,template,False,,False,0.0
+S5,F5EvAI,241,template,False,G2 duplicate cell,False,0.0
+S3,F5EvAI,243,template,False,,False,0.0
+S3,F5EvAI,243,template,False,,True,-0.00911
+S3,F5EvAI,243,template,True,,True,-0.03215
+S3,F5EvAI,243,template,False,,True,-0.00024
+S3,F5EvAI,243,template,False,G2 duplicate cell,False,0.0
+S3,F5EvAI,243,template,True,G2 package (name empty or taken),False,0.0
+S3,F5EvAI,243,template,False,,True,-0.00123
+S3,F5EvAI,243,template,False,G2 duplicate cell,False,0.0
+S3,F5EvAI,243,template,True,G2 package (name empty or taken),False,0.0
+S3,F5EvAI,243,template,True,G2 package (name empty or taken),False,0.0
+S1,F5EvAI,243,template,False,,False,0.0
+S1,F5EvAI,243,template,False,,False,0.0
+S1,F5EvAI,243,template,False,G2 duplicate cell,False,0.0
+S5,F5EvAI,243,template,False,,False,0.0
+S5,F5EvAI,243,template,False,,True,-0.06602
+S5,F5EvAI,243,template,True,,True,-0.07694
+S5,F5EvAI,243,template,False,,True,-0.04552
+S5,F5EvAI,243,template,False,,True,-0.02568
+S5,F5EvAI,243,template,False,G2 duplicate cell,False,0.0
+S5,F5EvAI,243,template,False,G2 duplicate cell,False,0.0
+S5,F5EvAI,243,template,True,G2 package (name empty or taken),False,0.0
+S3,F5EvAI,244,template,False,,False,0.0
+S3,F5EvAI,244,template,False,,True,-0.0078
+S3,F5EvAI,244,template,True,,True,-0.02072
+S2,F5EvAI,243,template,False,,False,0.0
+S2,F5EvAI,243,template,False,,False,0.0
+S2,F5EvAI,243,template,False,,True,-1e-05
+S2,F5EvAI,243,template,False,,False,0.0
+S4,F5EvAI,243,template,False,,False,0.0
+S4,F5EvAI,243,template,False,,True,-0.05667
+S4,F5EvAI,243,template,True,,True,-0.09556
+S4,F5EvAI,243,template,False,,True,-0.0034
+S4,F5EvAI,243,template,False,,True,-0.07601
+S4,F5EvAI,243,template,True,G2 package (name empty or taken),False,0.0
+S4,F5EvAI,243,template,False,G2 duplicate cell,False,0.0
+S4,F5EvAI,243,template,False,G2 duplicate cell,False,0.0
+S5,F5EvAI,244,template,False,,False,0.0
+S5,F5EvAI,244,template,False,,False,0.0
+S1,F5EvAI,244,template,False,,False,0.0
+S1,F5EvAI,244,template,False,,False,0.0
+S1,F5EvAI,244,template,False,,True,-0.00091
+S1,F5EvAI,244,template,False,G2 duplicate cell,False,0.0
+S1,F5EvAI,244,template,False,,True,0.00461
+S1,F5EvAI,244,template,False,,False,0.0
+S1,F5EvAI,244,template,False,G2 duplicate cell,False,0.0
+S1,F5EvAI,244,template,False,,False,0.0
+S4,F5EvAI,244,template,False,,False,0.0
+S4,F5EvAI,244,template,False,,True,-0.00525
+S4,F5EvAI,244,template,True,,True,-0.00075
+S4,F5EvAI,244,template,False,G2 duplicate cell,False,0.0
+S4,F5EvAI,244,template,False,G2 duplicate cell,False,0.0
+S4,F5EvAI,244,template,True,G2 package (name empty or taken),False,0.0
+S2,F5EvAI,244,template,False,,False,0.0
+S2,F5EvAI,244,template,False,,False,0.0
+S2,F5EvAI,244,template,False,,True,-0.00023
+S1,F5EvAI,245,template,False,,False,0.0
+S1,F5EvAI,245,template,False,,False,0.0
+S1,F5EvAI,245,template,False,,True,-0.00157
+S1,F5EvAI,245,template,False,,True,0.00781
+S1,F5EvAI,245,template,False,,True,-9e-05
+S3,F5EvAI,245,template,False,,False,0.0
+S3,F5EvAI,245,template,False,,True,-0.01187
+S3,F5EvAI,245,template,True,,True,-0.01294
+S3,F5EvAI,245,template,False,,True,-0.00167
+S3,F5EvAI,245,template,False,,True,-0.00029
+S3,F5EvAI,245,template,True,G2 package (name empty or taken),False,0.0
+S3,F5EvAI,245,template,False,,True,-0.00241
+S2,F5EvAI,245,template,False,,False,0.0
+S2,F5EvAI,245,template,False,,False,0.0
+S2,F5EvAI,245,template,False,,False,0.0
+S4,F5EvAI,245,template,False,,False,0.0
+S4,F5EvAI,245,template,False,,True,-0.00445
+S4,F5EvAI,245,template,True,,True,-0.0001
+S4,F5EvAI,245,template,False,,False,0.0
+S4,F5EvAI,245,template,False,G2 duplicate cell,False,0.0
+S4,F5EvAI,245,template,True,G2 package (name empty or taken),False,0.0
+S1,F5EvAI,246,template,False,,False,0.0
+S1,F5EvAI,246,template,False,,False,0.0
+S1,F5EvAI,246,template,False,,False,0.0
+S5,F5EvAI,245,template,False,,False,0.0
+S5,F5EvAI,245,template,False,,True,-0.00799
+S5,F5EvAI,245,template,False,,True,-0.02054
+S5,F5EvAI,245,template,False,,True,-0.00137
+S5,F5EvAI,245,template,False,,False,0.0
+S5,F5EvAI,245,template,False,,False,0.0
+S5,F5EvAI,245,template,False,,True,-0.00564
+S5,F5EvAI,245,template,False,,False,0.0
+S5,F5EvAI,245,template,False,,True,-0.00057
+S5,F5EvAI,245,template,False,G2 duplicate cell,False,0.0
+S5,F5EvAI,245,template,True,,False,0.0
+S5,F5EvAI,245,template,False,,False,0.0
+S3,F5EvAI,246,template,False,,False,0.0
+S3,F5EvAI,246,template,False,,True,-0.00882
+S3,F5EvAI,246,template,True,,True,-0.01161
+S3,F5EvAI,246,template,False,,True,-0.00689
+S3,F5EvAI,246,template,False,G2 duplicate cell,False,0.0
+S3,F5EvAI,246,template,True,G2 package (name empty or taken),False,0.0
+S3,F5EvAI,246,template,False,G2 duplicate cell,False,0.0
+S2,F5EvAI,246,template,False,,False,0.0
+S2,F5EvAI,246,template,False,,True,-0.01446
+S2,F5EvAI,246,template,False,,False,0.0
+S2,F5EvAI,246,template,False,,False,0.0
+S2,F5EvAI,246,template,False,G2 duplicate cell,False,0.0
+S5,F5EvAI,246,template,False,,True,0.00417
+S5,F5EvAI,246,template,False,,False,0.0
+S5,F5EvAI,246,template,False,,False,0.0
+S5,F5EvAI,246,template,False,,False,0.0
+S4,F5EvAI,246,template,False,,True,0.00417
+S4,F5EvAI,246,template,False,,True,-0.00431
+S4,F5EvAI,246,template,False,,False,0.0
+S4,F5EvAI,246,template,False,,False,0.0
+S4,F5EvAI,246,template,False,,False,0.0
+S4,F5EvAI,247,template,False,,False,0.0
+S4,F5EvAI,247,template,False,,True,-0.0039
+S4,F5EvAI,247,template,True,,True,-0.00785
+S4,F5EvAI,247,template,False,,False,0.0
+S1,F5EvAI,247,template,False,,False,0.0
+S1,F5EvAI,247,template,False,,True,-0.00051
+S1,F5EvAI,247,template,True,,True,-0.00045
+S1,F5EvAI,247,template,False,,True,-0.00435
+S1,F5EvAI,247,template,False,,False,0.0
+S1,F5EvAI,247,template,True,G2 package (name empty or taken),False,0.0
+S1,F5EvAI,247,template,False,,False,0.0
+S5,F5EvAI,247,template,False,,False,0.0
+S5,F5EvAI,247,template,False,,True,-0.00495
+S5,F5EvAI,247,template,True,,True,-0.00628
+S5,F5EvAI,247,template,False,,False,0.0
+S5,F5EvAI,247,template,False,,False,0.0
+S3,F5EvAI,247,template,False,,False,0.0
+S3,F5EvAI,247,template,False,,False,0.0
+S3,F5EvAI,247,template,True,,True,-0.00128
+S3,F5EvAI,247,template,False,,False,0.0
+S3,F5EvAI,247,template,False,,False,0.0
+S3,F5EvAI,248,template,False,,False,0.0
+S3,F5EvAI,248,template,False,,False,0.0
+S3,F5EvAI,248,template,False,,False,0.0
+S2,F5EvAI,247,template,False,,False,0.0
+S2,F5EvAI,247,template,False,,True,-0.01352
+S2,F5EvAI,247,template,False,,True,-0.00189
+S2,F5EvAI,247,template,False,,True,-0.00312
+S2,F5EvAI,247,template,False,G2 duplicate cell,False,0.0
+S2,F5EvAI,247,template,False,G2 duplicate cell,False,0.0
+S2,F5EvAI,247,template,False,G2 duplicate cell,False,0.0
+S1,F5EvAI,249,template,False,,False,0.0
+S1,F5EvAI,249,template,False,,False,0.0
+S1,F5EvAI,249,template,False,,False,0.0
+S2,F5EvAI,249,template,False,,False,0.0
+S2,F5EvAI,249,template,False,,False,0.0
+S2,F5EvAI,249,template,False,,False,0.0
+S3,F5EvAI,249,template,False,,False,0.0
+S3,F5EvAI,249,template,False,,False,0.0
+S3,F5EvAI,249,template,False,,False,0.0
+S5,F5EvAI,248,template,False,,False,0.0
+S5,F5EvAI,248,template,False,,False,0.0
+S5,F5EvAI,248,template,False,,False,0.0
+S4,F5EvAI,248,template,False,,False,0.0
+S4,F5EvAI,248,template,False,,True,5e-05
+S4,F5EvAI,248,template,False,,False,0.0
+S4,F5EvAI,248,template,False,,True,-0.0023
+S4,F5EvAI,248,template,False,G2 duplicate cell,False,0.0
+S4,F5EvAI,248,template,True,,False,0.0
+S4,F5EvAI,248,template,False,,False,0.0
+S1,F5EvAI,248,template,False,,False,0.0
+S1,F5EvAI,248,template,False,,False,0.0
+S1,F5EvAI,248,template,False,,True,-0.00042
+S1,F5EvAI,248,template,False,,True,-0.00478
+S1,F5EvAI,248,template,False,,True,-0.00029
+S1,F5EvAI,248,template,False,,True,-0.00089
+S1,F5EvAI,248,template,False,G2 duplicate cell,False,0.0
+S4,F5EvAI,249,template,False,,False,0.0
+S4,F5EvAI,249,template,False,,True,-0.00533
+S4,F5EvAI,249,template,False,,False,0.0
+S4,F5EvAI,249,template,False,,True,-0.00114
+S4,F5EvAI,249,template,False,G2 duplicate cell,False,0.0
+S4,F5EvAI,249,template,False,G2 duplicate cell,False,0.0
+S4,F5EvAI,249,template,False,G2 duplicate cell,False,0.0
+S3,F5EvAI,250,template,False,,False,0.0
+S3,F5EvAI,250,template,False,,False,0.0
+S2,F5EvAI,248,template,False,,False,0.0
+S2,F5EvAI,248,template,False,,False,0.0
+S2,F5EvAI,248,template,False,,True,-0.00223
+S2,F5EvAI,248,template,False,,True,-0.00025
+S2,F5EvAI,248,template,False,,False,0.0
+S2,F5EvAI,248,template,False,,False,0.0
+S2,F5EvAI,248,template,False,,False,0.0
+S5,F5EvAI,249,template,False,,False,0.0
+S5,F5EvAI,249,template,False,,True,-0.006
+S5,F5EvAI,249,template,True,,True,-0.01854
+S5,F5EvAI,249,template,False,G2 duplicate cell,False,0.0
+S5,F5EvAI,249,template,True,G2 package (name empty or taken),False,0.0
+S5,F5EvAI,249,template,True,G2 package (name empty or taken),False,0.0
+S2,F5EvAI,250,template,False,,False,0.0
+S2,F5EvAI,250,template,False,G2 duplicate cell,False,0.0
+S2,F5EvAI,250,template,False,G2 duplicate cell,False,0.0
+S1,F5EvAI,250,template,False,,False,0.0
+S1,F5EvAI,250,template,False,,False,0.0
+S1,F5EvAI,250,template,True,,True,-0.00116
+S1,F5EvAI,250,template,False,,False,0.0
+S1,F5EvAI,250,template,False,,False,0.0
+S5,F5EvAI,250,template,False,,False,0.0
+S5,F5EvAI,250,template,False,,True,-0.00501
+S5,F5EvAI,250,template,True,,True,-0.00657
+S4,F5EvAI,250,template,False,,False,0.0
+S4,F5EvAI,250,template,False,,True,-0.00567
+S4,F5EvAI,250,template,True,,True,-0.00551
