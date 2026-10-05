@@ -113,19 +113,27 @@ class AdaptOutcome:
 TRIAL_BASIS_MIN = 45.0   # adaptation trials are judged at >= this
 
 
+def trial_objective() -> str:
+    """Name of the objective the adaptation trials are judged on:
+    'phys' (default) or 'total'. Read from DSS_TRIAL_OBJ at call time so a
+    campaign can switch it per process."""
+    return "total" if os.environ.get("DSS_TRIAL_OBJ", "phys").lower() \
+        == "total" else "phys"
+
+
 def _trial_cost(rep, cost):
-    """Objective the adaptation trial is judged on. By default the test
-    is aligned with the REPORTED total decision cost J_total (the
-    physical terms plus the response and delay the commitment incurs),
-    so an adaptation is admitted only when it improves the objective the
-    campaign actually scores. This removes the case where a tuning that
-    lowered physical damage but spent more response effort was accepted
-    and yet raised the total cost. Set DSS_TRIAL_OBJ=phys to recover the
-    older physical-only basis (burned area, assets, population) for the
-    ablation."""
-    if os.environ.get("DSS_TRIAL_OBJ", "total").lower() == "phys":
-        return physical_cost(rep, cost)
-    return float(rep.j_total)
+    """Objective the adaptation trial is judged on. The default is the
+    PHYSICAL cost (burned area, assets, population), which is the basis
+    the method description states: a modification is kept when it buys a
+    better fire, not a smaller fleet bill. On a small fire and a short
+    horizon the response and delay terms of any added commitment exceed
+    the physical gain the forecast can show, so a total-cost criterion
+    rejects every trial at the moment the base most needs to grow. Set
+    DSS_TRIAL_OBJ=total to judge trials on the reported J_total instead
+    (ablation)."""
+    if trial_objective() == "total":
+        return float(rep.j_total)
+    return physical_cost(rep, cost)
 
 # WHAT AN ATTEMPT ACTUALLY COST. A shadow forecast simulates 45 minutes of
 # physics and a model call blocks on the network; a gate that only looks up a
@@ -509,8 +517,9 @@ _GENAI_SCHEMA = ("Answer with the MINIFIED JSON object only, on one line, "
                  "\"new_intervention\": {\"name\": str, "
                  "\"clauses\": [{\"effect\": one of "
                  f"{list(EFFECTS)}, \"sector\": one of {list(SECTORS)}, "
-                 "\"range\": [rin, rout] in cells from the front with "
-                 "0<=rin<rout<=15, \"amount\": (0,1]}, ...] (at most 3 "
+                 "\"range\": [rin, rout], a distance band in cells from the "
+                 "sector's reference cells (rin=0 includes them), "
+                 "0<=rin<=rout<=15, \"amount\": (0,1]}, ...] (at most 3 "
                  "clauses)} which defines a NEW ACTUATOR: a tactic that "
                  "no existing channel expresses, compiled directly into "
                  "the raster operators of the physics engine. A package "
@@ -532,6 +541,18 @@ _GENAI_SCHEMA = ("Answer with the MINIFIED JSON object only, on one line, "
                  "brief: an action the terrain cannot supply is "
                  "rejected before it is ever simulated.")
 
+
+
+
+def _genai_schema() -> str:
+    """The reply schema with the CURRENTLY orderable library actuators;
+    a withheld actuator is not announced."""
+    from .rules import discoverable as _disc, withheld as _wh
+    out = _GENAI_SCHEMA.replace(str(list(DISCOVERABLE_INTERVENTIONS)),
+                                str(list(_disc())))
+    out = out.replace(str(list(INTERVENTIONS)),
+                      str([i for i in INTERVENTIONS if i not in _wh()]))
+    return out
 
 # wall time of the last live proposal call, so the run log can show WHY a
 # cycle took seconds instead of milliseconds
@@ -689,7 +710,7 @@ def _genai_propose(situation: str, timeout: float | None = None,
               "support system. Situation:\n")
     if engine is None:
         return _genai_propose_cli(header + mission + situation + "\n"
-                                  + _GENAI_SCHEMA, timeout=timeout)
+                                  + _genai_schema(), timeout=timeout)
     sid = getattr(engine, "_genai_sid", None)
     if sid and getattr(engine, "_genai_sid_ok", False):
         p = _genai_propose_cli(
@@ -706,7 +727,7 @@ def _genai_propose(situation: str, timeout: float | None = None,
     sid = str(_uuid.uuid4())
     engine._genai_sid = sid
     p = _genai_propose_cli(header + mission + situation + "\n"
-                           + _GENAI_SCHEMA,
+                           + _genai_schema(),
                            timeout=timeout, session=sid)
     if p is not None:
         engine._genai_sid_ok = True
@@ -725,6 +746,16 @@ G5_MARGIN = 1e-4     # a vocabulary-growing package must clear this on both
                      # intervention is actually admitted, not gated out.
 G2B_COS = 0.95       # structural redundancy bound for new concepts (G2b)
 
+
+
+#: the CLI transport itself, kept under its own name so a proposer that
+#: wraps it (dss.proposers.LLMProposer) still reaches the model after the
+#: hook `_genai_propose` has been replaced by that proposer
+_GENAI_CLI = _genai_propose
+
+
+def _genai_propose_cli_entry():
+    return _GENAI_CLI
 
 def _validate_package(prop: dict, engine) -> Optional[str]:
     """G2 extension + G2b for vocabulary packages; returns an error
@@ -815,8 +846,8 @@ def _validate_package(prop: dict, engine) -> Optional[str]:
                     rin, rout = int(rr[0]), int(rr[1])
                 except Exception:
                     return "G2 package (range must be [rin, rout])"
-                if not (0 <= rin < rout <= 15):
-                    return "G2 package (range must satisfy 0<=rin<rout<=15)"
+                if not (0 <= rin <= rout <= 15):
+                    return "G2 package (range must satisfy 0<=rin<=rout<=15)"
                 aa = float(c.get("amount", 0.8))
                 if not (0.0 < aa <= 1.0):
                     return "G2 package (amount in (0,1])"
@@ -940,7 +971,8 @@ def _g1_g2(prop: dict, engine=None) -> Optional[str]:
     _ncn = (prop.get("new_concept") or {}).get("name")
     _nin = (prop.get("new_intervention") or {}).get("name")
     _known_c = set(DECISION_CONCEPTS)
-    _known_i = set(INTERVENTIONS)
+    from .rules import withheld as _wh
+    _known_i = set(INTERVENTIONS) - set(_wh())
     if engine is not None:
         # learned vocabulary is CITABLE by every later rule
         _known_c |= set(getattr(engine, "hierarchy", {}) or {})
@@ -964,6 +996,24 @@ def _g1_g2(prop: dict, engine=None) -> Optional[str]:
         if not (0.0 <= x <= 1.0):
             return f"G2 range ({i}={x} outside 0..1)"
     return None
+
+
+def describe_macro(md: dict) -> str:
+    """One-line definition of a learned intervention, composition or
+    clauses, as the ledger records it. A clause macro used to be listed
+    with nothing after the equals sign because only the (empty)
+    composition was printed, so the model could neither cite nor avoid
+    it knowingly."""
+    cls = md.get("clauses") or []
+    if cls:
+        return "; ".join(
+            f"{c.get('effect')} on {c.get('sector', 'ring')} "
+            f"[{int((c.get('range') or [2, 6])[0])}, "
+            f"{int((c.get('range') or [2, 6])[1])}] "
+            f"at {float(c.get('amount', 0.8)):.2f}"
+            for c in cls[:3])
+    return " + ".join(f"{a} {float(b):.2f}"
+                      for a, b in md.get("composition", []) or [])
 
 
 def _situation_brief(sim, engine) -> str:
@@ -1046,13 +1096,17 @@ def _situation_brief(sim, engine) -> str:
                     (wx[None, :] - xs[:, None].astype(float)) ** 2
                     + (wy[None, :] - ys[:, None].astype(float)) ** 2
                 ).min()) * cell if len(xs) else -1.0
+                from .rules import withheld as _whd
                 lines.append(
                     f"- water: a lake/sea lies ~{dmin:.0f} m from the "
-                    "front; water_drafting raises sustained capacity "
-                    "near it")
+                    "front"
+                    + ("; water_drafting raises sustained capacity "
+                       "near it" if "water_drafting" not in _whd()
+                       else "; a draft clause raises sustained "
+                       "capacity near it"))
             else:
                 lines.append("- water: none on this map "
-                             "(water_drafting would do nothing)")
+                             "(drafting would do nothing)")
             pool = getattr(engine, "base_pool", None)
             if pool is not None:
                 cap = float((pool.rcap * _np.clip(pool.ravail, 0, 1)
@@ -1066,7 +1120,7 @@ def _situation_brief(sim, engine) -> str:
                              f"to the front {tt:.0f} min"
                              + ("; the pool is running NEAR ITS "
                                 "LIMIT, extra sustained capacity "
-                                "(water_drafting) is what pays"
+                                "from water is what pays"
                                 if _fielded > 0 and cap < 80.0
                                 else "")
                              + ("; air support can reach the whole map"
@@ -1085,8 +1139,8 @@ def _situation_brief(sim, engine) -> str:
                         "budget and thin the current engagement. What "
                         "still helps here: evacuation or "
                         "public_warning (spend no capacity), or "
-                        "water_drafting (RAISES sustained capacity "
-                        "near water)")
+                        "drafting from water (RAISES sustained "
+                        "capacity near it)")
         try:
             from disaster_phyengine.costs import compute_costs as _cc
             rep = _cc(sim)
@@ -1465,6 +1519,19 @@ def stage3_generative(build_override, sim, rules: List[Rule],
                                  retry_hint=out.info["g5_feedback"])
         if out.accepted:
             out.detail = f"{out.detail} [after a G5 revision]"
+    # the verdict goes back to the proposer's prior, when it keeps one, so
+    # the search learns from what the gates decided and not only from
+    # what it priced itself
+    try:
+        _pp = getattr(engine, "_proposer", None)
+        _pr = getattr(_pp, "prior", None)
+        _ctx = getattr(engine, "_trial_ctx", None)
+        _prop = (out.info or {}).get("proposal")
+        if _pr is not None and _ctx is not None and _prop:
+            _pr.observe_verdict(_prop, _ctx, bool(out.accepted),
+                                float(out.dJ or 0.0))
+    except Exception:
+        pass
     try:
         _file_proposal(engine, out, crisp_c, coverage_gap, cov_w, sim)
     except Exception as exc:      # the ledger must never break a decision
@@ -1571,7 +1638,8 @@ def _stage3_generative(build_override, sim, rules: List[Rule],
     # existing rule
     situation += ("\nCurrent rule base:\n"
                   + "\n".join(r.text() for r in rules if r.active))
-    from .rules import ACTUATOR_LIBRARY
+    from .rules import actuator_library as _al
+    ACTUATOR_LIBRARY = _al()
     try:
         import numpy as _np_av
         _has_water = bool(_np_av.asarray(
@@ -1619,11 +1687,8 @@ def _stage3_generative(build_override, sim, rules: List[Rule],
         situation += ("\nCurrent LEARNED interventions (do NOT "
                       "re-propose these or near-copies; cite them in "
                       "a rule instead):\n"
-                      + "\n".join(
-                          f"  {mn} = " + " + ".join(
-                              f"{a} {b:.2f}" for a, b in
-                              md.get("composition", []))
-                          for mn, md in _macs.items()))
+                      + "\n".join(f"  {mn} = {describe_macro(md)}"
+                                  for mn, md in _macs.items()))
     # DOCTRINE REFERENCE. On a minimal profile the active base is five rules,
     # which is a thin sample of what good practice looks like. The full
     # catalog is shown as a reference the proposer may draw on, marked
@@ -1708,10 +1773,35 @@ def _stage3_generative(build_override, sim, rules: List[Rule],
     def _left() -> float:
         return _deadline - _t_mod.time()
 
+    # WHAT THE PROPOSER MAY KNOW. A search proposer prices its candidates
+    # on the same shadow simulator the gates use, so the stage leaves the
+    # trial context on the engine for the duration of the call. The gates
+    # below do not read it; nothing a proposer does with it can admit a
+    # rule.
+    if engine is not None:
+        try:
+            from .proposers import TrialContext as _TC
+            engine._trial_ctx = _TC(build_override, sim, rules, horizon,
+                                    eff, crisp_c, engine,
+                                    coverage_gap=bool(coverage_gap))
+            # pool saturation as the context sees it (for the prior)
+            _acts = getattr(engine, "last_actions", None) or {}
+            _d, _b = _acts.get("demand"), _acts.get("budget")
+            engine._pool_saturated = bool(
+                _d is not None and _b and float(_d) > 0.95 * float(_b))
+        except Exception:
+            engine._trial_ctx = None
+
     prop = _genai_propose(situation, timeout=max(1.0, _left()),
                           engine=engine, mission=_mb)
     LAST_PROPOSAL["raw"] = copy.deepcopy(prop) if prop else None
-    src = "claude"
+    # WHO PROPOSED. The ledger must name the proposer, because a campaign
+    # may stand a template, a search or a model behind the same hook; a
+    # replacement declares itself with a `proposer_name` attribute, or
+    # tags the proposal with `_source`.
+    src = str(getattr(_genai_propose, "proposer_name", None)
+              or (prop.get("_source") if isinstance(prop, dict) else None)
+              or "claude")
     # The generative stage REQUIRES a reachable model: there is no offline
     # stand-in. If the model cannot be reached (or returns nothing usable)
     # the stage is skipped and logged, never silently substituted.
@@ -1726,7 +1816,7 @@ def _stage3_generative(build_override, sim, rules: List[Rule],
                 "cycle and tried again at the next window; set "
                 "DSS_GENAI_TIMEOUT higher only for batch runs, since the "
                 "decision cycle blocks for the whole wait",
-                info=dict(source="claude", reason="model timeout",
+                info=dict(source=src, reason="model timeout",
                           error=_err, waited_s=round(genai_timeout(), 1)))
         return AdaptOutcome(
             3, False,
@@ -1735,6 +1825,17 @@ def _stage3_generative(build_override, sim, rules: List[Rule],
             + "; install Claude Code and run /login",
             info=dict(source="none", reason="model unreachable",
                       error=_err))
+    # A SEARCH THAT FOUND NOTHING SAYS SO. A search proposer that priced
+    # its candidates and saw none lower the forecast returns a skip
+    # marker instead of its least bad candidate; the stage records the
+    # attempt without spending the four rollouts the gates would cost,
+    # and the controller sees an ordinary rejection.
+    if isinstance(prop, dict) and prop.get("_skip"):
+        return AdaptOutcome(
+            3, False, f"rejected at S0 search ({src}): {prop['_skip']}",
+            info=dict(source=src, reason="no improving candidate",
+                      proposal=prop, gate="S0 search",
+                      search=prop.get("_search")))
     # REPAIR BEFORE JUDGING. A form defect the situation itself can settle
     # should not cost a gate rejection, a revision and another model call.
     LAST_PROPOSAL.setdefault("repairs", []).extend(
@@ -1764,7 +1865,7 @@ def _stage3_generative(build_override, sim, rules: List[Rule],
                 f"attempt ran out after {len(_revisions)} revision(s); "
                 "the last proposal was still failing "
                 f"{err}. The stage is skipped this cycle",
-                info=dict(source="claude", reason="budget exhausted",
+                info=dict(source=src, reason="budget exhausted",
                           revisions=_revisions,
                           waited_s=round(genai_timeout(), 1)))
         prop = _genai_propose(retry, timeout=max(1.0, _left()),
@@ -1779,16 +1880,17 @@ def _stage3_generative(build_override, sim, rules: List[Rule],
                  f"{len(_revisions)}" if _tmo
                  else "model became unreachable during revision")
                 + (f" ({_err})" if not _tmo and _err else ""),
-                info=dict(source="claude",
+                info=dict(source=src,
                           reason=("model timeout" if _tmo
                                   else "model unreachable"),
                           error=_err, revisions=_revisions))
-        # REPAIR BEFORE JUDGING. A form defect the situation itself can settle
-    # should not cost a gate rejection, a revision and another model call.
-    LAST_PROPOSAL.setdefault("repairs", []).extend(
-        _repair_relevance(prop, eff))
-    LAST_PROPOSAL["repaired"] = copy.deepcopy(prop)
-    err = (_g1_g2(prop, engine=engine) or _fires_now(prop, eff)
+        # the REVISED proposal is repaired and judged inside the loop, so
+        # a second revision answers the defect of the first revision and
+        # not the defect of the original proposal
+        LAST_PROPOSAL.setdefault("repairs", []).extend(
+            _repair_relevance(prop, eff))
+        LAST_PROPOSAL["repaired"] = copy.deepcopy(prop)
+        err = (_g1_g2(prop, engine=engine) or _fires_now(prop, eff)
                or _availability(prop, sim)
                or _pool_saturation(prop, engine=engine)
                or _ground_proposal(prop, sim, engine=engine))
@@ -1868,17 +1970,26 @@ def _stage3_generative(build_override, sim, rules: List[Rule],
                          if prop.get("_grounding") else "")))
     j0c, j0 = _cva(build_override, sim, rules, horizon)
     rules.append(newr)
-    j1a, _ = _cva(build_override, sim, rules, horizon, reseed=101)
-    j1b, j0b = _cva(build_override, sim, rules, horizon, reseed=202)
+    # G3 and G4 are the SAME paired comparison on two independently seeded
+    # futures: the base extended by the candidate against the base without
+    # it. Earlier the second future took the no-action forecast as its
+    # reference (the second return value of _cva), so G4 tested a weaker
+    # proposition than G3 and a candidate could pass it by merely beating
+    # inaction. Both futures now run the base without the candidate.
+    j1a, j0a_none = _cva(build_override, sim, rules, horizon, reseed=101)
+    j1b, j0b_none = _cva(build_override, sim, rules, horizon, reseed=202)
     j0a = _cva(build_override, sim, rules[:-1], horizon, reseed=101)[0]
+    j0b = _cva(build_override, sim, rules[:-1], horizon, reseed=202)[0]
     info = dict(source=src, proposal=prop, rule=newr.text(),
                 revisions=_revisions,
-                basis="physical cost at >=45 min",
+                basis=f"{trial_objective()} cost at >=45 min",
                 gates=dict(g1_g2="pass",
                            g3=dict(j_with=float(j1a),
-                                   j_without=float(j0a)),
+                                   j_without=float(j0a),
+                                   j_noaction=float(j0a_none)),
                            g4=dict(j_with=float(j1b),
-                                   j_without=float(j0b))))
+                                   j_without=float(j0b),
+                                   j_noaction=float(j0b_none))))
     info["coverage_gap"] = bool(coverage_gap)
     info["package"] = bool(_pkg)
     if _pkg:

@@ -1,0 +1,159 @@
+OPEN DECISION SPACE - KAPALI KARAR UZAYININ ACILMASI UZERINE CALISMALAR
+=======================================================================
+
+A. KAVRAMSAL CERCEVE: KAPALI UZAY NIYE VE NASIL ACILIR
+------------------------------------------------------
+1. Colorni, A.; Tsoukias, A. (2018). What Is a Decision Problem? Designing Alternatives. Springer. DOI: 10.1007/978-3-319-90599-0_1
+   Mekanizma: Bilinen / kismen bilinen / bilinmeyen karar uzayi ayrimi; oznitelik ayristirma ile alternatif tasarimi.
+
+2. Colorni, A.; Tsoukias, A. (2020). Designing alternatives in decision problems. Journal of Multi-Criteria Decision Analysis. DOI: 10.1002/mcda.1709
+   Acik erisim: https://hal.archives-ouvertes.fr/hal-02787638/file/jmcda2019-02.pdf
+   Mekanizma: 50 yillik literatur taramasi + alternatif tasarimi icin formal cerceve.
+
+3. Hofstede, G.J. (1995). Open problems, formal problems. Journal of Decision Systems. DOI: 10.1080/12460125.1995.10511645
+   Mekanizma: Kapalilik bir modelleme tercihidir; acik yonleri modele sabitleme.
+
+4. Levin, M.Sh. (2014). Towards Decision Support Technology Platform for Modular Systems. arXiv.
+   Mekanizma: Alternatif secimi -> kompozit alternatiflerin kombinatoryal sentezi (knapsack, assignment, covering).
+
+5. Ferretti, V.; Pluchinotta, I.; Tsoukias, A. (2018). Studying the generation of alternatives in public policy making processes. European Journal of Operational Research. DOI: 10.1016/j.ejor.2018.07.054
+
+6. Arbel, A.; Tong, R. (1982). On the Generation of Alternatives in Decision Analysis Problems. Journal of the Operational Research Society. DOI: 10.1057/JORS.1982.79
+
+7. Del Missier, F.; Visentini, M.; Mantyla, T. (2015). Option generation in decision making: ideation beyond memory retrieval. Frontiers in Psychology. DOI: 10.3389/fpsyg.2014.01584
+
+
+B. AKTIF DSS: SISTEMIN KENDISI ALTERNATIF URETIR
+------------------------------------------------
+8. Fazlollahi, B.; Vahidov, R. (2001). A Method for Generation of Alternatives by Decision Support Systems. Journal of Management Information Systems. DOI: 10.1080/07421222.2001.11045683
+   Mekanizma: GA + bulanik kumeler ile parametre uzayinda arama; uretim ve degerlendirmenin ayrilmasi.
+
+9. Brill, E.D.; Flach, J.M.; Hopkins, L.D.; Ranjithan, S. (1990). MGA: a decision support system for complex, incompletely defined problems. IEEE Transactions on Systems, Man and Cybernetics. DOI: 10.1109/21.105076
+   Mekanizma: Modeling-to-Generate-Alternatives; yapisal olarak farkli cozumler uretme.
+
+10. Ozernoy, V.M. (1985). Generating Alternatives in Multiple Criteria Decision Making Problems: A Survey. DOI: 10.1007/978-3-642-46536-9_23
+    Mekanizma: Morfolojik analiz, parametre-uzayi aramasi.
+
+11. MacCrimmon, K.R.; Wagner, C. (1991). The Architecture of an Information System for the Support of Alternative Generation (GENI). Journal of Management Information Systems. DOI: 10.1080/07421222.1991.11517929
+
+12. Caserio, C. (2012). Knowledge Generating Decision Support Systems: Managing the Trade-Off Between Generating Knowledge and Supporting Decisions. DOI: 10.1007/978-3-7908-2789-7_34
+    Not: "open DSS / closed DSS" terimlerini kullanir.
+
+
+C. OTOMATIK PLANLAMA: ILKEL EYLEMLERDEN PLAN SENTEZI
+----------------------------------------------------
+13. Chrpa, L.; Vallati, M. (2016). On the exploitation of Automated Planning for efficient decision making in road traffic accident management. IEEE Conference on Decision and Control. DOI: 10.1109/CDC.2016.7799286
+    Acik erisim: http://eprints.hud.ac.uk/id/eprint/29730/1/traffic-accident-stuff%281%29.pdf
+    Mekanizma: Elementer kararlar (eylem semalari) -> sentezlenmis kismi sirali plan.
+
+14. Chrpa, L.; Thorisson, K.R. (2015). On Applicability of Automated Planning for Incident Management.
+
+15. Struss, P. (2011). A Conceptualization and General Architecture of Intelligent Decision Support Systems. MODSIM. DOI: 10.36334/modsim.2011.e11.struss
+    Mekanizma: "Therapy proposal" = surec modelinden mudahale plani turetme.
+
+16. Struss, P. (2020). Model-Based Decision Support Systems - Conceptualization and General Architecture. IEA/AIE. DOI: 10.1007/978-3-030-55789-8_51
+
+17. Yeh, M.; Chang, C.-T. (2012). An automata based method for online synthesis of emergency response procedures in batch processes. Computers and Chemical Engineering. DOI: 10.1016/j.compchemeng.2011.11.008
+    Mekanizma: Fiziksel aktuator ilkel eylemlerinden cevrimici prosedur sentezi.
+
+18. Yalovets, A. (2023). The problem of automating the planning of forces, means and resources for management of counteraction of emergency situations. Problems in Programming. DOI: 10.15407/pp2023.03.058
+    Acik erisim: https://pp.isofts.kiev.ua/index.php/ojs1/article/download/582/632
+    Mekanizma: Mevcut kaynaklardan yeterli gruplarin SYNTHESIS ile uretilmesi.
+
+19. Siddiqui, F.H.; Islam, M.M.; Noor, S.B. (2026). A Temporal Planning Approach for Intelligent Flood Response. (ANML / PDDL 2.1)
+
+20. Bidoux, L.; Pignon, J.; Benaben, F. (2017). On the use of automated planning for crisis management. ISCRAM.
+
+21. Glasspool, D.; Fox, J.; Castillo, F.; Monaghan, V. (2003). Interactive Decision Support for Medical Planning. AIME. DOI: 10.1007/978-3-540-39907-0_45
+
+22. Chari, K. (2002). Model Composition Using Filter Spaces. Information Systems Research. DOI: 10.1287/isre.13.1.15.95
+
+23. Fujishima, K. (2022). Knowledge-Driven Automated Service Composition as a Method for Developing Decision Support Systems. Int. J. Applied Information Management. DOI: 10.47738/ijaim.v2i1.26
+
+24. Geffner, H.; Bonet, B. (2013). A Concise Introduction to Models and Methods for Automated Planning. Synthesis Lectures on AI and ML. DOI: 10.1007/978-3-031-01564-9
+
+
+D. EYLEM KUMESININ KENDISI SABIT DEGIL (ACIK DUNYA PLANLAMA)
+-------------------------------------------------------------
+25. Ding, Y.; Zhang, X.; Amiri, S.; et al. (2022). Robot Task Planning and Situation Handling in Open Worlds (COWP). Autonomous Robots / arXiv. DOI: 10.48550/arXiv.2210.01287
+    Mekanizma: Plan basarisizliginda LLM ile eylem bilgisinin calisma zamaninda genisletilmesi.
+
+26. Gizzi, E.; Amel, H.; Lin, W.W.; Rhea, K.; Sinapov, J. (2021). Toward Creative Problem Solving Agents: Action Discovery through Behavior Babbling. ICDL. DOI: 10.1109/ICDL49984.2021.9515658
+    Mekanizma: Basarisiz plan bilesenlerinden deneysel kesifle yeni eylem semasi ogrenme.
+
+27. Chandak, Y.; Theocharous, G.; Nota, C.; Thomas, P.S. (2020). Lifelong Learning with a Changing Action Set. AAAI. DOI: 10.1609/AAAI.V34I04.5739
+
+28. Weiss, E.; Kaminka, G.A. (2022). Position Paper: Online Modeling for Offline Planning. arXiv. DOI: 10.48550/arXiv.2206.03356
+
+29. Piotrowski, W.; Stern, R.; et al. (2023). Learning to Operate in Open Worlds by Adapting Planning Models. AAMAS. DOI: 10.48550/arXiv.2303.14272
+
+30. Lamanna, L.; Saetti, A.; Serafini, L.; Gerevini, A.; Traverso, P. (2021). Online Learning of Action Models for PDDL Planning. IJCAI. DOI: 10.24963/ijcai.2021/566
+
+31. Suarez-Hernandez, A.; Segovia-Aguas, J.; Torras, C.; Alenya, G. (2020). STRIPS Action Discovery. arXiv.
+
+
+E. KOMBINATORYAL / CARPANLI EYLEM UZAYI (RL FORMALIZMI)
+-------------------------------------------------------
+32. Tang, S.; Makar, M.; Sjoding, M.; Doshi-Velez, F.; Wiens, J. (2023). Leveraging Factored Action Spaces for Efficient Offline Reinforcement Learning in Healthcare. NeurIPS. arXiv: 2305.01738
+    Mekanizma: Mudahale = alt-eylem bilesimi; gorulmemis kombinasyonlar icin Q-fonksiyonu ayristirma.
+
+33. Lee, J.; Gao, T.; Nelson, E.; Liu, M.; Bhattacharjya, D.; Lu, S. (2025). Q-function Decomposition with Intervention Semantics with Factored Action Spaces. AISTATS. arXiv: 2504.21326
+
+34. Xu, L.; Wilder, B.; Khalil, E.B.; Tambe, M. (2025). Reinforcement learning with combinatorial actions for coupled restless bandits (SEQUOIA). ICLR. arXiv: 2503.01919
+
+35. Hoppe, H.; Baty, L.; Bouvier, L.; Parmentier, A.; Schiffer, M. (2025). Structured Reinforcement Learning for Combinatorial Decision-Making. NeurIPS. arXiv: 2505.19053
+
+36. Landers, M.; Killian, T.W.; Barnes, H.; Hartvigsen, T.; Doryab, A. (2024). BraVE: Offline Reinforcement Learning for Discrete Combinatorial Action Spaces. NeurIPS.
+
+37. Landers, M.; Killian, T.W.; Hartvigsen, T.; Doryab, A. (2025). SAINT: Attention-Based Policies for Discrete Combinatorial Action Spaces. arXiv.
+
+38. Delarue, A.; Anderson, R.; Tjandraatmadja, C. (2020). Reinforcement Learning with Combinatorial Actions: An Application to Vehicle Routing. NeurIPS.
+
+39. Sharma, S.; Suresh, A.; Ramesh, R.; Ravindran, B. (2017). Learning to Factor Policies and Action-Value Functions: Factored Action Space Representations for Deep RL. arXiv.
+
+
+F. LLM AJANLARI: ARAC / AKTUATOR ILKELLERINDEN EYLEM KOMPOZISYONU
+-----------------------------------------------------------------
+40. Wang, X.; Chen, Y.; Yuan, L.; et al. (2024). Executable Code Actions Elicit Better LLM Agents (CodeAct). ICML. arXiv: 2402.01030
+    Mekanizma: Onceden tanimli arac kumesi = kisitli eylem uzayi; kod = birlesik, kompozisyona acik eylem uzayi.
+
+41. Banerjee, A.; Maity, A.; Kamboj, P.; Gupta, S.K.S. (2024). CPS-LLM: Large Language Model based Safe Usage Plan Generator for Human-in-the-Loop Human-in-the-Plant Cyber-Physical System. arXiv: 2405.11458
+
+42. Rasheed, A.; Ravik, O.; San, O. (2025). Large Language Models for Control. arXiv: 2511.00337
+
+43. Singh, I.; Blukis, V.; Mousavian, A.; et al. (2023). ProgPrompt: Generating Situated Robot Task Plans using Large Language Models. ICRA. DOI: 10.1109/ICRA48891.2023.10161317
+
+44. Huang, W.; Abbeel, P.; Pathak, D.; Mordatch, I. (2022). Language Models as Zero-Shot Planners: Extracting Actionable Knowledge for Embodied Agents. ICML.
+
+45. Zhuang, Y.; Chen, X.; Yu, T.; et al. (2023). ToolChain*: Efficient Action Space Navigation in Large Language Models with A* Search. arXiv: 2310.13227
+
+
+G. YETENEK TABANLI KOALISYON OLUSTURMA (AKTUATORLERI BIRLESTIRME)
+-----------------------------------------------------------------
+46. Fatemi, A.; Zamanifar, K.; Nematbakhsh, N. (2013). Capability-based task allocation in emergency-response environments: a coalition-formation approach. Turkish Journal of Electrical Engineering and Computer Sciences. DOI: 10.3906/ELK-1105-49
+
+47. Lee, H.-Y.; Zhou, P.; Zhang, B.; et al. (2024). A Distributed Dynamic Framework to Allocate Collaborative Tasks Based on Capability Matching in Heterogeneous Multirobot Systems. IEEE Trans. Cognitive and Developmental Systems. DOI: 10.1109/TCDS.2023.3264034
+
+48. Aswale, A.; Pinciroli, C. (2023). Heterogeneous Coalition Formation and Scheduling with Multi-Skilled Robots. IROS. DOI: 10.1109/IROS55552.2023.10342489
+
+49. Ahmadoun, D. (2022). Interdependent task allocation via coalition formation for cooperative multi-agent systems. PhD thesis, Universite Paris Cite.
+
+50. Irfan, M.; Farooq, A. (2016). Auction-based task allocation scheme for dynamic coalition formations in limited robotic swarms with heterogeneous capabilities. DOI: 10.1109/INTELSE.2016.7475122
+
+
+OZET: ACILMA MEKANIZMALARI
+--------------------------
+1. Oznitelik ayristirma + kombinasyon        -> Colorni & Tsoukias; morfolojik analiz (1, 2, 10)
+2. Parametre uzayinda arama / MGA            -> Fazlollahi & Vahidov; Brill et al. (8, 9)
+3. Moduler-kombinatoryal sentez              -> Levin (4)
+4. Ilkel eylemlerden plan sentezi            -> Chrpa & Vallati; Struss; Yeh & Chang (13, 15, 17)
+5. Calisma zamaninda eylem kesfi             -> COWP; Gizzi; Chandak (25, 26, 27)
+6. Carpanli eylem uzayi / kod kompozisyonu   -> Tang et al.; CodeAct (32, 40)
+
+TERIM ESLEMESI
+--------------
+Kapali karar uzayi  : fixed alternative set, catalogue of interventions, known decision space, formal problem
+Acik karar uzayi    : alternative generation/design, unknown decision space, composite alternatives,
+                      combinatorial/factored action space, open-world planning, unified action space
+Aktuator birlestirme: plan synthesis, action composition, coalition formation, capability matching,
+                      morphological analysis

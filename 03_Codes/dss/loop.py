@@ -418,7 +418,11 @@ class DecisionEngine:
                 sim.world.fuel.ftype == 5).any())
         except Exception:
             _has_w = False
-        if _has_w and prios:
+        # the directive is a doctrine-free order; it can be switched off
+        # (open-space experiments) and it never names a withheld actuator
+        from .rules import withheld as _whd_l
+        if (_has_w and prios and getattr(self, "drafting_directive", True)
+                and "water_drafting" not in _whd_l()):
             _hot0 = max(prios, key=lambda n: prios[n])
             _rd0 = rows.get(_hot0)
             if (_rd0 is not None

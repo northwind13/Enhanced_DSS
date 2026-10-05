@@ -52,6 +52,45 @@ DOCTRINE_INTERVENTIONS = INTERVENTIONS[:6]
 # discoverable-only physical actions (announced to stage 3)
 DISCOVERABLE_INTERVENTIONS = INTERVENTIONS[6:]
 
+# WITHHELD DOCTRINE. The rediscovery experiment removes one or more of
+# the library actuators from everything the decision layer can see or
+# order (the vocabulary, the brief, the schema, the allocator, the
+# coordinator directive), leaving only the seven clause effects. A
+# withheld actuator is then not "unavailable on this map"; it does not
+# exist for the layer, and a clause actuator that re-composes it is a
+# rediscovery rather than a citation. Set with DSS_WITHHOLD_ACTUATORS
+# (comma-separated) or withhold(); read at call time everywhere.
+_WITHHELD: set = set()
+
+
+def withhold(names) -> None:
+    """Replace the withheld set. Pass an empty iterable to restore."""
+    _WITHHELD.clear()
+    for n in names or ():
+        n = str(n).strip()
+        if n and n in DISCOVERABLE_INTERVENTIONS:
+            _WITHHELD.add(n)
+
+
+def withheld() -> frozenset:
+    return frozenset(_WITHHELD)
+
+
+def discoverable() -> tuple:
+    """The library actuators the layer may currently order."""
+    return tuple(i for i in DISCOVERABLE_INTERVENTIONS if i not in _WITHHELD)
+
+
+def actuator_library() -> dict:
+    return {k: v for k, v in ACTUATOR_LIBRARY.items() if k not in _WITHHELD}
+
+
+def _withhold_from_env() -> None:
+    import os as _os
+    raw = _os.environ.get("DSS_WITHHOLD_ACTUATORS", "")
+    if raw.strip():
+        withhold(x for x in raw.split(","))
+
 # ACTUATOR LIBRARY: one entry per discoverable physical action. The
 # stage-3 prompt is BUILT from this dict, so adding an actuator here
 # (plus its physics in the engine and its placement in the allocator)
@@ -396,3 +435,5 @@ def evaluate_rules(concepts: Dict[str, np.ndarray],
     for _mn in num_m:
         out[_mn] = num_m[_mn] / max(den_m[_mn], 1.0)
     return {i: float(np.clip(v, 0.0, 1.0)) for i, v in out.items()}, trace
+
+_withhold_from_env()

@@ -219,3 +219,10 @@ __marimo__/
 
 # saved maps are the operator's own data, not the repository's
 03_Codes/maps/
+
+# Claude CLI login state (credentials)
+03_Codes/.claude-config/
+# in-progress campaign outputs
+03_Codes/experiments/benchmark/out/
+03_Codes/experiments/open_space/out_llm/
+04_ConferencePaper/_tmp_preview/

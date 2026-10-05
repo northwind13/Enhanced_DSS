@@ -77,8 +77,12 @@ def _effect_notes(world) -> str:
              "amount at 1.0 and the consequent intensity at 0.9 or "
              "above if the tactic depends on stopping the fire rather "
              "than slowing it.",
-             "  clear, wet, draft, evacuate, prime, ignite: no "
-             "threshold. They act in proportion to what you order.",
+             "  ignite: a cell is lit only where the realised amount "
+             "exceeds 0.50 and the fuel moisture is below 0.30; below "
+             "that the firing crew lights nothing. Write the amount at "
+             "1.0 and the consequent intensity at 0.9 or above.",
+             "  clear, wet, draft, evacuate, prime: no threshold. They "
+             "act in proportion to what you order.",
              "  WHAT SPENDS THE POOL AND WHAT DOES NOT. clear and wet "
              "need crews: a cut cell is only dug once the capacity and "
              "the availability reach it, so on a saturated pool they "
@@ -162,7 +166,8 @@ def build_mission_brief(world, base_pool=None) -> str:
     L.append("ACTUATOR LIBRARY (physics available beyond the "
              "doctrine; NO seed rule orders them, discovering a use "
              "is your job):")
-    for n, d in ACTUATOR_LIBRARY.items():
+    from .rules import actuator_library as _al
+    for n, d in _al().items():
         flag = ("  [UNAVAILABLE HERE: no water body to supply it]"
                 if (n in _WATER_DEPENDENT and not has_water) else "")
         L.append(f"  {n}: {d}{flag}")
@@ -171,10 +176,15 @@ def build_mission_brief(world, base_pool=None) -> str:
         "\"clauses\"): each clause = one verified effect (wet, clear, "
         "ignite, coat, evacuate, prime, draft) on a sector (head, "
         "flank, rear, ring, at_fire, assets, populated) at a cell "
-        "range [rin, rout] from the front with an amount. That is a "
-        "genuinely new tactic (WHERE and HOW); a mere re-weighting "
-        "of channels is the tuning stage's job and fails the "
-        "novelty gates.")
+        "range [rin, rout] with an amount. The range is a distance "
+        "band in cells measured from the sector's reference cells: "
+        "the burning cells for head, flank, rear, ring and at_fire, "
+        "the threatened asset footprints for assets, the populated "
+        "cells for populated; rin = 0 includes the reference cells "
+        "themselves, so coat on assets [0,2] coats the asset and a "
+        "two-cell collar around it. That is a genuinely new tactic "
+        "(WHERE and HOW); a mere re-weighting of channels is the "
+        "tuning stage's job and fails the novelty gates.")
     L.append(_effect_notes(world))
     L.append(
         "WHEN TO INVENT WHAT (think like an incident commander):\n"
