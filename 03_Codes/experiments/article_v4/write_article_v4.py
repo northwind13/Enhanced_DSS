@@ -153,6 +153,9 @@ def main():
     args = ap.parse_args()
 
     F = json.load(open(os.path.join(args.results, "fill.json"), encoding="utf-8"))
+    xf = os.path.join(args.results, "extra_fill.json")
+    if os.path.exists(xf):
+        F.update(json.load(open(xf, encoding="utf-8")))
     source = args.source or F.get("SRC", "thesis")
     F["PROPOSER_SENTENCE"] = PROPOSER_SENTENCE[source]
     M = parse_manuscript(args.manuscript)
@@ -243,7 +246,13 @@ def main():
 
     # ---- V.E products paragraph + heading fix (second "D." -> "E.")
     k = find("Adaptation runs only on demand")
-    replace_para(k, para_list("V.E (heading \"E. Open Intervention Space in Operation\"; first paragraph replaced)"))
+    ve_key = "V.E (heading \"E. Open Intervention Space in Operation\"; first paragraph replaced)"
+    fig12_caption = next((p for p in M[ve_key] if not isinstance(p, tuple) and p.startswith("Fig. 12.")), None)
+    M[ve_key] = [p for p in M[ve_key] if isinstance(p, tuple) or not p.startswith("Fig. 12.")]
+    replace_para(k, para_list(ve_key))
+    if fig12_caption:
+        hits12 = _retext_caption_boxes(doc.element, 12, "." + fill_placeholders(fig12_caption[len("Fig. 12."):], F))
+        assert hits12 >= 1, "Fig. 12 caption not found"
     k = find("D. Open Intervention Space in Operation")
     replace_para(k, [_new_para("E. Open Intervention Space in Operation", style="Heading2")])
     k = find("F. Timeliness and Scalability")
@@ -302,6 +311,9 @@ def main():
     doc.save(tracked)
     # swap the Fig. 11 media (image part of rId behind the text box)
     _swap_fig11(tracked, os.path.join(args.results, "figures", "fig11_ladder_burned.png"))
+    f12 = os.path.join(args.results, "figures", "fig12_gates.png")
+    if fig12_caption and os.path.exists(f12):
+        _swap_fig(tracked, 12, f12, fit=True)
     clean = Document(tracked)
     accept_all(clean)
     clean_p = os.path.join(args.out_dir, args.name + "_clean.docx")
@@ -311,9 +323,15 @@ def main():
     print("unfilled placeholders:", missing)
 
 
-def _swap_fig11(path, png):
-    """Replace the image part behind the Fig. 11 text box with png."""
+def _swap_fig(path, seq_no, png, fit=True):
+    """Replace the image part behind the Fig. <seq_no> text box with png.
+    With fit, the picture extent keeps the frame width and takes the height
+    of the new image (the frame must not grow, so the image is expected to be
+    at least as wide, relative to its height, as the frame)."""
     from lxml import etree
+    from PIL import Image
+    A = "{http://schemas.openxmlformats.org/drawingml/2006/main}"
+    WP = "{http://schemas.openxmlformats.org/drawingml/2006/wordprocessingDrawing}"
     tmp = path + ".tmp"
     with zipfile.ZipFile(path) as zin:
         docxml = zin.read("word/document.xml")
@@ -323,12 +341,17 @@ def _swap_fig11(path, png):
         for tb in root.iter(qn("w:txbxContent")):
             instr = "".join(t.text or "" for t in tb.iter(qn("w:instrText")))
             nums = [t.text for t in tb.iter(qn("w:t")) if (t.text or "").strip().isdigit()]
-            if "SEQ Fig" in instr and "11" in nums:
-                blip = next(tb.iter("{http://schemas.openxmlformats.org/drawingml/2006/main}blip"), None)
+            if "SEQ Fig" in instr and str(seq_no) in nums:
+                blip = next(tb.iter(A + "blip"), None)
                 if blip is not None:
                     rid = blip.get("{http://schemas.openxmlformats.org/officeDocument/2006/relationships}embed")
+                    if fit:
+                        w, h = Image.open(png).size
+                        for ext in list(tb.iter(WP + "extent")) + list(tb.iter(A + "ext")):
+                            cx = int(ext.get("cx"))
+                            ext.set("cy", str(int(cx * h / w)))
                     break
-        assert rid, "Fig. 11 image relationship not found"
+        assert rid, f"Fig. {seq_no} image relationship not found"
         target = re.findall(r'Id="%s"[^>]*Target="([^"]+)"' % rid, rels)[0]
         part = "word/" + target
         with zipfile.ZipFile(tmp, "w", zipfile.ZIP_DEFLATED) as zout:
@@ -336,8 +359,14 @@ def _swap_fig11(path, png):
                 data = zin.read(item.filename)
                 if item.filename == part:
                     data = open(png, "rb").read()
+                elif item.filename == "word/document.xml" and fit:
+                    data = etree.tostring(root, xml_declaration=True, encoding="UTF-8", standalone=True)
                 zout.writestr(item, data)
     shutil.move(tmp, path)
+
+
+def _swap_fig11(path, png):
+    _swap_fig(path, 11, png, fit=False)
 
 
 if __name__ == "__main__":
