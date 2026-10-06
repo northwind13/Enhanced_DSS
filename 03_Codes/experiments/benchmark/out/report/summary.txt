@@ -1,0 +1,12 @@
+benchmark: 600 runs, 30 worlds per scenario, scenarios S1,S2,S3,S4,S5, DisasterAware arm = LLM
+
+No DSS         burned  250.7 ha  extinguished   0 %  population   5793  Jphys 0.598  Jtot 0.528
+F5             burned   80.9 ha  extinguished  13 %  population    494  Jphys 0.155  Jtot 0.187
+F5+EvFIS       burned   75.4 ha  extinguished  52 %  population    391  Jphys 0.139  Jtot 0.164
+DisasterAware  burned   45.6 ha  extinguished  75 %  population    117  Jphys 0.081  Jtot 0.110
+
+DisasterAware vs No DSS      burned  205.1 ± 9.1 ha, better in 150/150, extinguished +75 points
+F5 vs No DSS                 burned  169.7 ± 10.3 ha, better in 150/150, extinguished +13 points
+F5+EvFIS vs F5               burned    5.5 ± 7.0 ha, better in 73/150, extinguished +39 points
+DisasterAware vs F5          burned   35.4 ± 8.7 ha, better in 131/150, extinguished +63 points
+DisasterAware vs F5+EvFIS    burned   29.9 ± 7.2 ha, better in 128/150, extinguished +23 points

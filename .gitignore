@@ -223,6 +223,11 @@ __marimo__/
 # Claude CLI login state (credentials)
 03_Codes/.claude-config/
 # in-progress campaign outputs
-03_Codes/experiments/benchmark/out/
+03_Codes/experiments/benchmark/out/*
+!03_Codes/experiments/benchmark/out/runs.csv
+!03_Codes/experiments/benchmark/out/curves.csv
+!03_Codes/experiments/benchmark/out/proposals.jsonl
+!03_Codes/experiments/benchmark/out/admitted.jsonl
+!03_Codes/experiments/benchmark/out/report/
 03_Codes/experiments/open_space/out_llm/
 04_ConferencePaper/_tmp_preview/
