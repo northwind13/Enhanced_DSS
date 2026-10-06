@@ -1,0 +1,5 @@
+Configuration,rules at end,stage 1 adm/att,stage 2 adm/att,stage 3 adm/att,stage 3 admission (%),model calls / run,macros / run,actuators / run,sited orders / run,wall s / run
+No DSS,0.0,0/0,0/0,0/0,-,0.0,0.0,0.0,0.0,2
+F5,5.0,0/0,0/0,0/0,-,0.0,0.0,0.0,0.0,15
+F5+EvFIS,10.3,828/4427,801/1379,0/0,-,0.0,0.0,0.0,0.0,22
+DisasterAware,10.4,451/2093,469/1411,338/788,43,10.3,1.6,1.2,38.8,124
