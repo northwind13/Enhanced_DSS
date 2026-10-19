@@ -1,0 +1,52 @@
+1	M. Turoff, M. Chumer, B. Van de Walle and X. Yao, "The design of a dynamic emergency response management information system (DERMIS)," Journal of Information Technology Theory and Application (JITTA), vol. 5, pp. 1-36, 2004.
+2	D. M. Bowman, C. A. Kolden, J. T. Abatzoglou, F. H. Johnston, G. R. van der Werf and M. Flannigan, "Vegetation fires in the Anthropocene," Nature Reviews Earth & Environment, vol. 1, pp. 500-515, 2020.
+3	M. P. Thompson and D. E. Calkin, "Uncertainty and risk in wildland fire management," Journal of Environmental Management, vol. 92, pp. 1895-1909, 2011.
+4	Power, "Decision support systems: Concepts and resources for managers," Quorum Books, 2002.
+5	F. Vásquez, "Decision support system development of wildland fire," Forests, vol. 12, pp. 943, 2021.
+6	R. C. Rothermel, "A mathematical model for predicting fire spread in wildland fuels," Intermountain Forest & Range Experiment Station, Forest Service, US Department of Agriculture., 1972.
+7	M. A. Finney, "An overview of FlamMap fire modeling capabilities," Fuels Management --- How to Measure Success: Conference Proceedings, pp. 213-220, 2006.
+8	C. Pais, J. Carrasco, P. E. Moudio and Z. M. Shen, "Downstream protection value: Detecting critical zones for effective fuel-treatment under wildfire risk," vol. 90, pp. 101703, 2021.
+9	T. Orphanoudakis, C. Betzelos and H. C. Leligou, "MORA: A multicriteria optimal resource allocation and decision support toolkit for wildfire management," vol. 18, pp. 677, 2025.
+10	E. K. Noonan-Wright et al., "Developing the US wildland fire decision support system," vol. 2011, pp. 168473, 2011.
+11	S. D. Fillmore and T. B. Paveglio, "Use of the Wildland Fire Decision Support System (WFDSS) for full suppression and managed fires within the Southwestern Region of the US Forest Service," vol. 32, pp. 622-635, 2023.
+12	D. E. Calkin, C. D. O'Connor, M. P. Thompson and R. Stratton, "Strategic wildfire response decision support and the risk management assistance program," vol. 12, pp. 1407, 2021.
+13	C. Rapp, E. Rabung, R. Wilson and E. Toman, "Wildfire decision support tools: An exploratory study of use in the United States," vol. 29, pp. 581-594, 2020.
+14	C. Rapp, K. L. Courtney, S. T. Franz, M. M. Colavito, T. Aldworth and A. S. Cheng, "Wildfire decision support tools: barriers, facilitators, and future directions for effectiveness," Fire Ecology, 2026.
+15	J. Malczewski, "GIS and multicriteria decision analysis," John wiley & sons, 1999.
+16	M. Morgan and M. Henrion, "Uncertainty: A Guide to Dealing with Uncertainty in Quantitative Risk and Policy Analysis.," Cambridge university press, 1990.
+17	G. Shafer, "A Mathematical Theory of Evidence," Princeton University Press, 1976.
+18	M. T. Ribeiro, S. Singh and C. Guestrin, "Why Should I Trust You?," ACM SIGKDD Conference, pp. 1135--1144, 2016.
+19	J. H. Scott and R. E. Burgan, "Standard fire behavior fuel models: A comprehensive set for use with Rothermel's surface fire spread model," 2005.
+20	A. L. Sullivan, "Wildland surface fire spread modelling 1: Physical and quasi-physical models," International Journal of Wildland Fire, vol. 18, pp. 349-368, 2009a.
+21	C. Pais, J. Carrasco, D. L. Martell, A. Weintraub and D. L. Woodruff, "Cell2Fire: A cell-based forest fire growth model to support strategic landscape management planning," Frontiers in Forests and Global Change, vol. 4, 2021.
+22	T. Comes, M. Hiete, N. Wijngaards and F. Schultmann, "Decision maps: A framework for multi-criteria decision support under severe uncertainty," Decision Support Systems, vol. 52, pp. 108-118, 2011.
+23	D. Arnott and G. Pervan, "A critical analysis of decision support systems research," Journal of Information Technology, vol. 20, pp. 67-87, 2005.
+24	D. L. Martell, "Forest fire management," Handbook of operations research in natural resources, pp. 489-509, 2007.
+25	R. L. Keeney and H. Raiffa, "Decisions with multiple objectives: preferences and value trade-offs," Wiley, 1976.
+26	S. French, J. Maule and N. Papamichail, "Decision Behaviour, Analysis and Support," Cambridge University Press, 2019.
+27	A. Arbel and R. M. Tong, "On the generation of alternatives in decision analysis problems," Journal of the Operational Research Society, vol. 33, no. 4, pp. 377-387, 1982.
+28	A. Colorni and A. Tsoukias, "What is a decision problem? Designing alternatives," in Preference Disaggregation in Multiple Criteria Decision Analysis, N. Matsatsinis and E. Grigoroudis, Eds. Cham, Switzerland: Springer, 2018, pp. 1-15.
+29	A. Colorni and A. Tsoukias, "Designing alternatives in decision problems," Journal of Multi-Criteria Decision Analysis, vol. 27, no. 3-4, pp. 150-158, 2020.
+30	G. J. Hofstede, "Open problems, formal problems," Journal of Decision Systems, vol. 4, no. 2, pp. 155-165, 1995.
+31	F. Del Missier, M. Visentini, and T. Mantyla, "Option generation in decision making: Ideation beyond memory retrieval," Frontiers in Psychology, vol. 5, art. 1584, 2015.
+32	G. A. Klein, "Sources of Power: How People Make Decisions," MIT Press, 2017.
+33	B. Fazlollahi and R. Vahidov, "A method for generation of alternatives by decision support systems," Journal of Management Information Systems, vol. 18, no. 2, pp. 229-250, 2001.
+34	E. D. Brill, J. M. Flach, L. D. Hopkins, and S. Ranjithan, "MGA: A decision support system for complex, incompletely defined problems," IEEE Transactions on Systems, Man, and Cybernetics, vol. 20, no. 4, pp. 745-757, 1990.
+35	M. S. Levin, "Towards decision support technology platform for modular systems," arXiv:1408.5492, 2014.
+36	P. Struss, "Model-based decision support systems: Conceptualization and general architecture," in Proc. 32nd Int. Workshop on Qualitative Reasoning (QR), 2019.
+37	Y. Ding, X. Zhang, S. Amiri, N. Cao, H. Yang, A. Kaminski, C. Esselink, and S. Zhang, "Integrating action knowledge and LLMs for task planning and situation handling in open worlds," Autonomous Robots, vol. 47, pp. 981-997, 2023.
+38	E. Gizzi, H. Amel, W. W. Lin, K. Rhea, and J. Sinapov, "Toward creative problem solving agents: Action discovery through behavior babbling," in Proc. IEEE Int. Conf. Development and Learning (ICDL), 2021, pp. 1-7.
+39	T. Takagi and M. Sugeno, "Fuzzy identification of systems and its applications to modeling and control," IEEE Transactions on Systems, Man, and Cybernetics, vol. 15, pp. 116-132, 1985.
+40	P. P. Angelov and D. P. Filev, "An approach to online identification of Takagi-Sugeno fuzzy models," IEEE Transactions on Systems, Man, and Cybernetics, Part B, vol. 34, pp. 484-498, 2004.
+41	R. S. Sutton and A. G. Barto, "Reinforcement Learning: An Introduction," Cambridge, MA, USA: MIT Press, 2018.
+42	Y. Xie, B. Jiang, T. Mallick, J. D. Bergerson, J. K. Hutchison and D. R. Verner, "WildfireGPT: Tailored large language model for wildfire analysis," arXiv:2402.07877, 2024.
+43	H. A. Simon, "Rational choice and the structure of the environment," Psychological Review, vol. 63, pp. 129-138, 1956.
+44	P. Dubey and P. Dubey, "Bridging spatiotemporal wildfire prediction and decision modeling using transformer networks and fuzzy inference systems," vol. 15, pp. 103498, 2025.
+45	R. Chandra, S. S. Kumar, R. Patra, and S. Agarwal, "Decision support system for forest fire management using ontology with big data and LLMs," Cluster Computing, vol. 28, art. 548, 2025.
+46	Y. Cheng, Y. Lin, Y. Wu, L. Huang, T. Chen, W. Weng, and X. Zhang, "Retrieval over response: Large language model-augmented decision strategies for hierarchical wildfire risk evaluation," Fire, vol. 9, no. 4, art. 143, 2026.
+47	N. Gerolimos, V. Alevizos, S. Edralin, C. Xu, G. Priniotakis, G. A. Papakostas, and Z. Yue, "Autonomous decision-making enhancing natural disaster management through open world machine learning: A systematic review," Human-Centric Intelligent Systems, vol. 5, pp. 269-284, 2025.
+48	A. Sandeep, S. Jayarathna, S. Sandaruwan, V. Samarappuli, D. Meedeniya, and C. Perera, "Context-aware multi-agent architecture for wildfire insights," Sensors, vol. 26, art. 1070, 2026.
+49	Y. Tan, "Trustworthy intelligence fusion for search and rescue: Designing grounded and secure multi-agent AI for mission decision support," M.S. thesis, California Polytechnic State Univ., San Luis Obispo, CA, USA, 2025.
+50	J. Cui, C. Zhai, Y. Wang, and Y. Li, "Large language models and AI agents in disaster-resilient infrastructure: Concepts, applications, pathways, and challenges," Reliability Engineering and System Safety, vol. 267, art. 111683, 2026.
+51	E. Park, J. Park, and T. Kim, "WildfireKR: An LLM-agent decision support framework for autonomous wildfire spread simulation in South Korea," IEEE Access, vol. 14, pp. 59185-59208, 2026.
+52	L. A. Zadeh, "Fuzzy sets," Information and Control, vol. 8, pp. 338-353, 1965.

@@ -1283,6 +1283,12 @@ class DecisionEngine:
             else:
                 stage = self.controller.select(deficit, stages=_menu,
                                                 gap=_gap)
+                # how often the selector had a real choice (menu > 1)
+                self.run_stats["menu_total"] = \
+                    self.run_stats.get("menu_total", 0) + 1
+                if len(_menu) > 1:
+                    self.run_stats["menu_multi"] = \
+                        self.run_stats.get("menu_multi", 0) + 1
                 # PRODUCTION runs on the stage's own base, independent of what
                 # the inference is allowed to consume. With stage 1-2
                 # consumption off this is the evFIS chain, so the learner
@@ -1356,7 +1362,8 @@ class DecisionEngine:
                     _rw = min(_rw, -0.004)
                 if outcome.accepted and (outcome.info or {}).get("package"):
                     _rw -= 0.02      # G5: vocabulary growth costs margin
-                self.controller.update(deficit, stage, reward=_rw, gap=_gap)
+                self.controller.update(deficit, stage, reward=_rw, gap=_gap,
+                                       accepted=bool(outcome.accepted))
                 if getattr(self, "state_path", None):
                     # written every update, not at shutdown: a dashboard is
                     # closed by closing the window, and an exit hook that

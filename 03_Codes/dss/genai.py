@@ -95,6 +95,8 @@ def _propose_via_cli(ctx: "ProposalContext", user: str,
     import re
     import subprocess
     if not _cli_available():
+        if os.environ.get("DSS_REQUIRE_GENAI"):
+            raise RuntimeError("DSS_REQUIRE_GENAI is set but the claude CLI is not on PATH")
         return None
     prompt = (
         _SYSTEM + "\n\n" + user + "\n\n"
@@ -112,9 +114,14 @@ def _propose_via_cli(ctx: "ProposalContext", user: str,
                              encoding="utf-8",
                              errors="replace",
                              timeout=timeout)
-    except Exception:
+    except Exception as exc:
+        if os.environ.get("DSS_REQUIRE_GENAI"):
+            raise RuntimeError(f"claude CLI call failed: {exc!r}")
         return None
     if res.returncode != 0 or not res.stdout.strip():
+        if os.environ.get("DSS_REQUIRE_GENAI"):
+            raise RuntimeError("claude CLI returned no answer (rc=%s): %s"
+                               % (res.returncode, (res.stderr or "")[:300]))
         return None
     # `--output-format json` wraps the reply: {"type":"result",
     # "result":"...text...", ...}. Fall back to the raw text otherwise.

@@ -38,6 +38,7 @@ import numpy as np
 
 from .fuzzy import TERMS, REGISTRY, default_partition
 from .concepts import DECISION_CONCEPTS
+from . import rules as _rules_mod
 from .rules import (Rule, SEED_RULES, INTERVENTIONS,
                     DISCOVERABLE_INTERVENTIONS, evaluate_rules)
 # EFFECTS/SECTORS are needed at IMPORT time, because the stage-3 schema
@@ -634,6 +635,37 @@ def genai_cmd(prompt: str, session: str | None = None,
     return cmd
 
 
+# STRICT MODE for batch campaigns (DSS_REQUIRE_GENAI=1): the model is a
+# required component of the run. A launch failure or a non-zero exit of
+# the claude CLI (not installed, not logged in, quota) raises at once, and
+# three consecutive timeouts raise, so a campaign can never "complete"
+# silently without the model. Without the variable the behaviour is the
+# old one: the stage is skipped and the log records why.
+_STRICT_TIMEOUTS = [0]
+_STRICT_FAILS = [0]
+
+
+def _strict_genai_failure(msg: str, timeout: bool = False,
+                          resume: bool = False) -> None:
+    """Strict-mode bookkeeping. A failed RESUME of a CLI session is not
+    counted: the caller reopens a fresh session at once (see
+    _genai_propose), and it is that fresh call which must succeed. Two
+    consecutive fresh-call failures, or three consecutive timeouts, raise."""
+    if not os.environ.get("DSS_REQUIRE_GENAI") or resume:
+        return
+    if timeout:
+        _STRICT_TIMEOUTS[0] += 1
+        if _STRICT_TIMEOUTS[0] < 3:
+            return
+        msg = f"{msg} (3 consecutive timeouts)"
+    else:
+        _STRICT_FAILS[0] += 1
+        if _STRICT_FAILS[0] < 2:
+            return
+        msg = f"{msg} (2 consecutive failures)"
+    raise RuntimeError("DSS_REQUIRE_GENAI: language model unavailable, " + msg)
+
+
 def _genai_propose_cli(prompt: str, timeout: float | None = None,
                        session: str | None = None,
                        resume: bool = False) -> Optional[dict]:
@@ -665,17 +697,22 @@ def _genai_propose_cli(prompt: str, timeout: float | None = None,
     except subprocess.TimeoutExpired:
         LAST_GENAI_MS = (_t.time() - _t0) * 1000.0
         LAST_GENAI_ERR = f"timeout after {timeout:.0f} s"
+        _strict_genai_failure(LAST_GENAI_ERR, timeout=True, resume=resume)
         return None
     except Exception as exc:
         LAST_GENAI_MS = (_t.time() - _t0) * 1000.0
         LAST_GENAI_ERR = f"launch failed ({type(exc).__name__})"
+        _strict_genai_failure(LAST_GENAI_ERR, resume=resume)
         return None
     LAST_GENAI_MS = (_t.time() - _t0) * 1000.0
     if res.returncode != 0 or not res.stdout.strip():
         LAST_GENAI_ERR = (f"exit {res.returncode}: "
                           + (res.stderr or "no output").strip()[:160])
+        _strict_genai_failure(LAST_GENAI_ERR, resume=resume)
         return None
     LAST_GENAI_ERR = None
+    _STRICT_TIMEOUTS[0] = 0
+    _STRICT_FAILS[0] = 0
     inner = res.stdout
     try:                                   # unwrap {"result": "...text..."}
         wrap = json.loads(res.stdout)
@@ -1338,7 +1375,11 @@ def _pool_saturation(prop: dict, engine=None) -> Optional[str]:
             "ordering more physical work (" + ", ".join(sorted(spend))
             + ") cannot be funded and would only thin the current "
             "engagement. Order what still helps: evacuation or "
-            "public_warning, or water_drafting to RAISE capacity)")
+            "public_warning, or an order that RAISES capacity"
+            + (", such as water_drafting"
+               if "water_drafting" in INTERVENTIONS
+               and "water_drafting" not in _rules_mod.withheld()
+               else " (a draft clause from a water body)") + ")")
 
 
 def _fires_now(prop: dict, eff) -> Optional[str]:
@@ -2152,11 +2193,19 @@ class StageController:
     pair, acts epsilon-greedy, and moves the chosen value a small step
     toward the realized reward (the physical forecast improvement)."""
 
-    def __init__(self, eps: float = 0.1, lr: float = 0.05):
+    def __init__(self, eps: float = 0.1, lr: float = 0.05,
+                 policy: str | None = None):
         self.eps = float(eps)
         self.lr = float(lr)
         self.q: Dict[Tuple[str, int], float] = {}
         self.rng = np.random.default_rng(7)
+        # "bandit" (default) or "fixed": a deterministic escalation used
+        # as the ablation reference of the bandit. Fixed order tries the
+        # cheapest allowed stage first and moves one stage up after each
+        # rejection; an acceptance returns it to the cheapest stage.
+        self.policy = (policy or os.environ.get("DSS_STAGE_POLICY")
+                       or "bandit").lower()
+        self._esc = 0
 
     @staticmethod
     def bucket(j_deficit: float, gap: bool = False) -> str:
@@ -2178,6 +2227,8 @@ class StageController:
         for the eps*1/3 lottery, i.e. practically never runs."""
         b = self.bucket(j_deficit, gap)
         stages = tuple(stages) or (1,)
+        if self.policy == "fixed":
+            return int(sorted(stages)[min(self._esc, len(stages) - 1)])
         untried = [s for s in stages if (b, s) not in self.q]
         if untried:
             return int(self.rng.choice(untried))
@@ -2187,7 +2238,7 @@ class StageController:
         return max(vals, key=vals.get)
 
     def update(self, j_deficit: float, stage: int, reward: float,
-               gap: bool = False) -> None:
+               gap: bool = False, accepted: bool | None = None) -> None:
         # reward = realized PHYSICAL forecast improvement (the trial
         # basis is burn+asset+pop at >=45 min), consistent with the
         # fair outcome metric
@@ -2195,6 +2246,11 @@ class StageController:
         k = (b, stage)
         self.q[k] = self.q.get(k, 0.0) + self.lr * (float(reward)
                                                     - self.q.get(k, 0.0))
+        # fixed order: a rejected trial (reward floored at -0.004 by the
+        # caller) escalates, an accepted one resets
+        rejected = (not accepted) if accepted is not None \
+            else float(reward) <= -0.004 + 1e-12
+        self._esc = self._esc + 1 if rejected else 0
 
 
 def reset_partitions() -> None:

@@ -154,6 +154,10 @@ ARMS = {
                                genai_on=True), "llm"),
     "Tmpl":   ("minimal", dict(adapt_on=True, evfis_on=True,
                                genai_on=True), "template"),
+    # generative stage alone: no evFIS, every adaptation (coverage gaps
+    # included) must come from the language-model proposer
+    "LLMonly": ("minimal", dict(adapt_on=True, evfis_on=False,
+                                genai_on=True), "llm"),
 }
 
 EXPERIMENTS = {
@@ -169,6 +173,25 @@ EXPERIMENTS = {
     "E4": dict(scenarios=("S6", "S7", "S8"),
                arms=("Evo",), withhold=True, prior=True,
                margins=(1e-4, 1e-3, 1e-2)),
+    # E5: the article ladder (S1-S5) with the LLM proposer and the
+    # actuator library WITHHELD. The generative stage sees only the six
+    # doctrine families and the seven clause effects, so every aerial or
+    # drafting tactic it fields is one it composed from effects itself.
+    # Reference arms T0 / F5 / F5Ev are unchanged from E2 (they never
+    # see the library), so E2 rows of those arms pair with E5 LLM rows.
+    "E5": dict(scenarios=ALL_SCENARIOS,
+               arms=("LLM",),
+               withhold=True, prior=True),
+    # E6: bandit ablation. The closed layer alone with the stage selector
+    # replaced by a fixed escalation order (DSS_STAGE_POLICY=fixed); pairs
+    # with the E2 F5Ev rows, which use the bandit.
+    "E6": dict(scenarios=ALL_SCENARIOS,
+               arms=("F5Ev-fixed",),
+               withhold=True, prior=True),
+    # LOO: leave-one-out replay of the E5 worlds (see experiments/benchmark/loo.py)
+    "LOO": dict(scenarios=ALL_SCENARIOS,
+                arms=("F5Ev",),
+                withhold=True, prior=True),
 }
 
 
@@ -209,10 +232,79 @@ def rediscovered(macros: dict) -> dict:
     return out
 
 
+# ------------------------------------------------- scripted re-installs
+def _parse_rule_text(text: str):
+    """'G1: IF a b is H AND c is >=M THEN x y 1.0, z 0.8 (adaptation-born ...'
+    -> antecedents [(a_b, H), (c, >=M)], consequents [(x_y, 1.0), (z, 0.8)]."""
+    import re as _re
+    body = _re.sub(r"^G\d+:\s*", "", text.strip())
+    body = body.split(" (adaptation-born")[0]
+    m = _re.match(r"IF (.*?) THEN (.*)$", body)
+    if not m:
+        raise ValueError(f"unparsable rule text: {text[:80]}")
+    ants = []
+    for part in m.group(1).split(" AND "):
+        v, t = part.rsplit(" is ", 1)
+        ants.append((v.strip().replace(" ", "_"), t.strip()))
+    cons = []
+    for part in m.group(2).split(";")[0].split(","):
+        part = part.strip()
+        if not part:
+            continue
+        nm, val = part.rsplit(" ", 1)
+        cons.append((nm.strip().replace(" ", "_"), float(val)))
+    return ants, cons
+
+
+def _install_scripted(eng, rec: dict) -> None:
+    """Re-install one recorded admitted proposal without the gates: the
+    object was admitted in the recorded run, the replay asks what the
+    outcome is with and without it."""
+    from dss.adapt import _install_package, _next_rule_name
+    from dss.rules import Rule
+    ants, cons = _parse_rule_text(rec["rule"])
+    prop = {"antecedents": ants, "consequents": cons}
+    kind = rec.get("kind")
+    if kind in ("actuator", "macro"):
+        name = next((i for i, _x in cons if i not in dss_rules.INTERVENTIONS
+                     and i not in (eng.macros or {})), None)
+        if name is None:
+            name = cons[0][0]
+        if kind == "actuator":
+            prop["new_intervention"] = dict(name=name,
+                                            clauses=list(rec["clauses"]))
+        else:
+            prop["new_intervention"] = dict(
+                name=name, composition=[(a, b) for a, b in rec["composition"]])
+    if kind == "concept" and rec.get("concept"):
+        prop["new_concept"] = dict(rec["concept"])
+    # the engine derives its active set from the store every cycle, so the
+    # object goes in exactly the way an admission does: install, append the
+    # rule, record the package and the rule change, re-sync
+    b_rules = eng._snap_rules(eng.rules); b_parts = eng._snap_parts()
+    b_vocab = (set(eng.hierarchy), set(eng.macros))
+    _install_package(prop, eng)
+    eng.rules.append(Rule(_next_rule_name("G", eng.rules, eng), ants, cons,
+                          note=f"replay: re-installed at minute {rec['t_min']}"))
+    trig = dict(step=-1, minute=float(rec["t_min"]), deficit=0.0, stage=3)
+    nc = {c: eng.hierarchy[c] for c in set(eng.hierarchy) - b_vocab[0]}
+    nm = {m: eng.macros[m] for m in set(eng.macros) - b_vocab[1]}
+    if nc or nm:
+        eng.record_package(concepts=nc, macros=nm, trigger=trig)
+    eng._record_changes(3, b_rules, b_parts, eng.rules, trigger=trig)
+    eng._sync_active_set()
+
+
 # --------------------------------------------------------------- one run
 def run_once(exp: str, scenario: str, arm: str, seed: int,
-             budget: int = 36, margin: float | None = None):
-    base_arm = arm.replace("-noprior", "")
+             budget: int = 36, margin: float | None = None,
+             script: list | None = None):
+    """script: recorded admitted proposals to re-install at their t_min
+    (leave-one-out replay); each record carries rule text, kind, clauses,
+    composition and concept, as proposals.jsonl stores them."""
+    base_arm = arm.replace("-noprior", "").replace("-fixed", "")
+    os.environ["DSS_STAGE_POLICY"] = "fixed" if arm.endswith("-fixed") \
+        else "bandit"
     profile, ekw, pkind = ARMS[base_arm]
     cfg_e = EXPERIMENTS[exp]
     withhold = bool(cfg_e.get("withhold"))
@@ -278,7 +370,12 @@ def run_once(exp: str, scenario: str, arm: str, seed: int,
     seen_macros = set()
     t0 = time.time()
     try:
+        pending = sorted(script or [], key=lambda r: float(r["t_min"]))
         for i in range(max_steps):
+            t_now = (i + 1) * w.config.step_minutes
+            while pending and float(pending[0]["t_min"]) <= t_now \
+                    and eng is not None:
+                _install_scripted(eng, pending.pop(0))
             ov = eng.maybe_decide(sim) if eng is not None else None
             sim.step(resource_override=ov)
             t_min = (i + 1) * w.config.step_minutes
@@ -401,6 +498,10 @@ def run_once(exp: str, scenario: str, arm: str, seed: int,
         t_draft=first_t.get("water_drafting", ""),
         t_coat=first_t.get("retardant_drop", ""),
         t_ignite=first_t.get("tactical_burn", ""),
+        menu_total=int((eng.run_stats or {}).get("menu_total", 0))
+        if eng is not None else 0,
+        menu_multi=int((eng.run_stats or {}).get("menu_multi", 0))
+        if eng is not None else 0,
         proposer=(proposer.name if proposer else ""),
         prop_calls=(proposer.calls if proposer else 0),
         prop_forecasts=(getattr(proposer, "forecasts", 0)
