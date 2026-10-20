@@ -18,6 +18,8 @@ was told about the world.
 
 from __future__ import annotations
 
+import os
+
 import numpy as np
 
 from .rules import (ACTUATOR_LIBRARY, DOCTRINE_INTERVENTIONS,
@@ -190,12 +192,13 @@ def build_mission_brief(world, base_pool=None) -> str:
         "WHEN TO INVENT WHAT (think like an incident commander):\n"
         "  - a plain rule: the situation is expressible in the "
         "current concepts and an existing action answers it.\n"
-        "  - a new CONCEPT: the same kind of situation keeps "
-        "recurring and the five decision concepts cannot name it "
-        "(for example ember pressure on a settlement edge, urban "
-        "interface stress). Concepts change the architecture: they "
-        "enter Layer 3 and later rules can cite them.\n"
-        "  - a composite intervention: two channels must act AS ONE "
+        + ("" if os.environ.get("DSS_NO_CONCEPT", "").strip() == "1" else
+           "  - a new CONCEPT: the same kind of situation keeps "
+           "recurring and the five decision concepts cannot name it "
+           "(for example ember pressure on a settlement edge, urban "
+           "interface stress). Concepts change the architecture: they "
+           "enter Layer 3 and later rules can cite them.\n")
+        + "  - a composite intervention: two channels must act AS ONE "
         "with a fixed ratio (hardening a town: protection + line).\n"
         "  - a clause actuator: the tactic needs its own geometry "
         "(a flank firing operation, a deep pre-wetted band). Use "

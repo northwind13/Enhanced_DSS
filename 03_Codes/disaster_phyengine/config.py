@@ -315,6 +315,16 @@ class CostParams:
     population_at_risk_fraction: float = 0.02  # rho_risk; casualty share of exposed
     horizon_steps: float = 200.0               # scenario horizon H (decision steps)
     capacity_reference: float = 100.0          # total available capacity pool
+    # PRICES OF THE ORDERS THAT DO NOT FIELD CAPACITY, in capacity-steps,
+    # added to the committed-response accumulator so every order is paid
+    # for in the same unit. A fully coated cell costs a full unit of
+    # capacity held on that cell for one decision cycle (an aerial drop
+    # occupies an aircraft for about a cycle); a cell lit by a tactical
+    # burn costs the same (a crew holds and watches it); a warning costs a
+    # tenth of a unit per warned cell and step (a broadcast, not a crew).
+    coat_capacity_steps: float = 6.0
+    ignite_capacity_steps: float = 6.0
+    warn_capacity_per_step: float = 0.1
     delay_reference: float = 60.0              # reference travel time for the delay term
     acceptance_fraction: float = 0.35          # acceptance threshold as fraction of the do-nothing cost
     population_ceiling: float = 1.0            # hard ceiling on the normalized population term (acceptance gate)

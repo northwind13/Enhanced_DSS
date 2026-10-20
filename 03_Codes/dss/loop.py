@@ -23,6 +23,7 @@ counterfactual replay of the analysis view.
 
 from __future__ import annotations
 
+import os
 from typing import Dict
 
 import numpy as np
@@ -365,6 +366,11 @@ class DecisionEngine:
         if self.k_max is not None:
             _att = _att[:max(1, int(self.k_max))]
         att_set = set(_att)
+        # COORDINATION ABLATION (DSS_NO_COORD=1): every region is attended,
+        # so no region is derated, no tightened gate is sent back and the
+        # shared pool is drawn on without a ranking; the agents act alone.
+        if os.environ.get("DSS_NO_COORD", "") == "1":
+            att_set = set(prios)
         self.last_k = len(att_set)
         self.last_n_fire = sum(1 for n in prios if prios[n] > 1e-6)
         for name, c in ctx.items():

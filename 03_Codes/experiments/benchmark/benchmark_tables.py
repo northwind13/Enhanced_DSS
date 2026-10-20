@@ -58,16 +58,21 @@ def main():
     ap.add_argument("--out", required=True, help="campaign output dir (runs.csv, curves.csv)")
     ap.add_argument("--da-arm", default="LLM")
     ap.add_argument("--scenarios", default="S1,S2,S3,S4,S5")
+    ap.add_argument("--arms", default="T0,F5,F5Ev,DA", help="columns, e.g. T0,F5,DA to leave evFIS out")
+    ap.add_argument("--report", default="report", help="output subfolder under --out")
     args = ap.parse_args()
     R.SCEN[:] = [s for s in args.scenarios.split(",") if s]
+    R.ARMS[:] = [a for a in args.arms.split(",") if a]
     runs_p = os.path.join(args.out, "runs.csv")
     curves_p = os.path.join(args.out, "curves.csv")
     runs, curves = R.load_open([runs_p], [curves_p], args.da_arm)
+    runs = [r for r in runs if r["arm"] in R.ARMS]
+    curves = {k: v for k, v in curves.items() if k[1] in R.ARMS} if isinstance(curves, dict) else curves
     runs = R.balanced(runs)
     if not runs:
-        print("no balanced runs yet (every scenario needs all four arms on the same seeds)")
+        print("no balanced runs yet (every scenario needs all requested arms on the same seeds)")
         return
-    rep = os.path.join(args.out, "report")
+    rep = os.path.join(args.out, args.report)
     os.makedirs(rep, exist_ok=True)
     out_rows = R.outcome_table(runs)
     pair_rows = R.paired_table(runs)

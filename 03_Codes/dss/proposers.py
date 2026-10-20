@@ -28,6 +28,7 @@ gates in ``adapt._stage3_generative`` decide, for every proposer alike.
 from __future__ import annotations
 
 import copy
+import os
 import re
 from dataclasses import dataclass, field
 from typing import Callable, Dict, List, Optional, Sequence, Tuple
@@ -245,9 +246,15 @@ class Grammar:
         """One syntactically complete proposal. kind in
         {rule, macro, actuator, concept}; None draws one."""
         if kind is None:
-            kind = str(self.rng.choice(
-                ["rule", "macro", "actuator", "concept"],
-                p=[0.35, 0.15, 0.35, 0.15]))
+            if _a.concepts_off():
+                # same relative odds of the other three kinds
+                kind = str(self.rng.choice(
+                    ["rule", "macro", "actuator"],
+                    p=[0.35 / 0.85, 0.15 / 0.85, 0.35 / 0.85]))
+            else:
+                kind = str(self.rng.choice(
+                    ["rule", "macro", "actuator", "concept"],
+                    p=[0.35, 0.15, 0.35, 0.15]))
         if kind == "rule":
             return {"antecedents": self.antecedents(),
                     "consequents": self.consequents(),
@@ -469,6 +476,140 @@ class RandomProposer(SearchProposer):
             ranked.append((self._score(p, ctx), p))
         ranked.sort(key=lambda t: -t[0])
         return ranked
+
+
+class LLMScreenProposer(SearchProposer):
+    """The language model as the source of candidates for a screened search.
+
+    One model call asks for several DIFFERENT proposals in the schema of the
+    single-shot proposer. Each is passed through the cheap gates and priced
+    on the shadow simulator exactly as a search candidate is; whatever is
+    left of the forecast budget is spent on local mutations of the best
+    model candidates (the same mutation operator the evolutionary search
+    uses). The finalists are priced on the second seed and the best goes to
+    the gate chain, as for every search proposer. With the same forecast
+    budget as RandomProposer, the comparison between the two isolates where
+    the candidates come from: the model, or the grammar.
+
+    The origin of the candidate handed to the gates ('llm' or 'mutation') is
+    recorded in its search record, so the ledger can say how many admitted
+    objects the model wrote itself."""
+    name = "llmscreen"
+
+    def __init__(self, seed: int = 0, forecast_budget: int = 36,
+                 withheld: Sequence[str] = (), k: int = 3, prior=None,
+                 n_model: Optional[int] = None, fill: Optional[bool] = None,
+                 transport=None):
+        super().__init__(seed, forecast_budget, withheld, k, prior)
+        self._transport = transport or _a._genai_propose_cli_entry()
+        self.n_model = int(n_model or os.environ.get("DSS_LLM_SCREEN_N", 6))
+        self.fill = (os.environ.get("DSS_LLM_SCREEN_FILL", "1") != "0"
+                     if fill is None else bool(fill))
+        self._timeout = None
+        self.model_candidates = 0
+        self.model_kept = 0
+        self._last = (0, 0)
+
+    def _ask(self, ctx) -> List[dict]:
+        ask = (str(ctx.situation or "")
+               + f"\nThis time return {self.n_model} DIFFERENT proposals, "
+               "each one complete and following the schema exactly, as ONE "
+               'minified JSON object of the form {"candidates": [P1, P2, ...]}. '
+               "Make them differ in tactic (rule, macro, sited intervention, "
+               "sector, band), not only in numbers. Each must hold for the "
+               "PRESENT reading.")
+        raw = self._transport(ask, timeout=self._timeout, engine=ctx.engine,
+                              mission=ctx.mission)
+        if not isinstance(raw, dict):
+            return []
+        for key in ("candidates", "proposals", "items"):
+            lst = raw.get(key)
+            if isinstance(lst, list):
+                return [c for c in lst if isinstance(c, dict)][: 2 * self.n_model]
+        if raw.get("antecedents") or raw.get("consequents"):
+            return [raw]
+        return []
+
+    def propose(self, ctx, situation, timeout, engine, mission):
+        self._timeout = timeout
+        best = super().propose(ctx, situation, timeout, engine, mission)
+        if isinstance(best, dict):
+            rec = best.setdefault("_search", {})
+            rec["model_candidates"], rec["model_kept"] = self._last
+            if not best.get("_skip"):
+                rec["origin"] = best.get("_origin", "llm")
+        return best
+
+    def search(self, ctx) -> List[Tuple[float, dict]]:
+        spent0 = self.forecasts
+        ranked: List[Tuple[float, dict]] = []
+        cands = self._ask(ctx)
+        kept = 0
+        pool: List[Tuple[float, dict]] = []
+        for c in cands:
+            p = copy.deepcopy(c)
+            p["_origin"] = "llm"
+            if not self._passes(p, ctx):
+                self.last_filtered += 1
+                continue
+            kept += 1
+            self.candidates_tried += 1
+            g = self._score(p, ctx)
+            ranked.append((g, p))
+            pool.append((g, p))
+        self.model_candidates += len(cands)
+        self.model_kept += kept
+        self._last = (len(cands), kept)
+        if self.fill and pool:
+            gram = Grammar(ctx, self.rng, self.withheld)
+            tries = 0
+            while (self.forecasts - spent0 < self.forecast_budget
+                   and tries < 20 * max(1, self.forecast_budget)):
+                tries += 1
+                pool.sort(key=lambda t: -t[0])
+                parent = pool[int(self.rng.integers(min(3, len(pool))))][1]
+                try:
+                    q = gram.mutate(parent)
+                except Exception:
+                    continue
+                q["_origin"] = "mutation"
+                if not self._passes(q, ctx):
+                    self.last_filtered += 1
+                    continue
+                self.candidates_tried += 1
+                g = self._score(q, ctx)
+                ranked.append((g, q))
+                pool.append((g, q))
+        ranked.sort(key=lambda t: -t[0])
+        return ranked
+
+
+class RandomBlindProposer(Proposer):
+    """The random counterpart of the single-shot model proposer: one uniform
+    sample of the grammar that clears the cheap gates, handed to the gate
+    chain without any shadow forecast. Pairs with the LLM proposer at a
+    proposer forecast budget of zero."""
+    name = "randomblind"
+
+    def __init__(self, seed: int = 0, withheld: Sequence[str] = ()):
+        super().__init__()
+        self.rng = np.random.default_rng(seed)
+        self.withheld = tuple(withheld)
+
+    def propose(self, ctx, situation, timeout, engine, mission):
+        if ctx is None:
+            return None
+        g = Grammar(ctx, self.rng, self.withheld)
+        for _ in range(400):
+            p = g.sample()
+            self.candidates_tried += 1
+            try:
+                ok = cheap_gates(p, ctx) is None
+            except Exception:
+                ok = False
+            if ok:
+                return p
+        return None
 
 
 class EvoProposer(SearchProposer):

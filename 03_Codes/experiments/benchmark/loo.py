@@ -1,5 +1,5 @@
 # -*- coding: utf-8 -*-
-"""Leave-one-out replay of the admitted objects of a VODA campaign.
+r"""Leave-one-out replay of the admitted objects of a VODA campaign.
 
 For every world of the source campaign (default experiments/benchmark/out_nolib,
 experiment E5) that admitted at least one object, the world is replayed with the
@@ -86,7 +86,10 @@ def _job(args):
                     burned_ha=row["burned_ha"], success=row["success"],
                     pop_affected=row["pop_affected"], j_phys=row["j_phys"],
                     j_total=row["j_total"], j_resp=row["j_resp"],
-                    rules_final=row["rules_final"], wall_s=row["wall_s"]), None
+                    rules_final=row["rules_final"], wall_s=row["wall_s"],
+                    retard_units=row.get("retard_units", ""),
+                    coated_ha=row.get("coated_ha", ""),
+                    ignited_ha=row.get("ignited_ha", "")), None
     except Exception as exc:
         import traceback
         return None, f"LOO/{sc}/{seed}/{removed}: {type(exc).__name__}: {exc}\n" + traceback.format_exc()[-800:]
@@ -95,6 +98,8 @@ def _job(args):
 def main():
     ap = argparse.ArgumentParser()
     ap.add_argument("--src", default=SRC)
+    ap.add_argument("--exp", default="E5")
+    ap.add_argument("--arm", default="LLM")
     ap.add_argument("--out", default=OUT)
     ap.add_argument("--scenarios", default="")
     ap.add_argument("--seeds", default="")
@@ -103,7 +108,7 @@ def main():
                     help="only the 'none' and 'all' replays")
     args = ap.parse_args()
     os.makedirs(args.out, exist_ok=True)
-    recs = load_admitted(args.src)
+    recs = load_admitted(args.src, exp=args.exp, arm=args.arm)
     scs = set(s for s in args.scenarios.split(",") if s)
     seeds = set(int(s) for s in args.seeds.split(",") if s)
     path = os.path.join(args.out, "loo.csv")
@@ -128,7 +133,8 @@ def main():
     import multiprocessing as mp
     t0 = time.time(); n = 0
     fields = ["scenario", "seed", "removed", "removed_kind", "removed_name", "n_installed",
-              "burned_ha", "success", "pop_affected", "j_phys", "j_total", "j_resp", "rules_final", "wall_s"]
+              "burned_ha", "success", "pop_affected", "j_phys", "j_total", "j_resp", "rules_final", "wall_s",
+              "retard_units", "coated_ha", "ignited_ha"]
 
     def sink(res):
         nonlocal n

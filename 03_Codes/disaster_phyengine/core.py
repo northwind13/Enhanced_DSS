@@ -84,6 +84,14 @@ class Simulator:
         self.exposure_person_steps: float = 0.0
         self.response_capacity_steps: float = 0.0
         self.population_evacuated: float = 0.0
+        # ACCOUNTING ONLY (no effect on the physics): what the uncosted
+        # effects consumed, so a report can price them. Retardant units
+        # are the coating level newly laid summed over cells (one unit is
+        # one cell coated from bare to full); ignition counts the cells lit
+        # by order; coated_cells marks every cell that ever got a coating.
+        self.retardant_applied: float = 0.0
+        self.ignition_applied: float = 0.0
+        self.coated_cells = np.zeros(world.shape, dtype=bool)
         # RETARDANT COATING: long-term chemical/soil cover laid by
         # aerial drops; unlike wetting it does not rinse out with the
         # moisture model, it decays on its own slow clock
@@ -137,6 +145,9 @@ class Simulator:
             "nself": float(self.population_self_evacuated),
             "evps": float(self.evacuated_person_steps),
             "retard": self.retard.astype(np.float32),
+            "retapp": float(self.retardant_applied),
+            "ignapp": float(self.ignition_applied),
+            "coated": self.coated_cells.copy(),
         }
 
     def _record_snapshot(self) -> None:
@@ -192,6 +203,10 @@ class Simulator:
         self.population_evacuated = float(snap.get("nevac", 0.0))
         self.population_self_evacuated = float(snap.get("nself", 0.0))
         self.evacuated_person_steps = float(snap.get("evps", 0.0))
+        self.retardant_applied = float(snap.get("retapp", 0.0))
+        self.ignition_applied = float(snap.get("ignapp", 0.0))
+        if "coated" in snap:
+            self.coated_cells = snap["coated"].copy()
         if "retard" in snap:
             self.retard = snap["retard"].astype(float)
         self.t_elapsed_min = float(snap.get(
@@ -222,6 +237,9 @@ class Simulator:
         self.population_evacuated = 0.0
         self.population_self_evacuated = 0.0
         self.evacuated_person_steps = 0.0
+        self.retardant_applied = 0.0
+        self.ignition_applied = 0.0
+        self.coated_cells = np.zeros_like(self.coated_cells)
         self.retard[:] = 0.0
         self.world.value.vpop = self._vpop0.copy()
         self.t_elapsed_min = 0.0
@@ -357,6 +375,11 @@ class Simulator:
         self.evacuated_person_steps += float(self.population_evacuated)
         self.response_capacity_steps += float(
             (resource.rcap * np.clip(resource.ravail, 0, 1)).sum())
+        _rw_c = getattr(resource, "rwarn", None)
+        if _rw_c is not None:
+            self.response_capacity_steps += float(getattr(
+                self.cfg.cost, "warn_capacity_per_step", 0.0)) * float(
+                np.clip(_rw_c, 0.0, 1.0).sum())
         self.t_elapsed_min += float(getattr(cfg, "step_minutes", 30.0))
 
         tscale = float(getattr(cfg, "step_minutes", 30.0)) / 30.0
@@ -536,10 +559,19 @@ class Simulator:
                     & (s.fload > 0.05)
                     & (fuel.fmoist < 0.30))
             ign0 = np.maximum(ign0, _lit.astype(float))
+            self.ignition_applied += float(_lit.sum())
+            self.response_capacity_steps += float(getattr(
+                cfg.cost, "ignite_capacity_steps", 0.0)) * float(_lit.sum())
         # RETARDANT/SOIL DROP: ordered cells gain coating; the field
         # decays at ~0.3%/min (hours of protection, not days)
         _rr_ord = getattr(resource, "rret", None)
         if _rr_ord is not None and float(np.max(_rr_ord)) > 1e-6:
+            _rr_add = np.clip(np.clip(_rr_ord, 0.0, 1.0) - self.retard,
+                              0.0, None)
+            self.retardant_applied += float(_rr_add.sum())
+            self.response_capacity_steps += float(getattr(
+                cfg.cost, "coat_capacity_steps", 0.0)) * float(_rr_add.sum())
+            self.coated_cells |= _rr_add > 1e-6
             self.retard = np.maximum(self.retard,
                                      np.clip(_rr_ord, 0.0, 1.0))
         if float(self.retard.max()) > 1e-6:

@@ -154,6 +154,21 @@ ARMS = {
                                genai_on=True), "llm"),
     "Tmpl":   ("minimal", dict(adapt_on=True, evfis_on=True,
                                genai_on=True), "template"),
+    # the model as the candidate source of a screened search (same forecast
+    # budget as Random); the VODA configuration of article v52
+    "LLMScreen": ("minimal", dict(adapt_on=True, evfis_on=True,
+                                  genai_on=True), "llmscreen"),
+    # one unpriced random candidate per call, the counterpart of "LLM"
+    "RandBlind": ("minimal", dict(adapt_on=True, evfis_on=True,
+                                  genai_on=True), "randomblind"),
+    # closed layer with the coordinator switched off (run_once sets
+    # DSS_NO_COORD=1 for an arm ending in -nocoord)
+    "F5Ev-nocoord": ("minimal", dict(adapt_on=True, evfis_on=True,
+                                     genai_on=False), None),
+    "F5Ev-r1": ("minimal", dict(adapt_on=True, evfis_on=True,
+                                genai_on=False), None),
+    "F5Ev-r16": ("minimal", dict(adapt_on=True, evfis_on=True,
+                                 genai_on=False), None),
     # generative stage alone: no evFIS, every adaptation (coverage gaps
     # included) must come from the language-model proposer
     "LLMonly": ("minimal", dict(adapt_on=True, evfis_on=False,
@@ -188,6 +203,42 @@ EXPERIMENTS = {
     "E6": dict(scenarios=ALL_SCENARIOS,
                arms=("F5Ev-fixed",),
                withhold=True, prior=True),
+    # E7: withheld-knowledge test. One doctrine family is removed from the
+    # seed rules (DSS_WITHHOLD_FAMILY_NAME, default containment_line) and
+    # both layers run without it; the family stays in the vocabulary.
+    "E7": dict(scenarios=ALL_SCENARIOS,
+               arms=("F5Ev-nofam", "LLM-nofam"),
+               withhold=True, prior=True),
+    # E8: proposer control. The E5 setting (library withheld, same seeds,
+    # same gates) with the language model replaced by a random search over
+    # the same grammar: candidates are sampled, priced on shadow forecasts
+    # within the forecast budget, and the best three go to the gate chain.
+    # Pairs with the E5 LLM rows; prop_forecasts records the search cost.
+    "E8": dict(scenarios=ALL_SCENARIOS,
+               arms=("Random",),
+               withhold=True, prior=True),
+    # E9: VODA of article v52. The model writes several candidates per call,
+    # they are screened on the shadow simulator with the forecast budget of
+    # E8, and the best goes to the gates. E7-style withheld-family runs use
+    # the arm LLMScreen-nofam with --exp E7.
+    # E2P: the reference arms (T0, F5, F5Ev) under the same withheld
+    # library as every other experiment, so no reference differs from the
+    # open-layer runs in anything but the layer itself.
+    "E2P": dict(scenarios=ALL_SCENARIOS,
+                arms=("T0", "F5", "F5Ev"),
+                withhold=True, prior=True),
+    "E9": dict(scenarios=ALL_SCENARIOS,
+               arms=("LLMScreen",),
+               withhold=True, prior=True),
+    # E10: one unpriced random candidate per call; pairs with E5 (LLM).
+    "E10": dict(scenarios=ALL_SCENARIOS,
+                arms=("RandBlind",),
+                withhold=True, prior=True),
+    # E11: coordination ablation, closed layer with every region attended;
+    # pairs with the E2 F5Ev rows.
+    "E11": dict(scenarios=ALL_SCENARIOS,
+                arms=("F5Ev-nocoord",),
+                withhold=True, prior=True),
     # LOO: leave-one-out replay of the E5 worlds (see experiments/benchmark/loo.py)
     "LOO": dict(scenarios=ALL_SCENARIOS,
                 arms=("F5Ev",),
@@ -201,6 +252,11 @@ def _make_proposer(kind: str, seed: int, budget: int, prior):
     if kind == "random":
         return P.RandomProposer(seed=seed, forecast_budget=budget,
                                 prior=prior)
+    if kind == "llmscreen":
+        return P.LLMScreenProposer(seed=seed, forecast_budget=budget,
+                                   prior=prior)
+    if kind == "randomblind":
+        return P.RandomBlindProposer(seed=seed)
     if kind == "llm":
         return P.LLMProposer()
     if kind == "template":
@@ -302,9 +358,25 @@ def run_once(exp: str, scenario: str, arm: str, seed: int,
     """script: recorded admitted proposals to re-install at their t_min
     (leave-one-out replay); each record carries rule text, kind, clauses,
     composition and concept, as proposals.jsonl stores them."""
-    base_arm = arm.replace("-noprior", "").replace("-fixed", "")
+    base_arm = arm.replace("-noprior", "").replace("-fixed", "") \
+        .replace("-nofam", "")
+    if base_arm == "F5Ev-nocoord":
+        base_arm = "F5Ev"
+    # LOCAL AGENTS: an arm ending in -rN partitions the grid into N regional
+    # agents instead of 4 (F5Ev-r1 is one global agent, F5Ev-r16 sixteen)
+    import re as _re_n
+    _mreg = _re_n.search(r"-r(\d+)$", base_arm)
+    n_regions = 4
+    if _mreg:
+        n_regions = int(_mreg.group(1))
+        base_arm = base_arm[: _mreg.start()]
+    os.environ["DSS_NO_COORD"] = "1" if arm.endswith("-nocoord") else ""
     os.environ["DSS_STAGE_POLICY"] = "fixed" if arm.endswith("-fixed") \
         else "bandit"
+    # withheld-knowledge test: the family named by DSS_WITHHOLD_FAMILY_NAME
+    # (default containment_line) is removed from the seed rules of a -nofam arm
+    fam = os.environ.get("DSS_WITHHOLD_FAMILY_NAME", "containment_line")
+    os.environ["DSS_WITHHOLD_FAMILY"] = fam if arm.endswith("-nofam") else ""
     profile, ekw, pkind = ARMS[base_arm]
     cfg_e = EXPERIMENTS[exp]
     withhold = bool(cfg_e.get("withhold"))
@@ -342,7 +414,7 @@ def run_once(exp: str, scenario: str, arm: str, seed: int,
     eng = None
     if ekw is not None:
         eng = dss.DecisionEngine(
-            dss.partition_n(w.config.nx, w.config.ny, 4),
+            dss.partition_n(w.config.nx, w.config.ny, n_regions),
             base_pool=base, seed_profile=profile,
             state_path=dss.isolated_store_path(f"open_space_{exp}"),
             cycle_min=12.0, horizon_min=24.0, eta=C5.ETA, **ekw)
@@ -358,7 +430,8 @@ def run_once(exp: str, scenario: str, arm: str, seed: int,
         if pkind:
             # a search proposer never "goes dead" on rejections; the LLM
             # keeps the thesis patience
-            eng.genai_patience = 10 ** 6 if pkind in ("evo", "random") \
+            eng.genai_patience = 10 ** 6 if pkind in ("evo", "random",
+                                                    "llmscreen") \
                 else 3
             proposer = _make_proposer(pkind, seed, budget, prior)
             prev_hook = P.install(eng, proposer)
@@ -369,6 +442,8 @@ def run_once(exp: str, scenario: str, arm: str, seed: int,
     admitted = []
     seen_macros = set()
     t0 = time.time()
+    _cyc_s = []     # wall time of every decision cycle, live proposer included
+    _coord = []     # (regions with priority, regions attended) per cycle
     try:
         pending = sorted(script or [], key=lambda r: float(r["t_min"]))
         for i in range(max_steps):
@@ -376,7 +451,16 @@ def run_once(exp: str, scenario: str, arm: str, seed: int,
             while pending and float(pending[0]["t_min"]) <= t_now \
                     and eng is not None:
                 _install_scripted(eng, pending.pop(0))
+            _nc0 = len(eng.cycles) if eng is not None else 0
+            _td0 = time.perf_counter()
             ov = eng.maybe_decide(sim) if eng is not None else None
+            if eng is not None and len(eng.cycles) > _nc0:
+                _cyc_s.append(time.perf_counter() - _td0)
+                # COORDINATOR DIAGNOSTIC: a region with a non-zero priority
+                # left outside the attended set was derated this cycle
+                _nf = int(getattr(eng, "last_n_fire", 0) or 0)
+                _na = int(getattr(eng, "last_k", 0) or 0)
+                _coord.append((_nf, _na))
             sim.step(resource_override=ov)
             t_min = (i + 1) * w.config.step_minutes
             if i % 6 == 0:
@@ -454,6 +538,17 @@ def run_once(exp: str, scenario: str, arm: str, seed: int,
                j_delay=round(float(getattr(rep, "j_delay", float("nan"))),
                              5),
                j_total=round(float(rep.j_total), 5),
+               retard_units=round(float(getattr(sim, "retardant_applied", 0.0)), 2),
+               resp_units=round(float(getattr(sim, "response_capacity_steps", 0.0)), 1),
+               n_cycles=len(_cyc_s),
+               n_regions=n_regions,
+               coord_derate_cycles=sum(1 for a, b in _coord if a > b),
+               coord_multi_fire_cycles=sum(1 for a, b in _coord if a > 1),
+               cyc_med_s=round(float(np.median(_cyc_s)), 3) if _cyc_s else "",
+               cyc_p90_s=round(float(np.percentile(_cyc_s, 90)), 3) if _cyc_s else "",
+               cyc_max_s=round(float(max(_cyc_s)), 3) if _cyc_s else "",
+               coated_ha=round(float(np.asarray(getattr(sim, "coated_cells", np.zeros(1))).sum()) * ha, 2),
+               ignited_ha=round(float(getattr(sim, "ignition_applied", 0.0)) * ha, 2),
                j_phys=round(float(getattr(rep, "j_physical",
                                           float("nan"))), 5))
     tried = {1: 0, 2: 0, 3: 0}
@@ -498,6 +593,16 @@ def run_once(exp: str, scenario: str, arm: str, seed: int,
         t_draft=first_t.get("water_drafting", ""),
         t_coat=first_t.get("retardant_drop", ""),
         t_ignite=first_t.get("tactical_burn", ""),
+        fam_withheld=os.environ.get("DSS_WITHHOLD_FAMILY", ""),
+        fam_rules_active=(len([r for r in eng.rules if r.active and any(
+            i == fam for i, _v in r.consequents)]) if eng is not None else 0),
+        fam_rules_gen=(len([r for r in eng.rules if r.active and r.name.startswith("G")
+                            and any(i == fam for i, _v in r.consequents)])
+                       if eng is not None else 0),
+        fam_first_min=(min([a["t_min"] for a in attempts if a.get("accepted")
+                            and fam.replace("_", " ") in str(a.get("rule") or "")
+                            .split(" (adaptation-born")[0].split("THEN")[-1]]
+                           or [""]) if eng is not None else ""),
         menu_total=int((eng.run_stats or {}).get("menu_total", 0))
         if eng is not None else 0,
         menu_multi=int((eng.run_stats or {}).get("menu_multi", 0))

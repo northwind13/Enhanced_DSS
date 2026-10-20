@@ -87,7 +87,26 @@ def make_runtime_rules(profile: str = SEED_PROFILE) -> List[Rule]:
             if iv not in best or v > best[iv][1]:
                 best[iv] = (r, v)
     ids = {id(r) for r, _v in best.values()}
-    return [r for r in rules if id(r) in ids]
+    out = [r for r in rules if id(r) in ids]
+    return _withhold_family(out)
+
+
+def _withhold_family(rules: List[Rule]) -> List[Rule]:
+    """Withheld-knowledge test (DSS_WITHHOLD_FAMILY=<family>): the family
+    is removed from the consequents of every seed rule, a rule left with
+    no consequent is dropped. The family stays in the vocabulary, so the
+    adaptation stages may write it back; whether they do is the test."""
+    fam = os.environ.get("DSS_WITHHOLD_FAMILY", "").strip()
+    if not fam:
+        return rules
+    kept = []
+    for r in rules:
+        cons = [(i, v) for i, v in r.consequents if i != fam]
+        if not cons:
+            continue
+        r.consequents = cons
+        kept.append(r)
+    return kept
 
 
 def doctrine_catalog() -> List[Rule]:
@@ -545,6 +564,24 @@ _GENAI_SCHEMA = ("Answer with the MINIFIED JSON object only, on one line, "
 
 
 
+def concepts_off() -> bool:
+    """DSS_NO_CONCEPT=1: the open layer may not introduce a new
+    intermediate concept. The schema does not offer it, the situation
+    brief does not ask for it, the search grammar does not draw it and
+    G2 rejects any proposal that still carries one."""
+    return os.environ.get("DSS_NO_CONCEPT", "").strip() == "1"
+
+
+_SCHEMA_CONCEPT_OPTION = (
+    "\"new_concept\": {\"name\": str, \"level\": "
+    "\"intermediate\", \"inputs\": "
+    "[[existing_feature_or_concept, weight], ...] "
+    "(weights positive, at most 4, they will be "
+    "normalized)} or ")
+_SCHEMA_CONCEPT_USE = ("(a new concept in its antecedents, a new "
+                       "intervention in its consequents)")
+
+
 def _genai_schema() -> str:
     """The reply schema with the CURRENTLY orderable library actuators;
     a withheld actuator is not announced."""
@@ -553,6 +590,11 @@ def _genai_schema() -> str:
                                 str(list(_disc())))
     out = out.replace(str(list(INTERVENTIONS)),
                       str([i for i in INTERVENTIONS if i not in _wh()]))
+    if concepts_off():
+        assert _SCHEMA_CONCEPT_OPTION in out, "schema text changed"
+        out = out.replace(_SCHEMA_CONCEPT_OPTION, "")
+        out = out.replace(_SCHEMA_CONCEPT_USE,
+                          "(the new intervention in its consequents)")
     return out
 
 # wall time of the last live proposal call, so the run log can show WHY a
@@ -584,6 +626,73 @@ def genai_timeout() -> float:
 _genai_timeout = genai_timeout
 
 
+_CLAUDE_LAUNCH: list = []
+_PROMPT_VIA_STDIN = [False]
+
+
+def claude_launch() -> list:
+    """The executable part of the `claude` command, resolved once.
+
+    On Windows an npm install of Claude Code puts a `claude.cmd` shim on
+    PATH. cmd.exe finds it, so `claude -p` works in a console and in a
+    batch file, but CreateProcess does not apply PATHEXT, so
+    subprocess.run(["claude", ...]) raises FileNotFoundError and every
+    stage-3 call fails with "launch failed". The shim is one line that
+    hands `cli.js` to node, so when both can be found that script is
+    launched directly and cmd.exe never sees the prompt. When they cannot,
+    the shim itself is launched, and the prompt then travels on stdin
+    rather than on the command line: cmd.exe caps the line at 8191
+    characters ("The command line is too long") and re-parses quotes and
+    newlines, while `claude -p` with no prompt argument reads stdin. A
+    native `claude.exe` and a Linux or macOS binary resolve to
+    themselves. DSS_CLAUDE_EXE overrides the lookup."""
+    if _CLAUDE_LAUNCH:
+        return list(_CLAUDE_LAUNCH)
+    import shutil
+    exe = os.environ.get("DSS_CLAUDE_EXE", "").strip() or shutil.which("claude")
+    launch = [exe or "claude"]
+    if exe and exe.lower().endswith((".cmd", ".bat")):
+        here = os.path.dirname(exe)
+        node = shutil.which("node")
+        if not node:
+            for cand in (os.path.join(here, "node.exe"),
+                         os.path.join(os.environ.get("ProgramFiles", ""),
+                                      "nodejs", "node.exe"),
+                         os.path.join(os.environ.get("LOCALAPPDATA", ""),
+                                      "Programs", "nodejs", "node.exe")):
+                if cand and os.path.exists(cand):
+                    node = cand
+                    break
+        cli = os.path.join(here, "node_modules", "@anthropic-ai",
+                           "claude-code", "cli.js")
+        if not os.path.exists(cli):
+            # the shim names its target; read it rather than guess
+            try:
+                with open(exe, encoding="utf-8", errors="replace") as fh:
+                    txt = fh.read()
+                import re as _re
+                for m in _re.finditer(r'"([^"]*cli\.js)"', txt):
+                    cand = (m.group(1).replace("%dp0%", here + os.sep)
+                            .replace("%~dp0", here + os.sep))
+                    if os.path.exists(cand):
+                        cli = cand
+                        break
+            except OSError:
+                pass
+        if node and os.path.exists(cli):
+            launch = [node, cli]
+        else:
+            _PROMPT_VIA_STDIN[0] = True
+    _CLAUDE_LAUNCH[:] = launch
+    return list(launch)
+
+
+def genai_stdin(prompt: str) -> Optional[str]:
+    """The text to feed the CLI on stdin, or None when the prompt is on the
+    command line (see claude_launch). Call after genai_cmd."""
+    return prompt if _PROMPT_VIA_STDIN[0] else None
+
+
 def genai_cmd(prompt: str, session: str | None = None,
               resume: bool = False) -> list:
     """The `claude -p` command line, built in ONE place.
@@ -599,7 +708,7 @@ def genai_cmd(prompt: str, session: str | None = None,
     drifted apart, so the Test button was timing the heavy path while the
     simulation ran the lean one, and the reported latency described neither.
     """
-    cmd = ["claude"]
+    cmd = claude_launch()
     # --model is a LAUNCH flag: the docs rank it above ANTHROPIC_MODEL and the
     # settings file, and it belongs before the prompt
     _m = os.environ.get("DSS_GENAI_MODEL")
@@ -631,7 +740,10 @@ def genai_cmd(prompt: str, session: str | None = None,
         # rejections in memory instead of being reborn per prompt.
         cmd += (["--resume", session] if resume
                 else ["--session-id", session])
-    cmd += ["-p", prompt, "--output-format", "json"]
+    if _PROMPT_VIA_STDIN[0]:
+        cmd += ["-p", "--output-format", "json"]      # prompt arrives on stdin
+    else:
+        cmd += ["-p", prompt, "--output-format", "json"]
     return cmd
 
 
@@ -645,12 +757,55 @@ _STRICT_TIMEOUTS = [0]
 _STRICT_FAILS = [0]
 
 
+def _genai_wait_for_recovery(reason: str) -> bool:
+    """Strict mode met an outage: the model timed out or failed on several
+    consecutive calls. Rather than failing the world at once, wait for the
+    service to come back. A short probe is sent at growing intervals (30 s,
+    60 s, 120 s, then every 300 s) until it answers or the outage budget
+    DSS_GENAI_OUTAGE_MAX_S (default 1800 s) is spent. Returns True when the
+    model answered again, False when the budget ran out. The waiting costs
+    wall time only; the simulated incident is paused, not advanced."""
+    import subprocess
+    import time as _t
+    budget = float(os.environ.get("DSS_GENAI_OUTAGE_MAX_S", "1800") or 1800)
+    waits = [30, 60, 120]
+    t0 = _t.time()
+    k = 0
+    print(f"[genai] outage: {reason}; waiting for the model to answer "
+          f"(up to {budget:.0f} s)", flush=True)
+    while _t.time() - t0 < budget:
+        _t.sleep(waits[min(k, len(waits) - 1)] if k < len(waits) else 300)
+        k += 1
+        ask = "Reply with exactly this JSON and nothing else: {\"ok\":true}"
+        cmd = genai_cmd(ask)
+        inp = genai_stdin(ask)
+        try:
+            res = subprocess.run(cmd, capture_output=True, text=True,
+                                 encoding="utf-8", errors="replace",
+                                 **({"input": inp} if inp is not None
+                                    else {"stdin": subprocess.DEVNULL}),
+                                 timeout=90)
+        except Exception as exc:
+            print(f"[genai] probe failed ({type(exc).__name__}) after "
+                  f"{_t.time() - t0:.0f} s", flush=True)
+            continue
+        if res.returncode == 0 and "ok" in (res.stdout or ""):
+            print(f"[genai] model answering again after {_t.time() - t0:.0f} s",
+                  flush=True)
+            return True
+        print(f"[genai] probe exit {res.returncode} after {_t.time() - t0:.0f} s: "
+              + (res.stderr or res.stdout or "")[:120].strip(), flush=True)
+    return False
+
+
 def _strict_genai_failure(msg: str, timeout: bool = False,
                           resume: bool = False) -> None:
     """Strict-mode bookkeeping. A failed RESUME of a CLI session is not
     counted: the caller reopens a fresh session at once (see
     _genai_propose), and it is that fresh call which must succeed. Two
-    consecutive fresh-call failures, or three consecutive timeouts, raise."""
+    consecutive fresh-call failures, or three consecutive timeouts, are
+    treated as an outage: the call waits for the service to recover (see
+    _genai_wait_for_recovery) and raises only when it does not."""
     if not os.environ.get("DSS_REQUIRE_GENAI") or resume:
         return
     if timeout:
@@ -663,7 +818,12 @@ def _strict_genai_failure(msg: str, timeout: bool = False,
         if _STRICT_FAILS[0] < 2:
             return
         msg = f"{msg} (2 consecutive failures)"
-    raise RuntimeError("DSS_REQUIRE_GENAI: language model unavailable, " + msg)
+    if _genai_wait_for_recovery(msg):
+        _STRICT_TIMEOUTS[0] = 0
+        _STRICT_FAILS[0] = 0
+        return
+    raise RuntimeError("DSS_REQUIRE_GENAI: language model unavailable, "
+                       + msg + ", and it did not recover within the outage budget")
 
 
 def _genai_propose_cli(prompt: str, timeout: float | None = None,
@@ -683,6 +843,7 @@ def _genai_propose_cli(prompt: str, timeout: float | None = None,
     timeout = genai_timeout() if timeout is None else float(timeout)
     _t0 = _t.time()
     cmd = genai_cmd(prompt, session=session, resume=resume)
+    _inp = genai_stdin(prompt)
     global LAST_GENAI_ERR
     try:
         # STDIN MUST BE CLOSED. The CLI reads stdin for piped input and
@@ -693,7 +854,9 @@ def _genai_propose_cli(prompt: str, timeout: float | None = None,
         res = subprocess.run(cmd, capture_output=True, text=True,
                              encoding="utf-8",
                              errors="replace",
-                             stdin=subprocess.DEVNULL, timeout=timeout)
+                             **({"input": _inp} if _inp is not None
+                                else {"stdin": subprocess.DEVNULL}),
+                             timeout=timeout)
     except subprocess.TimeoutExpired:
         LAST_GENAI_MS = (_t.time() - _t0) * 1000.0
         LAST_GENAI_ERR = f"timeout after {timeout:.0f} s"
@@ -1005,6 +1168,8 @@ def _g1_g2(prop: dict, engine=None) -> Optional[str]:
         return "G1 format"
     if not (1 <= len(ants) <= 3 and 1 <= len(cons) <= 3):
         return "G2 arity"
+    if prop.get("new_concept") and concepts_off():
+        return "G2 vocabulary (new concepts are disabled)"
     _ncn = (prop.get("new_concept") or {}).get("name")
     _nin = (prop.get("new_intervention") or {}).get("name")
     _known_c = set(DECISION_CONCEPTS)
@@ -1753,9 +1918,12 @@ def _stage3_generative(build_override, sim, rules: List[Rule],
                       "that ANSWERS this situation. If the five decision "
                       "concepts and six base interventions cannot cleanly "
                       "express the RIGHT response for this situation, PREFER "
-                      "a PACKAGE: add ONE new intermediate concept (a weighted "
-                      "mix of existing features/concepts that names what "
-                      "matters here) OR ONE composite intervention (a weighted "
+                      "a PACKAGE: "
+                      + ("" if concepts_off() else
+                         "add ONE new intermediate concept (a weighted "
+                         "mix of existing features/concepts that names what "
+                         "matters here) OR ")
+                      + "ONE composite intervention (a weighted "
                       "mix of base channels), and write the rule USING that "
                       "new object. Grow the vocabulary when it genuinely helps "
                       "answer the void. A composite must DIFFER IN EFFECT "
@@ -1768,7 +1936,7 @@ def _stage3_generative(build_override, sim, rules: List[Rule],
     situation += ("\nDo NOT re-issue an existing rule's antecedent "
                   "cell with different numbers (that is the tuning "
                   "stage's job); pick an UNCOVERED situation cell.")
-    if not coverage_gap:
+    if not coverage_gap and not concepts_off():
         situation += (
             "\nIf plain rules on the existing concepts keep failing "
             "the forecast gates for THIS kind of situation, the "
@@ -1783,7 +1951,7 @@ def _stage3_generative(build_override, sim, rules: List[Rule],
     # same situation being answered and rejected before, the missing
     # piece is evidently PERCEPTION, not another order. That is the
     # moment a concept proposal is asked for BY NAME, with evidence.
-    if _cases.count("rejected") >= 2:
+    if _cases.count("rejected") >= 2 and not concepts_off():
         situation += (
             "\nNOTE THE PATTERN above: this situation has recurred "
             "and order-level answers keep failing the gates. Do not "
@@ -2323,10 +2491,12 @@ def genai_probe(max_tokens: int = 64) -> dict:
         # SAME command the live stage builds, so the number this button
         # reports is the number the simulation will actually wait through
         cmd = genai_cmd(ask)
+        _inp = genai_stdin(ask)
         res = subprocess.run(cmd, capture_output=True, text=True,
                              encoding="utf-8",
                              errors="replace",
-                             stdin=subprocess.DEVNULL,
+                             **({"input": _inp} if _inp is not None
+                                else {"stdin": subprocess.DEVNULL}),
                              timeout=genai_timeout())
         out["cmd"] = " ".join(cmd)
         out["raw"] = (res.stdout or "")[:4000]
