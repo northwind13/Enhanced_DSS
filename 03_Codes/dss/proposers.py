@@ -413,7 +413,15 @@ class SearchProposer(Proposer):
         spent0 = self.forecasts
         ranked = self.search(ctx)
         if not ranked:
-            return None
+            # NO CANDIDATE TO PRICE is a verdict of this call, not an
+            # unreachable model. None would be read by stage 3 as "model
+            # unreachable" and retire the open layer for the rest of the
+            # run (loop.py, _genai_dead); the skip marker records the call
+            # as an ordinary rejection and the next window tries again.
+            return {"_skip": "no candidate passed the cheap gates",
+                    "_search": dict(priced=0,
+                                    forecasts=self.forecasts - spent0,
+                                    filtered=self.last_filtered)}
         # THE GATES READ TWO FUTURES. A search that optimizes one seed
         # overfits it and is turned away at G4 or G5 on the other, so the
         # finalists are priced on the second seed as well and ranked by
