@@ -1,5 +1,0 @@
-acc_actuator,acc_concept,acc_macro,acc_rule,admitted,arm,attempts,calls,candidates,exp,forecasts,forecasts_per_admission,kind_actuator,kind_concept,kind_macro,kind_rule,rej_G3,rej_G4,rej_G5,rej_G5b,rej_S0,runs
-188,17,28,92,325,Evo,880,1009.0,35315.0,E3,39351.0,121.1,222,17,28,613,4,16,34,,501,90
-124,44,40,140,348,Evo-noprior,1016,1120.0,39200.0,E3,43680.0,125.5,128,47,43,798,17,37,9,1,604,90
-185,39,35,123,382,Random,978,1083.0,37905.0,E3,42237.0,110.6,191,45,36,706,21,30,13,,532,90
-185,39,35,123,382,Random-noprior,978,1083.0,37905.0,E3,42237.0,110.6,191,45,36,706,21,30,13,,532,90
