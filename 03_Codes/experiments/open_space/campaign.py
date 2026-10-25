@@ -146,6 +146,10 @@ ARMS = {
     "F5":     ("minimal", dict(adapt_on=False), None),
     "F5Ev":   ("minimal", dict(adapt_on=True, evfis_on=True,
                                genai_on=False), None),
+    # closed layer on the WHOLE written doctrine (40 seed rules, Appendix E)
+    # with the same self-tuning; the strong closed reference of the revision
+    "F40Ev":  ("full",    dict(adapt_on=True, evfis_on=True,
+                               genai_on=False), None),
     "Evo":    ("minimal", dict(adapt_on=True, evfis_on=True,
                                genai_on=True), "evo"),
     "Random": ("minimal", dict(adapt_on=True, evfis_on=True,

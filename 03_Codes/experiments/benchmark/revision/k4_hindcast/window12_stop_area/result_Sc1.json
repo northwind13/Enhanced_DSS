@@ -1,0 +1,26 @@
+{
+ "rows": [
+  {
+   "fire": "Sc1",
+   "case": "canakkale2023",
+   "protocol": "window12",
+   "stop_rule": "area",
+   "wind_offset_deg": 0.0,
+   "n_seed": 50,
+   "duration_h": 12.0,
+   "window_h": 1.5,
+   "pod": 0.921,
+   "pod_sd": 0.002,
+   "front_mean_m": 315,
+   "front_mean_sd": 12,
+   "front_p90_m": 654,
+   "arrival_mae_h": 1.45,
+   "arrival_mae_sd": 0.02,
+   "arrival_rho": 0.86,
+   "area_ratio_sim_obs": 1.37,
+   "area_ratio_sd": 0.02,
+   "obs_km2": 10.4
+  }
+ ],
+ "out_dir": "D:\\repos_github\\Enhanced_DSS\\03_Codes\\experiments\\benchmark\\revision\\k4_hindcast\\window12_stop_area\\thesis_firms_20261024-015529"
+}

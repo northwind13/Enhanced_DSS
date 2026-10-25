@@ -1,0 +1,242 @@
+[
+ {
+  "exp": "E9",
+  "scenario": "S1",
+  "arm": "LLMScreen",
+  "seed": 213,
+  "t_min": 0.0,
+  "source": "llmscreen",
+  "accepted": true,
+  "detail": "G1: G1: IF asset exposure risk is H AND evacuation pressure is VL THEN populated ready belt 0.9 (adaptation-born: generative (llmscreen), gates G1-G4 | GROUNDED: water@(48,19) 30 m, air, ~17 min) [+pa",
+  "gate": "admitted (package, G5 margin cleared)",
+  "package": true,
+  "kind": "actuator",
+  "clauses": [
+   {
+    "effect": "prime",
+    "sector": "populated",
+    "range": [
+     0,
+     3
+    ],
+    "amount": 1.0
+   },
+   {
+    "effect": "coat",
+    "sector": "populated",
+    "range": [
+     1,
+     4
+    ],
+    "amount": 1.0
+   }
+  ],
+  "composition": null,
+  "concept": null,
+  "rule": "G1: IF asset exposure risk is H AND evacuation pressure is VL THEN populated ready belt 0.9 (adaptation-born: generative (llmscreen), gates G1-G4 | GROUNDED: water@(48,19) 30 m, air, ~17 min)",
+  "dJ": -0.07072805811746966,
+  "search": {
+   "priced": 35,
+   "forecasts": 39,
+   "filtered": 29,
+   "model_candidates": 6,
+   "model_kept": 6,
+   "origin": "llm"
+  },
+  "gates": {
+   "g3": {
+    "j_with": 0.03884638022366098,
+    "j_without": 0.10972690777715421,
+    "j_noaction": 0.10972690777715421
+   },
+   "g4": {
+    "j_with": 0.048080577727099956,
+    "j_without": 0.14579054015835222,
+    "j_noaction": 0.14579054015835222
+   },
+   "g5b": {
+    "note": "not applicable: the new object is the only consequent, so G5 measured it alone",
+    "base_orders": []
+   }
+  },
+  "margin": "",
+  "archetype": "asset_collar",
+  "geometry": "coat@populated + prime@populated",
+  "n_worlds_geometry": 14,
+  "n_worlds_exact_antecedent": 3
+ },
+ {
+  "exp": "E9",
+  "scenario": "S2",
+  "arm": "LLMScreen",
+  "seed": 215,
+  "t_min": 0.0,
+  "source": "llmscreen",
+  "accepted": true,
+  "detail": "G3: G3: IF asset exposure risk is M THEN downwind interval belt 1.0 (adaptation-born: generative (llmscreen), gates G1-G4 | GROUNDED: water@(53,49) 1072 m, air, ~40 min) [+package]",
+  "gate": "admitted (package, G5 margin cleared)",
+  "package": true,
+  "kind": "actuator",
+  "clauses": [
+   {
+    "effect": "coat",
+    "sector": "head",
+    "range": [
+     4,
+     8
+    ],
+    "amount": 1.0
+   }
+  ],
+  "composition": null,
+  "concept": null,
+  "rule": "G3: IF asset exposure risk is M THEN downwind interval belt 1.0 (adaptation-born: generative (llmscreen), gates G1-G4 | GROUNDED: water@(53,49) 1072 m, air, ~40 min)",
+  "dJ": -0.021122611794622208,
+  "search": {
+   "priced": 35,
+   "forecasts": 39,
+   "filtered": 81,
+   "model_candidates": 6,
+   "model_kept": 6,
+   "origin": "mutation"
+  },
+  "gates": {
+   "g3": {
+    "j_with": 0.05622062605302829,
+    "j_without": 0.057102448510563064,
+    "j_noaction": 0.07489775836862024
+   },
+   "g4": {
+    "j_with": 0.06353052118251415,
+    "j_without": 0.07043315351647948,
+    "j_noaction": 0.08134265387679397
+   },
+   "g5b": {
+    "note": "not applicable: the new object is the only consequent, so G5 measured it alone",
+    "base_orders": []
+   }
+  },
+  "margin": "",
+  "archetype": "head_coating",
+  "geometry": "coat@head",
+  "n_worlds_geometry": 8,
+  "n_worlds_exact_antecedent": 2
+ },
+ {
+  "exp": "E9",
+  "scenario": "S5",
+  "arm": "LLMScreen",
+  "seed": 209,
+  "t_min": 0.0,
+  "source": "llmscreen",
+  "accepted": true,
+  "detail": "G1: G1: IF suppression feasibility is VH AND asset exposure risk is M AND evacuation pressure is M THEN village hardening 1.0 (adaptation-born: generative (llmscreen), gates G1-G4) [+package]",
+  "gate": "admitted (package, G5 margin cleared)",
+  "package": true,
+  "kind": "macro",
+  "clauses": null,
+  "composition": [
+   [
+    "asset_protection",
+    1.0
+   ],
+   [
+    "containment_line",
+    0.7
+   ]
+  ],
+  "concept": null,
+  "rule": "G1: IF suppression feasibility is VH AND asset exposure risk is M AND evacuation pressure is M THEN village hardening 1.0 (adaptation-born: generative (llmscreen), gates G1-G4)",
+  "dJ": -0.08151106847085399,
+  "search": {
+   "priced": 35,
+   "forecasts": 39,
+   "filtered": 34,
+   "model_candidates": 6,
+   "model_kept": 6,
+   "origin": "mutation"
+  },
+  "gates": {
+   "g3": {
+    "j_with": 0.10625018054248836,
+    "j_without": 0.18640335843923694,
+    "j_noaction": 0.22680234757846743
+   },
+   "g4": {
+    "j_with": 0.17824009468806612,
+    "j_without": 0.20474639201496794,
+    "j_noaction": 0.1865659863449024
+   },
+   "g5b": {
+    "note": "not applicable: the new object is the only consequent, so G5 measured it alone",
+    "base_orders": []
+   }
+  },
+  "margin": "",
+  "archetype": "interface_hardening",
+  "geometry": "asset_protection + containment_line",
+  "n_worlds_geometry": 7,
+  "n_worlds_exact_antecedent": 1
+ },
+ {
+  "exp": "E9",
+  "scenario": "S4",
+  "arm": "LLMScreen",
+  "seed": 213,
+  "t_min": 0.0,
+  "source": "llmscreen",
+  "accepted": true,
+  "detail": "G1: G1: IF suppression feasibility is VH THEN downwind backburn pattern 0.9, resource deployment 0.8 (adaptation-born: generative (llmscreen), gates G1-G4) [+package]",
+  "gate": "admitted (package, G5 margin cleared), G5b attributed",
+  "package": true,
+  "kind": "macro",
+  "clauses": null,
+  "composition": [
+   [
+    "containment_line",
+    1.0
+   ],
+   [
+    "suppression_effort",
+    0.8
+   ]
+  ],
+  "concept": null,
+  "rule": "G1: IF suppression feasibility is VH THEN downwind backburn pattern 0.9, resource deployment 0.8 (adaptation-born: generative (llmscreen), gates G1-G4)",
+  "dJ": -0.11763132298542883,
+  "search": {
+   "priced": 35,
+   "forecasts": 39,
+   "filtered": 10,
+   "model_candidates": 6,
+   "model_kept": 6,
+   "origin": "mutation"
+  },
+  "gates": {
+   "g3": {
+    "j_with": 0.005665080444142308,
+    "j_without": 0.12391082724535209,
+    "j_noaction": 0.20657610828748854
+   },
+   "g4": {
+    "j_with": 0.00831647561249719,
+    "j_without": 0.12426978028278751,
+    "j_noaction": 0.2098591666481701
+   },
+   "g5b": {
+    "j_with_object": 0.005665080444142308,
+    "j_ablated": 0.006553672316384182,
+    "j_with_object_b": 0.00831647561249719,
+    "j_ablated_b": 0.026522384892849568,
+    "base_orders": [
+     "resource_deployment"
+    ]
+   }
+  },
+  "margin": "",
+  "archetype": "line_and_attack",
+  "geometry": "containment_line + suppression_effort",
+  "n_worlds_geometry": 15,
+  "n_worlds_exact_antecedent": 3
+ }
+]

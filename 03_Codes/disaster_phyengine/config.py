@@ -160,6 +160,18 @@ class SuppressionParams:
                                     # fierceness (f_burn / 0.10 per step);
                                     # 0 disables knockdown
     rcap_max: float = 1.0 # reference maximum suppression capacity 
+    # retardant coating (clause effect `coat`, actuator retardant_drop):
+    # modelling choices of this work, not calibrated against a retardant
+    # study; K6 (revision) perturbs them in the live world
+    coat_burn_reduction: float = 0.8   # burn rate x (1 - 0.8 r): a coated
+                                       # cell burns at a fifth of its rate
+    coat_moisture_floor: float = 0.45  # fmoist floored at 0.45 r, above
+                                       # every fuel's extinction moisture
+    coat_decay_per_min: float = 0.003  # coating fades 0.3 % per minute
+    coat_stock_ha: float = 0.0         # total area that can ever be coated in
+                                       # one incident, 0 = no stock limit (K6)
+    coat_delay_min: float = 0.0        # minutes between a coating order and
+                                       # its effect on the ground, 0 = at once
 
 
 @dataclass

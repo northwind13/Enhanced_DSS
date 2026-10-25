@@ -565,9 +565,42 @@ class Simulator:
         # RETARDANT/SOIL DROP: ordered cells gain coating; the field
         # decays at ~0.3%/min (hours of protection, not days)
         _rr_ord = getattr(resource, "rret", None)
+        # K6 application limits: an order takes effect coat_delay_min later
+        # (a queue keyed on the step it is due), and no more than
+        # coat_stock_ha is ever coated in one incident
+        _c_delay = float(getattr(cfg.suppression, "coat_delay_min", 0.0))
+        if _c_delay > 0.0:
+            if not hasattr(self, "_coat_queue"):
+                self._coat_queue = []
+            _dtm_q = float(getattr(cfg, "step_minutes", 30.0))
+            if _rr_ord is not None and float(np.max(_rr_ord)) > 1e-6:
+                self._coat_queue.append(
+                    (int(self.state.step) + int(np.ceil(_c_delay / _dtm_q)),
+                     np.clip(np.asarray(_rr_ord, dtype=float), 0.0, 1.0)))
+            _due = [a for d_, a in self._coat_queue
+                    if d_ <= int(self.state.step)]
+            self._coat_queue = [(d_, a) for d_, a in self._coat_queue
+                                if d_ > int(self.state.step)]
+            _rr_ord = None
+            for a in _due:
+                _rr_ord = a if _rr_ord is None else np.maximum(_rr_ord, a)
         if _rr_ord is not None and float(np.max(_rr_ord)) > 1e-6:
             _rr_add = np.clip(np.clip(_rr_ord, 0.0, 1.0) - self.retard,
                               0.0, None)
+            _c_stock = float(getattr(cfg.suppression, "coat_stock_ha", 0.0))
+            if _c_stock > 0.0:
+                _cell_ha = float(getattr(cfg, "cell_size_m", 30.0)) ** 2 / 1e4
+                _left = int(round(_c_stock / _cell_ha)) - int(self.coated_cells.sum())
+                _newc = (_rr_add > 1e-6) & ~self.coated_cells
+                if int(_newc.sum()) > max(_left, 0):
+                    # keep the strongest orders up to the stock, drop the rest
+                    _vals = np.where(_newc, _rr_add, -1.0).ravel()
+                    _keep = np.zeros(_vals.shape, dtype=bool)
+                    if _left > 0:
+                        _keep[np.argsort(-_vals)[:_left]] = True
+                    _drop = _newc & ~_keep.reshape(_newc.shape)
+                    _rr_add = np.where(_drop, 0.0, _rr_add)
+                    _rr_ord = np.where(_drop, self.retard, _rr_ord)
             self.retardant_applied += float(_rr_add.sum())
             self.response_capacity_steps += float(getattr(
                 cfg.cost, "coat_capacity_steps", 0.0)) * float(_rr_add.sum())
@@ -576,14 +609,19 @@ class Simulator:
                                      np.clip(_rr_ord, 0.0, 1.0))
         if float(self.retard.max()) > 1e-6:
             _dtm_r = float(getattr(cfg, "step_minutes", 30.0))
-            self.retard *= max(0.0, 1.0 - 0.003 * _dtm_r)
+            self.retard *= max(0.0, 1.0 - float(getattr(
+                cfg.suppression, "coat_decay_per_min", 0.003)) * _dtm_r)
             # the coating behaves like moisture that does NOT dry: the
             # spread model reads fuel.fmoist, so the coated cells are
             # floored every step for as long as the coating lasts
             # (0.45 sits above every fuel's extinction moisture)
             fuel.fmoist = np.maximum(
-                fuel.fmoist, 0.45 * np.clip(self.retard, 0.0, 1.0))
+                fuel.fmoist, float(getattr(cfg.suppression,
+                                           "coat_moisture_floor", 0.45))
+                * np.clip(self.retard, 0.0, 1.0))
 
+        _coat_red = float(getattr(cfg.suppression,
+                                  "coat_burn_reduction", 0.8))
         comb_tot = np.zeros_like(s.fload)
         red_tot = np.zeros_like(s.fload)
         burned_any = s.burning > 0.5
@@ -656,8 +694,8 @@ class Simulator:
 
             # 3. fuel mass update, substep compounded
             f_burn = np.clip(self._b_base * (1.0 - fuel.fmoist)
-                             * (1.0 - 0.8 * np.clip(self.retard,
-                                                    0.0, 1.0)),
+                             * (1.0 - _coat_red * np.clip(self.retard,
+                                                          0.0, 1.0)),
                              0.0, 1.0)
             _fb_ref = f_burn                     # reference-step scale
             if sub != 1.0:

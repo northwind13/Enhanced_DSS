@@ -698,7 +698,9 @@ def _met_to_math_toward(met_from_deg):
 
 def run_case(case, args, dem, dem_ll, wc, wc_ll, weather, obs_mask,
              ignition, progress_cb=None, frame_cb=None, frame_every=8,
-             obs_arrival=None, stop_area=None):
+             obs_arrival=None, stop_area=None, seed_list=None):
+    """seed_list: explicit rng seeds to run instead of range(args.seeds)
+    (lets a caller checkpoint one seed at a time)."""
     cell = args.cell
     nx, ny, lons, lats = _grid(case, cell)
     cfg = SimConfig(nx=nx, ny=ny, cell_size_m=cell,
@@ -730,7 +732,8 @@ def run_case(case, args, dem, dem_ll, wc, wc_ll, weather, obs_mask,
     h0 = int(case.get("t0_hour", 0))
 
     runs = []
-    for seed in range(args.seeds):
+    for seed in (list(seed_list) if seed_list is not None
+                 else range(args.seeds)):
         wr = World.from_dict(w.to_dict())
         wr.config.rng_seed = seed
         sim = Simulator(wr)

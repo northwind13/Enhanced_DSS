@@ -1160,6 +1160,16 @@ def _uninstall_package(undo: dict, engine) -> None:
         engine.macros.pop(undo["macro"], None)
 
 
+def _gate_seeds():
+    """Seeds of the two futures G5 to G8 read. By default the same two seeds
+    the pre-selection ranks on (101, 202); K8 (revision) sets
+    DSS_GATE_SEEDS=303,404 so the gates judge on futures the pre-selection
+    never saw."""
+    raw = os.environ.get("DSS_GATE_SEEDS", "101,202")
+    a, b = (int(x) for x in raw.split(",")[:2])
+    return a, b
+
+
 def _g1_g2(prop: dict, engine=None) -> Optional[str]:
     try:
         ants = [(str(v), str(t)) for v, t in prop["antecedents"]]
@@ -2185,10 +2195,11 @@ def _stage3_generative(build_override, sim, rules: List[Rule],
     # reference (the second return value of _cva), so G4 tested a weaker
     # proposition than G3 and a candidate could pass it by merely beating
     # inaction. Both futures now run the base without the candidate.
-    j1a, j0a_none = _cva(build_override, sim, rules, horizon, reseed=101)
-    j1b, j0b_none = _cva(build_override, sim, rules, horizon, reseed=202)
-    j0a = _cva(build_override, sim, rules[:-1], horizon, reseed=101)[0]
-    j0b = _cva(build_override, sim, rules[:-1], horizon, reseed=202)[0]
+    _sa, _sb = _gate_seeds()
+    j1a, j0a_none = _cva(build_override, sim, rules, horizon, reseed=_sa)
+    j1b, j0b_none = _cva(build_override, sim, rules, horizon, reseed=_sb)
+    j0a = _cva(build_override, sim, rules[:-1], horizon, reseed=_sa)[0]
+    j0b = _cva(build_override, sim, rules[:-1], horizon, reseed=_sb)[0]
     info = dict(source=src, proposal=prop, rule=newr.text(),
                 revisions=_revisions,
                 basis=f"{trial_objective()} cost at >=45 min",
@@ -2243,9 +2254,9 @@ def _stage3_generative(build_override, sim, rules: List[Rule],
                                   _base_cons,
                                   note="G5b attribution ablation"))
                 _j1a_ab = _cva(build_override, sim, rules, horizon,
-                               reseed=101)[0]
+                               reseed=_sa)[0]
                 _j1b_ab = _cva(build_override, sim, rules, horizon,
-                               reseed=202)[0]
+                               reseed=_sb)[0]
                 rules.pop()
                 rules.append(_full)
                 _abl = dict(j_with_object=float(j1a),

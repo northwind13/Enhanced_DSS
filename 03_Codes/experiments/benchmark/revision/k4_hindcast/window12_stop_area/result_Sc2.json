@@ -1,0 +1,26 @@
+{
+ "rows": [
+  {
+   "fire": "Sc2",
+   "case": "manavgat2021",
+   "protocol": "window12",
+   "stop_rule": "area",
+   "wind_offset_deg": 0.0,
+   "n_seed": 50,
+   "duration_h": 12.0,
+   "window_h": 2.0,
+   "pod": 0.866,
+   "pod_sd": 0.0,
+   "front_mean_m": 345,
+   "front_mean_sd": 0,
+   "front_p90_m": 849,
+   "arrival_mae_h": 1.03,
+   "arrival_mae_sd": 0.0,
+   "arrival_rho": -0.22,
+   "area_ratio_sim_obs": 1.0,
+   "area_ratio_sd": 0.0,
+   "obs_km2": 29.9
+  }
+ ],
+ "out_dir": "D:\\repos_github\\Enhanced_DSS\\03_Codes\\experiments\\benchmark\\revision\\k4_hindcast\\window12_stop_area\\thesis_firms_20261024-020827"
+}

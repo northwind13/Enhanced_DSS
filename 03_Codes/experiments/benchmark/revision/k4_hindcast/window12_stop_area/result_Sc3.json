@@ -1,0 +1,26 @@
+{
+ "rows": [
+  {
+   "fire": "Sc3",
+   "case": "marmaris2021",
+   "protocol": "window12",
+   "stop_rule": "area",
+   "wind_offset_deg": 0.0,
+   "n_seed": 50,
+   "duration_h": 12.0,
+   "window_h": 2.0,
+   "pod": 0.977,
+   "pod_sd": 0.0,
+   "front_mean_m": 109,
+   "front_mean_sd": 10,
+   "front_p90_m": 204,
+   "arrival_mae_h": 4.04,
+   "arrival_mae_sd": 0.0,
+   "arrival_rho": 0.99,
+   "area_ratio_sim_obs": 1.24,
+   "area_ratio_sd": 0.03,
+   "obs_km2": 3.1
+  }
+ ],
+ "out_dir": "D:\\repos_github\\Enhanced_DSS\\03_Codes\\experiments\\benchmark\\revision\\k4_hindcast\\window12_stop_area\\thesis_firms_20261024-022326"
+}

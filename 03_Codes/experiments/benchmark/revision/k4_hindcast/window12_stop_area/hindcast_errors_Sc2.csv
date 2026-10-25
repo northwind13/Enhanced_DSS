@@ -1,0 +1,2 @@
+fire,case,protocol,stop_rule,wind_offset_deg,n_seed,duration_h,window_h,pod,pod_sd,front_mean_m,front_mean_sd,front_p90_m,arrival_mae_h,arrival_mae_sd,arrival_rho,area_ratio_sim_obs,area_ratio_sd,obs_km2
+Sc2,manavgat2021,window12,area,0.0,50,12.0,2.0,0.866,0.0,345,0,849,1.03,0.0,-0.22,1.0,0.0,29.9
