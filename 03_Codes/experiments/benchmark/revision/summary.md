@@ -59,10 +59,14 @@ VODA against closed + own objects: +13 ± 11%, better in 20 of 150 worlds.
 
 | Live-world wind | Closed (ha) | Replay (ha) | Replay vs closed | b/t/w | Live VODA (ha) | Live vs closed | b/t/w | Ext. closed / replay / live |
 |---|---|---|---|---|---|---|---|---|
+| wind_x1.5 | 91.1 | 45.6 | -50 ± 13% | 122/20/8 | 60.5 | -34 ± 9% | 119/11/20 | 51% / 73% / 70% |
+| wind_rot_p30 | 78.5 | 39.0 | -50 ± 12% | 122/16/12 | 34.5 | -56 ± 12% | 131/10/9 | 53% / 85% / 90% |
+| wind_rot_m30 | 78.1 | 30.6 | -61 ± 14% | 121/21/8 | 30.8 | -61 ± 14% | 128/10/12 | 53% / 86% / 85% |
 
 ## K8 Gates on independent futures (seeds 303, 404), VODA run anew
 
-no K8 runs yet (0 rows)
+VODA with independent gate futures: 34.0 ha, -55 ± 13% against the closed layer, 127/10/13, extinguished 90%; against nominal VODA +17 ± 22%, 66/14/70
+candidates handed to the gates 389, admitted 386
 
 ## K4 Hindcast, 50 replicates, stated stopping rule
 
