@@ -126,6 +126,7 @@ def _job(args):
                     success=row["success"], pop_affected=row["pop_affected"],
                     j_phys=row["j_phys"], j_total=row["j_total"],
                     j_resp=row["j_resp"], rules_final=row["rules_final"],
+                    n_concepts=row.get("n_concepts", ""),
                     wall_s=row["wall_s"]), None
     except Exception as exc:
         import traceback
@@ -148,6 +149,8 @@ def main():
     recs = L.load_admitted(args.src, exp="E9", arm="LLMScreen")
     names = [p for p in args.perturb.split(",") if p]
     arms = [a for a in args.arms.split(",") if a]
+    if "live" in arms and os.environ.get("DSS_NO_CONCEPT", "") != "1":
+        sys.exit("K6: set DSS_NO_CONCEPT=1, as in the reported campaign")
     scs = [s for s in args.scenarios.split(",") if s]
     seeds = C._parse_seeds(args.seeds)
     path = os.path.join(args.out, "runs.csv")
@@ -169,7 +172,7 @@ def main():
     print(f"K6: {len(jobs)} runs to do ({len(done)} done)", flush=True)
     fields = ["perturb", "arm", "scenario", "seed", "n_installed",
               "burned_ha", "coated_ha", "success", "pop_affected", "j_phys", "j_total",
-              "j_resp", "rules_final", "wall_s"]
+              "j_resp", "rules_final", "n_concepts", "wall_s"]
     t0 = time.time()
     n = 0
 

@@ -1,0 +1,27 @@
+{
+  "paired_worlds_per_condition": 150,
+  "families": [
+    "S1",
+    "S2",
+    "S3",
+    "S4",
+    "S5"
+  ],
+  "seeds": "201-230",
+  "new_live_source_rule": "Only *_nc folders; old folders supply closed and replay controls. Old live results are historical comparison only.",
+  "interval_method": "100 * 1.96 * sample_sd(reference - VODA) / sqrt(n) / mean(reference); no multiplicity adjustment, matching the manuscript.",
+  "relative_effect": "100 * (mean(reference) - mean(VODA)) / mean(reference), not mean of individual percentages.",
+  "model": "Opus 5; the four completed Sonnet trial rows were archived and excluded before the final continuation.",
+  "new_concepts_in_all_1350_completed_rows": 0,
+  "input_sha256": {
+    "final/t1_reference/runs.csv": "a5c9727880cabaca83ff692f7fe942f607c7294fc85266c435be13b3d79bc574",
+    "final/t6_voda/runs.csv": "4912696cd7412ae1ff7171cd14e7fd7289bf4c35bf1c162eb3e3e8196a24c463",
+    "revision/k6_coating/runs.csv": "fe46a9c9a00edbcabd03a018b08f9342238e74c1078a30f590e6f5c7f44e9938",
+    "revision/k6_coating_nc/runs.csv": "a94d3cc5adf424950430ba6d6f8cdd7ad79e15e9fd94947f1b35bf339b2a9820",
+    "revision/k7_spread/runs.csv": "990242cb4ae418052c214739446a8113937e0f6baeba209dd18d98752924d334",
+    "revision/k7_spread_nc/runs.csv": "6817daf6e9c5f634afe9753862e44759fa6c995fd22a95323b2f8a7910b7b447",
+    "revision/k8_gate_seeds_nc/runs.csv": "37743b1649f3d3372bf2309267e0fb4343f34de1fbedf865e80a786a31561e7d",
+    "revision/k8_gate_seeds_nc/proposals.jsonl": "d110e4c07df6ba71e3d5fa4384e28c60a5f0aac71f7c8a885ccc0a79707f6c47",
+    "final/t6_voda/proposals.jsonl": "1803022e84478a75ed0a50fce75a0b7761cee0dd5c8c11c2d4f72a9efa78b0fb"
+  }
+}

@@ -1,0 +1,14 @@
+{
+  "restored_at_UTC": "2026-10-26T23:35:41.457240+00:00",
+  "next_model": "claude-opus-5",
+  "baseline_manifest": "k10_model_switch_20261027.json",
+  "excluded_completed_Sonnet_worlds": 4,
+  "phases": [
+    {
+      "phase": "k6_coating_nc",
+      "excluded_rows": 4,
+      "before_sha256": "656d941b63e3eaff4f03673b98635e24d066310cb0999cc146054b490e136f14",
+      "restored_sha256": "ab6a46c2000fe88e70d7e3c7f8a7fb7642d9bf657f38b621050e7ac82bd900b3"
+    }
+  ]
+}
