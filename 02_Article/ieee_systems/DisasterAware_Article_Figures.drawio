@@ -6,16 +6,16 @@
         <mxCell id="b2" value="" style="rounded=0;whiteSpace=wrap;html=1;fillColor=#DEEBF7;strokeColor=#1F4E79;fontSize=17;fontFamily=Arial;fontColor=#1F4E79;align=center;verticalAlign=middle;spacingLeft=0;strokeWidth=1.6;" vertex="1" parent="Fig1_artwork">
           <mxGeometry x="28" y="6" width="484" height="56" as="geometry"/>
         </mxCell>
-        <mxCell id="b3" value="map view" style="rounded=0;whiteSpace=wrap;html=1;fillColor=#FFFFFF;strokeColor=#404040;fontSize=12;fontFamily=Arial;fontColor=#404040;align=center;verticalAlign=middle;spacingLeft=0;strokeWidth=1.6;" vertex="1" parent="Fig1_artwork">
+        <mxCell id="b3" value="map view" style="rounded=0;whiteSpace=wrap;html=1;fillColor=#FFFFFF;strokeColor=#404040;fontSize=11;fontFamily=Arial;fontColor=#404040;align=center;verticalAlign=middle;spacingLeft=0;strokeWidth=1.6;" vertex="1" parent="Fig1_artwork">
           <mxGeometry x="36" y="32" width="111" height="24" as="geometry"/>
         </mxCell>
-        <mxCell id="b4" value="map and data editor" style="rounded=0;whiteSpace=wrap;html=1;fillColor=#FFFFFF;strokeColor=#404040;fontSize=12;fontFamily=Arial;fontColor=#404040;align=center;verticalAlign=middle;spacingLeft=0;strokeWidth=1.6;" vertex="1" parent="Fig1_artwork">
+        <mxCell id="b4" value="map and data editor" style="rounded=0;whiteSpace=wrap;html=1;fillColor=#FFFFFF;strokeColor=#404040;fontSize=11;fontFamily=Arial;fontColor=#404040;align=center;verticalAlign=middle;spacingLeft=0;strokeWidth=1.6;" vertex="1" parent="Fig1_artwork">
           <mxGeometry x="155" y="32" width="111" height="24" as="geometry"/>
         </mxCell>
-        <mxCell id="b5" value="scenario manager" style="rounded=0;whiteSpace=wrap;html=1;fillColor=#FFFFFF;strokeColor=#404040;fontSize=12;fontFamily=Arial;fontColor=#404040;align=center;verticalAlign=middle;spacingLeft=0;strokeWidth=1.6;" vertex="1" parent="Fig1_artwork">
+        <mxCell id="b5" value="scenario manager" style="rounded=0;whiteSpace=wrap;html=1;fillColor=#FFFFFF;strokeColor=#404040;fontSize=11;fontFamily=Arial;fontColor=#404040;align=center;verticalAlign=middle;spacingLeft=0;strokeWidth=1.6;" vertex="1" parent="Fig1_artwork">
           <mxGeometry x="274" y="32" width="111" height="24" as="geometry"/>
         </mxCell>
-        <mxCell id="b6" value="simulation settings" style="rounded=0;whiteSpace=wrap;html=1;fillColor=#FFFFFF;strokeColor=#404040;fontSize=12;fontFamily=Arial;fontColor=#404040;align=center;verticalAlign=middle;spacingLeft=0;strokeWidth=1.6;" vertex="1" parent="Fig1_artwork">
+        <mxCell id="b6" value="simulation settings" style="rounded=0;whiteSpace=wrap;html=1;fillColor=#FFFFFF;strokeColor=#404040;fontSize=11;fontFamily=Arial;fontColor=#404040;align=center;verticalAlign=middle;spacingLeft=0;strokeWidth=1.6;" vertex="1" parent="Fig1_artwork">
           <mxGeometry x="393" y="32" width="111" height="24" as="geometry"/>
         </mxCell>
         <mxCell id="b7" value="" style="rounded=0;whiteSpace=wrap;html=1;fillColor=#FFF2CC;strokeColor=#7F6000;fontSize=17;fontFamily=Arial;fontColor=#7F6000;align=center;verticalAlign=middle;spacingLeft=0;strokeWidth=1.6;" vertex="1" parent="Fig1_artwork">
@@ -597,8 +597,8 @@
         <mxCell id="t4" parent="Fig4_artwork" style="text;html=1;align=left;verticalAlign=middle;fontSize=12;fontColor=#1F3864;" value="deficit, coverage flag" vertex="1">
           <mxGeometry height="32" width="158" x="262" y="65" as="geometry"/>
         </mxCell>
-        <mxCell id="t5" parent="Fig4_artwork" style="text;html=1;align=left;verticalAlign=middle;fontSize=10;fontColor=#1F3864;whiteSpace=nowrap;" value="six candidate objects \(p_1\) to \(p_6\)" vertex="1">
-          <mxGeometry height="20" width="230" x="250" y="140" as="geometry"/>
+        <mxCell id="t5" parent="Fig4_artwork" style="text;html=1;align=left;verticalAlign=middle;fontSize=9;fontColor=#1F3864;whiteSpace=nowrap;" value="six candidate objects \(p_1\) to \(p_6\)" vertex="1">
+          <mxGeometry height="20" width="230" x="260" y="140" as="geometry"/>
         </mxCell>
         <mxCell id="t6" parent="Fig4_artwork" style="text;html=1;align=left;verticalAlign=middle;fontSize=12;fontColor=#1F3864;" value="phase 2, pre-selection" vertex="1">
           <mxGeometry height="32" width="137" x="262" y="206" as="geometry"/>
@@ -851,25 +851,25 @@
         <mxCell id="c49" value="Clauses by effect and sector" style="text;html=1;align=left;verticalAlign=middle;whiteSpace=wrap;fontFamily=Helvetica;fontSize=8;fontColor=#000000;" vertex="1" parent="Fig6_artwork">
           <mxGeometry x="296" y="9" width="220" height="14" as="geometry"/>
         </mxCell>
-        <mxCell id="c50" value="Head" style="text;html=1;align=center;verticalAlign=middle;whiteSpace=wrap;fontFamily=Helvetica;fontSize=7;fontColor=#000000;" vertex="1" parent="Fig6_artwork">
+        <mxCell id="c50" value="Head" style="text;html=1;align=center;verticalAlign=middle;whiteSpace=wrap;fontFamily=Helvetica;fontSize=6;fontColor=#000000;" vertex="1" parent="Fig6_artwork">
           <mxGeometry x="318" y="26" width="35" height="13" as="geometry"/>
         </mxCell>
-        <mxCell id="c51" value="Flank" style="text;html=1;align=center;verticalAlign=middle;whiteSpace=wrap;fontFamily=Helvetica;fontSize=7;fontColor=#000000;" vertex="1" parent="Fig6_artwork">
+        <mxCell id="c51" value="Flank" style="text;html=1;align=center;verticalAlign=middle;whiteSpace=wrap;fontFamily=Helvetica;fontSize=6;fontColor=#000000;" vertex="1" parent="Fig6_artwork">
           <mxGeometry x="345" y="26" width="35" height="13" as="geometry"/>
         </mxCell>
-        <mxCell id="c52" value="Rear" style="text;html=1;align=center;verticalAlign=middle;whiteSpace=wrap;fontFamily=Helvetica;fontSize=7;fontColor=#000000;" vertex="1" parent="Fig6_artwork">
+        <mxCell id="c52" value="Rear" style="text;html=1;align=center;verticalAlign=middle;whiteSpace=wrap;fontFamily=Helvetica;fontSize=6;fontColor=#000000;" vertex="1" parent="Fig6_artwork">
           <mxGeometry x="372" y="26" width="35" height="13" as="geometry"/>
         </mxCell>
-        <mxCell id="c53" value="Ring" style="text;html=1;align=center;verticalAlign=middle;whiteSpace=wrap;fontFamily=Helvetica;fontSize=7;fontColor=#000000;" vertex="1" parent="Fig6_artwork">
+        <mxCell id="c53" value="Ring" style="text;html=1;align=center;verticalAlign=middle;whiteSpace=wrap;fontFamily=Helvetica;fontSize=6;fontColor=#000000;" vertex="1" parent="Fig6_artwork">
           <mxGeometry x="399" y="26" width="35" height="13" as="geometry"/>
         </mxCell>
-        <mxCell id="c54" value="At fire" style="text;html=1;align=center;verticalAlign=middle;whiteSpace=wrap;fontFamily=Helvetica;fontSize=7;fontColor=#000000;" vertex="1" parent="Fig6_artwork">
+        <mxCell id="c54" value="At fire" style="text;html=1;align=center;verticalAlign=middle;whiteSpace=wrap;fontFamily=Helvetica;fontSize=6;fontColor=#000000;" vertex="1" parent="Fig6_artwork">
           <mxGeometry x="426" y="26" width="35" height="13" as="geometry"/>
         </mxCell>
-        <mxCell id="c55" value="Assets" style="text;html=1;align=center;verticalAlign=middle;whiteSpace=wrap;fontFamily=Helvetica;fontSize=7;fontColor=#000000;" vertex="1" parent="Fig6_artwork">
+        <mxCell id="c55" value="Assets" style="text;html=1;align=center;verticalAlign=middle;whiteSpace=wrap;fontFamily=Helvetica;fontSize=6;fontColor=#000000;" vertex="1" parent="Fig6_artwork">
           <mxGeometry x="453" y="26" width="35" height="13" as="geometry"/>
         </mxCell>
-        <mxCell id="c56" value="Populated" style="text;html=1;align=center;verticalAlign=middle;whiteSpace=wrap;fontFamily=Helvetica;fontSize=7;fontColor=#000000;" vertex="1" parent="Fig6_artwork">
+        <mxCell id="c56" value="Populated" style="text;html=1;align=center;verticalAlign=middle;whiteSpace=wrap;fontFamily=Helvetica;fontSize=6;fontColor=#000000;" vertex="1" parent="Fig6_artwork">
           <mxGeometry x="480" y="26" width="35" height="13" as="geometry"/>
         </mxCell>
         <mxCell id="c57" value="Coat" style="text;html=1;align=right;verticalAlign=middle;whiteSpace=wrap;fontFamily=Helvetica;fontSize=8;fontColor=#000000;" vertex="1" parent="Fig6_artwork">
