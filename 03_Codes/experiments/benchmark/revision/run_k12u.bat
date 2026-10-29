@@ -4,8 +4,7 @@ REM K12u. Ungated control: the single-shot model proposer with the forecast
 REM gates G5 to G8 switched off. The model is called; about one hour with
 REM 6 workers for 150 worlds. Resumable: finished worlds are skipped.
 cd /d "%~dp0..\..\.."
-call ".venv\Scripts\activate.bat"
-if errorlevel 1 goto failed
+if exist ".venv\Scripts\activate.bat" call ".venv\Scripts\activate.bat"
 set "CLAUDE_CONFIG_DIR=%CD%\.claude-config"
 set "DSS_GENAI_MODEL=claude-opus-5"
 set "CLAUDE_CODE_DISABLE_NONESSENTIAL_TRAFFIC=1"
