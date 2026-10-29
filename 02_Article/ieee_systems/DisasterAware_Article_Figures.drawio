@@ -214,7 +214,7 @@
         <mxCell id="b20" parent="Fig2_artwork" style="rounded=0;whiteSpace=wrap;html=1;fillColor=#F2CCCC;strokeColor=#C00000;fontSize=11;fontFamily=Arial;fontColor=#C00000;align=center;verticalAlign=middle;spacingLeft=0;strokeWidth=1.6;spacingTop=-1;" value="\(c^{(2)}_{2}\)&lt;br&gt;&lt;font style=&quot;font-size: 7px;&quot; color=&quot;#7F7F7F&quot;&gt;asset exposure&lt;/font&gt;" vertex="1">
           <mxGeometry height="30" width="62" x="257" y="171" as="geometry"/>
         </mxCell>
-        <mxCell id="b21" parent="Fig2_artwork" style="rounded=0;whiteSpace=wrap;html=1;fillColor=#F2CCCC;strokeColor=#C00000;fontSize=11;fontFamily=Arial;fontColor=#C00000;align=center;verticalAlign=middle;spacingLeft=0;strokeWidth=1.6;spacingTop=-1;" value="\(c^{(2)}_{3}\)&lt;br&gt;&lt;font style=&quot;font-size: 7px;&quot; color=&quot;#7F7F7F&quot;&gt;supression feasibility&lt;/font&gt;" vertex="1">
+        <mxCell id="b21" parent="Fig2_artwork" style="rounded=0;whiteSpace=wrap;html=1;fillColor=#F2CCCC;strokeColor=#C00000;fontSize=11;fontFamily=Arial;fontColor=#C00000;align=center;verticalAlign=middle;spacingLeft=0;strokeWidth=1.6;spacingTop=-1;" value="\(c^{(2)}_{3}\)&lt;br&gt;&lt;font style=&quot;font-size: 7px;&quot; color=&quot;#7F7F7F&quot;&gt;suppression feasibility&lt;/font&gt;" vertex="1">
           <mxGeometry height="30" width="82" x="330" y="171" as="geometry"/>
         </mxCell>
         <mxCell id="b22" parent="Fig2_artwork" style="rounded=0;whiteSpace=wrap;html=1;fillColor=#F2CCCC;strokeColor=#C00000;fontSize=11;fontFamily=Arial;fontColor=#C00000;align=center;verticalAlign=middle;spacingLeft=0;strokeWidth=1.6;spacingTop=-1;" value="\(c^{(3)}_1\)&lt;br&gt;&lt;font style=&quot;font-size: 7px;&quot; color=&quot;#7F7F7F&quot;&gt;urgency&lt;/font&gt;" vertex="1">
@@ -449,13 +449,13 @@
         <mxCell id="b4" value="candidate \(U^{i}_{DSS,k}\), firing-weighted mean of consequents, floor one" style="rounded=0;whiteSpace=wrap;html=1;fillColor=#FFFFFF;strokeColor=#1F3864;fontSize=14;fontFamily=Arial;fontColor=#1F3864;align=center;verticalAlign=middle;spacingLeft=0;strokeWidth=1.6;" vertex="1" parent="Fig3_artwork">
           <mxGeometry x="50" y="138" width="440" height="26" as="geometry"/>
         </mxCell>
-        <mxCell id="b5" value="quality test \(Q_k \geq \eta\) of (17), else \(\lambda_k\) scales \(M_{off}\)" style="rounded=0;whiteSpace=wrap;html=1;fillColor=#EDEDED;strokeColor=#595959;fontSize=14;fontFamily=Arial;fontColor=#595959;align=center;verticalAlign=middle;spacingLeft=0;strokeWidth=1.6;" vertex="1" parent="Fig3_artwork">
+        <mxCell id="b5" value="quality test \(Q_k \geq \eta\), else \(\lambda_k\) scales \(M_{off}\)" style="rounded=0;whiteSpace=wrap;html=1;fillColor=#EDEDED;strokeColor=#595959;fontSize=14;fontFamily=Arial;fontColor=#595959;align=center;verticalAlign=middle;spacingLeft=0;strokeWidth=1.6;" vertex="1" parent="Fig3_artwork">
           <mxGeometry x="50" y="196" width="440" height="26" as="geometry"/>
         </mxCell>
         <mxCell id="b6" value="shadow forecast over \(H\), with and without \(U^{i}_{DSS,k}\)" style="rounded=0;whiteSpace=wrap;html=1;fillColor=#FFFFFF;strokeColor=#1F3864;fontSize=14;fontFamily=Arial;fontColor=#1F3864;align=center;verticalAlign=middle;spacingLeft=0;strokeWidth=1.6;" vertex="1" parent="Fig3_artwork">
           <mxGeometry x="50" y="244" width="440" height="26" as="geometry"/>
         </mxCell>
-        <mxCell id="b7" value="accept by (17), forecast cost under \(J_{TH}\) and below inaction by \(\delta_{gain}\)" style="rounded=0;whiteSpace=wrap;html=1;fillColor=#EDEDED;strokeColor=#595959;fontSize=14;fontFamily=Arial;fontColor=#595959;align=center;verticalAlign=middle;spacingLeft=0;strokeWidth=1.6;" vertex="1" parent="Fig3_artwork">
+        <mxCell id="b7" value="accept when forecast cost is under \(J_{TH}\) and below inaction by \(\delta_{gain}\)" style="rounded=0;whiteSpace=wrap;html=1;fillColor=#EDEDED;strokeColor=#595959;fontSize=14;fontFamily=Arial;fontColor=#595959;align=center;verticalAlign=middle;spacingLeft=0;strokeWidth=1.6;" vertex="1" parent="Fig3_artwork">
           <mxGeometry x="50" y="292" width="440" height="26" as="geometry"/>
         </mxCell>
         <mxCell id="b8" value="adapt a working copy of \(R\), consequent step, boundary shift,&lt;br&gt;new rule, new term, keep a move if \(\Delta\hat{J}_{phys} &lt; 0\)" style="rounded=0;whiteSpace=wrap;html=1;fillColor=#FFFFFF;strokeColor=#1F3864;fontSize=14;fontFamily=Arial;fontColor=#1F3864;dashed=1;align=center;verticalAlign=middle;spacingLeft=0;strokeWidth=1.6;" vertex="1" parent="Fig3_artwork">
@@ -558,10 +558,10 @@
         <mxCell id="b4" parent="Fig4_artwork" style="rounded=0;whiteSpace=wrap;html=1;fillColor=#FFFFFF;strokeColor=#1F3864;fontSize=14;fontFamily=Arial;fontColor=#1F3864;align=center;verticalAlign=middle;spacingLeft=0;strokeWidth=1.6;" value="pre-selection on the shadow core, G1 to G4 on each candidate, one forecast each, variations of the best within the budget of 36, a second future for the best three" vertex="1">
           <mxGeometry height="52" width="448" x="28" y="232" as="geometry"/>
         </mxCell>
-        <mxCell id="b5" parent="Fig4_artwork" style="rounded=0;whiteSpace=wrap;html=1;fillColor=#FFFFFF;strokeColor=#1F3864;fontSize=14;fontFamily=Arial;fontColor=#1F3864;align=center;verticalAlign=middle;spacingLeft=0;strokeWidth=1.6;" value="proposer, exchangeable, a pretrained LLM in this work&lt;br&gt;input \(\mathcal{I}_k\), activations, firing rules, deficit, resources, vocabulary" vertex="1">
+        <mxCell id="b5" parent="Fig4_artwork" style="rounded=0;whiteSpace=wrap;html=1;fillColor=#FFFFFF;strokeColor=#1F3864;fontSize=14;fontFamily=Arial;fontColor=#1F3864;align=center;verticalAlign=middle;spacingLeft=0;strokeWidth=1.6;" value="proposer, exchangeable, a pretrained LLM in this work&lt;br&gt;input \(\Sigma_k\), activations, firing rules, deficit, resources, vocabulary" vertex="1">
           <mxGeometry height="44" width="448" x="28" y="98" as="geometry"/>
         </mxCell>
-        <mxCell id="b6" parent="Fig4_artwork" style="rounded=0;whiteSpace=wrap;html=1;fillColor=#FFFFFF;strokeColor=#1F3864;fontSize=13;fontFamily=Arial;fontColor=#1F3864;align=center;verticalAlign=middle;spacingLeft=0;strokeWidth=1.6;" value="rule \(R_r\)&lt;br&gt;in the form of (15)" vertex="1">
+        <mxCell id="b6" parent="Fig4_artwork" style="rounded=0;whiteSpace=wrap;html=1;fillColor=#FFFFFF;strokeColor=#1F3864;fontSize=13;fontFamily=Arial;fontColor=#1F3864;align=center;verticalAlign=middle;spacingLeft=0;strokeWidth=1.6;" value="rule \(R_r\)&lt;br&gt;over decision concepts" vertex="1">
           <mxGeometry height="40" width="144" x="28" y="166" as="geometry"/>
         </mxCell>
         <mxCell id="b7" parent="Fig4_artwork" style="rounded=0;whiteSpace=wrap;html=1;fillColor=#FFFFFF;strokeColor=#1F3864;fontSize=13;fontFamily=Arial;fontColor=#1F3864;align=center;verticalAlign=middle;spacingLeft=0;strokeWidth=1.6;" value="macro \(\mathcal{B}\)&lt;br&gt;up to three families" vertex="1">
@@ -582,7 +582,7 @@
         <mxCell id="b12" parent="Fig4_artwork" style="rounded=0;whiteSpace=wrap;html=1;fillColor=#FFFFFF;strokeColor=#1F3864;fontSize=14;fontFamily=Arial;fontColor=#1F3864;dashed=1;align=center;verticalAlign=middle;spacingLeft=0;strokeWidth=1.6;" value="rejected, gate name and both forecasts logged" vertex="1">
           <mxGeometry height="40" width="216" x="260" y="464" as="geometry"/>
         </mxCell>
-        <mxCell id="b13" parent="Fig4_artwork" style="rounded=0;whiteSpace=wrap;html=1;fillColor=#B4C7E7;strokeColor=#1F3864;fontSize=14;fontFamily=Arial;fontColor=#1F3864;align=center;verticalAlign=middle;spacingLeft=0;strokeWidth=1.6;" value="rule base \(R\) of Fig. 3, recorded for reuse" vertex="1">
+        <mxCell id="b13" parent="Fig4_artwork" style="rounded=0;whiteSpace=wrap;html=1;fillColor=#B4C7E7;strokeColor=#1F3864;fontSize=14;fontFamily=Arial;fontColor=#1F3864;align=center;verticalAlign=middle;spacingLeft=0;strokeWidth=1.6;" value="shared rule base \(R\), recorded for reuse" vertex="1">
           <mxGeometry height="24" width="448" x="28" y="528" as="geometry"/>
         </mxCell>
         <mxCell id="t1" parent="Fig4_artwork" style="text;html=1;align=left;verticalAlign=middle;fontSize=12;fontColor=#595959;" value="phase 1, proposal, six candidates" vertex="1">
@@ -591,13 +591,13 @@
         <mxCell id="t2" parent="Fig4_artwork" style="text;html=1;align=left;verticalAlign=middle;fontSize=12;fontColor=#595959;" value="phase 3, algebraic gates" vertex="1">
           <mxGeometry height="32" width="173" x="30" y="284" as="geometry"/>
         </mxCell>
-        <mxCell id="t3" parent="Fig4_artwork" style="text;html=1;align=left;verticalAlign=middle;fontSize=12;fontColor=#595959;" value="phase 4, simulation gates (21)" vertex="1">
+        <mxCell id="t3" parent="Fig4_artwork" style="text;html=1;align=left;verticalAlign=middle;fontSize=12;fontColor=#595959;" value="phase 4, forecast gates" vertex="1">
           <mxGeometry height="32" width="216" x="30" y="352" as="geometry"/>
         </mxCell>
         <mxCell id="t4" parent="Fig4_artwork" style="text;html=1;align=left;verticalAlign=middle;fontSize=12;fontColor=#1F3864;" value="deficit, coverage flag" vertex="1">
           <mxGeometry height="32" width="158" x="262" y="65" as="geometry"/>
         </mxCell>
-        <mxCell id="t5" parent="Fig4_artwork" style="text;html=1;align=left;verticalAlign=middle;fontSize=10;fontColor=#1F3864;whiteSpace=nowrap;" value="six candidate objects \(p_1\) to \(p_6\) (19)" vertex="1">
+        <mxCell id="t5" parent="Fig4_artwork" style="text;html=1;align=left;verticalAlign=middle;fontSize=10;fontColor=#1F3864;whiteSpace=nowrap;" value="six candidate objects \(p_1\) to \(p_6\)" vertex="1">
           <mxGeometry height="20" width="230" x="250" y="140" as="geometry"/>
         </mxCell>
         <mxCell id="t6" parent="Fig4_artwork" style="text;html=1;align=left;verticalAlign=middle;fontSize=12;fontColor=#1F3864;" value="phase 2, pre-selection" vertex="1">
@@ -785,13 +785,13 @@
         <mxCell id="c27" value="200" style="text;html=1;align=right;verticalAlign=middle;whiteSpace=wrap;fontFamily=Helvetica;fontSize=8;fontColor=#000000;" vertex="1" parent="Fig6_artwork">
           <mxGeometry x="6" y="23" width="30" height="14" as="geometry"/>
         </mxCell>
-        <mxCell id="c28" value="rules" style="text;html=1;align=center;verticalAlign=middle;whiteSpace=wrap;fontFamily=Helvetica;fontSize=8;fontColor=#000000;" vertex="1" parent="Fig6_artwork">
+        <mxCell id="c28" value="Rules" style="text;html=1;align=center;verticalAlign=middle;whiteSpace=wrap;fontFamily=Helvetica;fontSize=8;fontColor=#000000;" vertex="1" parent="Fig6_artwork">
           <mxGeometry x="40" y="113" width="66.6667" height="14" as="geometry"/>
         </mxCell>
-        <mxCell id="c29" value="macros" style="text;html=1;align=center;verticalAlign=middle;whiteSpace=wrap;fontFamily=Helvetica;fontSize=8;fontColor=#000000;" vertex="1" parent="Fig6_artwork">
+        <mxCell id="c29" value="Macros" style="text;html=1;align=center;verticalAlign=middle;whiteSpace=wrap;fontFamily=Helvetica;fontSize=8;fontColor=#000000;" vertex="1" parent="Fig6_artwork">
           <mxGeometry x="106.667" y="113" width="66.6667" height="14" as="geometry"/>
         </mxCell>
-        <mxCell id="c30" value="composed" style="text;html=1;align=center;verticalAlign=middle;whiteSpace=wrap;fontFamily=Helvetica;fontSize=8;fontColor=#000000;" vertex="1" parent="Fig6_artwork">
+        <mxCell id="c30" value="Composed" style="text;html=1;align=center;verticalAlign=middle;whiteSpace=wrap;fontFamily=Helvetica;fontSize=8;fontColor=#000000;" vertex="1" parent="Fig6_artwork">
           <mxGeometry x="173.333" y="113" width="66.6667" height="14" as="geometry"/>
         </mxCell>
         <mxCell id="c31" value="admitted objects" style="text;html=1;align=center;verticalAlign=middle;whiteSpace=wrap;fontFamily=Helvetica;fontSize=8;fontColor=#000000;rotation=-90;" vertex="1" parent="Fig6_artwork">
@@ -836,43 +836,43 @@
         <mxCell id="c44" value="" style="rounded=0;whiteSpace=wrap;html=1;fillColor=#4472C4;strokeColor=#000000;strokeWidth=0.4;fontFamily=Helvetica;fontSize=9;fontColor=#000000;" vertex="1" parent="Fig6_artwork">
           <mxGeometry x="45" y="12" width="9" height="9" as="geometry"/>
         </mxCell>
-        <mxCell id="c45" value="written by the model" style="text;html=1;align=left;verticalAlign=middle;whiteSpace=wrap;fontFamily=Helvetica;fontSize=7;fontColor=#000000;" vertex="1" parent="Fig6_artwork">
+        <mxCell id="c45" value="Model" style="text;html=1;align=left;verticalAlign=middle;whiteSpace=wrap;fontFamily=Helvetica;fontSize=7;fontColor=#000000;" vertex="1" parent="Fig6_artwork">
           <mxGeometry x="56" y="9" width="140" height="15" as="geometry"/>
         </mxCell>
         <mxCell id="c46" value="" style="rounded=0;whiteSpace=wrap;html=1;fillColor=#B4C7E7;strokeColor=#000000;strokeWidth=0.4;fontFamily=Helvetica;fontSize=9;fontColor=#000000;" vertex="1" parent="Fig6_artwork">
           <mxGeometry x="145" y="12" width="9" height="9" as="geometry"/>
         </mxCell>
-        <mxCell id="c47" value="variation of a model candidate" style="text;html=1;align=left;verticalAlign=middle;whiteSpace=wrap;fontFamily=Helvetica;fontSize=7;fontColor=#000000;" vertex="1" parent="Fig6_artwork">
+        <mxCell id="c47" value="Search variation" style="text;html=1;align=left;verticalAlign=middle;whiteSpace=wrap;fontFamily=Helvetica;fontSize=7;fontColor=#000000;" vertex="1" parent="Fig6_artwork">
           <mxGeometry x="156" y="9" width="140" height="15" as="geometry"/>
         </mxCell>
         <mxCell id="c48" value="(b)" style="text;html=1;align=left;verticalAlign=middle;whiteSpace=wrap;fontFamily=Helvetica;fontSize=9;fontColor=#000000;fontStyle=1;" vertex="1" parent="Fig6_artwork">
           <mxGeometry x="266" y="9" width="30" height="14" as="geometry"/>
         </mxCell>
-        <mxCell id="c49" value="clauses of the admitted composed interventions" style="text;html=1;align=left;verticalAlign=middle;whiteSpace=wrap;fontFamily=Helvetica;fontSize=8;fontColor=#000000;" vertex="1" parent="Fig6_artwork">
+        <mxCell id="c49" value="Clauses by effect and sector" style="text;html=1;align=left;verticalAlign=middle;whiteSpace=wrap;fontFamily=Helvetica;fontSize=8;fontColor=#000000;" vertex="1" parent="Fig6_artwork">
           <mxGeometry x="296" y="9" width="220" height="14" as="geometry"/>
         </mxCell>
-        <mxCell id="c50" value="head" style="text;html=1;align=center;verticalAlign=middle;whiteSpace=wrap;fontFamily=Helvetica;fontSize=7;fontColor=#000000;" vertex="1" parent="Fig6_artwork">
+        <mxCell id="c50" value="Head" style="text;html=1;align=center;verticalAlign=middle;whiteSpace=wrap;fontFamily=Helvetica;fontSize=7;fontColor=#000000;" vertex="1" parent="Fig6_artwork">
           <mxGeometry x="318" y="26" width="35" height="13" as="geometry"/>
         </mxCell>
-        <mxCell id="c51" value="flank" style="text;html=1;align=center;verticalAlign=middle;whiteSpace=wrap;fontFamily=Helvetica;fontSize=7;fontColor=#000000;" vertex="1" parent="Fig6_artwork">
+        <mxCell id="c51" value="Flank" style="text;html=1;align=center;verticalAlign=middle;whiteSpace=wrap;fontFamily=Helvetica;fontSize=7;fontColor=#000000;" vertex="1" parent="Fig6_artwork">
           <mxGeometry x="345" y="26" width="35" height="13" as="geometry"/>
         </mxCell>
-        <mxCell id="c52" value="rear" style="text;html=1;align=center;verticalAlign=middle;whiteSpace=wrap;fontFamily=Helvetica;fontSize=7;fontColor=#000000;" vertex="1" parent="Fig6_artwork">
+        <mxCell id="c52" value="Rear" style="text;html=1;align=center;verticalAlign=middle;whiteSpace=wrap;fontFamily=Helvetica;fontSize=7;fontColor=#000000;" vertex="1" parent="Fig6_artwork">
           <mxGeometry x="372" y="26" width="35" height="13" as="geometry"/>
         </mxCell>
-        <mxCell id="c53" value="ring" style="text;html=1;align=center;verticalAlign=middle;whiteSpace=wrap;fontFamily=Helvetica;fontSize=7;fontColor=#000000;" vertex="1" parent="Fig6_artwork">
+        <mxCell id="c53" value="Ring" style="text;html=1;align=center;verticalAlign=middle;whiteSpace=wrap;fontFamily=Helvetica;fontSize=7;fontColor=#000000;" vertex="1" parent="Fig6_artwork">
           <mxGeometry x="399" y="26" width="35" height="13" as="geometry"/>
         </mxCell>
-        <mxCell id="c54" value="at fire" style="text;html=1;align=center;verticalAlign=middle;whiteSpace=wrap;fontFamily=Helvetica;fontSize=7;fontColor=#000000;" vertex="1" parent="Fig6_artwork">
+        <mxCell id="c54" value="At fire" style="text;html=1;align=center;verticalAlign=middle;whiteSpace=wrap;fontFamily=Helvetica;fontSize=7;fontColor=#000000;" vertex="1" parent="Fig6_artwork">
           <mxGeometry x="426" y="26" width="35" height="13" as="geometry"/>
         </mxCell>
-        <mxCell id="c55" value="assets" style="text;html=1;align=center;verticalAlign=middle;whiteSpace=wrap;fontFamily=Helvetica;fontSize=7;fontColor=#000000;" vertex="1" parent="Fig6_artwork">
+        <mxCell id="c55" value="Assets" style="text;html=1;align=center;verticalAlign=middle;whiteSpace=wrap;fontFamily=Helvetica;fontSize=7;fontColor=#000000;" vertex="1" parent="Fig6_artwork">
           <mxGeometry x="453" y="26" width="35" height="13" as="geometry"/>
         </mxCell>
-        <mxCell id="c56" value="populated" style="text;html=1;align=center;verticalAlign=middle;whiteSpace=wrap;fontFamily=Helvetica;fontSize=7;fontColor=#000000;" vertex="1" parent="Fig6_artwork">
+        <mxCell id="c56" value="Populated" style="text;html=1;align=center;verticalAlign=middle;whiteSpace=wrap;fontFamily=Helvetica;fontSize=7;fontColor=#000000;" vertex="1" parent="Fig6_artwork">
           <mxGeometry x="480" y="26" width="35" height="13" as="geometry"/>
         </mxCell>
-        <mxCell id="c57" value="coat" style="text;html=1;align=right;verticalAlign=middle;whiteSpace=wrap;fontFamily=Helvetica;fontSize=8;fontColor=#000000;" vertex="1" parent="Fig6_artwork">
+        <mxCell id="c57" value="Coat" style="text;html=1;align=right;verticalAlign=middle;whiteSpace=wrap;fontFamily=Helvetica;fontSize=8;fontColor=#000000;" vertex="1" parent="Fig6_artwork">
           <mxGeometry x="280" y="42" width="40" height="16" as="geometry"/>
         </mxCell>
         <mxCell id="c58" value="" style="rounded=0;whiteSpace=wrap;html=1;fillColor=#4472C4;strokeColor=#FFFFFF;strokeWidth=0.5;fontFamily=Helvetica;fontSize=9;fontColor=#000000;" vertex="1" parent="Fig6_artwork">
@@ -917,7 +917,7 @@
         <mxCell id="c71" value="49" style="text;html=1;align=center;verticalAlign=middle;whiteSpace=wrap;fontFamily=Helvetica;fontSize=8;fontColor=#FFFFFF;" vertex="1" parent="Fig6_artwork">
           <mxGeometry x="484" y="42" width="27" height="16" as="geometry"/>
         </mxCell>
-        <mxCell id="c72" value="clear" style="text;html=1;align=right;verticalAlign=middle;whiteSpace=wrap;fontFamily=Helvetica;fontSize=8;fontColor=#000000;" vertex="1" parent="Fig6_artwork">
+        <mxCell id="c72" value="Clear" style="text;html=1;align=right;verticalAlign=middle;whiteSpace=wrap;fontFamily=Helvetica;fontSize=8;fontColor=#000000;" vertex="1" parent="Fig6_artwork">
           <mxGeometry x="280" y="58" width="40" height="16" as="geometry"/>
         </mxCell>
         <mxCell id="c73" value="" style="rounded=0;whiteSpace=wrap;html=1;fillColor=#B6C8E8;strokeColor=#FFFFFF;strokeWidth=0.5;fontFamily=Helvetica;fontSize=9;fontColor=#000000;" vertex="1" parent="Fig6_artwork">
@@ -962,7 +962,7 @@
         <mxCell id="c86" value="7" style="text;html=1;align=center;verticalAlign=middle;whiteSpace=wrap;fontFamily=Helvetica;fontSize=8;fontColor=#000000;" vertex="1" parent="Fig6_artwork">
           <mxGeometry x="484" y="58" width="27" height="16" as="geometry"/>
         </mxCell>
-        <mxCell id="c87" value="wet" style="text;html=1;align=right;verticalAlign=middle;whiteSpace=wrap;fontFamily=Helvetica;fontSize=8;fontColor=#000000;" vertex="1" parent="Fig6_artwork">
+        <mxCell id="c87" value="Wet" style="text;html=1;align=right;verticalAlign=middle;whiteSpace=wrap;fontFamily=Helvetica;fontSize=8;fontColor=#000000;" vertex="1" parent="Fig6_artwork">
           <mxGeometry x="280" y="74" width="40" height="16" as="geometry"/>
         </mxCell>
         <mxCell id="c88" value="" style="rounded=0;whiteSpace=wrap;html=1;fillColor=#C0D0EB;strokeColor=#FFFFFF;strokeWidth=0.5;fontFamily=Helvetica;fontSize=9;fontColor=#000000;" vertex="1" parent="Fig6_artwork">
@@ -1007,7 +1007,7 @@
         <mxCell id="c101" value="5" style="text;html=1;align=center;verticalAlign=middle;whiteSpace=wrap;fontFamily=Helvetica;fontSize=8;fontColor=#000000;" vertex="1" parent="Fig6_artwork">
           <mxGeometry x="484" y="74" width="27" height="16" as="geometry"/>
         </mxCell>
-        <mxCell id="c102" value="draft" style="text;html=1;align=right;verticalAlign=middle;whiteSpace=wrap;fontFamily=Helvetica;fontSize=8;fontColor=#000000;" vertex="1" parent="Fig6_artwork">
+        <mxCell id="c102" value="Draft" style="text;html=1;align=right;verticalAlign=middle;whiteSpace=wrap;fontFamily=Helvetica;fontSize=8;fontColor=#000000;" vertex="1" parent="Fig6_artwork">
           <mxGeometry x="280" y="90" width="40" height="16" as="geometry"/>
         </mxCell>
         <mxCell id="c103" value="" style="rounded=0;whiteSpace=wrap;html=1;fillColor=#F8F9FC;strokeColor=#FFFFFF;strokeWidth=0.5;fontFamily=Helvetica;fontSize=9;fontColor=#000000;" vertex="1" parent="Fig6_artwork">
@@ -1049,7 +1049,7 @@
         <mxCell id="c115" value="3" style="text;html=1;align=center;verticalAlign=middle;whiteSpace=wrap;fontFamily=Helvetica;fontSize=8;fontColor=#000000;" vertex="1" parent="Fig6_artwork">
           <mxGeometry x="484" y="90" width="27" height="16" as="geometry"/>
         </mxCell>
-        <mxCell id="c116" value="prime" style="text;html=1;align=right;verticalAlign=middle;whiteSpace=wrap;fontFamily=Helvetica;fontSize=8;fontColor=#000000;" vertex="1" parent="Fig6_artwork">
+        <mxCell id="c116" value="Prime" style="text;html=1;align=right;verticalAlign=middle;whiteSpace=wrap;fontFamily=Helvetica;fontSize=8;fontColor=#000000;" vertex="1" parent="Fig6_artwork">
           <mxGeometry x="280" y="106" width="40" height="16" as="geometry"/>
         </mxCell>
         <mxCell id="c117" value="" style="rounded=0;whiteSpace=wrap;html=1;fillColor=#FFFFFF;strokeColor=#FFFFFF;strokeWidth=0.5;fontFamily=Helvetica;fontSize=9;fontColor=#000000;" vertex="1" parent="Fig6_artwork">
@@ -1076,7 +1076,7 @@
         <mxCell id="c124" value="37" style="text;html=1;align=center;verticalAlign=middle;whiteSpace=wrap;fontFamily=Helvetica;fontSize=8;fontColor=#FFFFFF;" vertex="1" parent="Fig6_artwork">
           <mxGeometry x="484" y="106" width="27" height="16" as="geometry"/>
         </mxCell>
-        <mxCell id="c125" value="ignite" style="text;html=1;align=right;verticalAlign=middle;whiteSpace=wrap;fontFamily=Helvetica;fontSize=8;fontColor=#000000;" vertex="1" parent="Fig6_artwork">
+        <mxCell id="c125" value="Ignite" style="text;html=1;align=right;verticalAlign=middle;whiteSpace=wrap;fontFamily=Helvetica;fontSize=8;fontColor=#000000;" vertex="1" parent="Fig6_artwork">
           <mxGeometry x="280" y="122" width="40" height="16" as="geometry"/>
         </mxCell>
         <mxCell id="c126" value="" style="rounded=0;whiteSpace=wrap;html=1;fillColor=#DCE4F4;strokeColor=#FFFFFF;strokeWidth=0.5;fontFamily=Helvetica;fontSize=9;fontColor=#000000;" vertex="1" parent="Fig6_artwork">
@@ -1112,7 +1112,7 @@
         <mxCell id="c136" value="" style="rounded=0;whiteSpace=wrap;html=1;fillColor=#FFFFFF;strokeColor=#FFFFFF;strokeWidth=0.5;fontFamily=Helvetica;fontSize=9;fontColor=#000000;" vertex="1" parent="Fig6_artwork">
           <mxGeometry x="484" y="121" width="27" height="16" as="geometry"/>
         </mxCell>
-        <mxCell id="c137" value="evacuate" style="text;html=1;align=right;verticalAlign=middle;whiteSpace=wrap;fontFamily=Helvetica;fontSize=8;fontColor=#000000;" vertex="1" parent="Fig6_artwork">
+        <mxCell id="c137" value="Evacuate" style="text;html=1;align=right;verticalAlign=middle;whiteSpace=wrap;fontFamily=Helvetica;fontSize=8;fontColor=#000000;" vertex="1" parent="Fig6_artwork">
           <mxGeometry x="280" y="138" width="40" height="16" as="geometry"/>
         </mxCell>
         <mxCell id="c138" value="" style="rounded=0;whiteSpace=wrap;html=1;fillColor=#FFFFFF;strokeColor=#FFFFFF;strokeWidth=0.5;fontFamily=Helvetica;fontSize=9;fontColor=#000000;" vertex="1" parent="Fig6_artwork">
