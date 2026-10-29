@@ -246,7 +246,11 @@ class Grammar:
         """One syntactically complete proposal. kind in
         {rule, macro, actuator, concept}; None draws one."""
         if kind is None:
-            if _a.concepts_off():
+            if os.environ.get("DSS_NO_COMPOSED", "").strip() == "1":
+                # closed-vocabulary search (revision K13): rules and macros
+                # over the six families only, no composed intervention
+                kind = str(self.rng.choice(["rule", "macro"], p=[0.7, 0.3]))
+            elif _a.concepts_off():
                 # same relative odds of the other three kinds
                 kind = str(self.rng.choice(
                     ["rule", "macro", "actuator"],
@@ -590,6 +594,38 @@ class LLMScreenProposer(SearchProposer):
                 pool.append((g, q))
         ranked.sort(key=lambda t: -t[0])
         return ranked
+
+
+class RandomVarProposer(LLMScreenProposer):
+    """Random seeds with the variation operator of the model search
+    (revision K14): six uniform samples of the grammar take the place of
+    the six model candidates, and the rest of the forecast budget goes to
+    local variations of the best, exactly as in LLMScreenProposer. Pairs
+    with the full VODA configuration; the two differ only in where the
+    six seeds come from."""
+    name = "randomvar"
+
+    def __init__(self, seed: int = 0, forecast_budget: int = 36,
+                 withheld: Sequence[str] = (), k: int = 3, prior=None,
+                 n_model: Optional[int] = None):
+        SearchProposer.__init__(self, seed, forecast_budget, withheld, k,
+                                prior)
+        self._transport = None
+        self.n_model = int(n_model or os.environ.get("DSS_LLM_SCREEN_N", 6))
+        self.fill = True
+        self._timeout = None
+        self.model_candidates = 0
+        self.model_kept = 0
+        self._last = (0, 0)
+
+    def _ask(self, ctx) -> List[dict]:
+        g = Grammar(ctx, self.rng, self.withheld)
+        out = []
+        for _ in range(self.n_model):
+            c = g.sample()
+            c["rationale"] = "search: random seed"
+            out.append(c)
+        return out
 
 
 class RandomBlindProposer(Proposer):

@@ -162,6 +162,9 @@ ARMS = {
     # budget as Random); the VODA configuration of article v52
     "LLMScreen": ("minimal", dict(adapt_on=True, evfis_on=True,
                                   genai_on=True), "llmscreen"),
+    # random seeds plus the variation operator of the model search (K14)
+    "RandomVar": ("minimal", dict(adapt_on=True, evfis_on=True,
+                                  genai_on=True), "randomvar"),
     # one unpriced random candidate per call, the counterpart of "LLM"
     "RandBlind": ("minimal", dict(adapt_on=True, evfis_on=True,
                                   genai_on=True), "randomblind"),
@@ -249,6 +252,18 @@ EXPERIMENTS = {
     "E12U": dict(scenarios=ALL_SCENARIOS,
                  arms=("LLM-ungated",),
                  withhold=True, prior=True),
+    # E13: closed-vocabulary search. The random search of E8 restricted to
+    # rules and macros over the six families, same budget and gates; the
+    # forecast-matched closed baseline. Pairs with E8 and E9.
+    "E13": dict(scenarios=ALL_SCENARIOS,
+                arms=("Random-fam",),
+                withhold=True, prior=True),
+    # E14: random seeds with variations. Six uniform samples in place of
+    # the six model candidates, then the same local variations within the
+    # same budget. Pairs with E9 (LLMScreen).
+    "E14": dict(scenarios=ALL_SCENARIOS,
+                arms=("RandomVar",),
+                withhold=True, prior=True),
     "LOO": dict(scenarios=ALL_SCENARIOS,
                 arms=("F5Ev",),
                 withhold=True, prior=True),
@@ -263,6 +278,9 @@ def _make_proposer(kind: str, seed: int, budget: int, prior):
                                 prior=prior)
     if kind == "llmscreen":
         return P.LLMScreenProposer(seed=seed, forecast_budget=budget,
+                                   prior=prior)
+    if kind == "randomvar":
+        return P.RandomVarProposer(seed=seed, forecast_budget=budget,
                                    prior=prior)
     if kind == "randomblind":
         return P.RandomBlindProposer(seed=seed)
@@ -368,7 +386,10 @@ def run_once(exp: str, scenario: str, arm: str, seed: int,
     (leave-one-out replay); each record carries rule text, kind, clauses,
     composition and concept, as proposals.jsonl stores them."""
     base_arm = arm.replace("-noprior", "").replace("-fixed", "") \
-        .replace("-nofam", "").replace("-ungated", "")
+        .replace("-nofam", "").replace("-ungated", "").replace("-fam", "")
+    # closed-vocabulary search: an arm ending in -fam samples rules and
+    # macros over the six families only (no composed intervention)
+    os.environ["DSS_NO_COMPOSED"] = "1" if arm.endswith("-fam") else ""
     # ungated control: an arm ending in -ungated admits every candidate
     # that clears G1 to G4 without the forecast gates (dss.adapt)
     os.environ["DSS_UNGATED"] = "1" if arm.endswith("-ungated") else ""
