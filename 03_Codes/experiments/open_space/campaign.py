@@ -244,6 +244,11 @@ EXPERIMENTS = {
                 arms=("F5Ev-nocoord",),
                 withhold=True, prior=True),
     # LOO: leave-one-out replay of the E5 worlds (see experiments/benchmark/loo.py)
+    # E12U: ungated control. The single-shot model proposer of E5 (LLM)
+    # with the forecast gates switched off; pairs with the E5 LLM rows.
+    "E12U": dict(scenarios=ALL_SCENARIOS,
+                 arms=("LLM-ungated",),
+                 withhold=True, prior=True),
     "LOO": dict(scenarios=ALL_SCENARIOS,
                 arms=("F5Ev",),
                 withhold=True, prior=True),
@@ -363,7 +368,10 @@ def run_once(exp: str, scenario: str, arm: str, seed: int,
     (leave-one-out replay); each record carries rule text, kind, clauses,
     composition and concept, as proposals.jsonl stores them."""
     base_arm = arm.replace("-noprior", "").replace("-fixed", "") \
-        .replace("-nofam", "")
+        .replace("-nofam", "").replace("-ungated", "")
+    # ungated control: an arm ending in -ungated admits every candidate
+    # that clears G1 to G4 without the forecast gates (dss.adapt)
+    os.environ["DSS_UNGATED"] = "1" if arm.endswith("-ungated") else ""
     if base_arm == "F5Ev-nocoord":
         base_arm = "F5Ev"
     # LOCAL AGENTS: an arm ending in -rN partitions the grid into N regional

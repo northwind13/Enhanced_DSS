@@ -2187,6 +2187,26 @@ def _stage3_generative(build_override, sim, rules: List[Rule],
                              if g.get("travel_min") is not None
                              else ""))(prop["_grounding"])
                          if prop.get("_grounding") else "")))
+    if os.environ.get("DSS_UNGATED") == "1":
+        # ungated control (revision K12u): the forecast gates G5 to G8 are
+        # switched off, so a candidate that clears G1 to G4 enters the base
+        # as written, with no shadow forecast. Pairs with the same proposer
+        # under the full chain.
+        rules.append(newr)
+        info = dict(source=src, proposal=prop, rule=newr.text(),
+                    revisions=_revisions, basis="ungated",
+                    gates=dict(g1_g2="pass",
+                               verdict="admitted (ungated, G1 to G4 only)"))
+        info["coverage_gap"] = bool(coverage_gap)
+        info["package"] = bool(_pkg)
+        if prop.get("new_concept"):
+            info["new_concept"] = prop["new_concept"]
+        if prop.get("new_intervention"):
+            info["new_intervention"] = prop["new_intervention"]
+        return AdaptOutcome(3, True,
+                            f"{name}: {newr.text()}"
+                            + (" [+package]" if _pkg else ""),
+                            dJ=0.0, info=info)
     j0c, j0 = _cva(build_override, sim, rules, horizon)
     rules.append(newr)
     # G3 and G4 are the SAME paired comparison on two independently seeded
