@@ -17,12 +17,14 @@ set "DSS_WITHHOLD_FAMILY_NAME="
 set "DSS_NO_COORD="
 set "DSS_GATE_SEEDS="
 set "R=experiments\benchmark\revision"
+if "%W_CPU%"=="" set "W_CPU=16"
+if "%W_LLM%"=="" set "W_LLM=6"
 set "SC=S1,S2,S3,S4,S5"
 set "SEEDS=201-230"
 echo ==== K21 started %date% %time% >> "%R%\revision_K21.log"
 set "DSS_REQUIRE_GENAI="
-python experiments\open_space\campaign.py --exp E8 --arms Random --budget 12 --scenarios %SC% --seeds %SEEDS% --workers 16 --out "%R%\k21_budget\random_b12"
-python experiments\open_space\campaign.py --exp E8 --arms Random --budget 24 --scenarios %SC% --seeds %SEEDS% --workers 16 --out "%R%\k21_budget\random_b24"
+python experiments\open_space\campaign.py --exp E8 --arms Random --budget 12 --scenarios %SC% --seeds %SEEDS% --workers %W_CPU% --out "%R%\k21_budget\random_b12"
+python experiments\open_space\campaign.py --exp E8 --arms Random --budget 24 --scenarios %SC% --seeds %SEEDS% --workers %W_CPU% --out "%R%\k21_budget\random_b24"
 echo === Claude access test ===
 python -c "import json,sys; from dss import adapt; r=adapt.genai_probe(); print(json.dumps({k:r.get(k) for k in ('ok','latency_ms','error')})); sys.exit(0 if r.get('ok') else 1)"
 if errorlevel 1 (
@@ -30,8 +32,8 @@ if errorlevel 1 (
   goto failed
 )
 set "DSS_REQUIRE_GENAI=1"
-python experiments\open_space\campaign.py --exp E9 --arms LLMScreen --budget 12 --scenarios %SC% --seeds %SEEDS% --workers 6 --out "%R%\k21_budget\goda_b12"
-python experiments\open_space\campaign.py --exp E9 --arms LLMScreen --budget 24 --scenarios %SC% --seeds %SEEDS% --workers 6 --out "%R%\k21_budget\goda_b24"
+python experiments\open_space\campaign.py --exp E9 --arms LLMScreen --budget 12 --scenarios %SC% --seeds %SEEDS% --workers %W_LLM% --out "%R%\k21_budget\goda_b12"
+python experiments\open_space\campaign.py --exp E9 --arms LLMScreen --budget 24 --scenarios %SC% --seeds %SEEDS% --workers %W_LLM% --out "%R%\k21_budget\goda_b24"
 echo ==== K21 done %errorlevel% %date% %time% >> "%R%\revision_K21.log"
 pause
 endlocal

@@ -17,9 +17,11 @@ set "DSS_WITHHOLD_FAMILY_NAME="
 set "DSS_NO_COORD="
 set "DSS_GATE_SEEDS="
 set "R=experiments\benchmark\revision"
+if "%W_CPU%"=="" set "W_CPU=16"
+if "%W_LLM%"=="" set "W_LLM=6"
 echo ==== K18 closed started %date% %time% >> "%R%\revision_K18.log"
 set "DSS_REQUIRE_GENAI="
-python "%R%\k18_combined.py" --arms closed --workers 16
+python "%R%\k18_combined.py" --arms closed --workers %W_CPU%
 echo === Claude access test ===
 python -c "import json,sys; from dss import adapt; r=adapt.genai_probe(); print(json.dumps({k:r.get(k) for k in ('ok','latency_ms','error')})); sys.exit(0 if r.get('ok') else 1)"
 if errorlevel 1 (
@@ -28,7 +30,7 @@ if errorlevel 1 (
 )
 set "DSS_REQUIRE_GENAI=1"
 echo ==== K18 live started %date% %time% >> "%R%\revision_K18.log"
-python "%R%\k18_combined.py" --arms live --workers 6
+python "%R%\k18_combined.py" --arms live --workers %W_LLM%
 echo ==== K18 done %errorlevel% %date% %time% >> "%R%\revision_K18.log"
 pause
 endlocal
