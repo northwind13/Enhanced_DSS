@@ -125,6 +125,9 @@ def main():
     ap.add_argument("--step", type=float, default=30.0)
     ap.add_argument("--out", default=OUT)
     ap.add_argument("--cases", default=",".join(ORDER))
+    ap.add_argument("--firms-key", default=os.environ.get("FIRMS_MAP_KEY", ""),
+                    help="NASA FIRMS MAP_KEY, needed once per case until the "
+                         "detections are cached under validation/cache")
     args = ap.parse_args()
     out = os.path.join(args.out, f"{args.protocol}_stop_{args.stop}")
     cases = [c for c in args.cases.split(",") if c]
@@ -149,7 +152,7 @@ def main():
     # the FIRMS truth of every case is cached under validation/cache; the
     # driver only needs a non-empty key to read it
     res = TV.run_thesis_validation(
-        firms_key="cached", cell=args.cell, step_minutes=args.step,
+        firms_key=(args.firms_key or "cached"), cell=args.cell, step_minutes=args.step,
         seeds=args.seeds, cases=cases,
         offline=False, wind_ensemble=False, out_root=out, progress=prog)
     rows = []
