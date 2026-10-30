@@ -588,10 +588,10 @@
         <mxCell id="t1" parent="Fig4_artwork" style="text;html=1;align=left;verticalAlign=middle;fontSize=12;fontColor=#595959;" value="phase 1, proposal, six candidates" vertex="1">
           <mxGeometry height="32" width="122" x="30" y="70" as="geometry"/>
         </mxCell>
-        <mxCell id="t2" parent="Fig4_artwork" style="text;html=1;align=left;verticalAlign=middle;fontSize=12;fontColor=#595959;" value="phase 3, algebraic gates" vertex="1">
+        <mxCell id="t2" parent="Fig4_artwork" style="text;html=1;align=left;verticalAlign=middle;fontSize=12;fontColor=#595959;" value="algebraic gates, applied in phase 2" vertex="1">
           <mxGeometry height="32" width="173" x="30" y="284" as="geometry"/>
         </mxCell>
-        <mxCell id="t3" parent="Fig4_artwork" style="text;html=1;align=left;verticalAlign=middle;fontSize=12;fontColor=#595959;" value="phase 4, forecast gates" vertex="1">
+        <mxCell id="t3" parent="Fig4_artwork" style="text;html=1;align=left;verticalAlign=middle;fontSize=12;fontColor=#595959;" value="phase 3, forecast gates" vertex="1">
           <mxGeometry height="32" width="216" x="30" y="352" as="geometry"/>
         </mxCell>
         <mxCell id="t4" parent="Fig4_artwork" style="text;html=1;align=left;verticalAlign=middle;fontSize=12;fontColor=#1F3864;" value="deficit, coverage flag" vertex="1">
