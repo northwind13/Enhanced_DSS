@@ -1,0 +1,4 @@
+{"exp": "E8", "scenario": "S1", "arm": "Random", "seed": 207, "t_min": 26.0, "name": "sited_5520_7", "clauses": [{"effect": "clear", "sector": "at_fire", "range": [2, 8], "amount": 0.83}], "composition": []}
+{"exp": "E8", "scenario": "S1", "arm": "Random", "seed": 212, "t_min": 14.0, "name": "sited_1292_5", "clauses": [{"effect": "coat", "sector": "at_fire", "range": [1, 6], "amount": 0.74}], "composition": []}
+{"exp": "E8", "scenario": "S1", "arm": "Random", "seed": 205, "t_min": 74.0, "name": "sited_4252_6", "clauses": [{"effect": "clear", "sector": "head", "range": [2, 4], "amount": 0.86}, {"effect": "wet", "sector": "ring", "range": [1, 4], "amount": 0.97}, {"effect": "prime", "sector": "assets", "range": [5, 9], "amount": 0.73}], "composition": []}
+{"exp": "E8", "scenario": "S1", "arm": "Random", "seed": 218, "t_min": 14.0, "name": "bundle_7584_1", "clauses": null, "composition": [["resource_deployment", 1.0], ["containment_line", 0.64]]}
