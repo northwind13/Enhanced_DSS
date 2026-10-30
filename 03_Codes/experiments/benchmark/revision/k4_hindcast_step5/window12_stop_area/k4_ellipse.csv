@@ -1,0 +1,13 @@
+case,label,reference,lb,pod,far,sorensen,n
+canakkale2023,Canakkale-Kayadere 2023,disk,1.51,0.501,0.505,0.498,1
+canakkale2023,Canakkale-Kayadere 2023,ellipse,1.51,0.417,0.585,0.416,1
+canakkale2023,Canakkale-Kayadere 2023,simulation,,0.827,0.222,0.801,50
+manavgat2021,Manavgat (Antalya) 2021,disk,1.14,0.328,0.673,0.327,1
+manavgat2021,Manavgat (Antalya) 2021,ellipse,1.14,0.244,0.756,0.244,1
+manavgat2021,Manavgat (Antalya) 2021,simulation,,0.87,0.139,0.866,50
+marmaris2021,Marmaris (Mugla) 2021,disk,1.21,0.273,0.725,0.274,1
+marmaris2021,Marmaris (Mugla) 2021,ellipse,1.21,0.237,0.764,0.237,1
+marmaris2021,Marmaris (Mugla) 2021,simulation,,0.914,0.114,0.9,50
+milas2021,Milas-Kemerkoy (Mugla) 2021,disk,1.11,0.391,0.608,0.391,1
+milas2021,Milas-Kemerkoy (Mugla) 2021,ellipse,1.11,0.311,0.688,0.311,1
+milas2021,Milas-Kemerkoy (Mugla) 2021,simulation,,0.811,0.189,0.811,50

@@ -1,0 +1,5 @@
+Case,Coverage (POD),Front mean / p90 (m),Arrival MAE (h),Arrival ρ
+Canakkale-Kayadere 2023,0.827 ± 0.006,286 / 633,1.04 ± 0.03,0.96
+Manavgat (Antalya) 2021,0.870 ± 0.000,338 / 830,0.63 ± 0.00,-0.20
+Marmaris (Mugla) 2021,0.914 ± 0.007,99 / 205,3.83 ± 0.00,0.99
+Milas-Kemerkoy (Mugla) 2021,0.811 ± 0.000,467 / 906,1.23 ± 0.00,1.00
