@@ -264,6 +264,13 @@ EXPERIMENTS = {
     "E14": dict(scenarios=ALL_SCENARIOS,
                 arms=("RandomVar",),
                 withhold=True, prior=True),
+    # E15: evolutionary search (population 12, three generations, tournament
+    # selection, mutation and clause crossover) over the composed grammar,
+    # same budget and gates; the standard optimization baseline of the
+    # revision (K16). Pairs with E8 and E9.
+    "E15": dict(scenarios=ALL_SCENARIOS,
+                arms=("Evo",),
+                withhold=True, prior=True),
     "LOO": dict(scenarios=ALL_SCENARIOS,
                 arms=("F5Ev",),
                 withhold=True, prior=True),
