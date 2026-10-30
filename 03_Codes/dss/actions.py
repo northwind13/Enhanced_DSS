@@ -27,6 +27,7 @@ from __future__ import annotations
 
 from typing import Dict, List, Tuple
 
+import os
 import numpy as np
 
 
@@ -789,7 +790,12 @@ def clause_cells(world, fire, clause, region_mask=None, workable=None,
         m = m & region_mask
     # crews must REACH the ground they wet, cut or light; coating is
     # aerial and evacuation and warning are orders to people
-    if eff in ("wet", "clear", "ignite") and workable is not None:
+    # DSS_COAT_PARITY=1 (revision K27): coating is held to the same reach
+    # and fire-size condition as the ground effects, and charged to the
+    # capacity pool (see apply_actuator_clauses), so the gates see its cost
+    _par = os.environ.get("DSS_COAT_PARITY") == "1"
+    if (eff in ("wet", "clear", "ignite") or (_par and eff == "coat")) \
+            and workable is not None:
         m = m & workable
     # NOT THROUGH A SETTLEMENT, AND NOT ON WATER. Clearing digs ground
     # and lighting sets it alight; neither belongs on built-up cells,
@@ -839,6 +845,9 @@ def apply_actuator_clauses(out, world, fire, region_mask, clauses,
             _apply_ignite(out, m, a)
         elif eff == "coat":
             _apply_coat(out, m, a)
+            if os.environ.get("DSS_COAT_PARITY") == "1":
+                # the drop draws on the same pool as a wet order
+                out.rcap[m] = np.maximum(out.rcap[m], a * cap_max)
         elif eff == "evacuate":
             if out.revac is None:
                 out.revac = np.zeros_like(out.rcap)
@@ -1034,6 +1043,9 @@ def decision_to_resources(world, burning, regions_intensities, base=None,
             if _down_ok:
                 _pass &= _down
             _apply_coat(out, _pass, u9)
+            if os.environ.get("DSS_COAT_PARITY") == "1":
+                _pass &= _workable
+                out.rcap[_pass] = np.maximum(out.rcap[_pass], u9 * cap_max)
             _mc9 = _macro_cells.setdefault(
                 "retardant_drop", np.zeros((ny, nx), dtype=bool))
             _mc9 |= _pass

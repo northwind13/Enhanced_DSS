@@ -1234,6 +1234,31 @@ def _situation_brief(sim, engine) -> str:
     and which cost term is bleeding. The model can only aim its rule at
     the cheapest-to-avert loss if it can SEE the incident; the concept
     crisps alone were too little and produced blind guesses."""
+    # Revision K26 (information parity): with DSS_BRIEF_FROM_SHADOW=1 the
+    # brief is written from the same copy of the state that the shadow
+    # forecasts start from (the copy a perturbation hook may have
+    # altered), so the proposer sees no more than the forecasts do. With
+    # DSS_BRIEF_NOISE=s every figure of the brief is scaled by 1+N(0,s)
+    # on the calls selected with probability DSS_BRIEF_NOISE_P (default
+    # 0.25), the corruption S5 applies to the closed-layer features.
+    if os.environ.get("DSS_BRIEF_FROM_SHADOW") == "1":
+        from . import evaluate as _EV
+        sim = _EV.clone_sim(sim)
+    _txt = _situation_brief_text(sim, engine)
+    _sd = float(os.environ.get("DSS_BRIEF_NOISE", "0") or 0)
+    if _sd > 0:
+        import re as _re, numpy as _np
+        _rng = _np.random.default_rng(7_000_003 * int(getattr(sim.cfg, "rng_seed", 0) or 0)
+                                      + 11 * int(sim.state.step) + 5)
+        if _rng.random() < float(os.environ.get("DSS_BRIEF_NOISE_P", "0.25")):
+            def _pert(m):
+                v = float(m.group(0))
+                return f"{v * (1.0 + _rng.normal(0.0, _sd)):.{len(m.group(0).split('.')[1]) if '.' in m.group(0) else 0}f}"
+            _txt = _re.sub(r"(?<![\w.])\d+(?:\.\d+)?(?![\w.])", _pert, _txt)
+    return _txt
+
+
+def _situation_brief_text(sim, engine) -> str:
     try:
         import numpy as _np
         w = sim.world
@@ -2216,10 +2241,18 @@ def _stage3_generative(build_override, sim, rules: List[Rule],
     # proposition than G3 and a candidate could pass it by merely beating
     # inaction. Both futures now run the base without the candidate.
     _sa, _sb = _gate_seeds()
+    # DSS_ONE_FUTURE=1 (revision K25, gate ablation): the gates read ONE
+    # future, G6 (second future), G7 (package margin) and G8 (attribution)
+    # are switched off; G5 (strict gain on the first future) and the
+    # no-harm guard of the loop stay. Pairs with the full chain.
+    _one = os.environ.get("DSS_ONE_FUTURE") == "1"
     j1a, j0a_none = _cva(build_override, sim, rules, horizon, reseed=_sa)
-    j1b, j0b_none = _cva(build_override, sim, rules, horizon, reseed=_sb)
     j0a = _cva(build_override, sim, rules[:-1], horizon, reseed=_sa)[0]
-    j0b = _cva(build_override, sim, rules[:-1], horizon, reseed=_sb)[0]
+    if _one:
+        j1b, j0b_none, j0b = j1a, j0a_none, j0a
+    else:
+        j1b, j0b_none = _cva(build_override, sim, rules, horizon, reseed=_sb)
+        j0b = _cva(build_override, sim, rules[:-1], horizon, reseed=_sb)[0]
     info = dict(source=src, proposal=prop, rule=newr.text(),
                 revisions=_revisions,
                 basis=f"{trial_objective()} cost at >=45 min",
@@ -2232,7 +2265,7 @@ def _stage3_generative(build_override, sim, rules: List[Rule],
                                    j_noaction=float(j0b_none))))
     info["coverage_gap"] = bool(coverage_gap)
     info["package"] = bool(_pkg)
-    if _pkg:
+    if _pkg and not _one:
         # G5 complexity: growing the vocabulary must BUY something -
         # both reseeded rollouts must improve by at least the margin
         if j1a < j0a - G5_MARGIN and j1b < j0b - G5_MARGIN:

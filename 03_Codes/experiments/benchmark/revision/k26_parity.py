@@ -1,0 +1,145 @@
+# -*- coding: utf-8 -*-
+r"""K26: information parity between the layers and the proposer.
+
+Referee question: the incident brief of the proposer is written from the
+state, while the closed layer reads features that S5 corrupts and the
+situation-picture test (K19) perturbs only the shadow forecasts. Two arms:
+  state  the K19 perturbation (a quarter of the burning cells unseen, redrawn
+         each step) applied to the brief as well, so the proposer sees the
+         same copy the forecasts start from; 150 worlds, pairs with
+         k19_perimeter closed
+  s5     the S5 corruption applied to the figures of the brief too (every
+         figure scaled by 1+N(0, 0.1) on a quarter of the calls); S5 worlds
+         only, pairs with final/t1_reference closed on S5
+
+  python experiments\benchmark\revision\k26_parity.py --arms state --workers 6
+  python experiments\benchmark\revision\k26_parity.py --arms s5 --scenarios S5 --workers 6
+"""
+import argparse, csv, os, sys, time
+HERE = os.path.dirname(os.path.abspath(__file__))
+BENCH = os.path.dirname(HERE)
+ROOT = os.path.dirname(os.path.dirname(BENCH))
+sys.path.insert(0, ROOT)
+sys.path.insert(0, os.path.join(ROOT, "experiments"))
+sys.path.insert(0, BENCH)
+from open_space import campaign as C          # noqa: E402
+from dss import evaluate as EV                # noqa: E402
+from dss import adapt as A                    # noqa: E402
+import numpy as np
+
+OUT = os.path.join(HERE, "k26_parity")
+SCEN = ("S1", "S2", "S3", "S4", "S5")
+DROP = float(os.environ.get("DSS_K19_DROP", "0.25"))
+_orig_clone = EV.clone_sim
+
+
+def _clone_perturbed(sim, keep_snapshots=False):
+    s2 = _orig_clone(sim, keep_snapshots=keep_snapshots)
+    if keep_snapshots:
+        return s2
+    st = s2.state
+    on = np.asarray(st.burning) > 0.5
+    if not on.any() or DROP <= 0.0:
+        return s2
+    seed = int(getattr(sim.cfg, "rng_seed", 0) or 0)
+    rng = np.random.default_rng(1_000_003 * seed + 7 * int(s2.state.step) + 19)
+    drop = on & (rng.random(on.shape) < DROP)
+    st.burning[drop] = 0.0
+    st.intensity[drop] = 0.0
+    st.tau[drop] = 0.0
+    return s2
+
+
+def _install_arm(arm):
+    if arm == "state":
+        EV.clone_sim = _clone_perturbed
+        os.environ["DSS_BRIEF_FROM_SHADOW"] = "1"
+        os.environ.pop("DSS_BRIEF_NOISE", None)
+    elif arm == "s5":
+        os.environ["DSS_BRIEF_NOISE"] = "0.1"
+        os.environ["DSS_BRIEF_NOISE_P"] = "0.25"
+        os.environ.pop("DSS_BRIEF_FROM_SHADOW", None)
+
+
+def _job(args):
+    arm, sc, seed = args
+    try:
+        _install_arm(arm)
+        row, _c, _a, _m = C.run_once("E9", sc, "LLMScreen", seed)
+        return dict(perturb=("brief_from_shadow_drop_0.25" if arm == "state" else "brief_s5_noise"), arm=arm,
+                    scenario=sc, seed=seed,
+                    n_installed=len(_m),
+                    burned_ha=row["burned_ha"],
+                    coated_ha=row.get("coated_ha", ""),
+                    success=row["success"], pop_affected=row["pop_affected"],
+                    j_phys=row["j_phys"], j_total=row["j_total"],
+                    j_resp=row["j_resp"], rules_final=row["rules_final"],
+                    wall_s=row["wall_s"]), None
+    except Exception as exc:
+        import traceback
+        return None, (f"K26/{arm}/{sc}/{seed}: {type(exc).__name__}: {exc}\n"
+                      + traceback.format_exc()[-800:])
+
+
+def main():
+    ap = argparse.ArgumentParser()
+    ap.add_argument("--arms", default="state,s5")
+    ap.add_argument("--out", default=OUT)
+    ap.add_argument("--workers", type=int, default=1)
+    ap.add_argument("--scenarios", default="S1,S2,S3,S4,S5")
+    ap.add_argument("--seeds", default="201-230")
+    args = ap.parse_args()
+    os.makedirs(args.out, exist_ok=True)
+    arms = [a for a in args.arms.split(",") if a]
+    if os.environ.get("DSS_NO_CONCEPT", "") != "1":
+        sys.exit("K26: set DSS_NO_CONCEPT=1, as in the model-error campaign")
+    scs = [s for s in args.scenarios.split(",") if s]
+    seeds = C._parse_seeds(args.seeds)
+    path = os.path.join(args.out, "runs.csv")
+    done = set()
+    if os.path.exists(path):
+        with open(path, encoding="utf-8") as f:
+            done = {(r["arm"], r["scenario"], int(r["seed"]))
+                    for r in csv.DictReader(f)}
+    jobs = [(arm, sc, sd) for arm in arms for sc in (["S5"] if arm == "s5" else scs) for sd in seeds
+            if (arm, sc, sd) not in done]
+    print(f"K26: {len(jobs)} runs to do ({len(done)} done)", flush=True)
+    fields = ["perturb", "arm", "scenario", "seed", "n_installed",
+              "burned_ha", "coated_ha", "success", "pop_affected", "j_phys",
+              "j_total", "j_resp", "rules_final", "wall_s"]
+    t0 = time.time()
+    n = 0
+
+    def sink(res):
+        nonlocal n
+        row, err = res
+        n += 1
+        if err:
+            print("ERR", err, flush=True)
+            with open(os.path.join(args.out, "errors.log"), "a") as f:
+                f.write(err + "\n")
+            return
+        new = not os.path.exists(path)
+        with open(path, "a", newline="", encoding="utf-8") as f:
+            w = csv.DictWriter(f, fieldnames=fields)
+            if new:
+                w.writeheader()
+            w.writerow(row)
+        print(f"[{n}/{len(jobs)}] {row['arm']} {row['scenario']} "
+              f"s{row['seed']}: burned {row['burned_ha']} ha, success "
+              f"{row['success']}, {row['wall_s']}s "
+              f"(elapsed {time.time() - t0:.0f}s)", flush=True)
+
+    if args.workers <= 1:
+        for j in jobs:
+            sink(_job(j))
+    else:
+        import multiprocessing as mp
+        with mp.get_context("spawn").Pool(args.workers) as pool:
+            for res in pool.imap_unordered(_job, jobs):
+                sink(res)
+    print("done", flush=True)
+
+
+if __name__ == "__main__":
+    main()

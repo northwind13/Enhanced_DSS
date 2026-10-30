@@ -431,8 +431,11 @@ class SearchProposer(Proposer):
         # finalists are priced on the second seed as well and ranked by
         # the worse of the two, which is the quantity the gates test.
         finalists = []
+        _one = os.environ.get("DSS_ONE_FUTURE") == "1"
         for g1, p in ranked[: self.k]:
-            if self.forecasts - spent0 < self.forecast_budget + self.k:
+            if _one:
+                g2 = g1       # K25 gate ablation: selection on one future
+            elif self.forecasts - spent0 < self.forecast_budget + self.k:
                 before = _a.CVA_CALLS
                 try:
                     g2 = forecast_gain(p, ctx, reseed=202)[0]
