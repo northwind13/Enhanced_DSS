@@ -1,0 +1,14 @@
+perturb,arm,scenario,seed,n_installed,burned_ha,coated_ha,success,pop_affected,j_phys,j_total,j_resp,rules_final,wall_s
+coat_parity_total_cost,closed,S1,206,0,0.36,0.0,1,0.0,0.00088,0.04571,0.00384,7,1.9
+coat_parity_total_cost,closed,S1,201,0,0.54,0.0,1,0.0,0.00127,0.03848,0.00418,6,2.5
+coat_parity_total_cost,closed,S1,203,0,109.44,0.0,0,667816.0,0.1976,0.23797,0.87231,8,39.3
+coat_parity_total_cost,closed,S1,204,0,94.14,0.0,0,70259.0,0.14663,0.21001,1.0,11,41.0
+coat_parity_total_cost,closed,S1,202,0,82.8,0.0,0,0.0,0.12918,0.18402,0.95598,9,42.7
+coat_parity_total_cost,closed,S1,205,0,69.21,0.0,0,0.0,0.12524,0.17476,0.74453,10,44.9
+coat_parity_total_cost,closed,S1,208,0,94.5,0.0,0,869329.0,0.21382,0.26282,0.95564,11,42.3
+coat_parity_total_cost,closed,S1,207,0,153.63,0.0,0,430805.0,0.2422,0.29473,1.0,7,43.5
+coat_parity_total_cost,closed,S1,211,0,0.45,0.0,1,0.0,0.0011,0.04142,0.00187,7,3.1
+coat_parity_total_cost,closed,S1,215,0,0.36,0.0,1,0.0,0.00085,0.04,0.00182,7,3.0
+coat_parity_total_cost,closed,S1,213,0,1.71,0.0,1,0.0,0.00417,0.02977,0.00628,7,4.3
+coat_parity_total_cost,closed,S1,212,0,1.08,0.0,1,0.0,0.0025,0.04867,0.01968,7,9.5
+coat_parity_total_cost,closed,S1,218,0,4.05,0.0,1,0.0,0.00977,0.02872,0.01436,7,5.3
