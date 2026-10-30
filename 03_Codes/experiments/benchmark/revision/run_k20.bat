@@ -7,8 +7,10 @@ cd /d "%~dp0..\..\.."
 if exist ".venv\Scripts\activate.bat" call ".venv\Scripts\activate.bat"
 set "DSS_NO_CONCEPT=1"
 set "R=experiments\benchmark\revision"
+if "%W_CPU%"=="" set "W_CPU=12"
+if "%W_LLM%"=="" set "W_LLM=6"
 echo ==== K20 started %date% %time% >> "%R%\revision_K20.log"
-python "%R%\k20_cost_weights.py" --workers 12
+python "%R%\k20_cost_weights.py" --workers %W_CPU%
 echo ==== K20 done %errorlevel% %date% %time% >> "%R%\revision_K20.log"
 pause
 endlocal
