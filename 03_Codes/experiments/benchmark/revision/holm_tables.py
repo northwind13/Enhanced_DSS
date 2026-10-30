@@ -73,6 +73,22 @@ k17 = os.path.join(R, "k17_kernel", "runs.csv")
 add("VII", "Spread kernel and ember model", -56, P(k17, arm="live"), P(k17, arm="closed"),
     "k17_kernel:live", "k17_kernel:closed")
 
+# revision round 2 rows (Table VII)
+k21 = os.path.join(R, "k21_budget")
+add("VII", "Random, 12 forecasts", -36, P(os.path.join(k21, "random_b12", "runs.csv"), arm="Random"), closed, "k21_budget/random_b12:Random", "t1_reference:F5Ev")
+add("VII", "Random, 24 forecasts", -49, P(os.path.join(k21, "random_b24", "runs.csv"), arm="Random"), closed, "k21_budget/random_b24:Random", "t1_reference:F5Ev")
+for lab, pr, sub_ in [("GODA, 12 forecasts", None, "goda_b12"), ("GODA, 24 forecasts", None, "goda_b24")]:
+    pth = os.path.join(k21, sub_, "runs.csv")
+    g = P(pth, arm="LLMScreen") if os.path.exists(pth) else {}
+    if len(g) == 150:
+        add("VII", lab, pr, g, closed, f"k21_budget/{sub_}:LLMScreen", "t1_reference:F5Ev")
+k18 = os.path.join(R, "k18_combined", "runs.csv")
+add("VII", "Kernel, wind and coating errors combined", -30, P(k18, arm="live"), P(k18, arm="closed"), "k18_combined:live", "k18_combined:closed")
+k19 = os.path.join(R, "k19_perimeter", "runs.csv")
+add("VII", "Perturbed fire state, 25% unseen", -60, P(k19, arm="live"), P(k19, arm="closed"), "k19_perimeter:live", "k19_perimeter:closed")
+k22 = os.path.join(R, "k22_domain", "runs.csv")
+add("VII", "Domain 3.6 x 2.7 km, 30 worlds", -57, P(k22, arm="live"), P(k22, arm="closed"), "k22_domain:live", "k22_domain:closed")
+
 # Table VIII
 add("VIII", "40 rules + Closed / Seeds + Closed", -11, P(os.path.join(F, "t13_full_doctrine", "runs.csv"), arm="F40Ev"),
     closed, "t13_full_doctrine:F40Ev", "t1_reference:F5Ev")
@@ -109,13 +125,13 @@ for rank, i in enumerate(order):
     run = max(run, min(1.0, (m - rank) * out[i]["p_raw"])); out[i]["p_holm"] = run
 os.makedirs("/tmp/w4", exist_ok=True)
 cols = ["table", "row_label", "n", "mean_ref_ha", "mean_cfg_ha", "rel_change_pct", "better", "tie", "worse", "p_raw", "p_holm", "source_cfg", "source_ref"]
-with open("/tmp/w4/holm.csv", "w", newline="", encoding="utf-8") as f:
+with open(os.environ.get("HOLM_OUT", "/tmp/w4/holm.csv"), "w", newline="", encoding="utf-8") as f:
     w = csv.DictWriter(f, fieldnames=cols, extrasaction="ignore"); w.writeheader()
     for o in out: w.writerow({**o, "p_raw": f"{o['p_raw']:.6g}", "p_holm": f"{o['p_holm']:.6g}"})
 print("| Table | Row | n | Rel. change (%) | b/t/w | p_raw | p_holm |")
 print("|---|---|---|---|---|---|---|")
 for o in out:
-    flag = "" if abs(round(o["rel_change_pct"]) - o["printed"]) <= 1 else f" (printed {o['printed']:+d})"
+    flag = "" if o["printed"] is None or abs(round(o["rel_change_pct"]) - o["printed"]) <= 1 else f" (printed {o['printed']:+d})"
     print(f"| {o['table']} | {o['row_label']} | {o['n']} | {o['rel_change_pct']:+.0f} ± {o['hw']:.0f}{flag} | {o['better']}/{o['tie']}/{o['worse']} | {o['p_raw']:.2g} | {o['p_holm']:.2g} |")
-print("\nMISMATCH:", [(o["row_label"], round(o["rel_change_pct"]), o["printed"]) for o in out if abs(round(o["rel_change_pct"]) - o["printed"]) > 1])
+print("\nMISMATCH:", [(o["row_label"], round(o["rel_change_pct"]), o["printed"]) for o in out if o["printed"] is not None and abs(round(o["rel_change_pct"]) - o["printed"]) > 1])
 print("p_holm>=0.05:", [(o["row_label"], round(o["p_holm"], 3)) for o in out if o["p_holm"] >= 0.05])
