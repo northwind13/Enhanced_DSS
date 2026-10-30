@@ -57,6 +57,15 @@ def _ellipse(nx, ny, cx, cy, area_cells, wd_math_deg, lb):
 
 
 def main():
+    import argparse
+    ap = argparse.ArgumentParser()
+    ap.add_argument("--ckpt", default=CKPT,
+                    help="k4_hindcast checkpoint folder with ckpt_<case>/seed_*.npy")
+    ap.add_argument("--out", default=None, help="csv path (default <ckpt>/k4_ellipse.csv)")
+    args = ap.parse_args()
+    ckpt = args.ckpt
+    out = args.out or os.path.join(ckpt, "k4_ellipse.csv")
+    rows = []
     cell = 90.0
     print("case, reference, POD, FAR, Sorensen")
     for cid in ORDER:
@@ -81,12 +90,22 @@ def main():
                           ("ellipse", _ellipse(nx, ny, cx, cy, area, wd, lb))):
             pod, far, dice = _scores(ref, obs)
             print(f"{case['label']}, {name} (LB {lb:.2f}), {pod:.2f}, {far:.2f}, {dice:.2f}")
+            rows.append(dict(case=cid, label=case["label"], reference=name, lb=round(lb, 2),
+                             pod=round(pod, 3), far=round(far, 3), sorensen=round(dice, 3), n=1))
         label = case.get("label", cid).replace(" ", "_").replace("/", "_")
-        masks = sorted(glob.glob(os.path.join(CKPT, f"ckpt_{label}", "seed_*.npy")))
+        masks = sorted(glob.glob(os.path.join(ckpt, f"ckpt_{label}", "seed_*.npy")))
         if masks:
             sc = np.array([_scores(np.load(m), obs) for m in masks])
             print(f"{case['label']}, simulation (n={len(masks)}), "
                   f"{sc[:,0].mean():.2f}, {sc[:,1].mean():.2f}, {sc[:,2].mean():.2f}")
+            rows.append(dict(case=cid, label=case["label"], reference="simulation", lb="",
+                             pod=round(float(sc[:,0].mean()), 3), far=round(float(sc[:,1].mean()), 3),
+                             sorensen=round(float(sc[:,2].mean()), 3), n=len(masks)))
+    import csv
+    with open(out, "w", newline="", encoding="utf-8") as f:
+        w = csv.DictWriter(f, fieldnames=list(rows[0].keys()))
+        w.writeheader(); w.writerows(rows)
+    print("written", out)
 
 
 if __name__ == "__main__":
