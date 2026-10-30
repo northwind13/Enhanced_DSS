@@ -89,6 +89,10 @@ add("VII", "Perturbed fire state, 25% unseen", -60, P(k19, arm="live"), P(k19, a
 k22 = os.path.join(R, "k22_domain", "runs.csv")
 add("VII", "Domain 3.6 x 2.7 km, 30 worlds", -57, P(k22, arm="live"), P(k22, arm="closed"), "k22_domain:live", "k22_domain:closed")
 
+k23 = os.path.join(R, "k23_bref_live", "runs.csv")
+if os.path.exists(k23) and len(P(k23, arm="live")) == 150:
+    add("VII", "Reference burned fraction 0.25, live", -57, P(k23, arm="live"), P(k23, arm="closed"), "k23_bref_live:live", "k23_bref_live:closed")
+
 # Table VIII
 add("VIII", "40 rules + Closed / Seeds + Closed", -11, P(os.path.join(F, "t13_full_doctrine", "runs.csv"), arm="F40Ev"),
     closed, "t13_full_doctrine:F40Ev", "t1_reference:F5Ev")
