@@ -423,11 +423,27 @@ def _download_dem(case, cache):
             url = (f"https://copernicus-dem-30m.s3.amazonaws.com/"
                    f"{name}/{name}.tif")
             tiles.append((lat, lon, url))
-    print(f"[dem] reading {len(tiles)} Copernicus GLO-30 tile(s) via range "
-          "requests ...")
+    # whole tiles are needed, so each one is fetched as ONE streamed
+    # download into a tile store shared by every case (about 25 MB each),
+    # instead of thousands of small range requests through /vsicurl/
+    tdir = os.path.join(os.path.dirname(os.path.abspath(cache)), "_tiles")
+    os.makedirs(tdir, exist_ok=True)
+    print(f"[dem] fetching {len(tiles)} Copernicus GLO-30 tile(s) ...")
     arrs = {}
     for lat, lon, url in tiles:
-        with rasterio.open("/vsicurl/" + url) as src:
+        local = os.path.join(tdir, os.path.basename(url))
+        if not os.path.exists(local):
+            import requests
+            tmp = local + ".part"
+            with requests.get(url, stream=True, timeout=120) as r:
+                r.raise_for_status()
+                with open(tmp, "wb") as f:
+                    for chunk in r.iter_content(1 << 20):
+                        f.write(chunk)
+            os.replace(tmp, local)
+            print(f"[dem]   {os.path.basename(url)} "
+                  f"({os.path.getsize(local) / 1e6:.0f} MB)")
+        with rasterio.open(local) as src:
             arrs[(lat, lon)] = src.read(1)
     n = next(iter(arrs.values())).shape[0]
     lat_rows = sorted({t[0] for t in arrs}, reverse=True)
@@ -454,7 +470,14 @@ def _download_worldcover(case, cache):
     url = (f"https://esa-worldcover.s3.eu-central-1.amazonaws.com/v200/2021/"
            f"map/{name}.tif")
     print("[fuel] reading ESA WorldCover 2021 window via range requests ...")
-    with rasterio.open("/vsicurl/" + url) as src:
+    # large merged ranges: the window is a few MB out of a 3 degree tile
+    _env = rasterio.Env(GDAL_DISABLE_READDIR_ON_OPEN="EMPTY_DIR",
+                        CPL_VSIL_CURL_CHUNK_SIZE=str(8 << 20),
+                        CPL_VSIL_CURL_CACHE_SIZE=str(256 << 20),
+                        GDAL_HTTP_MULTIRANGE="YES",
+                        GDAL_HTTP_MERGE_CONSECUTIVE_RANGES="YES",
+                        GDAL_HTTP_MAX_RETRY="3", GDAL_HTTP_RETRY_DELAY="2")
+    with _env, rasterio.open("/vsicurl/" + url) as src:
         win = from_bounds(case["west"], case["south"], case["east"],
                           case["north"], src.transform)
         arr = src.read(1, window=win)
