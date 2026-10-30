@@ -197,3 +197,5 @@ cosine_kernel_short_spotting,live,S2,210,4,24.03,41.13,0,0.0,0.04887,0.13429,0.7
 cosine_kernel_short_spotting,live,S2,217,2,12.33,32.67,1,0.0,0.02765,0.05953,0.06055,8,55.8
 cosine_kernel_short_spotting,live,S2,219,1,4.23,17.91,1,0.0,0.00998,0.0466,0.04702,7,48.8
 cosine_kernel_short_spotting,live,S2,221,0,122.13,0.0,0,1292752.0,0.25345,0.2971,1.0,9,87.8
+cosine_kernel_short_spotting,live,S2,216,4,8.82,14.04,1,0.0,0.01997,0.06515,0.38244,10,286.4
+cosine_kernel_short_spotting,live,S2,220,3,107.19,97.83,1,215932.0,0.18211,0.23445,1.0,12,237.2
