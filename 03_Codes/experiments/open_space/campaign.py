@@ -165,6 +165,9 @@ ARMS = {
     # random seeds plus the variation operator of the model search (K14)
     "RandomVar": ("minimal", dict(adapt_on=True, evfis_on=True,
                                   genai_on=True), "randomvar"),
+    # the six hand-written tactics as seeds of the variation search (K12)
+    "ExpertVar": ("minimal", dict(adapt_on=True, evfis_on=True,
+                                  genai_on=True), "expertvar"),
     # one unpriced random candidate per call, the counterpart of "LLM"
     "RandBlind": ("minimal", dict(adapt_on=True, evfis_on=True,
                                   genai_on=True), "randomblind"),
@@ -271,6 +274,12 @@ EXPERIMENTS = {
     "E15": dict(scenarios=ALL_SCENARIOS,
                 arms=("Evo",),
                 withhold=True, prior=True),
+    # E16: doctrine-seeded search. The six hand-written tactics of Table IV
+    # seed the variation search in place of the six model candidates, same
+    # budget and gates (K12). Pairs with E9 and E14.
+    "E16": dict(scenarios=ALL_SCENARIOS,
+                arms=("ExpertVar",),
+                withhold=True, prior=True),
     "LOO": dict(scenarios=ALL_SCENARIOS,
                 arms=("F5Ev",),
                 withhold=True, prior=True),
@@ -288,6 +297,9 @@ def _make_proposer(kind: str, seed: int, budget: int, prior):
                                    prior=prior)
     if kind == "randomvar":
         return P.RandomVarProposer(seed=seed, forecast_budget=budget,
+                                   prior=prior)
+    if kind == "expertvar":
+        return P.ExpertVarProposer(seed=seed, forecast_budget=budget,
                                    prior=prior)
     if kind == "randomblind":
         return P.RandomBlindProposer(seed=seed)

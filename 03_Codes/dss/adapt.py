@@ -1165,7 +1165,7 @@ def _gate_seeds():
     the pre-selection ranks on (101, 202); K8 (revision) sets
     DSS_GATE_SEEDS=303,404 so the gates judge on futures the pre-selection
     never saw."""
-    raw = os.environ.get("DSS_GATE_SEEDS", "101,202")
+    raw = os.environ.get("DSS_GATE_SEEDS", "").strip() or "101,202"
     a, b = (int(x) for x in raw.split(",")[:2])
     return a, b
 

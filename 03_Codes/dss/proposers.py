@@ -628,6 +628,73 @@ class RandomVarProposer(LLMScreenProposer):
         return out
 
 
+EXPERT_TACTICS = [
+    # the six hand-written tactics of the article (Table IV), in the
+    # proposal schema; the doctrine-seeded control (revision K12) uses them
+    # as the six seeds of the variation search in place of model candidates
+    {"antecedents": [["fire_threat_level", "H"]],
+     "consequents": [["head_retardant_line", 1.0]],
+     "new_intervention": {"name": "head_retardant_line", "clauses": [
+         {"effect": "coat", "sector": "head", "range": [2, 6], "amount": 1.0}]}},
+    {"antecedents": [["asset_exposure_risk", "H"]],
+     "consequents": [["structure_protection", 1.0]],
+     "new_intervention": {"name": "structure_protection", "clauses": [
+         {"effect": "wet", "sector": "populated", "range": [0, 2], "amount": 1.0},
+         {"effect": "coat", "sector": "assets", "range": [0, 3], "amount": 0.8}]}},
+    {"antecedents": [["suppression_feasibility", "H"], ["fire_threat_level", "M"]],
+     "consequents": [["flank_line", 0.9]],
+     "new_intervention": {"name": "flank_line", "clauses": [
+         {"effect": "clear", "sector": "flank", "range": [0, 2], "amount": 1.0}]}},
+    {"antecedents": [["suppression_feasibility", "M"]],
+     "consequents": [["rear_anchor", 0.8]],
+     "new_intervention": {"name": "rear_anchor", "clauses": [
+         {"effect": "wet", "sector": "rear", "range": [0, 2], "amount": 1.0}]}},
+    {"antecedents": [["evacuation_pressure", "H"]],
+     "consequents": [["evacuation_belt", 1.0]],
+     "new_intervention": {"name": "evacuation_belt", "clauses": [
+         {"effect": "prime", "sector": "populated", "range": [0, 4], "amount": 1.0},
+         {"effect": "evacuate", "sector": "populated", "range": [0, 2], "amount": 1.0}]}},
+    {"antecedents": [["suppression_feasibility", "VH"], ["fire_threat_level", "H"]],
+     "consequents": [["burnout_behind_line", 0.8]],
+     "new_intervention": {"name": "burnout_behind_line", "clauses": [
+         {"effect": "clear", "sector": "head", "range": [5, 6], "amount": 1.0},
+         {"effect": "ignite", "sector": "head", "range": [3, 4], "amount": 0.6}]}},
+]
+
+
+class ExpertVarProposer(RandomVarProposer):
+    """Doctrine-seeded search (revision K12): the six hand-written tactics
+    of Table IV take the place of the six model candidates, and the rest of
+    the forecast budget goes to the same local variations. Pairs with the
+    full GODA configuration and with RandomVarProposer; the three differ
+    only in where the six seeds come from."""
+    name = "expertvar"
+
+    def _ask(self, ctx) -> List[dict]:
+        """The six tactics as written; a tactic whose antecedent does not
+        hold on the present reading is replaced by the first of up to 20
+        local variations that does, so that every call starts from six
+        seeds, as the model-seeded search does."""
+        gram = Grammar(ctx, self.rng, self.withheld)
+        out = []
+        for c in EXPERT_TACTICS:
+            c = copy.deepcopy(c)
+            c["rationale"] = "search: hand-written seed"
+            if self._passes(copy.deepcopy(c), ctx):
+                out.append(c)
+                continue
+            for _ in range(20):
+                try:
+                    q = gram.mutate(c)
+                except Exception:
+                    continue
+                if self._passes(copy.deepcopy(q), ctx):
+                    q["rationale"] = "search: hand-written seed, varied"
+                    out.append(q)
+                    break
+        return out
+
+
 class RandomBlindProposer(Proposer):
     """The random counterpart of the single-shot model proposer: one uniform
     sample of the grammar that clears the cheap gates, handed to the gate
