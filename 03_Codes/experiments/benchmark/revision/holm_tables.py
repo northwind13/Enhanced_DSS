@@ -126,6 +126,26 @@ if os.path.exists(k31):
         if len(c) == 150:
             add("VII", lab, pr, c, r_, f"k31_coating_sweep:{lv}:world:replay", f"k31_coating_sweep:{lv}:world:closed")
 
+# pairwise margins among the gated configurations, quoted in V-C and VI (round 7: in the family)
+rnd_full = P(os.path.join(F, "t5_random_screened", "runs.csv"), arm="Random")
+rnd_fam = P(os.path.join(R, "k13_closed_vocab", "runs.csv"), arm="Random-fam")
+evo_full = P(os.path.join(R, "k16_evo", "runs.csv"), arm="Evo")
+evo_fam = P(k33, arm="Evo-fam") if os.path.exists(k33) else {}
+exv = P(os.path.join(R, "k12_doctrine_seeded", "runs.csv"), arm="ExpertVar")
+rnd_small = P(os.path.join(F, "t5b_random_screened_small", "runs.csv"), arm="Random")
+cand_only = P(os.path.join(F, "t6b_voda_model_only", "runs.csv"), arm="LLMScreen")
+for lab, cfg, ref, sc, sr in [
+    ("GODA / Random, full", voda, rnd_full, "t6_voda:LLMScreen", "t5_random_screened:Random"),
+    ("GODA / Random, families only", voda, rnd_fam, "t6_voda:LLMScreen", "k13_closed_vocab:Random-fam"),
+    ("GODA / Evolutionary search", voda, evo_full, "t6_voda:LLMScreen", "k16_evo:Evo"),
+    ("GODA / Evolutionary search, families only", voda, evo_fam, "t6_voda:LLMScreen", "k33_evo_fam:Evo-fam"),
+    ("GODA / Hand-written seeds, with variations", voda, exv, "t6_voda:LLMScreen", "k12_doctrine_seeded:ExpertVar"),
+    ("LLM, candidates only / Random, small", cand_only, rnd_small, "t6b_voda_model_only:LLMScreen", "t5b_random_screened_small:Random"),
+    ("Random, full / Random, families only", rnd_full, rnd_fam, "t5_random_screened:Random", "k13_closed_vocab:Random-fam"),
+    ("Evolutionary search / Evolutionary search, families only", evo_full, evo_fam, "k16_evo:Evo", "k33_evo_fam:Evo-fam")]:
+    if len(cfg) == 150 and len(ref) == 150:
+        add("pair", lab, None, cfg, ref, sc, sr)
+
 # Table VIII
 add("VIII", "40 rules + Closed / Seeds + Closed", -11, P(os.path.join(F, "t13_full_doctrine", "runs.csv"), arm="F40Ev"),
     closed, "t13_full_doctrine:F40Ev", "t1_reference:F5Ev")
