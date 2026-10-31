@@ -61,7 +61,7 @@ def main():
     os.makedirs(logdir, exist_ok=True)
     procs = []
     for name, cmd, extra in JOBS:
-        env = dict(os.environ, **BASE_ENV, **extra)
+        env = {**os.environ, **BASE_ENV, **extra}
         log = open(os.path.join(logdir, f"{name}.log"), "a", encoding="utf-8")
         log.write(f"==== {name} started {time.ctime()}\n"); log.flush()
         p = subprocess.Popen(cmd, cwd=ROOT, env=env, stdout=log, stderr=subprocess.STDOUT)
