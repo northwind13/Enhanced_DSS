@@ -93,6 +93,19 @@ k23 = os.path.join(R, "k23_bref_live", "runs.csv")
 if os.path.exists(k23) and len(P(k23, arm="live")) == 150:
     add("VII", "Reference burned fraction 0.25, live", -57, P(k23, arm="live"), P(k23, arm="closed"), "k23_bref_live:live", "k23_bref_live:closed")
 
+k25 = os.path.join(R, "k25_one_future", "runs.csv")
+if os.path.exists(k25) and len(P(k25, arm="live")) == 150:
+    add("VII", "Gates on one future, G5 only", -55, P(k25, arm="live"), closed, "k25_one_future:live", "t1_reference:F5Ev")
+k26 = os.path.join(R, "k26_parity", "runs.csv")
+if os.path.exists(k26):
+    if len(P(k26, arm="state")) == 150:
+        add("VII", "Perturbed fire state, brief included", -55, P(k26, arm="state"), P(k19, arm="closed"), "k26_parity:state", "k19_perimeter:closed")
+    if len(P(k26, arm="s5")) == 30:
+        add("VII", "S5 with corrupted brief (30 worlds)", -53, P(k26, arm="s5"), sub(closed, set(P(k26, arm="s5"))), "k26_parity:s5", "t1_reference:F5Ev (S5)")
+k27 = os.path.join(R, "k27_coat_parity", "runs.csv")
+if os.path.exists(k27) and len(P(k27, arm="live")) == 150:
+    add("VII", "Coating priced and reach-limited", -54, P(k27, arm="live"), P(k27, arm="closed"), "k27_coat_parity:live", "k27_coat_parity:closed")
+
 # Table VIII
 add("VIII", "40 rules + Closed / Seeds + Closed", -11, P(os.path.join(F, "t13_full_doctrine", "runs.csv"), arm="F40Ev"),
     closed, "t13_full_doctrine:F40Ev", "t1_reference:F5Ev")
