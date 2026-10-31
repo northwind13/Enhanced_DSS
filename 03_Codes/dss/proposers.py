@@ -917,6 +917,117 @@ class EvoProposer(SearchProposer):
         return ranked
 
 
+class CEMProposer(SearchProposer):
+    """Cross-entropy search over the grammar (revision K38). Categorical
+    distributions over the kind of object and, for composed interventions,
+    the number of clauses and each clause's effect, sector, inner band,
+    band width and amount; each iteration samples `n` proposals that pass
+    the cheap gates, prices them on the first future, and refits the
+    distributions to the top `elite` with smoothing. Antecedents and
+    consequents are drawn by the grammar as in the other searches. Same
+    budget, finalists and gates as the random and evolutionary searches."""
+    name = "cem"
+    AMOUNTS = (0.6, 0.7, 0.8, 0.9, 1.0)
+
+    def __init__(self, seed: int = 0, forecast_budget: int = 36,
+                 withheld: Sequence[str] = (), k: int = 3, prior=None,
+                 n: int = 12, elite: int = 3, smooth: float = 0.7):
+        super().__init__(seed, forecast_budget, withheld, k, prior)
+        self.n, self.elite, self.smooth = int(n), int(elite), float(smooth)
+
+    @staticmethod
+    def _uniform(vals):
+        return {v: 1.0 / len(vals) for v in vals}
+
+    def _draw(self, dist):
+        keys = list(dist)
+        p = np.array([dist[k] for k in keys], float)
+        p = p / p.sum()
+        return keys[int(self.rng.choice(len(keys), p=p))]
+
+    def _refit(self, dist, values):
+        if not values:
+            return dist
+        cnt = {k: 0.0 for k in dist}
+        for v in values:
+            if v in cnt:
+                cnt[v] += 1.0
+        tot = sum(cnt.values()) or 1.0
+        return {k: self.smooth * cnt[k] / tot + (1 - self.smooth) * dist[k]
+                for k in dist}
+
+    def search(self, ctx):
+        from .actions import EFFECTS, SECTORS
+        g = Grammar(ctx, self.rng, self.withheld)
+        effects = list(EFFECTS)
+        if not g.has_water:
+            effects = [e for e in effects if e not in ("draft", "coat")]
+        if os.environ.get("DSS_NO_COMPOSED", "").strip() == "1":
+            kinds = {"rule": 0.7, "macro": 0.3}
+        else:
+            kinds = {"rule": 0.4, "macro": 0.2, "actuator": 0.4}
+        D = dict(kind=kinds, ncl=self._uniform((1, 2, 3)),
+                 eff=self._uniform(effects), sec=self._uniform(list(SECTORS)),
+                 rin=self._uniform(tuple(range(8))),
+                 wid=self._uniform(tuple(range(1, 7))),
+                 amt=self._uniform(self.AMOUNTS))
+        spent0 = self.forecasts
+        scored = []
+
+        def budget_left():
+            return self.forecasts - spent0 < self.forecast_budget
+
+        def make():
+            kind = self._draw(D["kind"])
+            if kind != "actuator":
+                return g.sample(kind)
+            cls = []
+            for _ in range(int(self._draw(D["ncl"]))):
+                rin = int(self._draw(D["rin"]))
+                cls.append({"effect": self._draw(D["eff"]),
+                            "sector": self._draw(D["sec"]),
+                            "range": [rin, int(min(15, rin + self._draw(D["wid"])))],
+                            "amount": float(self._draw(D["amt"]))})
+            act = {"name": g._name("sited"), "clauses": cls}
+            k = 1 if self.rng.random() < 0.75 else 2
+            return {"antecedents": g.antecedents(),
+                    "consequents": g.consequents(k=k, must_include=act["name"]),
+                    "new_intervention": act,
+                    "rationale": "search: cross-entropy"}
+
+        while budget_left():
+            batch = []
+            tries = 0
+            while len(batch) < self.n and tries < 40 * self.n and budget_left():
+                tries += 1
+                p = make()
+                if not self._passes(copy.deepcopy(p), ctx):
+                    self.last_filtered += 1
+                    continue
+                self.candidates_tried += 1
+                sc = self._score(p, ctx)
+                batch.append((sc, p))
+            if not batch:
+                break
+            scored += batch
+            elite = [p for _s, p in sorted(batch, key=lambda t: -t[0])[: self.elite]]
+            def kind_of(p):
+                ni = p.get("new_intervention") or {}
+                return "actuator" if ni.get("clauses") else (
+                    "macro" if ni.get("composition") else "rule")
+            D["kind"] = self._refit(D["kind"], [kind_of(p) for p in elite])
+            cl = [c for p in elite for c in
+                  ((p.get("new_intervention") or {}).get("clauses") or [])]
+            D["ncl"] = self._refit(D["ncl"], [len((p.get("new_intervention") or {}).get("clauses") or [])
+                                              for p in elite if kind_of(p) == "actuator"])
+            D["eff"] = self._refit(D["eff"], [c["effect"] for c in cl])
+            D["sec"] = self._refit(D["sec"], [c["sector"] for c in cl])
+            D["rin"] = self._refit(D["rin"], [int(c["range"][0]) for c in cl])
+            D["wid"] = self._refit(D["wid"], [int(c["range"][1]) - int(c["range"][0]) for c in cl])
+            D["amt"] = self._refit(D["amt"], [min(self.AMOUNTS, key=lambda a: abs(a - float(c["amount"]))) for c in cl])
+        return sorted(scored, key=lambda t: -t[0])
+
+
 class TemplateProposer(Proposer):
     """The deterministic stand-in of the thesis ladder campaign, behind
     the common interface (it cannot write a clause actuator or a

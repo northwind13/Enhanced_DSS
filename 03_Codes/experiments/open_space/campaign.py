@@ -152,6 +152,9 @@ ARMS = {
                                genai_on=False), None),
     "Evo":    ("minimal", dict(adapt_on=True, evfis_on=True,
                                genai_on=True), "evo"),
+    # cross-entropy search over the same grammar (revision K38)
+    "CEM":    ("minimal", dict(adapt_on=True, evfis_on=True,
+                               genai_on=True), "cem"),
     "Random": ("minimal", dict(adapt_on=True, evfis_on=True,
                                genai_on=True), "random"),
     "LLM":    ("minimal", dict(adapt_on=True, evfis_on=True,
@@ -286,6 +289,11 @@ EXPERIMENTS = {
                 withhold=True, prior=True),
     # E17: hand-written tactics tuned on the forecast (K30). Pairs with
     # K11 (same tactics untuned) and K12 (same tactics as search seeds).
+    # E18: cross-entropy search over the composed grammar and over the six
+    # families (arm CEM-fam), same budget and gates (K38)
+    "E18": dict(scenarios=ALL_SCENARIOS,
+                arms=("CEM", "CEM-fam"),
+                withhold=True, prior=True),
     "E17": dict(scenarios=ALL_SCENARIOS,
                 arms=("ExpertTune",),
                 withhold=True, prior=True),
@@ -303,6 +311,8 @@ def _make_proposer(kind: str, seed: int, budget: int, prior):
         gens = int(os.environ.get("DSS_EVO_GENS") or 3)
         return P.EvoProposer(seed=seed, forecast_budget=budget, prior=prior,
                              pop=pop, gens=gens)
+    if kind == "cem":
+        return P.CEMProposer(seed=seed, forecast_budget=budget, prior=prior)
     if kind == "experttune":
         return P.ExpertTuneProposer(seed=seed, forecast_budget=budget,
                                     prior=prior)
@@ -501,7 +511,7 @@ def run_once(exp: str, scenario: str, arm: str, seed: int,
             # keeps the thesis patience
             eng.genai_patience = 10 ** 6 if pkind in ("evo", "random",
                                                     "llmscreen",
-                                                    "experttune") \
+                                                    "experttune", "cem") \
                 else 3
             proposer = _make_proposer(pkind, seed, budget, prior)
             prev_hook = P.install(eng, proposer)

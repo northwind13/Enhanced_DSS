@@ -308,6 +308,10 @@ class DecisionEngine:
             f = ten_features(sim, r, network=self.network,
                              pool=self.base_pool)
             fc = feature_confidence(self.network, r)
+            if os.environ.get("DSS_NO_CONF_GATE") == "1":
+                # revision K39: confidence gating ablated, every feature
+                # read at full confidence
+                fc = {k: 1.0 for k in fc}
             gates = concept_gates(fc, hierarchy=self.hierarchy)
             ctx[r.name] = dict(region=r, f=f, fc=fc, gates=gates)
         return ctx

@@ -975,6 +975,11 @@ def decision_to_resources(world, burning, regions_intensities, base=None,
         if u3 > 0.05:
             m_cont |= m
             out.rcut[m] = 1.0     # dig HERE and nowhere else
+        _fam_coat = os.environ.get("DSS_FAMILY_COAT", "")
+        if "containment_line" in _fam_coat and u3 > 0.05:
+            # revision K37: the containment family also lays retardant on
+            # its band (aerial, so not limited to diggable ground)
+            _apply_coat(out, band_all & rb, u3)
         if u4 > 0.0:
             # protect only assets the fire actually THREATENS (within
             # ~15 cells of the front): pre-wetting a town the fire
@@ -995,6 +1000,11 @@ def decision_to_resources(world, burning, regions_intensities, base=None,
             out.rcap[m] = np.maximum(out.rcap[m], u4 * cap_max)
             if u4 > 0.05:
                 m_prot |= m
+            if "asset_protection" in os.environ.get("DSS_FAMILY_COAT", "") \
+                    and u4 > 0.05 and prot.any():
+                # revision K37: asset protection also coats a 0-3 cell
+                # collar around the threatened assets
+                _apply_coat(out, _band(prot, 0, 3) & rb, u4)
         u5 = float(u.get("evacuation", 0.0))
         if u5 > 0.3:
             _pop_m = np.zeros((ny, nx), dtype=bool)
