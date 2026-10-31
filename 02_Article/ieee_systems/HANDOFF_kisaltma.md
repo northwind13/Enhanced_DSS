@@ -2,7 +2,7 @@
 
 Bu not, IEEE Systems Journal makalesinin kısaltma ve son düzenleme aşamasını başka bir sohbette sürdürmek için hazırlandı. Bilimsel içerik tamamlandı; yeni deney yapılmayacak. Kalan iş metni 12 sayfaya indirmek ve dört belgeyi tutarlı tutmak.
 
-Son durum: repo `github.com/northwind13/Enhanced_DSS`, dal `main`, commit `aa6f36a` (31 Ekim 2026, 18:10).
+Son durum: repo `github.com/northwind13/Enhanced_DSS`, dal `main`, commit `f3328bd` (31 Ekim 2026, üçüncü bağımsız hakem düzeltmeleri dahil).
 
 ---
 
@@ -64,7 +64,7 @@ Kısaltırken bu sayılar özet, V-C, VI ve kapak mektubunda aynı kalmalı. Bir
 | Episod sonunda yanan hücre kalmayan olay oranı | %52 → %91 | Wilson aralığı |
 | Üç model hatası birlikte | −30 ± 9% (82.3 → 57.4 ha), %55 → %65 | |
 | Büyük alan, 3.6 × 2.7 km, 30 dünya | 309 → 134 ha (−57 ± 26%), %33 → %70 | |
-| Sabit optimizörde gramerin tek başına katkısı | 9 ± 14 puan (rastgele), 11 ± 14 puan (evrimsel) | **anlamlı değil** |
+| Sabit optimizörde gramerin tek başına katkısı | %9 ± 14 (rastgele), %11 ± 14 (evrimsel), yani Closed alanının 5 ve 6 puanı. "9 to 11 points" yazılmaz, birim yüzde | **anlamlı değil** |
 | Kapalı sözlük aramaları kazancın ne kadarını alıyor | rastgele %41 (üçte iki), evrimsel %43 (%70) | |
 | Rastgele önerici, bileşik gramer, tam arama | −46% (dörtte üç) | |
 | LLM yalnız aday vs küçük rastgele kontrol (6 tahmin) | 14 ± 11 puan (45.5% vs 31.6%) | Holm sonrası p = 0.083, anlamlı değil |
@@ -79,7 +79,7 @@ Kısaltırken bu sayılar özet, V-C, VI ve kapak mektubunda aynı kalmalı. Bir
 | 40 kurallı kapalı kontrol | −11 ± 8% (Holm p = 0.06, anlamlı değil) |
 | Altı el yazımı taktik, yazıldığı gibi | −9 ± 6% |
 | Aynı taktikler tahminle ayarlanmış (K30b) | −6 ± 7%, yazılandan farkı yok; seçimlerin %74'ünde varyantlar eşit |
-| Kayıtlı dört taktik, 75 ayrılmış dünyada | −50 ± 15% |
+| Kayıtlı dört taktik, 75 ayrılmış dünyada | −50 ± 15% (aynı 75 dünyada GODA −54 ± 18%) |
 | S6–S8 (90 yeni dünya), kayıtlı + kapalı | −43 ± 11% |
 | S6–S8, açık katman sürdürülünce ek | −28 ± 10% |
 
@@ -87,7 +87,8 @@ Kısaltırken bu sayılar özet, V-C, VI ve kapak mektubunda aynı kalmalı. Bir
 
 - Tek aile, 65 karşılaştırma: ana karşılaştırma, Tablo VI, VII ve S7'nin her satırı ve metinde p ile verilen sekiz ikili marj. İki taraflı eşli işaret çevirme testi (10^6 permütasyon), Holm düzeltmesi. 55 karşılaştırma 0.05 altında.
 - Yarı genişlikle verilen farklar betimseldir, test edilmez.
-- Karma etkiler modeli (aile rastgele kesişim): yanan alan −46 ha (SE 18, p = 0.010). Beş aile ortalaması üzerinden t testi p = 0.06; dünya düzeyindeki eşli test ana analizdir.
+- Ana karşılaştırma Tablo VI'daki GODA satırıdır (aile 66 değil 65). 65 karşılaştırmanın ham p, Holm sırası ve düzeltilmiş p değeri ek dosyada Tablo S10'da. p değerleri kesin işaret çevirme testinden; çarpık farklarda normal yaklaşımla aralıklardan hesaplanan değerden küçük olabilir (bir hakem bunu hata sandı, kontrol edildi, doğru).
+- Karma etkiler modeli (aile rastgele kesişim): yanan alan −46 ha (SE 18, p = 0.010); beş aileyle küçük örneklem testi p ≈ 0.06, yani aileler arası genelleme kurulmuş değil. Dünya düzeyindeki eşli test ana analizdir.
 - Dünya başına medyan değişim: −21 ha (−49%).
 - p değerleri yanan alan farkını test eder.
 
@@ -120,6 +121,8 @@ Kısaltırken tekrarlar silinebilir, ama her biri **en az bir yerde** (tercihen 
 10. Kalıcı kör bölge, gecikmeli durum ve yanlış tespit test edilmedi; test edilen hata sınıfları parametre ve yapı hataları, yeniden çekilen kayıplar ve bozuk brief.
 11. İki gölge gelecek yalnızca ember çekimlerinde ayrışıyor (medyan fark %0.2, işaret uyumu %99); G6 yalnızca tek ember yoluna uydurmaya karşı korur. Dağıtım için independent futures önerilir.
 12. Tanınmış optimizerlar (MCTS, CMA-ES) denenmedi; aynı bütçede rastgele ve evrimsel aramalar onların yerini tutuyor.
+13. Güven kapılaması (ikinci sınır) tarif edildi ama ablasyonu yapılmadı.
+14. Kalite testinde puanlanan dört kavram: fire threat, asset exposure, intervention urgency, evacuation pressure. Suppression feasibility puanlanmaz (önceki bir sürümde yanlış yazılmıştı).
 
 ---
 
@@ -138,6 +141,9 @@ Bunlar önceki turlarda hakemlerin itirazıyla kaldırıldı; tekrar yazılmamal
 - "evaluated in simulation as one system" (kapak mektubunda)
 - "affected population fell by 80%" özette ya da kapak mektubunda öne çıkarılmamalı
 - "no reported comparison is left outside" (Holm ailesi için)
+- "9 to 11 points" (doğrusu %9 ve %11, ya da 5 ve 6 puan)
+- "does not rest on treating the worlds as independent"
+- "strongest search" (doğrusu "strongest tested search")
 - "open decision space" başlıkta ve özette ana çerçeve olarak (başlık değişti; metinde "bounded, compositional" niteliğiyle geçebilir)
 
 ---
@@ -155,10 +161,11 @@ Bunlar önceki turlarda hakemlerin itirazıyla kaldırıldı; tekrar yazılmamal
 Tablolar: I tohum kuralları, II senaryolar, III el yazımı taktikler, IV hindcast, V ana sonuçlar (Closed / GODA / GODA coating priced + alt blok + senaryolar), VI arama ve kapı karşılaştırmaları, VII doktrin karşılaştırmaları.
 Şekiller: 1 mimari, 2 kavram uzayı, 3 kapalı katman, 4 açık katman, 5 hindcast haritaları, 6 kabul edilen nesneler.
 
-Ek dosya: Tablo S1–S9, Fig. S1 (zamanlama), Algorithm S1 (karar döngüsü).
+Ek dosya: Tablo S1–S10, Fig. S1 (zamanlama), Algorithm S1 (karar döngüsü).
 - S7 model hatası ve işletim kısıtı satırları (Holm p ile)
 - S8 tüm kontroller ve testler
 - S9 aşama başına kullanılan maliyet ve tahmin sayısı
+- S10 65 karşılaştırmanın tamamı (ham p, sıra, Holm p)
 
 ---
 
