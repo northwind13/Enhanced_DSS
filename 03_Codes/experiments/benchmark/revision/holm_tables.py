@@ -126,7 +126,30 @@ if os.path.exists(k31):
         if len(c) == 150:
             add("VII", lab, pr, c, r_, f"k31_coating_sweep:{lv}:world:replay", f"k31_coating_sweep:{lv}:world:closed")
 
-# pairwise margins among the gated configurations, quoted in V-C and VI (round 7: in the family)
+# round 8 rows (K35, K37, K38, K39, K40)
+k38 = os.path.join(R, "k38_cem", "runs.csv")
+cem = P(k38, arm="CEM"); cemf = P(k38, arm="CEM-fam")
+add("VII", "Cross-entropy search", -53, cem, closed, "k38_cem:CEM", "t1_reference:F5Ev")
+add("VII", "Cross-entropy search, families only", -46, cemf, closed, "k38_cem:CEM-fam", "t1_reference:F5Ev")
+k37 = os.path.join(R, "k37_family_coat")
+evcoat = P(os.path.join(k37, "evofam_both", "runs.csv"), arm="Evo-fam")
+add("VII", "Evolutionary search, families with coating", -62, evcoat, closed, "k37_family_coat/evofam_both:Evo-fam", "t1_reference:F5Ev")
+k40 = os.path.join(R, "k40_lowbudget")
+lb = {s_: P(os.path.join(k40, s_, "runs.csv"), arm=a_) for s_, a_ in
+      [("evo_b6", "Evo"), ("evo_b12", "Evo"), ("cem_b6", "CEM"), ("cem_b12", "CEM")]}
+for s_, lab, pr in [("evo_b6", "Evolutionary search, 6 forecasts", -16), ("cem_b6", "Cross-entropy search, 6 forecasts", -26),
+                    ("evo_b12", "Evolutionary search, 12 forecasts", -29), ("cem_b12", "Cross-entropy search, 12 forecasts", -41)]:
+    add("VII", lab, pr, lb[s_], closed, f"k40_lowbudget/{s_}", "t1_reference:F5Ev")
+k35 = os.path.join(R, "k35_strong_under_error", "runs.csv")
+k35a = {a_: P(k35, arm=a_) for a_ in ("evo_err", "evofam_err", "evo_ind", "evofam_ind")}
+cerr = P(k18, arm="closed")
+add("VII", "Evolutionary search, combined error", -20, k35a["evo_err"], cerr, "k35:evo_err", "k18_combined:closed")
+add("VII", "Evolutionary search, families only, combined error", -10, k35a["evofam_err"], cerr, "k35:evofam_err", "k18_combined:closed")
+add("VII", "Evolutionary search, independent gate futures", -50, k35a["evo_ind"], closed, "k35:evo_ind", "t1_reference:F5Ev")
+add("VII", "Evolutionary search, families only, independent gate futures", -38, k35a["evofam_ind"], closed, "k35:evofam_ind", "t1_reference:F5Ev")
+add("VII", "Closed, confidence gating off", 0, P(os.path.join(R, "k39_no_conf_gate", "runs.csv"), arm="F5Ev"), closed, "k39_no_conf_gate:F5Ev", "t1_reference:F5Ev")
+
+# pairwise margins among the gated configurations, quoted in V-C and VI (rounds 7 and 8: in the family)
 rnd_full = P(os.path.join(F, "t5_random_screened", "runs.csv"), arm="Random")
 rnd_fam = P(os.path.join(R, "k13_closed_vocab", "runs.csv"), arm="Random-fam")
 evo_full = P(os.path.join(R, "k16_evo", "runs.csv"), arm="Evo")
@@ -134,6 +157,9 @@ evo_fam = P(k33, arm="Evo-fam") if os.path.exists(k33) else {}
 exv = P(os.path.join(R, "k12_doctrine_seeded", "runs.csv"), arm="ExpertVar")
 rnd_small = P(os.path.join(F, "t5b_random_screened_small", "runs.csv"), arm="Random")
 cand_only = P(os.path.join(F, "t6b_voda_model_only", "runs.csv"), arm="LLMScreen")
+g12 = P(os.path.join(k21, "goda_b12", "runs.csv"), arm="LLMScreen")
+r12 = P(os.path.join(k21, "random_b12", "runs.csv"), arm="Random")
+gind = P(os.path.join(R, "k8_gate_seeds", "runs.csv"), arm="LLMScreen")
 for lab, cfg, ref, sc, sr in [
     ("GODA / Random, full", voda, rnd_full, "t6_voda:LLMScreen", "t5_random_screened:Random"),
     ("GODA / Random, families only", voda, rnd_fam, "t6_voda:LLMScreen", "k13_closed_vocab:Random-fam"),
@@ -142,7 +168,19 @@ for lab, cfg, ref, sc, sr in [
     ("GODA / Hand-written seeds, with variations", voda, exv, "t6_voda:LLMScreen", "k12_doctrine_seeded:ExpertVar"),
     ("LLM, candidates only / Random, small", cand_only, rnd_small, "t6b_voda_model_only:LLMScreen", "t5b_random_screened_small:Random"),
     ("Random, full / Random, families only", rnd_full, rnd_fam, "t5_random_screened:Random", "k13_closed_vocab:Random-fam"),
-    ("Evolutionary search / Evolutionary search, families only", evo_full, evo_fam, "k16_evo:Evo", "k33_evo_fam:Evo-fam")]:
+    ("Evolutionary search / Evolutionary search, families only", evo_full, evo_fam, "k16_evo:Evo", "k33_evo_fam:Evo-fam"),
+    ("GODA / Cross-entropy search", voda, cem, "t6_voda:LLMScreen", "k38_cem:CEM"),
+    ("GODA / Cross-entropy search, families only", voda, cemf, "t6_voda:LLMScreen", "k38_cem:CEM-fam"),
+    ("GODA / Evolutionary search, families with coating", voda, evcoat, "t6_voda:LLMScreen", "k37:evofam_both"),
+    ("LLM, candidates only / Evolutionary search, 6 forecasts", cand_only, lb["evo_b6"], "t6b_voda_model_only:LLMScreen", "k40:evo_b6"),
+    ("LLM, candidates only / Cross-entropy search, 6 forecasts", cand_only, lb["cem_b6"], "t6b_voda_model_only:LLMScreen", "k40:cem_b6"),
+    ("GODA, 12 forecasts / Random, 12 forecasts", g12, r12, "k21:goda_b12", "k21:random_b12"),
+    ("GODA, 12 forecasts / Evolutionary search, 12 forecasts", g12, lb["evo_b12"], "k21:goda_b12", "k40:evo_b12"),
+    ("GODA, 12 forecasts / Cross-entropy search, 12 forecasts", g12, lb["cem_b12"], "k21:goda_b12", "k40:cem_b12"),
+    ("GODA / Evolutionary search, combined error", P(k18, arm="live"), k35a["evo_err"], "k18_combined:live", "k35:evo_err"),
+    ("GODA / Evolutionary search, families only, combined error", P(k18, arm="live"), k35a["evofam_err"], "k18_combined:live", "k35:evofam_err"),
+    ("GODA / Evolutionary search, independent gate futures", gind, k35a["evo_ind"], "k8_gate_seeds:LLMScreen", "k35:evo_ind"),
+    ("GODA / Evolutionary search, families only, independent gate futures", gind, k35a["evofam_ind"], "k8_gate_seeds:LLMScreen", "k35:evofam_ind")]:
     if len(cfg) == 150 and len(ref) == 150:
         add("pair", lab, None, cfg, ref, sc, sr)
 
@@ -155,6 +193,10 @@ k30 = os.path.join(R, "k30b_expert_tuned", "runs.csv")   # K30b: a tie keeps the
 if os.path.exists(k30) and len(P(k30, arm="ExpertTune")) == 150:
     add("VIII", "Seeds + six hand-written tactics tuned on forecasts + Closed / Seeds + Closed", -6,
         P(k30, arm="ExpertTune"), closed, "k30b_expert_tuned:ExpertTune", "t1_reference:F5Ev")
+for s_, lab in [("closed_asset_protection", "Seeds, asset protection with coating + Closed / Seeds + Closed"),
+                ("closed_containment_line", "Seeds, containment line with coating + Closed / Seeds + Closed")]:
+    add("VIII", lab, -5, P(os.path.join(R, "k37_family_coat", s_, "runs.csv"), arm="F5Ev"), closed,
+        f"k37_family_coat/{s_}:F5Ev", "t1_reference:F5Ev")
 add("VIII", "Recorded + Closed / Seeds + Closed (75)", -50, k2b, cl75, "k2b_generalization:canon", "t1_reference:F5Ev (seeds 216-230)")
 add("VIII", "Seeds (no deployment) + Closed / Seeds + Closed", 40,
     P(os.path.join(F, "t12_closed_resource_deployment", "runs.csv"), arm="F5Ev-nofam"), closed,
