@@ -312,7 +312,11 @@ def _make_proposer(kind: str, seed: int, budget: int, prior):
         return P.EvoProposer(seed=seed, forecast_budget=budget, prior=prior,
                              pop=pop, gens=gens)
     if kind == "cem":
-        return P.CEMProposer(seed=seed, forecast_budget=budget, prior=prior)
+        # K40: sample size and elite from the environment (12 and 3 in K38)
+        n = int(os.environ.get("DSS_CEM_N") or 12)
+        el = int(os.environ.get("DSS_CEM_ELITE") or 3)
+        return P.CEMProposer(seed=seed, forecast_budget=budget, prior=prior,
+                             n=n, elite=el)
     if kind == "experttune":
         return P.ExpertTuneProposer(seed=seed, forecast_budget=budget,
                                     prior=prior)
