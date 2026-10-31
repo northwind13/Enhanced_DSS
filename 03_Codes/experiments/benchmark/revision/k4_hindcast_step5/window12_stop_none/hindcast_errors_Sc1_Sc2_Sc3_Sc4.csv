@@ -1,0 +1,5 @@
+fire,case,protocol,stop_rule,wind_offset_deg,n_seed,duration_h,window_h,pod,pod_sd,front_mean_m,front_mean_sd,front_p90_m,arrival_mae_h,arrival_mae_sd,arrival_rho,area_ratio_sim_obs,area_ratio_sd,obs_km2
+Sc1,canakkale2023,window12,none,0.0,50,12.0,12.0,0.994,0.0,2611,79,4651,1.7,0.0,0.95,9.77,0.14,10.4
+Sc2,manavgat2021,window12,none,0.0,50,12.0,12.0,0.989,0.0,2267,5,5077,0.93,0.0,-0.18,4.84,0.01,29.9
+Sc3,marmaris2021,window12,none,0.0,50,12.0,12.0,1.0,0.0,1724,86,3310,3.83,0.0,0.99,8.57,0.49,3.1
+Sc4,milas2021,window12,none,0.0,50,12.0,12.0,0.98,0.001,1165,9,2100,1.42,0.0,0.98,1.86,0.0,38.2
