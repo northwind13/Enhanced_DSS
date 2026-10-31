@@ -1108,6 +1108,15 @@ class DecisionEngine:
         # availability AFTER the sync: the derived set is filtered by
         # what THIS map can physically supply, every cycle
         self._apply_availability(sim)
+        # DSS_NO_PERSIST=1 (revision K28): an object admitted by the open
+        # layer is used in the next cycle only and then withdrawn, so the
+        # search runs every cycle without a persistent doctrine
+        if os.environ.get("DSS_NO_PERSIST") == "1":
+            for _r in list(self.rules):
+                if getattr(_r, "_transient", False):
+                    _r._transient_cycles = getattr(_r, "_transient_cycles", 0) + 1
+                    if _r._transient_cycles >= 2:
+                        self.rules.remove(_r)
         step = int(sim.state.step)
         ctx = self._perceive(sim)
 

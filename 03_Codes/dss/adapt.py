@@ -2218,6 +2218,8 @@ def _stage3_generative(build_override, sim, rules: List[Rule],
         # as written, with no shadow forecast. Pairs with the same proposer
         # under the full chain.
         rules.append(newr)
+    if os.environ.get("DSS_NO_PERSIST") == "1":
+        newr._transient = True
         info = dict(source=src, proposal=prop, rule=newr.text(),
                     revisions=_revisions, basis="ungated",
                     gates=dict(g1_g2="pass",
@@ -2234,6 +2236,8 @@ def _stage3_generative(build_override, sim, rules: List[Rule],
                             dJ=0.0, info=info)
     j0c, j0 = _cva(build_override, sim, rules, horizon)
     rules.append(newr)
+    if os.environ.get("DSS_NO_PERSIST") == "1":
+        newr._transient = True
     # G3 and G4 are the SAME paired comparison on two independently seeded
     # futures: the base extended by the candidate against the base without
     # it. Earlier the second future took the no-action forecast as its
