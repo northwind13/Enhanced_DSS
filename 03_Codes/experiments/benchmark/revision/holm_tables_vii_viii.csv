@@ -1,49 +1,50 @@
 table,row_label,n,mean_ref_ha,mean_cfg_ha,rel_change_pct,better,tie,worse,p_raw,p_holm,source_cfg,source_ref
-VII,"Random, one",150,75.412,68.909,-8.62,93,17,40,0.03921,0.10371,t4_random_single:RandBlind,t1_reference:F5Ev
-VII,"Random, one, ungated",150,75.412,68.079,-9.72,86,15,49,0.03457,0.10371,rev:k15_random_ungated:RandBlind-ungated,t1_reference:F5Ev
-VII,"LLM, one",150,75.412,54.614,-27.58,119,15,16,9.99999e-07,4.8e-05,t7_llm_single:LLM,t1_reference:F5Ev
-VII,"LLM, one, ungated",150,75.412,56.726,-24.78,109,13,28,9.99999e-07,4.8e-05,rev:k12u_ungated:LLM-ungated,t1_reference:F5Ev
-VII,"Random, small",150,75.412,51.591,-31.59,114,14,22,9.99999e-07,4.8e-05,t5b_random_screened_small:Random,t1_reference:F5Ev
-VII,"LLM, candidates only",150,75.412,41.114,-45.48,124,10,16,9.99999e-07,4.8e-05,t6b_voda_model_only:LLMScreen,t1_reference:F5Ev
-VII,"Random, full",150,75.412,40.544,-46.24,128,13,9,9.99999e-07,4.8e-05,t5_random_screened:Random,t1_reference:F5Ev
-VII,"Random, families only",150,75.412,44.459,-41.05,131,11,8,9.99999e-07,4.8e-05,rev:k13_closed_vocab:Random-fam,t1_reference:F5Ev
-VII,"Random, with variations",150,75.412,49.492,-34.37,121,14,15,9.99999e-07,4.8e-05,rev:k14_random_var:RandomVar,t1_reference:F5Ev
-VII,"Hand-written seeds, with variations",150,75.412,51.953,-31.11,109,11,30,9.99999e-07,4.8e-05,rev:k12_doctrine_seeded:ExpertVar,t1_reference:F5Ev
-VII,Evolutionary search,150,75.412,38.111,-49.46,127,11,12,9.99999e-07,4.8e-05,rev:k16_evo:Evo,t1_reference:F5Ev
-VII,GODA,150,75.412,29.106,-61.4,131,10,9,9.99999e-07,4.8e-05,t6_voda:LLMScreen,t1_reference:F5Ev
-VII,GODA repeat,150,75.412,32.662,-56.69,130,9,11,9.99999e-07,4.8e-05,t9_repeat:LLMScreen,t1_reference:F5Ev
-VII,Independent gates,150,75.412,34.008,-54.9,127,10,13,9.99999e-07,4.8e-05,rev:k8_gate_seeds:LLMScreen,t1_reference:F5Ev
-VII,Suppression intensity error (replay),150,75.821,32.986,-56.5,127,15,8,9.99999e-07,4.8e-05,k3_model_error:gammaI_x1.5:voda,k3_model_error:gammaI_x1.5:closed
-VII,Travel-effect decay error (replay),150,91.094,41.546,-54.39,127,15,8,9.99999e-07,4.8e-05,k3_model_error:betat_x1.5:voda,k3_model_error:betat_x1.5:closed
-VII,Knockdown threshold error (replay),150,89.47,38.246,-57.25,133,13,4,9.99999e-07,4.8e-05,k3_model_error:knock_x1.5:voda,k3_model_error:knock_x1.5:closed
-VII,Weakened coating,150,75.412,35.054,-53.52,127,10,13,9.99999e-07,4.8e-05,k6_coating_nc:coat_half:live,k6_coating:coat_half:closed
-VII,Ineffective coating,150,75.412,50.504,-33.03,114,12,24,9.99999e-07,4.8e-05,k6_coating_nc:coat_off:live,k6_coating:coat_off:closed
-VII,Coating price x2,150,75.412,29.816,-60.46,132,12,6,9.99999e-07,4.8e-05,k6_coating_nc:coat_price_x2:live,k6_coating:coat_price_x2:closed
-VII,Coating stock 20 ha,150,75.412,35.279,-53.22,131,9,10,9.99999e-07,4.8e-05,k6_coating_nc:coat_stock_20ha:live,k6_coating:coat_stock_20ha:closed
-VII,Coating delay 12 min,150,75.412,37.627,-50.11,130,11,9,9.99999e-07,4.8e-05,k6_coating_nc:coat_delay_12min:live,k6_coating:coat_delay_12min:closed
-VII,Wind speed x1.5,150,91.116,51.091,-43.93,120,15,15,9.99999e-07,4.8e-05,k7_spread_nc:wind_x1.5:live,k7_spread:wind_x1.5:closed
-VII,Wind direction +30 deg,150,78.492,32.857,-58.14,130,12,8,9.99999e-07,4.8e-05,k7_spread_nc:wind_rot_p30:live,k7_spread:wind_rot_p30:closed
-VII,Wind direction -30 deg,150,78.056,29.045,-62.79,126,11,13,9.99999e-07,4.8e-05,k7_spread_nc:wind_rot_m30:live,k7_spread:wind_rot_m30:closed
-VII,Spread kernel and ember model,150,71.61,31.476,-56.05,130,13,7,9.99999e-07,4.8e-05,k17_kernel:live,k17_kernel:closed
-VII,"Random, 12 forecasts",150,75.412,48.312,-35.94,119,13,18,9.99999e-07,4.8e-05,k21_budget/random_b12:Random,t1_reference:F5Ev
-VII,"Random, 24 forecasts",150,75.412,38.327,-49.18,126,11,13,9.99999e-07,4.8e-05,k21_budget/random_b24:Random,t1_reference:F5Ev
-VII,"GODA, 12 forecasts",150,75.412,43.702,-42.05,122,11,17,9.99999e-07,4.8e-05,k21_budget/goda_b12:LLMScreen,t1_reference:F5Ev
-VII,"GODA, 24 forecasts",150,75.412,38.208,-49.33,126,11,13,9.99999e-07,4.8e-05,k21_budget/goda_b24:LLMScreen,t1_reference:F5Ev
-VII,"Kernel, wind and coating errors combined",150,82.296,57.353,-30.31,117,12,21,9.99999e-07,4.8e-05,k18_combined:live,k18_combined:closed
-VII,"Perturbed fire state, 25% unseen",150,73.647,29.52,-59.92,129,11,10,9.99999e-07,4.8e-05,k19_perimeter:live,k19_perimeter:closed
-VII,"Domain 3.6 x 2.7 km, 30 worlds",30,308.877,134.133,-56.57,25,2,3,5e-06,4.8e-05,k22_domain:live,k22_domain:closed
-VII,"Reference burned fraction 0.25, live",150,75.755,32.728,-56.8,132,8,10,9.99999e-07,4.8e-05,k23_bref_live:live,k23_bref_live:closed
-VII,"Gates on one future, G5 only",150,75.412,33.841,-55.12,131,12,7,9.99999e-07,4.8e-05,k25_one_future:live,t1_reference:F5Ev
-VII,"Perturbed fire state, brief included",150,73.647,33.253,-54.85,133,8,9,9.99999e-07,4.8e-05,k26_parity:state,k19_perimeter:closed
-VII,S5 with corrupted brief (30 worlds),30,49.947,23.301,-53.35,29,0,1,9.99999e-07,4.8e-05,k26_parity:s5,t1_reference:F5Ev (S5)
-VII,Coating priced and reach-limited,150,77.807,35.959,-53.78,125,10,15,9.99999e-07,4.8e-05,k27_coat_parity:live,k27_coat_parity:closed
-VIII,40 rules + Closed / Seeds + Closed,150,75.412,66.868,-11.33,92,15,43,0.00565899,0.022636,t13_full_doctrine:F40Ev,t1_reference:F5Ev
-VIII,Seeds + six hand-written tactics + Closed / Seeds + Closed,150,75.412,68.616,-9.01,71,40,39,0.000970999,0.004855,k11_expert_doctrine:expert,t1_reference:F5Ev
-VIII,Recorded + Closed / Seeds + Closed (75),75,73.238,36.26,-50.49,68,6,1,9.99999e-07,4.8e-05,k2b_generalization:canon,t1_reference:F5Ev (seeds 216-230)
-VIII,Seeds (no deployment) + Closed / Seeds + Closed,150,75.412,105.75,40.23,34,1,115,9.99999e-07,4.8e-05,t12_closed_resource_deployment:F5Ev-nofam,t1_reference:F5Ev
-VIII,Seeds (no deployment) + Open / Seeds + Closed,150,75.412,44.036,-41.61,109,3,38,9.99999e-07,4.8e-05,t12_open_resource_deployment:LLMScreen-nofam,t1_reference:F5Ev
-VIII,S6-S8 Recorded + Closed / Seeds + Closed,90,100.283,56.941,-43.22,86,2,2,9.99999e-07,4.8e-05,k9_novelty:B:novel,k9_novelty:A:novel
-VIII,S6-S8 Seeds + Open / Recorded + Closed,90,56.941,56.233,-1.24,49,1,40,0.893955,0.893955,k9_novelty:D:novel,k9_novelty:B:novel
-VIII,S6-S8 Recorded + Open / Recorded + Closed,90,56.941,40.922,-28.13,75,2,13,9.99999e-07,4.8e-05,k9_novelty:C:novel,k9_novelty:B:novel
-VIII,S1-S5 control Recorded + Open / Recorded + Closed,75,36.26,23.471,-35.27,62,6,7,8.79999e-05,0.000615999,k9_novelty:C:control,k2b_generalization:canon
-VIII,S6-S8 Recorded + Open / Seeds + Open,90,56.233,40.922,-27.23,57,1,32,0.000516999,0.003102,k9_novelty:C:novel,k9_novelty:D:novel
+VII,"Random, one",150,75.412,68.909,-8.62,93,17,40,0.03921,0.13828,t4_random_single:RandBlind,t1_reference:F5Ev
+VII,"Random, one, ungated",150,75.412,68.079,-9.72,86,15,49,0.03457,0.13828,rev:k15_random_ungated:RandBlind-ungated,t1_reference:F5Ev
+VII,"LLM, one",150,75.412,54.614,-27.58,119,15,16,9.99999e-07,4.9e-05,t7_llm_single:LLM,t1_reference:F5Ev
+VII,"LLM, one, ungated",150,75.412,56.726,-24.78,109,13,28,9.99999e-07,4.9e-05,rev:k12u_ungated:LLM-ungated,t1_reference:F5Ev
+VII,"Random, small",150,75.412,51.591,-31.59,114,14,22,9.99999e-07,4.9e-05,t5b_random_screened_small:Random,t1_reference:F5Ev
+VII,"LLM, candidates only",150,75.412,41.114,-45.48,124,10,16,9.99999e-07,4.9e-05,t6b_voda_model_only:LLMScreen,t1_reference:F5Ev
+VII,"Random, full",150,75.412,40.544,-46.24,128,13,9,9.99999e-07,4.9e-05,t5_random_screened:Random,t1_reference:F5Ev
+VII,"Random, families only",150,75.412,44.459,-41.05,131,11,8,9.99999e-07,4.9e-05,rev:k13_closed_vocab:Random-fam,t1_reference:F5Ev
+VII,"Random, with variations",150,75.412,49.492,-34.37,121,14,15,9.99999e-07,4.9e-05,rev:k14_random_var:RandomVar,t1_reference:F5Ev
+VII,"Hand-written seeds, with variations",150,75.412,51.953,-31.11,109,11,30,9.99999e-07,4.9e-05,rev:k12_doctrine_seeded:ExpertVar,t1_reference:F5Ev
+VII,Evolutionary search,150,75.412,38.111,-49.46,127,11,12,9.99999e-07,4.9e-05,rev:k16_evo:Evo,t1_reference:F5Ev
+VII,GODA,150,75.412,29.106,-61.4,131,10,9,9.99999e-07,4.9e-05,t6_voda:LLMScreen,t1_reference:F5Ev
+VII,GODA repeat,150,75.412,32.662,-56.69,130,9,11,9.99999e-07,4.9e-05,t9_repeat:LLMScreen,t1_reference:F5Ev
+VII,Independent gates,150,75.412,34.008,-54.9,127,10,13,9.99999e-07,4.9e-05,rev:k8_gate_seeds:LLMScreen,t1_reference:F5Ev
+VII,Suppression intensity error (replay),150,75.821,32.986,-56.5,127,15,8,9.99999e-07,4.9e-05,k3_model_error:gammaI_x1.5:voda,k3_model_error:gammaI_x1.5:closed
+VII,Travel-effect decay error (replay),150,91.094,41.546,-54.39,127,15,8,9.99999e-07,4.9e-05,k3_model_error:betat_x1.5:voda,k3_model_error:betat_x1.5:closed
+VII,Knockdown threshold error (replay),150,89.47,38.246,-57.25,133,13,4,9.99999e-07,4.9e-05,k3_model_error:knock_x1.5:voda,k3_model_error:knock_x1.5:closed
+VII,Weakened coating,150,75.412,35.054,-53.52,127,10,13,9.99999e-07,4.9e-05,k6_coating_nc:coat_half:live,k6_coating:coat_half:closed
+VII,Ineffective coating,150,75.412,50.504,-33.03,114,12,24,9.99999e-07,4.9e-05,k6_coating_nc:coat_off:live,k6_coating:coat_off:closed
+VII,Coating price x2,150,75.412,29.816,-60.46,132,12,6,9.99999e-07,4.9e-05,k6_coating_nc:coat_price_x2:live,k6_coating:coat_price_x2:closed
+VII,Coating stock 20 ha,150,75.412,35.279,-53.22,131,9,10,9.99999e-07,4.9e-05,k6_coating_nc:coat_stock_20ha:live,k6_coating:coat_stock_20ha:closed
+VII,Coating delay 12 min,150,75.412,37.627,-50.11,130,11,9,9.99999e-07,4.9e-05,k6_coating_nc:coat_delay_12min:live,k6_coating:coat_delay_12min:closed
+VII,Wind speed x1.5,150,91.116,51.091,-43.93,120,15,15,9.99999e-07,4.9e-05,k7_spread_nc:wind_x1.5:live,k7_spread:wind_x1.5:closed
+VII,Wind direction +30 deg,150,78.492,32.857,-58.14,130,12,8,9.99999e-07,4.9e-05,k7_spread_nc:wind_rot_p30:live,k7_spread:wind_rot_p30:closed
+VII,Wind direction -30 deg,150,78.056,29.045,-62.79,126,11,13,9.99999e-07,4.9e-05,k7_spread_nc:wind_rot_m30:live,k7_spread:wind_rot_m30:closed
+VII,Spread kernel and ember model,150,71.61,31.476,-56.05,130,13,7,9.99999e-07,4.9e-05,k17_kernel:live,k17_kernel:closed
+VII,"Random, 12 forecasts",150,75.412,48.312,-35.94,119,13,18,9.99999e-07,4.9e-05,k21_budget/random_b12:Random,t1_reference:F5Ev
+VII,"Random, 24 forecasts",150,75.412,38.327,-49.18,126,11,13,9.99999e-07,4.9e-05,k21_budget/random_b24:Random,t1_reference:F5Ev
+VII,"GODA, 12 forecasts",150,75.412,43.702,-42.05,122,11,17,9.99999e-07,4.9e-05,k21_budget/goda_b12:LLMScreen,t1_reference:F5Ev
+VII,"GODA, 24 forecasts",150,75.412,38.208,-49.33,126,11,13,9.99999e-07,4.9e-05,k21_budget/goda_b24:LLMScreen,t1_reference:F5Ev
+VII,"Kernel, wind and coating errors combined",150,82.296,57.353,-30.31,117,12,21,9.99999e-07,4.9e-05,k18_combined:live,k18_combined:closed
+VII,"Perturbed fire state, 25% unseen",150,73.647,29.52,-59.92,129,11,10,9.99999e-07,4.9e-05,k19_perimeter:live,k19_perimeter:closed
+VII,"Domain 3.6 x 2.7 km, 30 worlds",30,308.877,134.133,-56.57,25,2,3,5e-06,4.9e-05,k22_domain:live,k22_domain:closed
+VII,"Reference burned fraction 0.25, live",150,75.755,32.728,-56.8,132,8,10,9.99999e-07,4.9e-05,k23_bref_live:live,k23_bref_live:closed
+VII,"Gates on one future, G5 only",150,75.412,33.841,-55.12,131,12,7,9.99999e-07,4.9e-05,k25_one_future:live,t1_reference:F5Ev
+VII,"Perturbed fire state, brief included",150,73.647,33.253,-54.85,133,8,9,9.99999e-07,4.9e-05,k26_parity:state,k19_perimeter:closed
+VII,S5 with corrupted brief (30 worlds),30,49.947,23.301,-53.35,29,0,1,9.99999e-07,4.9e-05,k26_parity:s5,t1_reference:F5Ev (S5)
+VII,Coating priced and reach-limited,150,77.807,35.959,-53.78,125,10,15,9.99999e-07,4.9e-05,k27_coat_parity:live,k27_coat_parity:closed
+VII,Admitted objects withdrawn after one cycle,150,75.412,77.195,2.37,59,18,73,0.410765,0.821529,k28_no_persist:live,t1_reference:F5Ev
+VIII,40 rules + Closed / Seeds + Closed,150,75.412,66.868,-11.33,92,15,43,0.00591199,0.02956,t13_full_doctrine:F40Ev,t1_reference:F5Ev
+VIII,Seeds + six hand-written tactics + Closed / Seeds + Closed,150,75.412,68.616,-9.01,71,40,39,0.001017,0.00610199,k11_expert_doctrine:expert,t1_reference:F5Ev
+VIII,Recorded + Closed / Seeds + Closed (75),75,73.238,36.26,-50.49,68,6,1,9.99999e-07,4.9e-05,k2b_generalization:canon,t1_reference:F5Ev (seeds 216-230)
+VIII,Seeds (no deployment) + Closed / Seeds + Closed,150,75.412,105.75,40.23,34,1,115,9.99999e-07,4.9e-05,t12_closed_resource_deployment:F5Ev-nofam,t1_reference:F5Ev
+VIII,Seeds (no deployment) + Open / Seeds + Closed,150,75.412,44.036,-41.61,109,3,38,9.99999e-07,4.9e-05,t12_open_resource_deployment:LLMScreen-nofam,t1_reference:F5Ev
+VIII,S6-S8 Recorded + Closed / Seeds + Closed,90,100.283,56.941,-43.22,86,2,2,9.99999e-07,4.9e-05,k9_novelty:B:novel,k9_novelty:A:novel
+VIII,S6-S8 Seeds + Open / Recorded + Closed,90,56.941,56.233,-1.24,49,1,40,0.894022,0.894022,k9_novelty:D:novel,k9_novelty:B:novel
+VIII,S6-S8 Recorded + Open / Recorded + Closed,90,56.941,40.922,-28.13,75,2,13,9.99999e-07,4.9e-05,k9_novelty:C:novel,k9_novelty:B:novel
+VIII,S1-S5 control Recorded + Open / Recorded + Closed,75,36.26,23.471,-35.27,62,6,7,0.000107,0.000855999,k9_novelty:C:control,k2b_generalization:canon
+VIII,S6-S8 Recorded + Open / Seeds + Open,90,56.233,40.922,-27.23,57,1,32,0.000513999,0.003598,k9_novelty:C:novel,k9_novelty:D:novel

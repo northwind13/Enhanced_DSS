@@ -106,6 +106,10 @@ k27 = os.path.join(R, "k27_coat_parity", "runs.csv")
 if os.path.exists(k27) and len(P(k27, arm="live")) == 150:
     add("VII", "Coating priced and reach-limited", -54, P(k27, arm="live"), P(k27, arm="closed"), "k27_coat_parity:live", "k27_coat_parity:closed")
 
+k28 = os.path.join(R, "k28_no_persist", "runs.csv")
+if os.path.exists(k28) and len(P(k28, arm="live")) == 150:
+    add("VII", "Admitted objects withdrawn after one cycle", 2, P(k28, arm="live"), closed, "k28_no_persist:live", "t1_reference:F5Ev")
+
 # Table VIII
 add("VIII", "40 rules + Closed / Seeds + Closed", -11, P(os.path.join(F, "t13_full_doctrine", "runs.csv"), arm="F40Ev"),
     closed, "t13_full_doctrine:F40Ev", "t1_reference:F5Ev")
