@@ -115,6 +115,9 @@ for sub_, lab in [("k29_evo_6x5", "Evolutionary search, population 6, five gener
     pth = os.path.join(R, sub_, "runs.csv")
     if os.path.exists(pth) and len(P(pth, arm="Evo")) == 150:
         add("VII", lab, -46, P(pth, arm="Evo"), closed, f"{sub_}:Evo", "t1_reference:F5Ev")
+k33 = os.path.join(R, "k33_evo_fam", "runs.csv")
+if os.path.exists(k33) and len(P(k33, arm="Evo-fam")) == 150:
+    add("VII", "Evolutionary search, families only", -43, P(k33, arm="Evo-fam"), closed, "k33_evo_fam:Evo-fam", "t1_reference:F5Ev")
 k31 = os.path.join(R, "k31_coating_sweep", "runs.csv")
 if os.path.exists(k31):
     for lv, lab, pr in [("r75", "Coating effectiveness 0.75 (replay)", -55), ("r50", "Coating effectiveness 0.50 (replay)", -46),
@@ -128,10 +131,10 @@ add("VIII", "40 rules + Closed / Seeds + Closed", -11, P(os.path.join(F, "t13_fu
     closed, "t13_full_doctrine:F40Ev", "t1_reference:F5Ev")
 add("VIII", "Seeds + six hand-written tactics + Closed / Seeds + Closed", -9,
     P(os.path.join(R, "k11_expert_doctrine", "runs.csv"), mode="expert"), closed, "k11_expert_doctrine:expert", "t1_reference:F5Ev")
-k30 = os.path.join(R, "k30_expert_tuned", "runs.csv")
+k30 = os.path.join(R, "k30b_expert_tuned", "runs.csv")   # K30b: a tie keeps the written tactic
 if os.path.exists(k30) and len(P(k30, arm="ExpertTune")) == 150:
-    add("VIII", "Seeds + six hand-written tactics tuned on forecasts + Closed / Seeds + Closed", -4,
-        P(k30, arm="ExpertTune"), closed, "k30_expert_tuned:ExpertTune", "t1_reference:F5Ev")
+    add("VIII", "Seeds + six hand-written tactics tuned on forecasts + Closed / Seeds + Closed", -6,
+        P(k30, arm="ExpertTune"), closed, "k30b_expert_tuned:ExpertTune", "t1_reference:F5Ev")
 add("VIII", "Recorded + Closed / Seeds + Closed (75)", -50, k2b, cl75, "k2b_generalization:canon", "t1_reference:F5Ev (seeds 216-230)")
 add("VIII", "Seeds (no deployment) + Closed / Seeds + Closed", 40,
     P(os.path.join(F, "t12_closed_resource_deployment", "runs.csv"), arm="F5Ev-nofam"), closed,
