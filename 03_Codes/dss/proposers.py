@@ -721,7 +721,13 @@ class ExpertTuneProposer(SearchProposer):
     @staticmethod
     def _variants(c: dict) -> List[dict]:
         out = []
-        for amt in ExpertTuneProposer.AMOUNTS:
+        # K30b (DSS_TUNE_NOMINAL_FIRST=1): the tactic as written is the first
+        # variant, so a tie on the forecast keeps the written tactic; the
+        # reported K30 ordered the amounts 0.6, 0.8, 1.0 and a tie kept 0.6
+        amounts = ExpertTuneProposer.AMOUNTS
+        if os.environ.get("DSS_TUNE_NOMINAL_FIRST") == "1":
+            amounts = tuple(sorted(amounts, reverse=True))
+        for amt in amounts:
             for sh in ExpertTuneProposer.SHIFTS:
                 q = copy.deepcopy(c)
                 for cl in q["new_intervention"]["clauses"]:
