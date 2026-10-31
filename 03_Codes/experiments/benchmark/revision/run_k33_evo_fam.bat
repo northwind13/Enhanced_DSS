@@ -18,5 +18,5 @@ if "%W_CPU%"=="" set "W_CPU=16"
 echo ==== K33 started %date% %time% >> "%R%\revision_K33.log"
 python experiments\open_space\campaign.py --exp E15 --arms Evo-fam --scenarios S1,S2,S3,S4,S5 --seeds 201-230 --workers %W_CPU% --out %R%\k33_evo_fam
 echo ==== K33 done %errorlevel% %date% %time% >> "%R%\revision_K33.log"
-pause
+
 endlocal
