@@ -4,3 +4,4 @@
 {"exp": "E15", "scenario": "S2", "arm": "Evo-fam", "seed": 201, "t_min": 206.0, "name": "bundle_1539_3", "clauses": null, "composition": [["evacuation", 1.0], ["containment_line", 0.91]]}
 {"exp": "E15", "scenario": "S2", "arm": "Evo-fam", "seed": 202, "t_min": 158.0, "name": "bundle_6501_7", "clauses": null, "composition": [["containment_line", 1.0], ["suppression_effort", 0.84]]}
 {"exp": "E15", "scenario": "S2", "arm": "Evo-fam", "seed": 203, "t_min": 14.0, "name": "bundle_8119_1", "clauses": null, "composition": [["containment_line", 1.0], ["resource_deployment", 0.96], ["evacuation", 0.43]]}
+{"exp": "E15", "scenario": "S2", "arm": "Evo-fam", "seed": 207, "t_min": 26.0, "name": "bundle_5675_2", "clauses": null, "composition": [["containment_line", 1.0], ["public_warning", 0.94]]}
