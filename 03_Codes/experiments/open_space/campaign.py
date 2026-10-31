@@ -168,6 +168,10 @@ ARMS = {
     # the six hand-written tactics as seeds of the variation search (K12)
     "ExpertVar": ("minimal", dict(adapt_on=True, evfis_on=True,
                                   genai_on=True), "expertvar"),
+    # the six hand-written tactics tuned on the forecast and installed as
+    # doctrine without the gates (K30)
+    "ExpertTune": ("minimal", dict(adapt_on=True, evfis_on=True,
+                                   genai_on=True), "experttune"),
     # one unpriced random candidate per call, the counterpart of "LLM"
     "RandBlind": ("minimal", dict(adapt_on=True, evfis_on=True,
                                   genai_on=True), "randomblind"),
@@ -280,6 +284,11 @@ EXPERIMENTS = {
     "E16": dict(scenarios=ALL_SCENARIOS,
                 arms=("ExpertVar",),
                 withhold=True, prior=True),
+    # E17: hand-written tactics tuned on the forecast (K30). Pairs with
+    # K11 (same tactics untuned) and K12 (same tactics as search seeds).
+    "E17": dict(scenarios=ALL_SCENARIOS,
+                arms=("ExpertTune",),
+                withhold=True, prior=True),
     "LOO": dict(scenarios=ALL_SCENARIOS,
                 arms=("F5Ev",),
                 withhold=True, prior=True),
@@ -288,7 +297,15 @@ EXPERIMENTS = {
 
 def _make_proposer(kind: str, seed: int, budget: int, prior):
     if kind == "evo":
-        return P.EvoProposer(seed=seed, forecast_budget=budget, prior=prior)
+        # K29: population and generations from the environment (12 and 3
+        # in the reported campaign); the 36-forecast budget is unchanged
+        pop = int(os.environ.get("DSS_EVO_POP") or 12)
+        gens = int(os.environ.get("DSS_EVO_GENS") or 3)
+        return P.EvoProposer(seed=seed, forecast_budget=budget, prior=prior,
+                             pop=pop, gens=gens)
+    if kind == "experttune":
+        return P.ExpertTuneProposer(seed=seed, forecast_budget=budget,
+                                    prior=prior)
     if kind == "random":
         return P.RandomProposer(seed=seed, forecast_budget=budget,
                                 prior=prior)
@@ -483,7 +500,8 @@ def run_once(exp: str, scenario: str, arm: str, seed: int,
             # a search proposer never "goes dead" on rejections; the LLM
             # keeps the thesis patience
             eng.genai_patience = 10 ** 6 if pkind in ("evo", "random",
-                                                    "llmscreen") \
+                                                    "llmscreen",
+                                                    "experttune") \
                 else 3
             proposer = _make_proposer(pkind, seed, budget, prior)
             prev_hook = P.install(eng, proposer)

@@ -698,6 +698,107 @@ class ExpertVarProposer(RandomVarProposer):
         return out
 
 
+class ExpertTuneProposer(SearchProposer):
+    """Hand-written tactics tuned on the forecast (revision K30). The six
+    tactics of Table IV are kept as written in antecedent and effect, and
+    the first time a tactic's antecedent holds in a world its band and
+    amount are chosen among six variants (amount 0.6, 0.8, 1.0; band as
+    written or shifted one ring outward) by the same one-future forecast
+    that prices every search candidate, six forecasts per tactic and 36
+    per world. The tuned tactic is then installed as doctrine without the
+    gates, as the untuned doctrine of K11 is. No candidate is handed to
+    the gate chain. Pairs with K11 (untuned) and K12 (seeds of a search)."""
+    name = "experttune"
+    AMOUNTS = (0.6, 0.8, 1.0)
+    SHIFTS = (0, 1)
+
+    def __init__(self, seed: int = 0, forecast_budget: int = 36,
+                 withheld: Sequence[str] = (), k: int = 3, prior=None):
+        super().__init__(seed, forecast_budget, withheld, k, prior)
+        self.tuned: Dict[int, dict] = {}
+        self.per_tactic = max(1, self.forecast_budget // len(EXPERT_TACTICS))
+
+    @staticmethod
+    def _variants(c: dict) -> List[dict]:
+        out = []
+        for amt in ExpertTuneProposer.AMOUNTS:
+            for sh in ExpertTuneProposer.SHIFTS:
+                q = copy.deepcopy(c)
+                for cl in q["new_intervention"]["clauses"]:
+                    a0 = float(cl.get("amount", 1.0))
+                    cl["amount"] = round(min(1.0, a0 * amt), 3)
+                    r = list(cl.get("range") or [2, 6])
+                    cl["range"] = [min(6, r[0] + sh), min(6, r[1] + sh)]
+                q["_tune"] = dict(amount=amt, shift=sh)
+                out.append(q)
+        return out
+
+    @staticmethod
+    def _record(c: dict, t_min: float) -> dict:
+        ants = " AND ".join(f"{v.replace('_', ' ')} is {t}"
+                            for v, t in c["antecedents"])
+        cons = ", ".join(f"{i.replace('_', ' ')} {float(x):.2f}"
+                         for i, x in c["consequents"])
+        return dict(rule=f"IF {ants} THEN {cons}", kind="actuator",
+                    clauses=[dict(cl) for cl in
+                             c["new_intervention"]["clauses"]],
+                    composition=None, concept=None, t_min=float(t_min),
+                    source="expert-tuned", accepted=True)
+
+    def propose(self, ctx, situation, timeout, engine, mission):
+        if ctx is None:
+            return None
+        from experiments.open_space.campaign import _install_scripted
+        eng = ctx.engine
+        try:
+            t_now = float(ctx.sim.state.step) * float(
+                getattr(ctx.sim.cfg, "step_minutes", 1.0))
+        except Exception:
+            t_now = 0.0
+        installed = []
+        for i, c in enumerate(EXPERT_TACTICS):
+            if i in self.tuned:
+                continue
+            probe = copy.deepcopy(c)
+            try:
+                if _a._fires_now(probe, ctx.eff) is not None:
+                    continue
+            except Exception:
+                continue
+            best, best_g = None, None
+            spent0 = self.forecasts
+            for q in self._variants(c):
+                if self.forecasts - spent0 >= self.per_tactic:
+                    break
+                if not self._passes(copy.deepcopy(q), ctx):
+                    self.last_filtered += 1
+                    continue
+                self.candidates_tried += 1
+                g = self._score(q, ctx)
+                if best_g is None or g > best_g + 1e-9:
+                    best, best_g = q, g
+            if best is None:
+                best, best_g = copy.deepcopy(c), float("nan")
+                best["_tune"] = dict(amount=1.0, shift=0, note="nominal")
+            rec = self._record(best, t_now)
+            rec["tune"] = dict(best.get("_tune") or {}, gain=best_g,
+                               forecasts=self.forecasts - spent0)
+            _install_scripted(eng, rec)
+            self.tuned[i] = rec
+            installed.append(rec)
+        return {"_skip": f"expert tactics tuned and installed: "
+                         f"{len(installed)} now, {len(self.tuned)} total",
+                "_search": dict(priced=len(installed),
+                                forecasts=self.forecasts,
+                                filtered=self.last_filtered,
+                                tuned=[dict(name=r["clauses"] and
+                                            r["rule"].split(" THEN ")[1],
+                                            **{k: (None if isinstance(v, float)
+                                                   and v != v else v)
+                                               for k, v in r["tune"].items()})
+                                       for r in installed])}
+
+
 class RandomBlindProposer(Proposer):
     """The random counterpart of the single-shot model proposer: one uniform
     sample of the grammar that clears the cheap gates, handed to the gate
