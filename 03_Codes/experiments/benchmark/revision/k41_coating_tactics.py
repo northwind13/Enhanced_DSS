@@ -19,6 +19,8 @@ if __name__=="__main__":
     done=set()
     if os.path.exists(out): done={(r["arm"],r["scenario"],int(r["seed"])) for r in csv.DictReader(open(out))}
     jobs=[(a,s,d) for a in arms for s in ("S1","S2","S3","S4","S5") for d in seeds if (a,s,d) not in done]
+    print(f"K41: {len(jobs)} runs to do ({len(done)} done)", flush=True)
+    t0=time.time(); n=0
     import multiprocessing as mp
     with mp.get_context("spawn").Pool(int(os.environ.get("W") or os.environ.get("W_CPU") or 12)) as p:
         for r in p.imap_unordered(job,jobs):
@@ -27,3 +29,6 @@ if __name__=="__main__":
                 w=csv.DictWriter(f,fieldnames=list(r)); 
                 if new: w.writeheader()
                 w.writerow(r)
+            n+=1
+            print(f"[{n}/{len(jobs)}] {r['arm']} {r['scenario']} s{r['seed']}: burned {r['burned_ha']} ha, coated {r['coated_ha']} ha, success {r['success']}, {r['wall_s']}s (elapsed {time.time()-t0:.0f}s)", flush=True)
+    print("done", flush=True)
