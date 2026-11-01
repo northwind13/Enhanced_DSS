@@ -66,37 +66,36 @@ _SYSTEM = (
 
 
 def _cli_available() -> bool:
-    """True if the Claude Code command-line tool is on PATH. This path uses
-    the user's Claude subscription (Pro/Max/Team) via `claude -p`, so no
-    ANTHROPIC_API_KEY is needed."""
-    import shutil
-    return shutil.which("claude") is not None
+    """True if the selected provider's CLI (Claude Code or OpenAI Codex, see
+    dss.llm) is on PATH. Both run on a chat subscription, so no API key is
+    needed."""
+    from . import llm
+    return llm.available()
 
 
 def transport_mode() -> str:
-    """Which proposer transport stage 3 will use: 'cli' (Claude Code on the
-    user's subscription) or 'none'. Stage 3 runs only through Claude Code;
-    there is no API-key path."""
+    """Which proposer transport stage 3 will use: 'cli' (a vendor CLI on the
+    user's subscription) or 'none'. There is no API-key path."""
     return "cli" if _cli_available() else "none"
 
 
 def available() -> bool:
-    """True if stage 3 can reach a model, i.e. the Claude Code CLI is present
-    (it runs on the user's subscription)."""
+    """True if stage 3 can reach a model through the selected CLI."""
     return _cli_available()
 
 
 def _propose_via_cli(ctx: "ProposalContext", user: str,
                      model: Optional[str] = None,
                      timeout: float = 120.0) -> Optional[Rule]:
-    """Ask the Claude Code CLI (`claude -p`) for one rule, using the user's
-    Claude subscription instead of an API key. Returns a Rule or None."""
+    """Ask the selected CLI for one rule, on the user's subscription instead
+    of an API key. Returns a Rule or None. `model` is kept for callers of
+    the old signature; the model comes from dss.llm."""
     import json
     import re
-    import subprocess
     if not _cli_available():
         if os.environ.get("DSS_REQUIRE_GENAI"):
-            raise RuntimeError("DSS_REQUIRE_GENAI is set but the claude CLI is not on PATH")
+            raise RuntimeError("DSS_REQUIRE_GENAI is set but the selected "
+                               "LLM CLI is not on PATH")
         return None
     prompt = (
         _SYSTEM + "\n\n" + user + "\n\n"
@@ -105,34 +104,13 @@ def _propose_via_cli(ctx: "ProposalContext", user: str,
         'to a fuzzy term), "consequent" (an object mapping a subset of the '
         'interventions to a fuzzy term), and "rationale" (one sentence). '
         "Every fuzzy term must be one of VL, L, M, H, VH.")
-    cmd = ["claude"]
-    if model:
-        cmd += ["--model", model]
-    cmd += ["-p", prompt, "--output-format", "json"]
-    try:
-        res = subprocess.run(cmd, capture_output=True, text=True,
-                             encoding="utf-8",
-                             errors="replace",
-                             timeout=timeout)
-    except Exception as exc:
+    from .adapt import _transport_call
+    r = _transport_call(prompt, timeout)
+    if r["rc"] != 0:
         if os.environ.get("DSS_REQUIRE_GENAI"):
-            raise RuntimeError(f"claude CLI call failed: {exc!r}")
+            raise RuntimeError("LLM CLI returned no answer: %s" % r["err"])
         return None
-    if res.returncode != 0 or not res.stdout.strip():
-        if os.environ.get("DSS_REQUIRE_GENAI"):
-            raise RuntimeError("claude CLI returned no answer (rc=%s): %s"
-                               % (res.returncode, (res.stderr or "")[:300]))
-        return None
-    # `--output-format json` wraps the reply: {"type":"result",
-    # "result":"...text...", ...}. Fall back to the raw text otherwise.
-    inner = res.stdout
-    try:
-        wrap = json.loads(res.stdout)
-        if isinstance(wrap, dict) and "result" in wrap:
-            inner = wrap["result"]
-    except Exception:
-        pass
-    m = re.search(r"\{.*\}", inner, re.S)          # first JSON object
+    m = re.search(r"\{.*\}", r["text"], re.S)          # first JSON object
     if not m:
         return None
     try:
@@ -172,6 +150,9 @@ def current_model() -> str:
     unpinned call would silently take whatever the CLI defaults to
     that day, and the campaign could not state which engine produced
     its results. The run logger writes this value into meta.json."""
+    from . import llm
+    if llm.provider() != "claude":
+        return llm.describe()
     return os.environ.get("DSS_GENAI_MODEL") or DEFAULT_MODEL
 
 

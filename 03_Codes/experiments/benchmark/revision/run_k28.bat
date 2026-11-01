@@ -6,8 +6,7 @@ REM   1  closed  F5Ev under the perturbed world            CPU   ~10 min
 REM   2  live    GODA, whole loop with model calls          LLM   ~1 h
 cd /d "%~dp0..\..\.."
 if exist ".venv\Scripts\activate.bat" call ".venv\Scripts\activate.bat"
-set "CLAUDE_CONFIG_DIR=%CD%\.claude-config"
-set "DSS_GENAI_MODEL=claude-opus-5"
+call "%CD%\llm_env.bat"
 set "CLAUDE_CODE_DISABLE_NONESSENTIAL_TRAFFIC=1"
 set "DSS_GENAI_TIMEOUT=240"
 set "DSS_LLM_SCREEN_N=6"
@@ -25,7 +24,7 @@ REM (no closed step: the closed layer of t1_reference is the reference)
 echo === Claude access test ===
 python -c "import json,sys; from dss import adapt; r=adapt.genai_probe(); print(json.dumps({k:r.get(k) for k in ('ok','latency_ms','error')})); sys.exit(0 if r.get('ok') else 1)"
 if errorlevel 1 (
-  echo The model did not answer. Run claude-login.bat, then this script again.
+  echo The model did not answer. Run claude-login.bat or codex-login.bat or codex-login.bat (llm-status.bat shows which), then this script again.
   goto failed
 )
 set "DSS_REQUIRE_GENAI=1"

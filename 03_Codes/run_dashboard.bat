@@ -8,6 +8,8 @@ REM dizinine yaziliyor. Ayni dizini BURADA da vermek sart: verilmezse
 REM dashboard'un cagirdigi `claude -p` varsayilan %%USERPROFILE%%\.claude
 REM dizinine bakar, oturumu bulamaz ve "baglanti yok / not logged in" der.
 set "CLAUDE_CONFIG_DIR=%~dp0.claude-config"
+REM ChatGPT (OpenAI Codex CLI) session, written by codex-login.bat
+set "CODEX_HOME=%~dp0.codex-config"
 
 where py >nul 2>nul && (set "PY=py") || (set "PY=python")
 
@@ -67,6 +69,18 @@ echo [genai] Not logged in? Run  claude-login.bat  ONCE (Pro/Max plan), then
 echo [genai] start run_dashboard.bat again. The launcher never handles your
 echo [genai] credentials and does NOT block on it; the dashboard starts below.
 :claude_done
+
+REM --- OpenAI Codex CLI (optional): the same stage on a ChatGPT Plus/Pro
+REM subscription. Not installed automatically; codex-login.bat installs it
+REM with npm (Node.js) and signs in. Pick the provider in the dashboard
+REM sidebar or, for batch runs, with llm-select.bat.
+where codex >nul 2>nul
+if errorlevel 1 (
+    echo [genai] ChatGPT option: run codex-login.bat once ^(needs Node.js^).
+) else (
+    echo [genai] Codex CLI is available. Config dir: %CODEX_HOME%
+    call codex login status 2>nul
+)
 
 echo [run] Starting dashboard. Close this window or press Ctrl+C to stop.
 streamlit run app\streamlit_app.py

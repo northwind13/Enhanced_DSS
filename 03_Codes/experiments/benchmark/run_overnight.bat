@@ -7,7 +7,7 @@ REM A failure in one campaign does not stop the next; nothing pauses until the e
 REM Run again after an interruption: finished runs are skipped.
 setlocal
 cd /d "%~dp0..\.."
-set "CLAUDE_CONFIG_DIR=%CD%\.claude-config"
+call "%CD%\llm_env.bat"
 set "DSS_GENAI_TIMEOUT=180"
 set "SC=S1,S2,S3,S4,S5"
 set "SEEDS=201-230"

@@ -10,7 +10,7 @@ REM  Steps and worlds: T6 27, T6b 25, T9 22, T9b 32, T8 open 26, T8b 32, T12 ope
 REM ======================================================================================
 setlocal
 cd /d "%~dp0..\.."
-set "CLAUDE_CONFIG_DIR=%CD%\.claude-config"
+call "%CD%\llm_env.bat"
 set "DSS_GENAI_TIMEOUT=240"
 set "DSS_LLM_SCREEN_N=6"
 set "DSS_NO_COORD="
@@ -30,7 +30,7 @@ echo ==== rerun of retired worlds started %date% %time% >> "%LOG%"
 echo === 0. Checks ===
 python -c "import json,sys; from dss import adapt; r=adapt.genai_probe(); print(json.dumps({k:r.get(k) for k in ('ok','latency_ms','error')})); sys.exit(0 if r.get('ok') else 1)"
 if errorlevel 1 (
-  echo The model did not answer. Run claude-login.bat, then this script again.
+  echo The model did not answer. Run claude-login.bat or codex-login.bat or codex-login.bat (llm-status.bat shows which), then this script again.
   pause
   exit /b 1
 )

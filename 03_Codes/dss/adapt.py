@@ -711,9 +711,13 @@ def genai_cmd(prompt: str, session: str | None = None,
     cmd = claude_launch()
     # --model is a LAUNCH flag: the docs rank it above ANTHROPIC_MODEL and the
     # settings file, and it belongs before the prompt
-    _m = os.environ.get("DSS_GENAI_MODEL")
+    from . import llm as _llm
+    _m = _llm.model("claude")
     if _m:
         cmd += ["--model", _m]
+    _e = _llm.effort("claude")
+    if _e:
+        cmd += ["--effort", _e]
     cmd += [
         # OUTPUT LENGTH IS THE COST. Measured on this transport the call is
         # about 3.0 s of fixed startup plus 10 ms per OUTPUT token, so a
@@ -765,7 +769,6 @@ def _genai_wait_for_recovery(reason: str) -> bool:
     DSS_GENAI_OUTAGE_MAX_S (default 1800 s) is spent. Returns True when the
     model answered again, False when the budget ran out. The waiting costs
     wall time only; the simulated incident is paused, not advanced."""
-    import subprocess
     import time as _t
     budget = float(os.environ.get("DSS_GENAI_OUTAGE_MAX_S", "1800") or 1800)
     waits = [30, 60, 120]
@@ -777,24 +780,16 @@ def _genai_wait_for_recovery(reason: str) -> bool:
         _t.sleep(waits[min(k, len(waits) - 1)] if k < len(waits) else 300)
         k += 1
         ask = "Reply with exactly this JSON and nothing else: {\"ok\":true}"
-        cmd = genai_cmd(ask)
-        inp = genai_stdin(ask)
-        try:
-            res = subprocess.run(cmd, capture_output=True, text=True,
-                                 encoding="utf-8", errors="replace",
-                                 **({"input": inp} if inp is not None
-                                    else {"stdin": subprocess.DEVNULL}),
-                                 timeout=90)
-        except Exception as exc:
-            print(f"[genai] probe failed ({type(exc).__name__}) after "
-                  f"{_t.time() - t0:.0f} s", flush=True)
-            continue
-        if res.returncode == 0 and "ok" in (res.stdout or ""):
+        r = _transport_call(ask, 90)
+        if r["rc"] == 0 and "ok" in (r["text"] or ""):
             print(f"[genai] model answering again after {_t.time() - t0:.0f} s",
                   flush=True)
             return True
-        print(f"[genai] probe exit {res.returncode} after {_t.time() - t0:.0f} s: "
-              + (res.stderr or res.stdout or "")[:120].strip(), flush=True)
+        if _try_fallback(r["err"]):
+            print("[genai] continuing on the fallback model", flush=True)
+            return True
+        print(f"[genai] probe {r['rc']} after {_t.time() - t0:.0f} s: "
+              + str(r["err"])[:120].strip(), flush=True)
     return False
 
 
@@ -826,75 +821,142 @@ def _strict_genai_failure(msg: str, timeout: bool = False,
                        + msg + ", and it did not recover within the outage budget")
 
 
-def _genai_propose_cli(prompt: str, timeout: float | None = None,
-                       session: str | None = None,
-                       resume: bool = False) -> Optional[dict]:
-    """One rule proposal via the Claude Code CLI (`claude -p`), i.e. on the
-    user's Claude subscription, no API key. Returns the parsed dict or None.
+LAST_GENAI_SID = None        # session/thread id the last call ran in
+LAST_GENAI_PROVIDER = ""     # provenance of the last call, for the logs
+LAST_GENAI_MODEL = ""
+LAST_GENAI_SWITCHED = False  # the last failure moved stage 3 to the fallback
 
-    Reachability is decided by ACTUALLY invoking `claude` (same path the Test
-    Claude connection button uses), not shutil.which: on Windows a `.cmd`
-    shim can be runnable by subprocess yet invisible to which, which used to
-    make stage 3 look unreachable even though the model answered fine."""
+
+def _try_fallback(err) -> bool:
+    try:
+        from . import llm as _llm
+        return _llm.try_fallback(str(err or ""))
+    except Exception:
+        return False
+
+
+def _transport_call(prompt: str, timeout: float,
+                    session: str | None = None,
+                    resume: bool = False) -> dict:
+    """ONE call to the selected provider's CLI (see dss.llm). Returns
+    dict(rc, text, err, session, raw, cmd, provider, model, usage), where
+    rc is 0 on success, an exit code, "timeout" or "launch", and text is
+    the model's reply with the CLI wrapper removed."""
     import subprocess
-    import time as _t
-    global LAST_GENAI_MS, GENAI_CALLS
-    GENAI_CALLS += 1
-    timeout = genai_timeout() if timeout is None else float(timeout)
-    _t0 = _t.time()
+    from . import llm as _llm
+    prov = _llm.provider()
+    mdl = _llm.model(prov)
+    if prov == "codex":
+        r = _llm.run_codex(prompt, timeout, session=session, resume=resume)
+        r.update(provider=prov, model=mdl or "(plan default)")
+        return r
+    out = dict(rc=None, text="", err="", session=session or "", raw="",
+               cmd="", provider=prov, model=mdl or "(plan default)",
+               usage=None, wrap=None)
     cmd = genai_cmd(prompt, session=session, resume=resume)
-    _inp = genai_stdin(prompt)
-    global LAST_GENAI_ERR
+    inp = genai_stdin(prompt)
+    out["cmd"] = " ".join(cmd)
     try:
         # STDIN MUST BE CLOSED. The CLI reads stdin for piped input and
         # waits for it before it starts; with the handle inherited from the
         # Streamlit process it can sit there for seconds ("no stdin data
-        # received in 3s, proceeding without it") on EVERY call, and stage 3
-        # makes up to four calls per attempt.
+        # received in 3s, proceeding without it") on EVERY call.
         res = subprocess.run(cmd, capture_output=True, text=True,
-                             encoding="utf-8",
-                             errors="replace",
-                             **({"input": _inp} if _inp is not None
+                             encoding="utf-8", errors="replace",
+                             **({"input": inp} if inp is not None
                                 else {"stdin": subprocess.DEVNULL}),
                              timeout=timeout)
     except subprocess.TimeoutExpired:
-        LAST_GENAI_MS = (_t.time() - _t0) * 1000.0
-        LAST_GENAI_ERR = f"timeout after {timeout:.0f} s"
-        _strict_genai_failure(LAST_GENAI_ERR, timeout=True, resume=resume)
-        return None
+        out.update(rc="timeout", err=f"timeout after {timeout:.0f} s")
+        return out
     except Exception as exc:
-        LAST_GENAI_MS = (_t.time() - _t0) * 1000.0
-        LAST_GENAI_ERR = f"launch failed ({type(exc).__name__})"
-        _strict_genai_failure(LAST_GENAI_ERR, resume=resume)
-        return None
+        out.update(rc="launch", err=f"launch failed ({type(exc).__name__})")
+        return out
+    out["rc"] = res.returncode
+    out["raw"] = (res.stdout or "")[:4000]
+    text = (res.stdout or "").strip()
+    is_err = res.returncode != 0 or not text
+    try:                                   # unwrap {"result": "...text..."}
+        wrap = json.loads(res.stdout)
+        if isinstance(wrap, dict):
+            out["wrap"] = wrap
+            out["usage"] = wrap.get("usage")
+            if "result" in wrap:
+                text = str(wrap["result"]).strip()
+            # `claude -p --output-format json` flags failures (limit,
+            # login, billing) with is_error even at exit code 0
+            if wrap.get("is_error") or (wrap.get("subtype")
+                                        and wrap.get("subtype") != "success"):
+                is_err = True
+    except Exception:
+        pass
+    out["text"] = text
+    if is_err:
+        out["err"] = (f"exit {res.returncode}: "
+                      + ((res.stderr or "").strip() or text
+                         or "no output")[:200])
+        if out["rc"] == 0:
+            out["rc"] = 1
+    return out
+
+
+def _genai_propose_cli(prompt: str, timeout: float | None = None,
+                       session: str | None = None,
+                       resume: bool = False) -> Optional[dict]:
+    """One rule proposal through the selected CLI (Claude Code or OpenAI
+    Codex, see dss.llm) on the user's subscription, no API key. Returns
+    the parsed dict or None.
+
+    When the provider reports a usage or rate limit and DSS_GENAI_FALLBACK
+    names another provider or model, stage 3 switches to it for the rest
+    of the process (LAST_GENAI_SWITCHED tells the caller to reopen the
+    session there) and the failure is not counted as an outage."""
+    import time as _t
+    global LAST_GENAI_MS, GENAI_CALLS, LAST_GENAI_ERR, LAST_GENAI_SID
+    global LAST_GENAI_PROVIDER, LAST_GENAI_MODEL, LAST_GENAI_SWITCHED
+    from . import llm as _llm
+    GENAI_CALLS += 1
+    LAST_GENAI_SWITCHED = False
+    timeout = genai_timeout() if timeout is None else float(timeout)
+    _t0 = _t.time()
+    r = _transport_call(prompt, timeout, session=session, resume=resume)
     LAST_GENAI_MS = (_t.time() - _t0) * 1000.0
-    if res.returncode != 0 or not res.stdout.strip():
-        LAST_GENAI_ERR = (f"exit {res.returncode}: "
-                          + (res.stderr or "no output").strip()[:160])
-        _strict_genai_failure(LAST_GENAI_ERR, resume=resume)
+    LAST_GENAI_PROVIDER, LAST_GENAI_MODEL = r["provider"], r["model"]
+    LAST_GENAI_SID = r.get("session") or session
+    _llm.log_call(dict(provider=r["provider"], model=r["model"],
+                       effort=_llm.effort(r["provider"]),
+                       resume=bool(resume), ok=r["rc"] == 0,
+                       ms=round(LAST_GENAI_MS), err=str(r["err"])[:200],
+                       usage=r.get("usage")))
+    if r["rc"] != 0:
+        LAST_GENAI_ERR = r["err"]
+        if r["rc"] != "timeout" and _try_fallback(r["err"]):
+            LAST_GENAI_SWITCHED = True
+            LAST_GENAI_ERR = "switched to fallback: " + str(r["err"])[:120]
+            return None
+        _strict_genai_failure(LAST_GENAI_ERR, timeout=r["rc"] == "timeout",
+                              resume=resume)
         return None
     LAST_GENAI_ERR = None
     _STRICT_TIMEOUTS[0] = 0
     _STRICT_FAILS[0] = 0
-    inner = res.stdout
-    try:                                   # unwrap {"result": "...text..."}
-        wrap = json.loads(res.stdout)
-        if isinstance(wrap, dict) and "result" in wrap:
-            inner = str(wrap["result"])
-    except Exception:
-        pass
+    inner = r["text"]
     try:
         i, j = inner.find("{"), inner.rfind("}")
-        return json.loads(inner[i:j + 1])
+        prop = json.loads(inner[i:j + 1])
     except Exception:
         return None
+    if isinstance(prop, dict):
+        # provenance travels with the proposal into proposals.jsonl
+        prop["_llm"] = f"{r['provider']}:{r['model']}"
+    return prop
 
 
 def _genai_propose(situation: str, timeout: float | None = None,
                    engine=None, mission: str = "") -> Optional[dict]:
-    """One rule proposal from Claude via the Claude Code CLI (`claude -p`) on
-    the user's subscription. Returns None when the `claude` command is not
-    available/logged in or the reply is unparseable.
+    """One rule proposal from the selected language model (Claude Code or
+    OpenAI Codex CLI, see dss.llm) on the user's subscription. Returns None
+    when the CLI is not available/logged in or the reply is unparseable.
 
     `timeout` is what is LEFT of the attempt's shared wait budget, so a
     proposal and its revisions cannot each claim the full allowance.
@@ -905,14 +967,22 @@ def _genai_propose(situation: str, timeout: float | None = None,
     situation. The model is a continuous mind for the whole run: it
     remembers the map, the settings, what it has already proposed and
     why each rejection happened, without the caller repeating any of it.
+    A session belongs to one provider; after a fallback switch the next
+    call opens a fresh session on the new provider.
     """
+    from . import llm as _llm
     header = ("You are the rule proposer of a wildfire decision "
               "support system. Situation:\n")
+    opening = header + mission + situation + "\n" + _genai_schema()
     if engine is None:
-        return _genai_propose_cli(header + mission + situation + "\n"
-                                  + _genai_schema(), timeout=timeout)
+        p = _genai_propose_cli(opening, timeout=timeout)
+        if p is None and LAST_GENAI_SWITCHED:
+            p = _genai_propose_cli(opening, timeout=timeout)
+        return p
     sid = getattr(engine, "_genai_sid", None)
-    if sid and getattr(engine, "_genai_sid_ok", False):
+    _key = _llm.provider() + ":" + _llm.model()
+    same = getattr(engine, "_genai_sid_provider", _key) == _key
+    if sid and getattr(engine, "_genai_sid_ok", False) and same:
         p = _genai_propose_cli(
             "Current situation update (same incident, same standing "
             "brief):\n" + situation
@@ -924,14 +994,20 @@ def _genai_propose(situation: str, timeout: float | None = None,
             return None      # budget gone; the session stays for later
         engine._genai_sid_ok = False   # session lost: reopen below
     import uuid as _uuid
-    sid = str(_uuid.uuid4())
-    engine._genai_sid = sid
-    p = _genai_propose_cli(header + mission + situation + "\n"
-                           + _genai_schema(),
-                           timeout=timeout, session=sid)
-    if p is not None:
-        engine._genai_sid_ok = True
-    return p
+    for _ in range(2):                 # second pass only after a fallback
+        key = _llm.provider() + ":" + _llm.model()
+        # Claude takes the id from the caller; Codex assigns its own
+        # thread id, which the call reports back
+        sid = str(_uuid.uuid4()) if _llm.provider() == "claude" else None
+        p = _genai_propose_cli(opening, timeout=timeout, session=sid)
+        engine._genai_sid = LAST_GENAI_SID or sid
+        engine._genai_sid_provider = key
+        if p is not None:
+            engine._genai_sid_ok = True
+            return p
+        if not LAST_GENAI_SWITCHED:
+            return None
+    return None
 
 
 #: G5b, the attribution margin. The new object must beat its OWN rule
@@ -2497,50 +2573,44 @@ def reset_partitions() -> None:
 
 def genai_status() -> str:
     """Which proposer stage 3 will use right now."""
-    try:
-        from . import genai as _g
-        mode = _g.transport_mode()
-    except Exception:
-        mode = "none"
-    if mode == "cli":
-        return "Claude Code CLI (your subscription)"
-    return ("generative disabled: the `claude` command is not available "
-            "(install Claude Code and run `/login` on your Pro/Max plan)")
+    from . import llm as _llm
+    p = _llm.provider()
+    if _llm.available(p):
+        return _llm.PROVIDER_LABEL[p] + f", {_llm.describe()}"
+    return ("generative disabled: the `%s` command is not available "
+            "(run %s-login.bat after installing it)" % (p, p))
 
 
 def genai_config() -> dict:
     """Static view of the generative wiring WITHOUT touching the network.
 
-    Stage 3 runs only through Claude Code on the user's subscription; there
-    is no API-key path. Cheap: safe to render on every frame."""
-    model = os.environ.get("DSS_GENAI_MODEL", "")
-    try:
-        from . import genai as _g
-        mode = _g.transport_mode()
-    except Exception:
-        mode = "none"
-    if mode == "cli":
-        transport = "Claude Code CLI (your subscription)"
-        endpoint = "claude -p"
-    else:
-        transport = "none"
-        endpoint = ""
+    Stage 3 runs only through a vendor CLI on the user's subscription
+    (Claude Code or OpenAI Codex, see dss.llm); there is no API-key path.
+    Cheap: safe to render on every frame. `mode` is "cli" when the
+    selected provider's command is on PATH."""
+    from . import llm as _llm
+    prov = _llm.provider()
+    ok = _llm.available(prov)
     return {
-        "mode": mode,
-        "model": model or "(subscription default)",
-        "endpoint": endpoint,
-        "transport": transport,
-        "reachable": mode != "none",
+        "mode": "cli" if ok else "none",
+        "provider": prov,
+        "model": _llm.model(prov) or "(subscription default)",
+        "effort": _llm.effort(prov) or "(CLI default)",
+        "fallback": os.environ.get("DSS_GENAI_FALLBACK", ""),
+        "fallback_active": _llm.fallback_state(),
+        "endpoint": ("codex exec" if prov == "codex" else "claude -p") if ok
+        else "",
+        "transport": _llm.PROVIDER_LABEL[prov] if ok else "none",
+        "reachable": ok,
     }
 
 
 def genai_probe(max_tokens: int = 64) -> dict:
-    """Make ONE real, live call to Claude via the Claude Code CLI and return
-    the proof. This is not a mock: it runs `claude -p` on the user's
-    subscription and returns Claude's OWN reply text plus the round-trip
-    latency. Any failure (claude missing, not logged in, billing) is returned
-    as a plain error string so the app shows exactly why stage 3 is or is not
-    live."""
+    """Make ONE real, live call to the selected model (Claude Code or
+    OpenAI Codex CLI) and return the proof: the model's OWN reply text plus
+    the round-trip latency. Any failure (CLI missing, not logged in, limit)
+    is returned as a plain error string so the app shows exactly why stage
+    3 is or is not live."""
     import time
     cfg = genai_config()
     out = dict(cfg)
@@ -2550,8 +2620,23 @@ def genai_probe(max_tokens: int = 64) -> dict:
     ask = ("Reply with exactly this line and nothing else: "
            "DisasterAware GenAI link is live.")
     if out.get("mode") != "cli":
-        out["error"] = ("the `claude` command is not available; install "
-                        "Claude Code and run `/login` on your Pro/Max plan")
+        out["error"] = (f"the `{cfg['provider']}` command is not available; "
+                        f"install it and run {cfg['provider']}-login.bat")
+        return out
+    if cfg["provider"] == "codex":
+        t0 = time.time()
+        r = _transport_call(ask, genai_timeout())
+        out["cmd"], out["raw"], out["usage"] = r["cmd"], r["raw"], r["usage"]
+        if r["rc"] == 0:
+            out.update(ok=True, reply=r["text"], reported_model=model)
+        else:
+            out["error"] = str(r["err"])[:400]
+        out["latency_ms"] = int((time.time() - t0) * 1000)
+        _fin = time.time()
+        out["started_at"] = time.strftime("%H:%M:%S", time.localtime(t0))
+        out["finished_at"] = time.strftime("%H:%M:%S", time.localtime(_fin))
+        out["finished_stamp"] = time.strftime("%Y-%m-%d %H:%M:%S",
+                                              time.localtime(_fin))
         return out
     import subprocess
     t0 = time.time()

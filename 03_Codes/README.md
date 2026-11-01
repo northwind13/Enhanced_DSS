@@ -14,6 +14,22 @@ First install:
     python -m venv .venv
     .venv\Scripts\pip install -r requirements.txt
 
+## Language model for stage 3 (Claude or ChatGPT)
+
+Stage 3 runs on a chat subscription through the vendor CLI, never on an API key.
+
+| Provider | CLI | One-time setup | Login |
+|---|---|---|---|
+| `claude` | Claude Code | installed by `run_dashboard.bat` | `claude-login.bat` (Pro/Max) |
+| `codex` | OpenAI Codex | Node.js LTS, then `npm i -g @openai/codex` (`codex-login.bat` does it) | `codex-login.bat` (ChatGPT Plus/Pro) |
+
+Sessions are stored in `.claude-config` and `.codex-config` in this folder.
+
+* Dashboard: pick the provider and model in the sidebar (GenAI ③). Layer 4 Settings adds reasoning effort, a fallback, a login check and a button that saves the choice for the batch runs.
+* Batch runs: every run script calls `llm_env.bat`, which reads `llm.cfg`. Edit it with `llm-select.bat`, check it with `llm-status.bat`. Without `llm.cfg` the scripts use `claude:claude-opus-5`.
+* Variables: `DSS_GENAI_PROVIDER` (claude | codex), `DSS_GENAI_MODEL`, `DSS_GENAI_EFFORT`, `DSS_GENAI_FALLBACK` (e.g. `codex:gpt-5.5`, used when the selected provider reports a usage or rate limit).
+* Provenance: every proposal carries `_llm` (`provider:model`, column `llm` in `proposals.jsonl`), and strict batch runs append one line per call to `genai_calls.jsonl`, including any fallback switch. A campaign that switched model midway shows up there and should be rerun on one model.
+
 ## Folder layout
 
 ```

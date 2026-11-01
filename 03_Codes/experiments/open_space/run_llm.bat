@@ -3,7 +3,7 @@ REM LLM kolu (F5 + EvFIS + LLM) kampanyasi. 03_Codes klasorunden calistirilir.
 REM Oncesinde claude-login.bat ile giris yapilmis olmali (ayni config dizini).
 setlocal
 cd /d "%~dp0..\.."
-set "CLAUDE_CONFIG_DIR=%CD%\.claude-config"
+call "%CD%\llm_env.bat"
 set "OUT=experiments\open_space\out_llm"
 
 echo === 0. Claude erisim testi ===

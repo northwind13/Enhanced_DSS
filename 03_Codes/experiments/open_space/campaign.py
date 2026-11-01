@@ -565,6 +565,7 @@ def run_once(exp: str, scenario: str, arm: str, seed: int,
                         exp=exp, scenario=scenario, arm=arm, seed=seed,
                         t_min=round(t_min, 1),
                         source=info.get("source", ""),
+                        llm=prop.get("_llm", ""),
                         accepted=bool(ad.get("accepted")),
                         detail=str(ad.get("detail") or "")[:200],
                         gate=(info.get("gate") or

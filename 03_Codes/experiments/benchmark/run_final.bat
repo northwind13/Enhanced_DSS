@@ -5,7 +5,7 @@ REM   2  ACCT  replay of the E5 admissions with retardant and ignition accountin
 REM   3  E9  LLMScreen   model candidates screened with the E8 forecast budget, S1-S5 x 30    LLM  ~3-4 h
 setlocal
 cd /d "%~dp0..\.."
-set "CLAUDE_CONFIG_DIR=%CD%\.claude-config"
+call "%CD%\llm_env.bat"
 set "DSS_GENAI_TIMEOUT=240"
 set "DSS_LLM_SCREEN_N=6"
 set "DSS_WITHHOLD_FAMILY_NAME="
@@ -27,7 +27,7 @@ echo ==== final campaign started %date% %time% >> "%LOG%"
 echo === 0. Claude access test ===
 python -c "import json,sys; from dss import adapt; r=adapt.genai_probe(); print(json.dumps({k:r.get(k) for k in ('ok','latency_ms','error')})); sys.exit(0 if r.get('ok') else 1)"
 if errorlevel 1 (
-  echo The model did not answer. Run claude-login.bat, then this script again.
+  echo The model did not answer. Run claude-login.bat or codex-login.bat or codex-login.bat (llm-status.bat shows which), then this script again.
   pause
   exit /b 1
 )

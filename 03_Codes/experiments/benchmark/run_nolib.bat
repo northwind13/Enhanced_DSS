@@ -14,7 +14,7 @@ REM           silently continuing without the model (see dss/genai.py)
 REM Resumable: run again after an interruption, finished runs are skipped.
 setlocal
 cd /d "%~dp0..\.."
-set "CLAUDE_CONFIG_DIR=%CD%\.claude-config"
+call "%CD%\llm_env.bat"
 set "DSS_REQUIRE_GENAI=1"
 set "DSS_GENAI_TIMEOUT=180"
 set "OUT=experiments\benchmark\out_nolib"

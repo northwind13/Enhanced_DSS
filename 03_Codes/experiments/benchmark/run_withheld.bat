@@ -12,7 +12,7 @@ REM A model outage (consecutive timeouts) no longer fails the world: the call wa
 REM DSS_GENAI_OUTAGE_MAX_S (default 1800 s) for the model to answer again.
 setlocal
 cd /d "%~dp0..\.."
-set "CLAUDE_CONFIG_DIR=%CD%\.claude-config"
+call "%CD%\llm_env.bat"
 set "DSS_GENAI_TIMEOUT=180"
 set "SEEDS=201-230"
 set "B=experiments\benchmark"
@@ -23,7 +23,7 @@ echo ==== withheld-family batch started %date% %time% >> "%LOG%"
 echo === 0. Claude access test (same launch path as the campaign) ===
 python -c "import json,sys; from dss import adapt; r=adapt.genai_probe(); print(json.dumps({k:r.get(k) for k in ('ok','mode','reply','latency_ms','error','cmd')})); sys.exit(0 if r.get('ok') else 1)"
 if errorlevel 1 (
-  echo The model did not answer through the campaign launch path. Run claude-login.bat, then this script again.
+  echo The model did not answer through the campaign launch path. Run claude-login.bat or codex-login.bat or codex-login.bat (llm-status.bat shows which), then this script again.
   echo Step 0 failed at %time% >> "%LOG%"
   pause
   exit /b 1

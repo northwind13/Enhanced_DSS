@@ -734,6 +734,77 @@ def _adopt(shared: str, wkey: str) -> None:
     st.session_state[shared] = st.session_state[wkey]
 
 
+_GENAI_PROV_LABEL = {"claude": "Claude (Claude Code)",
+                     "codex": "ChatGPT (OpenAI Codex)"}
+_GENAI_CMD = {"claude": "claude", "codex": "codex"}
+
+
+def _genai_init_state() -> None:
+    """First render: start from the batch selection (llm.cfg) or the
+    environment, so the dashboard and the run scripts agree by default."""
+    if "genai_provider_ui" in st.session_state:
+        return
+    try:
+        from dss import llm as _llm
+        cfg = _llm.read_cfg()
+    except Exception:
+        cfg = {}
+    def _v(k):
+        return (os.environ.get(k) or cfg.get(k) or "").strip()
+    prov = _v("DSS_GENAI_PROVIDER").lower() or "claude"
+    prov = "codex" if prov in ("openai", "chatgpt", "gpt") else prov
+    st.session_state["genai_provider_ui"] = (prov if prov in _GENAI_PROV_LABEL
+                                             else "claude")
+    st.session_state.setdefault("genai_model_ui",
+                                _v("DSS_GENAI_MODEL") or "(plan default)")
+    st.session_state.setdefault("genai_effort_ui",
+                                _v("DSS_GENAI_EFFORT") or "(CLI default)")
+    st.session_state.setdefault("genai_fallback_ui",
+                                _v("DSS_GENAI_FALLBACK"))
+
+
+def _genai_models(prov: str) -> list:
+    """Model choices for one provider; the Codex catalog is asked once."""
+    key = f"genai_models_{prov}"
+    if key not in st.session_state:
+        try:
+            from dss import llm as _llm
+            st.session_state[key] = ["(plan default)"] + _llm.list_models(prov)
+        except Exception:
+            st.session_state[key] = ["(plan default)"]
+    opts = list(st.session_state[key])
+    cur = str(st.session_state.get("genai_model_ui", "(plan default)"))
+    if cur not in opts and cur:
+        opts.append(cur)                 # a typed custom name stays visible
+    return opts
+
+
+def _genai_on_provider(wkey: str) -> None:
+    """Provider changed: a model of the other vendor cannot be sent."""
+    st.session_state["genai_provider_ui"] = st.session_state[wkey]
+    st.session_state["genai_model_ui"] = "(plan default)"
+    st.session_state["genai_effort_ui"] = "(CLI default)"
+
+
+def _genai_apply_env() -> tuple:
+    """Copy the dashboard's GenAI choice into the environment the stage ③
+    transport reads (dss.llm). Returns the (provider, model, effort) key."""
+    _genai_init_state()
+    prov = str(st.session_state.get("genai_provider_ui", "claude"))
+    mdl = str(st.session_state.get("genai_model_ui", "(plan default)"))
+    eff = str(st.session_state.get("genai_effort_ui", "(CLI default)"))
+    fb = str(st.session_state.get("genai_fallback_ui", "") or "")
+    os.environ["DSS_GENAI_PROVIDER"] = prov
+    for k, v, empty in (("DSS_GENAI_MODEL", mdl, "(plan default)"),
+                        ("DSS_GENAI_EFFORT", eff, "(CLI default)"),
+                        ("DSS_GENAI_FALLBACK", fb, "(none)")):
+        if v and v != empty:
+            os.environ[k] = v.strip()
+        else:
+            os.environ.pop(k, None)
+    return (prov, mdl, eff)
+
+
 def _genai_model_label() -> str:
     """Which model stage ③ will actually call.
 
@@ -742,6 +813,9 @@ def _genai_model_label() -> str:
     the last live call was SERVED by is shown instead, because that is the
     only honest answer available without making another call."""
     ui = str(st.session_state.get("genai_model_ui", "(plan default)"))
+    prov = str(st.session_state.get("genai_provider_ui", "claude"))
+    if prov != "claude":
+        return f"{prov}: {ui}"
     if ui and ui != "(plan default)":
         return ui
     served = str(st.session_state.get("genai_served_model", "") or "")
@@ -2530,6 +2604,7 @@ with st.sidebar:
         _gon = bool(st.session_state.get("dss_genai_on", True))
         _evon = bool(st.session_state.get("dss_evfis_on", True))
         _dact = bool(st.session_state.get("dss_apply"))
+        _genai_apply_env()
         try:
             _greach = _dss_pkg.genai_config().get("mode") == "cli"
         except Exception:
@@ -2552,33 +2627,39 @@ with st.sidebar:
         # the model is CHOSEN here, not only reported: it is the one stage ③
         # setting that changes what a run costs in wall time, and hunting for
         # it inside Layer 4 Settings every time was the wrong place for it
-        _MODELS_SB = ["(plan default)", "opus", "sonnet", "haiku"]
-        _cur_sb = str(st.session_state.get("genai_model_ui",
-                                           "(plan default)"))
-        if _cur_sb not in _MODELS_SB:
-            _cur_sb = "(plan default)"
+        _genai_init_state()
+        _prov_list = list(_GENAI_PROV_LABEL)
+        _mirror("genai_provider_ui", "side_genai_provider", "claude")
+        _c10.selectbox(
+            "GenAI ③ provider", _prov_list, key="side_genai_provider",
+            format_func=lambda k: _GENAI_PROV_LABEL.get(k, k),
+            on_change=_genai_on_provider, args=("side_genai_provider",),
+            help="Which subscription answers stage ③: Claude through Claude "
+                 "Code (claude-login.bat) or ChatGPT through the OpenAI Codex "
+                 "CLI (codex-login.bat). No API key in either case.")
+        _prov_sb = str(st.session_state.get("genai_provider_ui", "claude"))
+        _MODELS_SB = _genai_models(_prov_sb)
+        if str(st.session_state.get("genai_model_ui")) not in _MODELS_SB:
+            st.session_state["genai_model_ui"] = "(plan default)"
         _mirror("genai_model_ui", "side_genai_model", "(plan default)")
         _pick_sb = _c10.selectbox(
             "GenAI ③ model", _MODELS_SB, key="side_genai_model",
             on_change=_adopt, args=("genai_model_ui", "side_genai_model"),
+            accept_new_options=True,
             help="Which model stage ③ calls. Same setting as the one in "
-                 "Layer 4 Settings; changing it here changes it there. "
-                 "Measured on this transport the wait is roughly 3.4 s of "
-                 "fixed startup plus 7 ms per output token, so the answer "
-                 "LENGTH matters more than the family: opus and sonnet "
-                 "honour the short-JSON instruction, haiku does not and "
-                 "ends up slowest.")
-        if _pick_sb != _cur_sb:
-            if _pick_sb != "(plan default)":
-                os.environ["DSS_GENAI_MODEL"] = _pick_sb
-            else:
-                os.environ.pop("DSS_GENAI_MODEL", None)
+                 "Layer 4 Settings; changing it here changes it there. A "
+                 "name that is not listed can be typed. For Claude the "
+                 "wait is roughly 3.4 s of fixed startup plus 7 ms per "
+                 "output token, so the answer LENGTH matters more than the "
+                 "family.")
+        _sig_sb = _genai_apply_env()
+        if st.session_state.get("genai_env_sig") not in (None, _sig_sb):
             # PROBE ON CHANGE. Picking a model without checking it leaves the
             # question the label is meant to answer open, and with "(plan
             # default)" the served model cannot be known any other way. One
             # call, a few seconds, and the lamp and the label are truthful.
             st.session_state["genai_probe_pending"] = True
-            st.rerun()
+        st.session_state["genai_env_sig"] = _sig_sb
         if st.session_state.pop("genai_probe_pending", False):
             with st.spinner(f"Testing GenAI on `{_pick_sb}`…"):
                 try:
@@ -2599,7 +2680,8 @@ with st.sidebar:
             _genai_model_label() if _ga_run else
             ("DSS active is off" if not _dact else
              ("GenAI active is off" if not _gon else
-              "`claude` not reachable")))
+              f"`{_GENAI_CMD.get(_prov_sb, 'claude')}` not reachable "
+              f"(run {_prov_sb}-login.bat)")))
         _t1, _t2 = st.columns([1, 4])
         _t1.markdown("🧪")
         if _t2.button("Test GenAI", width="stretch",
@@ -4191,12 +4273,28 @@ def page_simulation():
                 "Proposal temperature", 0.0, 1.0,
                 float(_sv("dss_genai_temp", 0.3)), 0.05,
                 disabled=not _genai_on))
-            # model passed to `claude --model`; stage 3 runs ONLY on your
-            # Claude subscription via Claude Code (`claude -p`), no API key.
-            # Use Claude Code's own aliases (opus / sonnet / haiku): full
-            # version strings are not always recognised and `claude` then
-            # silently falls back to its default model.
-            _MODELS = ["(plan default)", "opus", "sonnet", "haiku"]
+            # Stage 3 runs ONLY on a chat subscription through the vendor's
+            # CLI: Claude Code (`claude -p`) or OpenAI Codex (`codex exec`),
+            # no API key (see dss/llm.py). For Claude use Claude Code's own
+            # aliases (opus / sonnet / haiku): full version strings are not
+            # always recognised and `claude` then silently falls back to its
+            # default model.
+            _genai_init_state()
+            _mirror("genai_provider_ui", "l4_genai_provider", "claude")
+            st.selectbox(
+                "Provider", list(_GENAI_PROV_LABEL), key="l4_genai_provider",
+                format_func=lambda k: _GENAI_PROV_LABEL.get(k, k),
+                on_change=_genai_on_provider, args=("l4_genai_provider",),
+                disabled=not _genai_on,
+                help="Claude: Claude Pro/Max through Claude Code, log in "
+                     "once with claude-login.bat. ChatGPT: ChatGPT Plus/Pro "
+                     "through the OpenAI Codex CLI, install it with "
+                     "`npm i -g @openai/codex` and log in once with "
+                     "codex-login.bat.")
+            _prov4 = str(st.session_state.get("genai_provider_ui", "claude"))
+            _MODELS = _genai_models(_prov4)
+            if str(st.session_state.get("genai_model_ui")) not in _MODELS:
+                st.session_state["genai_model_ui"] = "(plan default)"
             # SPEED MATTERS HERE, not only quality: stage 3 runs inside the
             # decision cycle, which runs inside the animation frame, so the
             # model's latency is a pause the operator sees on every call.
@@ -4210,66 +4308,132 @@ def page_simulation():
                 "opus": "fastest here — answers in ~22 tokens",
                 "sonnet": "fast here — answers in ~16 tokens",
                 "haiku": "slowest here — ignores the brevity rule, ~290 tok",
-            }
+            } if _prov4 == "claude" else {
+                "(plan default)": "whatever Codex is configured to use"}
             _mtimes = dict(st.session_state.get("genai_model_ms", {}))
 
             def _mlabel(m):
                 _t = _mtimes.get(m)
-                return (f"{m} — {_MSPEED[m]}"
+                return (m + (f" — {_MSPEED[m]}" if m in _MSPEED else "")
                         + (f" · measured {_t / 1000:.1f} s" if _t else ""))
-            _cur_m = st.session_state.get("genai_model_ui", "(plan default)")
-            if _cur_m not in _MODELS:
-                _cur_m = "(plan default)"
             _mirror("genai_model_ui", "l4_genai_model", "(plan default)")
             _mdl = st.selectbox(
                 "Model", _MODELS, key="l4_genai_model",
                 on_change=_adopt, args=("genai_model_ui", "l4_genai_model"),
-                format_func=_mlabel,
+                format_func=_mlabel, accept_new_options=True,
                 disabled=not _genai_on,
-                help="Which model `claude` uses for stage 3 (Claude Code "
-                     "aliases). '(plan default)' lets your Pro/Max plan "
-                     "decide. Note: your plan may downgrade `claude -p` to a "
+                help="Which model the selected CLI uses for stage 3. "
+                     "'(plan default)' lets your plan decide. A name that "
+                     "is not listed can be typed. Note: a plan may serve a "
                      "smaller model when limits are hit.")
+            try:
+                from dss import llm as _llm4
+                _eff_opts = ["(CLI default)"] + _llm4.EFFORTS[_prov4]
+                _other4 = "codex" if _prov4 == "claude" else "claude"
+                _fb_opts = ["(none)"] + [f"{_other4}:{m}" for m in
+                                         _genai_models(_other4)[1:4]]
+            except Exception:
+                _eff_opts, _fb_opts = ["(CLI default)"], ["(none)"]
+            if str(st.session_state.get("genai_effort_ui")) not in _eff_opts:
+                st.session_state["genai_effort_ui"] = "(CLI default)"
+            _mirror("genai_effort_ui", "l4_genai_effort", "(CLI default)")
+            st.selectbox(
+                "Reasoning effort", _eff_opts, key="l4_genai_effort",
+                on_change=_adopt, args=("genai_effort_ui", "l4_genai_effort"),
+                disabled=not _genai_on,
+                help="Passed as `--effort` to Claude Code or as "
+                     "model_reasoning_effort to Codex. Higher effort means "
+                     "longer waits per call.")
+            _fb_cur = str(st.session_state.get("genai_fallback_ui") or "(none)")
+            if _fb_cur not in _fb_opts:
+                _fb_opts.append(_fb_cur)
+            st.session_state["genai_fallback_ui"] = _fb_cur
+            _mirror("genai_fallback_ui", "l4_genai_fallback", "(none)")
+            st.selectbox(
+                "Fallback when the usage limit is hit", _fb_opts,
+                key="l4_genai_fallback", accept_new_options=True,
+                on_change=_adopt,
+                args=("genai_fallback_ui", "l4_genai_fallback"),
+                disabled=not _genai_on,
+                help="When the selected provider reports a usage or rate "
+                     "limit, stage 3 switches to this provider:model for "
+                     "the rest of the session and every call is logged with "
+                     "the model that answered. For a reported experiment "
+                     "keep one model per campaign and rerun rather than mix.")
+            _sig4 = _genai_apply_env()
+            st.session_state["genai_env_sig"] = _sig4
+            _fbs = _dss.genai_config().get("fallback_active") or {}
+            if _fbs:
+                st.warning(f"Fallback active since {_fbs.get('since')}: "
+                           f"stage ③ now calls `{_fbs.get('provider')}:"
+                           f"{_fbs.get('model') or '(plan default)'}`. "
+                           f"Reason: {str(_fbs.get('reason'))[:120]}")
+                if st.button("Return to the selected provider",
+                             key="l4_genai_fb_reset"):
+                    _llm4.reset_fallback()
+                    st.rerun()
+            if _prov4 == "claude":
+                st.caption(
+                    "Measured on this transport the call costs about "
+                    "**3.4 s of fixed startup plus ~7 ms per output token**, "
+                    "so the wait is set by how MUCH the model writes rather "
+                    "than by which model writes it. opus and sonnet honour "
+                    "the 'minified JSON only' instruction and come back in "
+                    "~3.3 s and ~3.7 s, while haiku keeps writing prose "
+                    "around the JSON and takes ~5.3 s.")
             st.caption(
-                "Measured on this transport the call costs about "
-                "**3.4 s of fixed startup plus ~7 ms per output token**, so "
-                "the wait is set by how MUCH the model writes rather than by "
-                "which model writes it. That inverts the usual ordering "
-                "here: opus and sonnet honour the 'minified JSON only' "
-                "instruction and come back in ~3.3 s and ~3.7 s, while "
-                "haiku keeps writing prose around the JSON (~290 tokens "
-                "that are discarded unread) and takes ~5.3 s. The smallest "
-                "model is currently the slowest one for this job."
-                + f" Each stage ③ call blocks the simulation until it "
-                  f"answers, capped at {_dss.genai_timeout():.0f} s "
-                  "(`DSS_GENAI_TIMEOUT` raises it for batch runs)."
-                + ("" if _mtimes else
-                   " Press 'Test Claude connection' to record what each "
-                   "model actually costs on this machine."))
-            if _mdl and _mdl != "(plan default)":
-                os.environ["DSS_GENAI_MODEL"] = _mdl.strip()
-            else:
-                os.environ.pop("DSS_GENAI_MODEL", None)
-            # --- GenAI status: stage 3 runs only on the Claude subscription ---
+                f"Each stage ③ call blocks the simulation until it answers, "
+                f"capped at {_dss.genai_timeout():.0f} s "
+                "(`DSS_GENAI_TIMEOUT` raises it for batch runs).")
+            _c_ls1, _c_ls2 = st.columns(2)
+            if _c_ls1.button("Check login", key="l4_genai_login",
+                             help="Runs the CLI's own login status command."):
+                with st.spinner("Asking the CLI…"):
+                    st.session_state["genai_login_" + _prov4] = \
+                        _llm4.login_status(_prov4)
+            if _c_ls2.button("Use this choice in batch runs (llm.cfg)",
+                             key="l4_genai_savecfg",
+                             help="Writes 03_Codes/llm.cfg. Every run script "
+                                  "reads it through llm_env.bat, and "
+                                  "llm-select.bat edits the same file."):
+                _pth = _llm4.write_cfg(dict(
+                    DSS_GENAI_PROVIDER=_prov4,
+                    DSS_GENAI_MODEL=os.environ.get("DSS_GENAI_MODEL", ""),
+                    DSS_GENAI_EFFORT=os.environ.get("DSS_GENAI_EFFORT", ""),
+                    DSS_GENAI_FALLBACK=os.environ.get("DSS_GENAI_FALLBACK",
+                                                      "")))
+                st.success(f"Saved {_pth}")
+            _lst = st.session_state.get("genai_login_" + _prov4)
+            if _lst:
+                (st.success if _lst.get("logged_in") else st.error)(
+                    f"`{_prov4}`: " + str(_lst.get("text", ""))[:300]
+                    + ("" if _lst.get("logged_in") else
+                       f" → run **{_prov4}-login.bat** in 03_Codes."))
+            # --- GenAI status ---
             _gcfg = _dss.genai_config()
             if _gcfg.get("mode") == "cli":
                 st.success(
-                    "GenAI link: **Claude Code (your subscription)** \u2014 "
-                    "stage \u2462 runs through the local `claude` command on "
-                    "your Pro/Max plan. No API key.")
+                    f"GenAI link: **{_gcfg.get('transport')}** \u2014 "
+                    f"stage \u2462 runs through the local "
+                    f"`{_gcfg.get('endpoint')}` command on your "
+                    "subscription. No API key.")
             else:
                 st.warning(
                     "GenAI link: **inactive** \u2014 stage \u2462 is skipped "
-                    "(stages \u2460\u2461 still run). Install Claude Code, then in "
-                    "a terminal run `claude` and type `/login` on your Pro/Max "
-                    "plan. Restart the dashboard afterwards.")
-            if st.button("Test Claude connection",
+                    "(stages \u2460\u2461 still run). "
+                    + ("Install the Codex CLI (Node.js, then `npm i -g "
+                       "@openai/codex`) and run codex-login.bat with your "
+                       "ChatGPT account." if _prov4 == "codex" else
+                       "Install Claude Code and run claude-login.bat on "
+                       "your Pro/Max plan.")
+                    + " Restart the dashboard afterwards.")
+            if st.button("Test GenAI connection",
                          help="Sends ONE real, live request over the "
                               "configured transport (API key or your "
                               "subscription via Claude Code) and shows "
                               "Claude's own reply \u2014 proof the generative "
                               "stage is wired to Claude, not mocked."):
-                with st.spinner("Calling Claude\u2026"):
+                with st.spinner("Calling the model\u2026"):
                     _pr = _dss.genai_probe()
                 if _pr["ok"]:
                     # remember what THIS machine measured for THIS model, so
@@ -4288,14 +4452,14 @@ def page_simulation():
                     _act_m = _pr.get("reported_model") or "?"
                     _ot = _u.get("output_tokens")
                     st.success(
-                        f"Live reply from Claude at "
+                        f"Live reply from {_gcfg.get('provider')} at "
                         f"**{_pr.get('finished_at', '?')}** in "
                         f"{_pr['latency_ms']} ms "
                         f"(sent {_pr.get('started_at', '?')}, requested "
                         f"`{_req_m}`, served `{_act_m}`, tokens in/out "
                         f"{_u.get('input_tokens', '?')}/"
                         f"{_ot if _ot is not None else '?'}):")
-                    if isinstance(_ot, int):
+                    if isinstance(_ot, int) and _gcfg.get("provider") == "claude":
                         # the length of the answer is the part of the wait
                         # this project controls, so it is called out
                         st.caption(
@@ -4341,7 +4505,7 @@ def page_simulation():
                             "rate-limited or is not part of your plan. To "
                             "force a model, run `claude` interactively and set "
                             "it there, or use a plan that includes it.")
-                    with st.expander("Raw `claude` JSON \u2014 what the "
+                    with st.expander("Raw CLI output \u2014 what the "
                                      "CLI actually reported"):
                         st.caption("Command: `"
                                    + str(_pr.get("cmd") or "claude ...")

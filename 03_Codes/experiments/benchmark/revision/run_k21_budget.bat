@@ -6,8 +6,7 @@ REM same 150 worlds, same gates. Random arms CPU (~20 min each), GODA arms LLM
 REM (~1 h each). Resumable. Pairs with final\t1_reference (F5Ev).
 cd /d "%~dp0..\..\.."
 if exist ".venv\Scripts\activate.bat" call ".venv\Scripts\activate.bat"
-set "CLAUDE_CONFIG_DIR=%CD%\.claude-config"
-set "DSS_GENAI_MODEL=claude-opus-5"
+call "%CD%\llm_env.bat"
 set "CLAUDE_CODE_DISABLE_NONESSENTIAL_TRAFFIC=1"
 set "DSS_GENAI_TIMEOUT=240"
 set "DSS_LLM_SCREEN_N=6"
@@ -28,7 +27,7 @@ python experiments\open_space\campaign.py --exp E8 --arms Random --budget 24 --s
 echo === Claude access test ===
 python -c "import json,sys; from dss import adapt; r=adapt.genai_probe(); print(json.dumps({k:r.get(k) for k in ('ok','latency_ms','error')})); sys.exit(0 if r.get('ok') else 1)"
 if errorlevel 1 (
-  echo The model did not answer. Run claude-login.bat, then this script again.
+  echo The model did not answer. Run claude-login.bat or codex-login.bat or codex-login.bat (llm-status.bat shows which), then this script again.
   goto failed
 )
 set "DSS_REQUIRE_GENAI=1"

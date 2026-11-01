@@ -10,7 +10,7 @@ REM Resumable: run again after an interruption, finished runs are skipped.
 REM Needs: python with numpy; claude CLI logged in via claude-login.bat (same config dir).
 setlocal
 cd /d "%~dp0..\.."
-set "CLAUDE_CONFIG_DIR=%CD%\.claude-config"
+call "%CD%\llm_env.bat"
 set "OUT=experiments\benchmark\out"
 set "N=%~1"
 if "%N%"=="" set "N=30"

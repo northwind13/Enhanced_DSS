@@ -6,7 +6,7 @@ REM   run_llmonly.bat 12       12 worlds (quick)
 REM Resumable: finished runs are skipped.
 setlocal
 cd /d "%~dp0..\.."
-set "CLAUDE_CONFIG_DIR=%CD%\.claude-config"
+call "%CD%\llm_env.bat"
 set "OUT=experiments\benchmark\out"
 set "N=%~1"
 if "%N%"=="" set "N=30"

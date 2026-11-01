@@ -7,8 +7,7 @@ REM All remaining live worlds use the explicitly pinned Opus model.
 cd /d "%~dp0..\..\.."
 call ".venv\Scripts\activate.bat"
 if errorlevel 1 goto failed
-set "CLAUDE_CONFIG_DIR=%CD%\.claude-config"
-set "DSS_GENAI_MODEL=claude-opus-5"
+call "%CD%\llm_env.bat"
 set "CLAUDE_CODE_EFFORT_LEVEL=high"
 set "FORCE_PROMPT_CACHING_5M=1"
 set "CLAUDE_CODE_DISABLE_NONESSENTIAL_TRAFFIC=1"
